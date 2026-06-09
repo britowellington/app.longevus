@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<title>Longevus — Programa</title>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<script type="text/babel">const __LOGO__ = "data:image/png;base64,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";
+
+const { useState, useCallback, useEffect } = React;
+const O = "#FF5603";
+
+const LS = {
+  get:(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}},
+  set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+};
+const uid=()=>Math.random().toString(36).slice(2)+Date.now().toString(36);
+const fmt=d=>d?new Date(d+"T12:00:00").toLocaleDateString("pt-BR"):"—";
+const calcAge=dob=>{if(!dob)return"?";const b=new Date(dob+"T12:00:00"),n=new Date();let a=n.getFullYear()-b.getFullYear();if(n<new Date(n.getFullYear(),b.getMonth(),b.getDate()))a--;return a;};
+
+// ─── MOMENTOS DA SESSÃO ───────────────────────────────────────────────────────
+const MOMENTOS = [
+  { key:"inicial", label:"Parte Inicial", icon:"🌅", cor:"#6366f1", bg:"#eef2ff", border:"#c7d2fe", desc:"Aquecimento + Exercícios Cognitivos" },
+  { key:"principal", label:"Parte Principal", icon:"⚡", cor:O, bg:"#fff4ee", border:"#fed7aa", desc:"Foco da sessão — Força, Equilíbrio ou Funcional" },
+  { key:"final", label:"Parte Final", icon:"🌙", cor:"#15803d", bg:"#f0fdf4", border:"#bbf7d0", desc:"Desaquecimento — Alongamentos e Volta à Calma" },
+];
+
+// ─── MÓDULOS COGNITIVOS DO HUB ───────────────────────────────────────────────
+// IDs espelham os módulos reais do longevus-hub.html
+const COGNITIVOS = [
+  { id:"cartas",    nome:"Cartas Neurofuncionais", desc:"30 cartas · 4 categorias · 3 níveis",       duracao:"5–8 min",  nivel:"Basico",        cor:"#FF5603" },
+  { id:"genio",     nome:"Gênio das Cores",        desc:"Memória sequencial de cores",               duracao:"4–6 min",  nivel:"Intermediario", cor:"#EC4899" },
+  { id:"padroes",   nome:"Copiar Padrões",         desc:"Praxia visuoespacial",                      duracao:"5–7 min",  nivel:"Intermediario", cor:"#F59E0B" },
+  { id:"baloes",    nome:"Estourar Balões",        desc:"Números, letras, contas e reflexo",         duracao:"3–5 min",  nivel:"Basico",        cor:"#FF5603" },
+  { id:"caca",      nome:"Caça-Palavras",          desc:"Atenção visual · 4 temas",                 duracao:"8–12 min", nivel:"Basico",        cor:"#10B981" },
+  { id:"listar",    nome:"Listar Palavras",        desc:"Fluência verbal semântica",                 duracao:"3–5 min",  nivel:"Basico",        cor:"#3B82F6" },
+  { id:"completar", nome:"Completar Letra",        desc:"Recuperação lexical",                       duracao:"5–8 min",  nivel:"Basico",        cor:"#8B5CF6" },
+];
+const HUB_URL = "longevus-hub.html";
+
+// Sugestão de cognitivo por bloco
+const suggestCognitivo = (blocoKey, assessment) => {
+  const comprometido = assessment ? (parseInt(assessment.phys?.sppbSide||0)?(parseInt(assessment.phys?.sppbSemi||0)+parseInt(assessment.phys?.sppbTandem||0)):0) <= 1 : false;
+  // Mapeia bloco → módulo real do Hub (longevus-hub.html)
+  const maps = {
+    b1: comprometido ? "listar"   : "cartas",    // Adaptação: mais acessível
+    b2: comprometido ? "baloes"   : "genio",     // Desenvolvimento: memória sequencial
+    b3: comprometido ? "caca"     : "padroes",   // Intensificação: visuoespacial
+    b4: comprometido ? "completar": "baloes",    // Consolidação: reflexo e integração
+  };
+  return maps[blocoKey] || "cartas";
+};
+
+// ─── BIBLIOTECA PADRÃO ────────────────────────────────────────────────────────
+const EXERCISES = [
+  {id:"ex01",nome:"Sentar e Levantar da Cadeira",cat:"Fortalecimento",grupo:"MMII",foco:"Pernas e Glúteos",nivel:"Basico",icone:"🪑",tags:["quedas","sarcopenia","mmii","funcional"],momento:"principal"},
+  {id:"ex02",nome:"Elevação de Calcanhares",cat:"Fortalecimento",grupo:"MMII",foco:"Panturrilha",nivel:"Basico",icone:"🦵",tags:["sarcopenia","mmii","marcha"],momento:"principal"},
+  {id:"ex03",nome:"Extensão de Perna para Trás",cat:"Fortalecimento",grupo:"MMII",foco:"Glúteos e Extensores do Quadril",nivel:"Basico",icone:"🏋️",tags:["sarcopenia","mmii","marcha","quedas"],momento:"principal"},
+  {id:"ex04",nome:"Elevação de Perna à Frente",cat:"Fortalecimento",grupo:"MMII",foco:"Quadríceps e Flexores do Quadril",nivel:"Basico",icone:"🦿",tags:["sarcopenia","mmii","escadas"],momento:"principal"},
+  {id:"ex05",nome:"Agachamento Assistido",cat:"Fortalecimento",grupo:"MMII",foco:"Quadríceps, Glúteos e Core",nivel:"Intermediario",icone:"⬇️",tags:["sarcopenia","mmii","funcional","quedas"],momento:"principal"},
+  {id:"ex06",nome:"Agachamento Livre",cat:"Fortalecimento",grupo:"MMII",foco:"Cadeia Posterior e Core",nivel:"Avancado",icone:"🏆",tags:["sarcopenia","mmii","funcional","quedas"],momento:"principal"},
+  {id:"ex07",nome:"Flexão de Parede",cat:"Fortalecimento",grupo:"MMSS",foco:"Peito e Tríceps",nivel:"Basico",icone:"🤲",tags:["sarcopenia","mmss","funcional"],momento:"principal"},
+  {id:"ex08",nome:"Elevação Lateral dos Braços",cat:"Fortalecimento",grupo:"MMSS",foco:"Ombros",nivel:"Intermediario",icone:"💪",tags:["sarcopenia","mmss","postura"],momento:"principal"},
+  {id:"ex09",nome:"Remada com Elástico",cat:"Fortalecimento",grupo:"MMSS",foco:"Costas e Bíceps",nivel:"Intermediario",icone:"🎗️",tags:["sarcopenia","mmss","postura"],momento:"principal"},
+  {id:"ex10",nome:"Rosca Direta com Peso Leve",cat:"Fortalecimento",grupo:"MMSS",foco:"Bíceps",nivel:"Basico",icone:"💪",tags:["sarcopenia","mmss"],momento:"principal"},
+  {id:"ex11",nome:"Tocar o Joelho Oposto (Sentado)",cat:"Core",grupo:"Core",foco:"Abdome e Oblíquos",nivel:"Basico",icone:"🎯",tags:["coordenação","core","funcional"],momento:"principal"},
+  {id:"ex12",nome:"Extensão de Tronco na Cadeira",cat:"Core",grupo:"Core",foco:"Extensores da Coluna",nivel:"Basico",icone:"🪑",tags:["core","postura","lombar"],momento:"principal"},
+  {id:"ex13",nome:"Contração Abdominal Sentado",cat:"Core",grupo:"Core",foco:"Core Profundo",nivel:"Basico",icone:"🔒",tags:["core","postura"],momento:"principal"},
+  {id:"ex14",nome:"Pés Unidos — Equilíbrio Estático",cat:"Equilíbrio",grupo:"Equilíbrio",foco:"Equilíbrio Estático",nivel:"Basico",icone:"⚖️",tags:["quedas","equilíbrio","sppb"],momento:"principal"},
+  {id:"ex15",nome:"Equilíbrio em Uma Perna",cat:"Equilíbrio",grupo:"Equilíbrio",foco:"Estabilidade do Tornozelo",nivel:"Basico",icone:"🦶",tags:["quedas","equilíbrio","sppb"],momento:"principal"},
+  {id:"ex16",nome:"Deslocamento de Tronco A/P",cat:"Equilíbrio",grupo:"Equilíbrio",foco:"Equilíbrio Anteroposterior",nivel:"Basico",icone:"↕️",tags:["quedas","equilíbrio","sppb"],momento:"principal"},
+  {id:"ex17",nome:"Caminhada Tandem",cat:"Equilíbrio",grupo:"Equilíbrio",foco:"Equilíbrio Dinâmico",nivel:"Intermediario",icone:"👣",tags:["quedas","equilíbrio","marcha"],momento:"principal"},
+  {id:"ex18",nome:"Equilíbrio com Tarefa Dual",cat:"Equilíbrio",grupo:"Equilíbrio",foco:"Atenção Dividida",nivel:"Avancado",icone:"🧠",tags:["quedas","equilíbrio","coordenação"],momento:"principal"},
+  {id:"ex19",nome:"Rotação de Tornozelos e Punhos",cat:"Mobilidade",grupo:"Mobilidade",foco:"Articulações Distais",nivel:"Basico",icone:"🔁",tags:["rigidez","artrite","mobilidade"],momento:"inicial"},
+  {id:"ex20",nome:"Rotação de Quadril em Círculos",cat:"Mobilidade",grupo:"Mobilidade",foco:"Quadril e Lombar",nivel:"Basico",icone:"🌀",tags:["rigidez","lombar","mobilidade"],momento:"inicial"},
+  {id:"ex21",nome:"Marcha com Elevação de Joelhos",cat:"Mobilidade",grupo:"Mobilidade",foco:"Flexores do Quadril",nivel:"Basico",icone:"🚶",tags:["marcha","mobilidade","mmii"],momento:"inicial"},
+  {id:"ex22",nome:"Rotação do Pescoço",cat:"Mobilidade",grupo:"Mobilidade",foco:"Coluna Cervical",nivel:"Basico",icone:"🔄",tags:["rigidez","cervical","postura"],momento:"inicial"},
+  {id:"ex23",nome:"Alongamento da Panturrilha na Parede",cat:"Alongamento",grupo:"Alongamento",foco:"Panturrilha e Tornozelo",nivel:"Basico",icone:"🧘",tags:["rigidez","marcha","mobilidade"],momento:"final"},
+  {id:"ex24",nome:"Alongamento Lateral do Tronco",cat:"Alongamento",grupo:"Alongamento",foco:"Tronco e Intercostais",nivel:"Basico",icone:"🙆",tags:["rigidez","coluna","postura"],momento:"final"},
+  {id:"ex25",nome:"Alongamento de Quadril e Glúteo",cat:"Alongamento",grupo:"Alongamento",foco:"Quadril e Glúteos",nivel:"Basico",icone:"🏃",tags:["rigidez","ciática","lombar"],momento:"final"},
+  {id:"ex26",nome:"Alongamento de Isquiotibiais",cat:"Alongamento",grupo:"Alongamento",foco:"Posterior da Coxa",nivel:"Basico",icone:"🦵",tags:["rigidez","lombar","marcha"],momento:"final"},
+  {id:"ex27",nome:"Alongamento de Ombros com Toalha",cat:"Alongamento",grupo:"Alongamento",foco:"Peito e Ombros",nivel:"Basico",icone:"🤸",tags:["rigidez","postura","mmss"],momento:"final"},
+  {id:"ex28",nome:"Respiração Diafragmática",cat:"Relaxamento",grupo:"Alongamento",foco:"Sistema Nervoso e Relaxamento",nivel:"Basico",icone:"🌬️",tags:["relaxamento","respiração","volta calma"],momento:"final"},
+  {id:"ex29",nome:"Marcha no Lugar com Apoio",cat:"Cardio",grupo:"Cardio",foco:"Resistência Cardiovascular",nivel:"Basico",icone:"🏃",tags:["cardio","marcha","funcional"],momento:"principal"},
+  {id:"ex30",nome:"Caminhada com Variações",cat:"Cardio",grupo:"Cardio",foco:"Marcha e Coordenação",nivel:"Basico",icone:"👟",tags:["cardio","marcha","funcional"],momento:"principal"},
+  {id:"ex31",nome:"Subida e Descida de Degrau",cat:"Funcional",grupo:"Funcional",foco:"MMII e Equilíbrio Dinâmico",nivel:"Intermediario",icone:"🪜",tags:["funcional","escadas","mmii","quedas"],momento:"principal"},
+  {id:"ex32",nome:"Lançar e Pegar Bola",cat:"Coordenação",grupo:"Coordenação",foco:"Coordenação e Tarefa Dual",nivel:"Intermediario",icone:"🏀",tags:["coordenação","equilíbrio","tarefa dual"],momento:"principal"},
+  {id:"ex33",nome:"Sequência de Passos Laterais",cat:"Coordenação",grupo:"Coordenação",foco:"Padrão Motor",nivel:"Intermediario",icone:"👣",tags:["coordenação","marcha","equilíbrio"],momento:"principal"},
+];
+
+// ─── BLOCOS 24 SEMANAS ────────────────────────────────────────────────────────
+const BLOCOS = [
+  {key:"b1",label:"Bloco 1 — Adaptação",semanas:"1–6",cor:{bg:"#eff6ff",border:"#bfdbfe",texto:"#1d4ed8",dot:"#3b82f6"},desc:"Aprendizado motor, tolerância ao esforço, volume baixo",nivel:["Basico"]},
+  {key:"b2",label:"Bloco 2 — Desenvolvimento",semanas:"7–12",cor:{bg:"#fff7ed",border:"#fed7aa",texto:"#c2410c",dot:O},desc:"Progressão de volume e complexidade",nivel:["Basico","Intermediario"]},
+  {key:"b3",label:"Bloco 3 — Intensificação",semanas:"13–18",cor:{bg:"#fdf4ff",border:"#e9d5ff",texto:"#7e22ce",dot:"#a855f7"},desc:"Desafio funcional elevado, integração de capacidades",nivel:["Basico","Intermediario","Avancado"]},
+  {key:"b4",label:"Bloco 4 — Consolidação",semanas:"19–24",cor:{bg:"#f0fdf4",border:"#bbf7d0",texto:"#15803d",dot:"#22c55e"},desc:"Autonomia, exercícios integrados, manutenção de ganhos",nivel:["Basico","Intermediario","Avancado"]},
+];
+
+const PRESC={
+  Fortalecimento:{b1:{s:"2",r:"8–10",d:"60s"},b2:{s:"3",r:"10–12",d:"60s"},b3:{s:"3",r:"12–15",d:"45s"},b4:{s:"3–4",r:"12–15",d:"45s"}},
+  Core:{b1:{s:"2",r:"8–10",d:"45s"},b2:{s:"3",r:"10–12",d:"45s"},b3:{s:"3",r:"12–15",d:"30s"},b4:{s:"3",r:"12–15",d:"30s"}},
+  Equilíbrio:{b1:{s:"2",r:"20–30s",d:"30s"},b2:{s:"3",r:"30s",d:"30s"},b3:{s:"3",r:"30–45s",d:"20s"},b4:{s:"3",r:"45–60s",d:"20s"}},
+  Mobilidade:{b1:{s:"2",r:"10 cada",d:"10s"},b2:{s:"2",r:"12 cada",d:"10s"},b3:{s:"3",r:"12 cada",d:"10s"},b4:{s:"3",r:"15 cada",d:"10s"}},
+  Alongamento:{b1:{s:"2",r:"20s cada",d:"10s"},b2:{s:"2",r:"25s cada",d:"10s"},b3:{s:"2–3",r:"30s cada",d:"10s"},b4:{s:"3",r:"30s cada",d:"10s"}},
+  Relaxamento:{b1:{s:"1",r:"3 min",d:"—"},b2:{s:"1",r:"3 min",d:"—"},b3:{s:"1",r:"3–5 min",d:"—"},b4:{s:"1",r:"5 min",d:"—"}},
+  Cardio:{b1:{s:"1",r:"2–3 min",d:"60s"},b2:{s:"1",r:"3–5 min",d:"60s"},b3:{s:"2",r:"5 min",d:"60s"},b4:{s:"2",r:"5–10 min",d:"60s"}},
+  Funcional:{b1:{s:"2",r:"10",d:"60s"},b2:{s:"3",r:"12",d:"45s"},b3:{s:"3",r:"15",d:"45s"},b4:{s:"3–4",r:"15",d:"45s"}},
+  Coordenação:{b1:{s:"2",r:"10 cada",d:"30s"},b2:{s:"3",r:"10–12",d:"30s"},b3:{s:"3",r:"12",d:"20s"},b4:{s:"3",r:"12–15",d:"20s"}},
+};
+const getPresc=(exId,bKey,bibCustom=[])=>{
+  const ex=EXERCISES.find(e=>e.id===exId)||bibCustom.find(e=>e.id===exId);
+  if(!ex)return{s:"3",r:"10",d:"45s"};
+  // Se tem prescrição padrão definida (exercícios da biblioteca), usar diretamente
+  if(ex.defaultSeries||ex.defaultReps) return{s:ex.defaultSeries||"3",r:ex.defaultReps||"10",d:ex.defaultDescanso||"45s"};
+  // Mapear grupo da biblioteca para categoria do PRESC
+  const cat=ex.cat||ex.grupo||"Fortalecimento";
+  const catMap={"MMII":"Fortalecimento","MMSS":"Fortalecimento","Respiração":"Alongamento","Cognitivo":"Coordenação","Funcional":"Funcional"};
+  const prescCat=PRESC[cat]?cat:(catMap[cat]||"Fortalecimento");
+  const p=(PRESC[prescCat]||PRESC.Fortalecimento)[bKey];
+  return p||{s:"3",r:"10",d:"45s"};
+};
+
+// ─── TREINOS POR FREQUÊNCIA ───────────────────────────────────────────────────
+const TREINO_DEFS={
+  A:{label:"Treino A",cor:"#3b82f6",bg:"#eff6ff",border:"#bfdbfe",desc:"MMII + Equilíbrio + Mobilidade",grupos:["MMII","Equilíbrio","Mobilidade"]},
+  B:{label:"Treino B",cor:"#d97706",bg:"#fffbeb",border:"#fde68a",desc:"MMSS + Core + Alongamento",grupos:["MMSS","Core","Alongamento"]},
+  C:{label:"Treino C",cor:"#7e22ce",bg:"#fdf4ff",border:"#e9d5ff",desc:"Funcional + Cardio + Coordenação",grupos:["Funcional","Cardio","Coordenação"]},
+  D:{label:"Treino D",cor:"#15803d",bg:"#f0fdf4",border:"#bbf7d0",desc:"Full Body + Mobilidade Geral",grupos:["MMII","MMSS","Equilíbrio","Mobilidade","Alongamento"]},
+};
+
+const suggestDivisao=(freq,assessment)=>{
+  const sppb=assessment?(parseInt(assessment.phys?.sppbSide||0)?(parseInt(assessment.phys?.sppbSemi||0)+parseInt(assessment.phys?.sppbTandem||0)):0):4;
+  const comprometido=sppb<=1||assessment?.funcRisk?.falls;
+  if(comprometido&&freq<=3)return{modelo:"unico",sequencia:Array(freq).fill("A")};
+  return({2:{modelo:"AB",sequencia:["A","B"]},3:{modelo:"ABC",sequencia:["A","B","C"]},4:{modelo:"ABAB",sequencia:["A","B","A","B"]},5:{modelo:"ABCAB",sequencia:["A","B","C","A","B"]}})[freq]||{modelo:"ABC",sequencia:["A","B","C"]};
+};
+
+const DIVISAO_OPTIONS={
+  2:[{modelo:"unico",label:"Treino Único (A/A)",desc:"Full body nas 2 sessões",sequencia:["A","A"]},{modelo:"AB",label:"Divisão A/B",desc:"MMII+Equilíbrio / MMSS+Core",sequencia:["A","B"]}],
+  3:[{modelo:"unico",label:"Treino Único (A/A/A)",desc:"Full body nas 3 sessões",sequencia:["A","A","A"]},{modelo:"ABC",label:"Divisão A/B/C",desc:"MMII / MMSS / Funcional",sequencia:["A","B","C"]},{modelo:"ABA",label:"Divisão A/B/A",desc:"MMII / MMSS / MMII",sequencia:["A","B","A"]}],
+  4:[{modelo:"ABAB",label:"Divisão A/B/A/B",desc:"MMII / MMSS alternados",sequencia:["A","B","A","B"]},{modelo:"ABCD",label:"Divisão A/B/C/D",desc:"MMII / MMSS / Funcional / Full Body",sequencia:["A","B","C","D"]},{modelo:"ABCA",label:"Divisão A/B/C/A",desc:"MMII / MMSS / Funcional / MMII",sequencia:["A","B","C","A"]}],
+  5:[{modelo:"ABCAB",label:"Divisão A/B/C/A/B",desc:"Ciclo completo + retomada",sequencia:["A","B","C","A","B"]},{modelo:"ABCAD",label:"Divisão A/B/C/A/D",desc:"Full cycle + Full Body",sequencia:["A","B","C","A","D"]}],
+};
+
+// ─── PROGRESSÃO DE EXERCÍCIOS POR BLOCO ──────────────────────────────────────
+// Cada entrada: [b1_id, b2_id, b3_id, b4_id]
+// Representa a evolução do mesmo padrão de movimento ao longo dos 4 blocos
+const PROGRESSAO = {
+  // MMII — padrões de agachar/empurrar com os pés
+  MMII_squat:   ["ex01","ex01","ex05","ex06"],   // Sentar/Levantar → Ag.Assistido → Ag.Livre
+  MMII_poster:  ["ex03","ex03","ex05","ex06"],   // Ext.Perna Trás → Ag.Assistido → Ag.Livre
+  MMII_pantur:  ["ex02","ex02","ex04","ex04"],   // Elev.Calcanhar → Elev.Perna Frente
+  MMII_quad:    ["ex04","ex04","ex05","ex06"],   // Elev.Perna Frente → Ag.Assistido → Ag.Livre
+  // MMSS — padrões de empurrar e puxar
+  MMSS_push:    ["ex07","ex07","ex08","ex08"],   // Flexão Parede → Elev.Lateral
+  MMSS_pull:    ["ex10","ex09","ex09","ex09"],   // Rosca → Remada Elástico
+  MMSS_push2:   ["ex07","ex08","ex08","ex09"],   // Flexão Parede → Elev.Lat → Remada
+  // Core
+  Core_estab:   ["ex13","ex11","ex11","ex12"],   // Bracing → Tocar Joelho → Ext.Tronco
+  Core_rot:     ["ex11","ex11","ex12","ex12"],   // Tocar Joelho → Extensão Tronco
+  // Equilíbrio — progressão direta de dificuldade
+  Eq_estatico:  ["ex14","ex14","ex15","ex15"],   // Pés Unidos → Uma Perna
+  Eq_dinamico:  ["ex14","ex16","ex17","ex18"],   // Pés Unidos → Deslocamento → Tandem → Dual
+  // Cardio
+  Cardio_A:     ["ex29","ex29","ex30","ex30"],   // Marcha Lugar → Caminhada Variações
+  // Funcional/Coordenação
+  Func_A:       ["ex29","ex31","ex31","ex32"],   // Marcha → Step → Lançar Bola
+  Coord_A:      ["ex11","ex32","ex33","ex18"],   // Tocar Joelho → Bola → Passos → Dual
+};
+
+// Mobilidade por treino (parte inicial) — diferentes por treino
+const MOBIL_TREINO = {
+  A: ["ex19","ex20"],  // Tornozelos/Punhos + Quadril Círculos
+  B: ["ex21","ex22"],  // Marcha Joelhos + Rotação Pescoço
+  C: ["ex19","ex21"],  // Tornozelos + Marcha Joelhos
+  D: ["ex20","ex22"],  // Quadril + Pescoço
+};
+
+// Alongamento por treino (parte final) — focado nos grupos trabalhados
+const ALONG_TREINO = {
+  A: ["ex25","ex23","ex26"],  // Quadril/Glúteo + Panturrilha + Isquiotibiais (foco MMII)
+  B: ["ex24","ex27","ex26"],  // Lateral Tronco + Ombros + Isquiotibiais (foco MMSS)
+  C: ["ex23","ex24","ex25"],  // Panturrilha + Lateral + Quadril (funcional)
+  D: ["ex25","ex27","ex23"],  // Mix full body
+};
+
+// ─── BUILD PRESCRIÇÃO COM 3 MOMENTOS + PROGRESSÃO REAL ───────────────────────
+const buildPrescricao=(assessment,sequencia)=>{
+  const treinosUnicos=[...new Set(sequencia)];
+  const priorities=[];
+  if(assessment){
+    const a=assessment;
+    const sppb=parseInt(a.phys?.sppbSide||0)?(parseInt(a.phys?.sppbSemi||0)+parseInt(a.phys?.sppbTandem||0)):0;
+    const tug=parseFloat(a.phys?.tug||0);
+    const calf=parseFloat(a.aha?.calf||0);
+    const grip=parseFloat(a.phys?.grip||0);
+    const chair=parseFloat(a.phys?.sppbChair||0);
+    const path=(a.anamnese?.pathologies||"").toLowerCase();
+    if(sppb<=2||a.funcRisk?.falls||a.funcRisk?.balance)priorities.push("quedas","equilíbrio");
+    if(tug>12||tug===0)priorities.push("marcha","mmii");
+    if((calf>0&&calf<33)||(grip>0&&grip<20)||(chair>14))priorities.push("sarcopenia","mmii");
+    if(path.includes("artrit")||path.includes("artrose"))priorities.push("rigidez","mobilidade");
+    if(a.aha?.hypertension||path.includes("hipertens"))priorities.push("cardio");
+    if(a.aha?.diabetes||path.includes("diabet"))priorities.push("cardio","funcional");
+  }
+  priorities.push("funcional","mmii","equilíbrio");
+
+  // Mapeamento treino → exercícios com progressão por bloco
+  // Cada treino tem exercícios DIFERENTES e que PROGRIDEM entre blocos
+  const TREINO_EXERCICIOS = {
+    A: {
+      // Treino A: MMII + Equilíbrio + Mobilidade
+      // Progressão: B1(Básico) → B2(Básico+) → B3(Intermediário) → B4(Avançado)
+      b1: [PROGRESSAO.MMII_squat[0],  PROGRESSAO.MMII_pantur[0], PROGRESSAO.Eq_estatico[0], PROGRESSAO.Eq_dinamico[0]],
+      b2: [PROGRESSAO.MMII_squat[1],  PROGRESSAO.MMII_pantur[1], PROGRESSAO.Eq_estatico[1], PROGRESSAO.Eq_dinamico[1]],
+      b3: [PROGRESSAO.MMII_squat[2],  PROGRESSAO.MMII_pantur[2], PROGRESSAO.Eq_estatico[2], PROGRESSAO.Eq_dinamico[2]],
+      b4: [PROGRESSAO.MMII_squat[3],  PROGRESSAO.MMII_pantur[3], PROGRESSAO.Eq_estatico[3], PROGRESSAO.Eq_dinamico[3]],
+    },
+    B: {
+      // Treino B: MMSS + Core + Alongamento
+      b1: [PROGRESSAO.MMSS_push[0],  PROGRESSAO.MMSS_pull[0],  PROGRESSAO.Core_estab[0]],
+      b2: [PROGRESSAO.MMSS_push[1],  PROGRESSAO.MMSS_pull[1],  PROGRESSAO.Core_estab[1]],
+      b3: [PROGRESSAO.MMSS_push[2],  PROGRESSAO.MMSS_pull[2],  PROGRESSAO.Core_estab[2]],
+      b4: [PROGRESSAO.MMSS_push[3],  PROGRESSAO.MMSS_pull[3],  PROGRESSAO.Core_estab[3]],
+    },
+    C: {
+      // Treino C: Funcional + Cardio + Coordenação
+      b1: [PROGRESSAO.Cardio_A[0], PROGRESSAO.Func_A[0], PROGRESSAO.Coord_A[0]],
+      b2: [PROGRESSAO.Cardio_A[1], PROGRESSAO.Func_A[1], PROGRESSAO.Coord_A[1]],
+      b3: [PROGRESSAO.Cardio_A[2], PROGRESSAO.Func_A[2], PROGRESSAO.Coord_A[2]],
+      b4: [PROGRESSAO.Cardio_A[3], PROGRESSAO.Func_A[3], PROGRESSAO.Coord_A[3]],
+    },
+    D: {
+      // Treino D: Full Body — mistura os padrões
+      b1: [PROGRESSAO.MMII_squat[0], PROGRESSAO.MMSS_push[0], PROGRESSAO.Eq_estatico[0], PROGRESSAO.Core_estab[0]],
+      b2: [PROGRESSAO.MMII_poster[1],PROGRESSAO.MMSS_pull[1],  PROGRESSAO.Eq_dinamico[1], PROGRESSAO.Core_rot[1]],
+      b3: [PROGRESSAO.MMII_squat[2], PROGRESSAO.MMSS_push2[2], PROGRESSAO.Eq_dinamico[2], PROGRESSAO.Core_estab[2]],
+      b4: [PROGRESSAO.MMII_quad[3],  PROGRESSAO.MMSS_pull[3],  PROGRESSAO.Eq_dinamico[3], PROGRESSAO.Core_rot[3]],
+    },
+  };
+
+  const prescricao={};
+  BLOCOS.forEach(bloco=>{
+    prescricao[bloco.key]={};
+    treinosUnicos.forEach(treinoKey=>{
+      const tDef=TREINO_DEFS[treinoKey];
+      if(!tDef)return;
+      const bIdx=bloco.key; // b1, b2, b3, b4
+
+      // ── PARTE INICIAL: cognitivo + mobilidade específica do treino ──
+      const cogId=suggestCognitivo(bloco.key,assessment);
+      const cogEx=COGNITIVOS.find(c=>c.id===cogId);
+      const mobilIds=MOBIL_TREINO[treinoKey]||MOBIL_TREINO.A;
+      const inicial=[
+        { exId:"cognitivo", cogId, series:"1", reps:cogEx?.duracao||"5 min", descanso:"—", obs:"Exercício cognitivo — abre o Hub para executar", isCognitivo:true },
+        ...mobilIds.map(id=>{
+          const ex=EXERCISES.find(e=>e.id===id);
+          if(!ex)return null;
+          const p=getPresc(id,bIdx);
+          return{exId:id,series:p.s,reps:p.r,descanso:p.d,obs:""};
+        }).filter(Boolean),
+      ];
+
+      // ── PARTE PRINCIPAL: exercícios com progressão real por bloco ──
+      const exIds=(TREINO_EXERCICIOS[treinoKey]||TREINO_EXERCICIOS.A)[bIdx]||[];
+      // Deduplica IDs (um mesmo exercício pode aparecer na progressão)
+      const seenIds=new Set();
+      const principal=exIds
+        .filter(id=>{if(seenIds.has(id))return false;seenIds.add(id);return true;})
+        .map(id=>{
+          const ex=EXERCISES.find(e=>e.id===id);
+          if(!ex)return null;
+          const p=getPresc(id,bIdx);
+          return{exId:id,series:p.s,reps:p.r,descanso:p.d,obs:""};
+        }).filter(Boolean);
+
+      // ── PARTE FINAL: alongamentos focados no treino ──
+      const alongIds=ALONG_TREINO[treinoKey]||ALONG_TREINO.A;
+      const respPresc=getPresc("ex28",bIdx);
+      const final=[
+        ...alongIds.map(id=>{
+          const ex=EXERCISES.find(e=>e.id===id);
+          if(!ex)return null;
+          const p=getPresc(id,bIdx);
+          return{exId:id,series:p.s,reps:p.r,descanso:p.d,obs:""};
+        }).filter(Boolean),
+        {exId:"ex28",series:respPresc.s,reps:respPresc.r,descanso:respPresc.d,obs:"Encerrar a sessão com respiração consciente"},
+      ];
+
+      prescricao[bloco.key][treinoKey]={inicial,principal,final};
+    });
+  });
+  return prescricao;
+};
+
+// ─── COMPONENTES BASE ─────────────────────────────────────────────────────────
+const Card=({children,style,onClick})=>(<div onClick={onClick} style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:16,marginBottom:12,...style,cursor:onClick?"pointer":undefined}}>{children}</div>);
+const Btn=({children,onClick,variant="primary",full,sm,disabled,style})=>{
+  const base={border:"none",borderRadius:10,fontWeight:700,cursor:disabled?"not-allowed":"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,fontFamily:"inherit",opacity:disabled?0.5:1};
+  const v={primary:{background:O,color:"#fff",padding:sm?"8px 14px":"12px 18px",fontSize:sm?13:14},secondary:{background:"#f1f5f9",color:"#475569",padding:sm?"8px 14px":"12px 18px",fontSize:sm?13:14},ghost:{background:"transparent",color:"#64748b",padding:sm?"6px 10px":"10px 14px",fontSize:sm?12:13,border:"1.5px solid #e2e8f0"},danger:{background:"#fee2e2",color:"#dc2626",padding:sm?"8px 14px":"12px 18px",fontSize:sm?13:14}};
+  return <button onClick={disabled?undefined:onClick} style={{...base,...v[variant],width:full?"100%":undefined,...style}}>{children}</button>;
+};
+const Inp=({label,value,onChange,type="text",placeholder,opts,rows})=>(
+  <div style={{marginBottom:10}}>
+    {label&&<div style={{fontSize:11,fontWeight:700,color:"#64748b",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.4px"}}>{label}</div>}
+    {opts?(<select value={value} onChange={e=>onChange(e.target.value)} style={{width:"100%",padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,fontFamily:"inherit"}}>{opts.map(o=><option key={o.v} value={o.v}>{o.l}</option>)}</select>):rows?(<textarea value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} rows={rows} style={{width:"100%",padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,fontFamily:"inherit",resize:"vertical"}}/>):(<input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{width:"100%",padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,fontFamily:"inherit"}}/>)}
+  </div>
+);
+const Modal=({title,onClose,children})=>(
+  <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:999,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+    <div style={{background:"#fff",borderRadius:"20px 20px 0 0",width:"100%",maxWidth:640,maxHeight:"92vh",overflowY:"auto",padding:"24px 18px 44px"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
+        <div style={{fontWeight:800,fontSize:17}}>{title}</div>
+        <button onClick={onClose} style={{border:"none",background:"#f1f5f9",borderRadius:99,width:32,height:32,cursor:"pointer",fontWeight:700,color:"#64748b",fontSize:16}}>✕</button>
+      </div>
+      {children}
+    </div>
+  </div>
+);
+
+// ─── MOMENTO EDITÁVEL ─────────────────────────────────────────────────────────
+const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom})=>{
+  const [editIdx,setEditIdx]=useState(null);
+  const [addModal,setAddModal]=useState(false);
+  const [addTab,setAddTab]=useState("todos");
+  const [searchEx,setSearchEx]=useState("");
+  const allEx=[...EXERCISES,...bibCustom.filter(b=>!EXERCISES.find(e=>e.id===b.id))];
+  const blocoNivel=BLOCOS.find(b=>b.key===blocoKey)?.nivel||["Basico"];
+  const m=momentoMeta;
+
+  const updateItem=(idx,field,val)=>{const arr=[...items];arr[idx]={...arr[idx],[field]:val};onChange(arr);};
+  const removeItem=idx=>{onChange(items.filter((_,i)=>i!==idx));if(editIdx===idx)setEditIdx(null);};
+  const addExItem=exId=>{
+    if(exId==="cognitivo_custom"){onChange([...items,{exId:"cognitivo",cogId:"cog01",series:"1",reps:"5 min",descanso:"—",obs:"",isCognitivo:true}]);setAddModal(false);return;}
+    const p=getPresc(exId,blocoKey,bibCustom);
+    onChange([...items,{exId,series:p.s,reps:p.r,descanso:p.d,obs:""}]);
+    setAddModal(false);setSearchEx("");
+  };
+  const swapCognitivo=(idx,cogId)=>{const arr=[...items];arr[idx]={...arr[idx],cogId};onChange(arr);setEditIdx(null);};
+  const swapExercise=(idx,newExId)=>{const p=getPresc(newExId,blocoKey,bibCustom);const arr=[...items];arr[idx]={exId:newExId,series:p.s,reps:p.r,descanso:p.d,obs:arr[idx].obs||""};onChange(arr);setEditIdx(null);};
+
+  const filteredEx=allEx.filter(e=>e.nome.toLowerCase().includes(searchEx.toLowerCase())||e.cat?.toLowerCase().includes(searchEx.toLowerCase())||(e.grupo||"").toLowerCase().includes(searchEx.toLowerCase()));
+
+  return(
+    <div style={{marginBottom:16}}>
+      <div style={{background:m.bg,border:`1.5px solid ${m.border}`,borderRadius:11,padding:"10px 14px",marginBottom:10,display:"flex",alignItems:"center",gap:10}}>
+        <span style={{fontSize:18}}>{m.icon}</span>
+        <div>
+          <div style={{fontWeight:800,fontSize:14,color:m.cor}}>{m.label}</div>
+          <div style={{fontSize:11,color:"#64748b",marginTop:1}}>{m.desc} · {items.length} exerc.</div>
+        </div>
+      </div>
+
+      {items.length===0&&<div style={{textAlign:"center",padding:"14px 0",color:"#94a3b8",fontSize:13}}>Nenhum exercício. Adicione abaixo.</div>}
+
+      {items.map((item,idx)=>{
+        const isCog=item.isCognitivo||item.exId==="cognitivo";
+        const cogEx=isCog?COGNITIVOS.find(c=>c.id===item.cogId):null;
+        const ex=!isCog?allEx.find(e=>e.id===item.exId):null;
+        const isEdit=editIdx===idx;
+        const sameCat=ex?[...EXERCISES,...bibCustom.filter(b=>!EXERCISES.find(e=>e.id===b.id))].filter(e=>(e.grupo||e.cat)===(ex.grupo||ex.cat)&&e.id!==ex.id):[];
+
+        return(
+          <div key={idx} style={{background:"#fff",border:`1.5px solid ${isEdit?m.cor:"#e2e8f0"}`,borderRadius:11,padding:"11px 13px",marginBottom:7}}>
+            <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
+              <span style={{fontSize:20,flexShrink:0,marginTop:2}}>{isCog?"🧠":ex?.icone||"📌"}</span>
+              <div style={{flex:1}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:2}}>
+                  <div style={{fontWeight:700,fontSize:13,flex:1,marginRight:6,color:isCog?"#065f46":"#0f172a"}}>
+                    {isCog?(cogEx?.nome||"Exercício Cognitivo"):ex?.nome||"Exercício"}
+                  </div>
+                  <div style={{display:"flex",gap:4}}>
+                    <button onClick={()=>setEditIdx(isEdit?null:idx)} style={{border:`1.5px solid ${isEdit?m.cor:"#e2e8f0"}`,background:isEdit?m.bg:"#f8fafc",borderRadius:7,padding:"3px 8px",fontSize:11,fontWeight:700,color:isEdit?m.cor:"#64748b",cursor:"pointer"}}>{isEdit?"✕":"✏️"}</button>
+                    <button onClick={()=>removeItem(idx)} style={{border:"1.5px solid #fecaca",background:"#fff",borderRadius:7,padding:"3px 7px",fontSize:11,color:"#dc2626",cursor:"pointer"}}>🗑</button>
+                  </div>
+                </div>
+                <div style={{fontSize:11,color:"#94a3b8",marginBottom:6}}>
+                  {isCog?`🧩 Hub Cognitivo · ${cogEx?.duracao||"5 min"}`:`${ex?.cat||"—"} · ${ex?.foco||"—"}`}
+                </div>
+                <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                  {isCog?(
+                    <div style={{background:"#ecfdf5",border:"1.5px solid #a7f3d0",borderRadius:7,padding:"3px 9px",fontSize:11,color:"#065f46",fontWeight:700}}>
+                      ⏱ {item.reps}
+                    </div>
+                  ):[["Séries",item.series],["Reps",item.reps],["Descanso",item.descanso]].map(([l,v])=>(
+                    <div key={l} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"3px 8px",textAlign:"center",minWidth:60}}>
+                      <div style={{fontSize:9,fontWeight:700,color:"#94a3b8",textTransform:"uppercase"}}>{l}</div>
+                      <div style={{fontSize:12,fontWeight:800,color:"#0f172a"}}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+                {item.obs&&<div style={{marginTop:5,fontSize:11,color:"#64748b",fontStyle:"italic",padding:"4px 8px",background:"#f8fafc",borderRadius:6}}>📝 {item.obs}</div>}
+              </div>
+            </div>
+
+            {isEdit&&(
+              <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid #f1f5f9"}}>
+                {isCog?(
+                  <div>
+                    <div style={{fontSize:11,fontWeight:700,color:"#64748b",marginBottom:6,textTransform:"uppercase"}}>Trocar módulo cognitivo</div>
+                    <div style={{display:"flex",flexDirection:"column",gap:5,maxHeight:220,overflowY:"auto"}}>
+                      {COGNITIVOS.map(c=>(
+                        <div key={c.id} onClick={()=>swapCognitivo(idx,c.id)} style={{display:"flex",gap:10,padding:"9px 11px",border:`1.5px solid ${item.cogId===c.id?c.cor:"#e2e8f0"}`,borderRadius:9,cursor:"pointer",background:item.cogId===c.id?`${c.cor}11`:"#fafafa",alignItems:"center"}}>
+                          <div style={{width:8,height:8,borderRadius:99,background:c.cor,flexShrink:0}}/>
+                          <div style={{flex:1}}>
+                            <div style={{fontWeight:700,fontSize:12,color:item.cogId===c.id?c.cor:"#0f172a"}}>{c.nome}</div>
+                            <div style={{fontSize:11,color:"#94a3b8"}}>{c.desc} · {c.duracao}</div>
+                          </div>
+                          {item.cogId===c.id&&<span style={{fontSize:10,color:c.cor,fontWeight:700}}>✓</span>}
+                        </div>
+                      ))}
+                    </div>
+                    <Inp label="Observações" value={item.obs} onChange={v=>updateItem(idx,"obs",v)} placeholder="Instruções específicas..." rows={2}/>
+                  </div>
+                ):(
+                  <div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+                      <Inp label="Séries" value={String(item.series)} onChange={v=>updateItem(idx,"series",v)} placeholder="3"/>
+                      <Inp label="Reps / Duração" value={item.reps} onChange={v=>updateItem(idx,"reps",v)} placeholder="12"/>
+                      <Inp label="Descanso" value={item.descanso} onChange={v=>updateItem(idx,"descanso",v)} placeholder="60s"/>
+                    </div>
+                    <Inp label="Observações / Adaptações" value={item.obs} onChange={v=>updateItem(idx,"obs",v)} placeholder="Progressões, cuidados..." rows={2}/>
+                    {sameCat.length>0&&(
+                      <div>
+                        <div style={{fontSize:10,fontWeight:700,color:"#64748b",marginBottom:5,textTransform:"uppercase"}}>Trocar exercício</div>
+                        <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                          {sameCat.map(e=>(<button key={e.id} onClick={()=>swapExercise(idx,e.id)} style={{border:"1.5px solid #e2e8f0",background:"#f8fafc",borderRadius:7,padding:"5px 9px",fontSize:11,cursor:"pointer",color:"#475569"}}>{e.icone} {e.nome}</button>))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      <button onClick={()=>setAddModal(true)} style={{width:"100%",border:`1.5px dashed ${m.border}`,background:"transparent",borderRadius:9,padding:"9px",fontSize:12,color:m.cor,cursor:"pointer",fontWeight:600}}>
+        + Adicionar a {m.label}
+      </button>
+
+      {addModal&&(
+        <Modal title={`Adicionar — ${m.label}`} onClose={()=>{setAddModal(false);setSearchEx("");}}>
+          {momentoMeta.key==="inicial"&&(
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#64748b",marginBottom:6,textTransform:"uppercase",letterSpacing:"0.4px"}}>🧠 Módulos do Hub Cognitivo</div>
+              <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                {COGNITIVOS.map(cog=>(
+                  <div key={cog.id} onClick={()=>{onChange([...items,{exId:"cognitivo",cogId:cog.id,series:"1",reps:cog.duracao||"5 min",descanso:"—",obs:"",isCognitivo:true}]);setAddModal(false);}} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",border:`1.5px solid ${cog.cor}33`,borderRadius:9,cursor:"pointer",background:`${cog.cor}11`}}>
+                    <div style={{width:8,height:8,borderRadius:99,background:cog.cor,flexShrink:0}}/>
+                    <div style={{flex:1}}>
+                      <div style={{fontWeight:700,fontSize:12,color:cog.cor}}>{cog.nome}</div>
+                      <div style={{fontSize:10,color:"#94a3b8"}}>{cog.desc} · {cog.duracao}</div>
+                    </div>
+                    <a href={HUB_URL} onClick={e=>e.stopPropagation()} style={{fontSize:10,color:cog.cor,fontWeight:700,textDecoration:"none",border:`1px solid ${cog.cor}44`,borderRadius:6,padding:"3px 7px"}}>▶ Abrir</a>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <input value={searchEx} onChange={e=>setSearchEx(e.target.value)} placeholder="Buscar em toda a biblioteca..." style={{width:"100%",padding:"10px 14px",borderRadius:10,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,fontFamily:"inherit",marginBottom:8}}/>
+          <div style={{fontSize:10,color:"#94a3b8",marginBottom:8}}>{[...EXERCISES,...bibCustom.filter(b=>!EXERCISES.find(e=>e.id===b.id))].filter(e=>e.nome.toLowerCase().includes(searchEx.toLowerCase())||(e.grupo||e.cat||"").toLowerCase().includes(searchEx.toLowerCase())||(e.foco||"").toLowerCase().includes(searchEx.toLowerCase())).length} exercícios</div>
+          <div style={{display:"flex",flexDirection:"column",gap:7,maxHeight:"52vh",overflowY:"auto"}}>
+            {[...EXERCISES,...bibCustom.filter(b=>!EXERCISES.find(e=>e.id===b.id))].filter(e=>e.nome.toLowerCase().includes(searchEx.toLowerCase())||(e.grupo||e.cat||"").toLowerCase().includes(searchEx.toLowerCase())||(e.foco||"").toLowerCase().includes(searchEx.toLowerCase())).map(ex=>(
+              <div key={ex.id} onClick={()=>addExItem(ex.id)} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",border:"1.5px solid #e2e8f0",borderRadius:10,cursor:"pointer",background:"#fafafa"}}>
+                {ex.foto?<img src={ex.foto} alt="" style={{width:40,height:40,borderRadius:8,objectFit:"cover",flexShrink:0}}/>:<span style={{fontSize:20}}>{ex.icone||"📌"}</span>}
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:13}}>{ex.nome}</div>
+                  <div style={{fontSize:11,color:"#94a3b8"}}>{ex.grupo||ex.cat||"—"} · {ex.foco||"—"}</div>
+                  <div style={{fontSize:10,color:ex.nivel==="Basico"||ex.nivel==="Básico"?"#16a34a":ex.nivel==="Intermediario"||ex.nivel==="Intermediário"?O:"#7e22ce",fontWeight:600}}>{ex.nivel}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+};
+
+// ─── TREINO COM 3 MOMENTOS ────────────────────────────────────────────────────
+const TreinoMomentos=({treinoKey,blocoKey,sessao,onChange,bibCustom,editMode})=>{
+  const tDef=TREINO_DEFS[treinoKey];
+  const [momentoIdx,setMomentoIdx]=useState(0);
+  const m=MOMENTOS[momentoIdx];
+
+  if(!editMode){
+    return(
+      <div>
+        <div style={{display:"flex",gap:0,marginBottom:10,background:"#f1f5f9",borderRadius:10,padding:3}}>
+          {MOMENTOS.map((mo,i)=>(
+            <button key={mo.key} onClick={()=>setMomentoIdx(i)} style={{flex:1,border:"none",borderRadius:8,padding:"7px 4px",fontSize:10,fontWeight:700,cursor:"pointer",background:momentoIdx===i?mo.bg:"transparent",color:momentoIdx===i?mo.cor:"#94a3b8",lineHeight:1.3}}>
+              <div>{mo.icon}</div><div style={{marginTop:2}}>{mo.label.replace("Parte ","")}</div>
+            </button>
+          ))}
+        </div>
+        <div style={{background:m.bg,border:`1.5px solid ${m.border}`,borderRadius:10,padding:"8px 13px",marginBottom:10}}>
+          <div style={{fontWeight:700,fontSize:13,color:m.cor}}>{m.icon} {m.label}</div>
+          <div style={{fontSize:11,color:"#64748b",marginTop:1}}>{m.desc} · {(sessao[m.key]||[]).length} exercícios</div>
+        </div>
+        {(sessao[m.key]||[]).map((item,idx)=>{
+          const isCog=item.isCognitivo||item.exId==="cognitivo";
+          const cogEx=isCog?COGNITIVOS.find(c=>c.id===item.cogId):null;
+          const ex=!isCog?[...EXERCISES,...bibCustom].find(e=>e.id===item.exId):null;
+          return(
+            <Card key={idx} style={{padding:"11px 13px",marginBottom:7}}>
+              <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
+                <span style={{fontSize:20,flexShrink:0,marginTop:2}}>{isCog?"🧠":ex?.icone||"📌"}</span>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:13,color:isCog?(cogEx?.cor||"#FF5603"):"#0f172a"}}>{isCog?(cogEx?.nome||"Exercício Cognitivo"):ex?.nome||"Exercício"}</div>
+                  <div style={{fontSize:11,color:"#94a3b8",marginBottom:5}}>{isCog?`🧩 Hub Cognitivo · ${cogEx?.duracao||"5 min"}`:`${ex?.cat||"—"} · ${ex?.foco||"—"}`}</div>
+                  {isCog?(
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                      <div style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"4px 10px",fontSize:11,color:"#475569",fontWeight:700}}>⏱ {item.reps}</div>
+                      <a href={HUB_URL} style={{background:cogEx?.cor||"#FF5603",color:"#fff",borderRadius:7,padding:"4px 12px",fontSize:11,fontWeight:700,textDecoration:"none"}}>▶ Abrir Hub</a>
+                    </div>
+                  ):(
+                    <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                      {[["Séries",item.series],["Reps",item.reps],["Descanso",item.descanso]].map(([l,v])=>(
+                        <div key={l} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"3px 8px",textAlign:"center",minWidth:60}}>
+                          <div style={{fontSize:9,fontWeight:700,color:"#94a3b8",textTransform:"uppercase"}}>{l}</div>
+                          <div style={{fontSize:12,fontWeight:800,color:"#0f172a"}}>{v}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {item.obs&&<div style={{marginTop:5,fontSize:11,color:"#64748b",fontStyle:"italic",padding:"4px 8px",background:"#f8fafc",borderRadius:6}}>📝 {item.obs}</div>}
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+        {(sessao[m.key]||[]).length===0&&<div style={{textAlign:"center",padding:"20px 0",color:"#94a3b8",fontSize:13}}>Ative o modo edição para adicionar exercícios.</div>}
+      </div>
+    );
+  }
+
+  return(
+    <div>
+      <div style={{display:"flex",gap:0,marginBottom:10,background:"#f1f5f9",borderRadius:10,padding:3}}>
+        {MOMENTOS.map((mo,i)=>(
+          <button key={mo.key} onClick={()=>setMomentoIdx(i)} style={{flex:1,border:"none",borderRadius:8,padding:"7px 4px",fontSize:10,fontWeight:700,cursor:"pointer",background:momentoIdx===i?mo.bg:"transparent",color:momentoIdx===i?mo.cor:"#94a3b8",lineHeight:1.3}}>
+            <div>{mo.icon}</div><div style={{marginTop:2}}>{mo.label.replace("Parte ","")}</div>
+          </button>
+        ))}
+      </div>
+      <MomentoEditavel
+        key={`${blocoKey}-${treinoKey}-${m.key}`}
+        momentoMeta={m}
+        items={sessao[m.key]||[]}
+        onChange={arr=>onChange({...sessao,[m.key]:arr})}
+        blocoKey={blocoKey}
+        bibCustom={bibCustom}
+      />
+    </div>
+  );
+};
+
+// ─── PERFIL DE PRESCRIÇÃO ─────────────────────────────────────────────────────
+const PerfilPrescricao=({assessment})=>{
+  if(!assessment)return null;
+  const a=assessment;const alerts=[];
+  const sppb=parseInt(a.phys?.sppbSide||0)?(parseInt(a.phys?.sppbSemi||0)+parseInt(a.phys?.sppbTandem||0)):0;
+  const tug=parseFloat(a.phys?.tug||0);const calf=parseFloat(a.aha?.calf||0);const grip=parseFloat(a.phys?.grip||0);
+  const path=(a.anamnese?.pathologies||"").toLowerCase();
+  if(sppb<=2||a.funcRisk?.falls||a.funcRisk?.balance)alerts.push({icon:"⚠️",color:"#dc2626",bg:"#fee2e2",text:"Equilíbrio comprometido / quedas — protocolo anti-quedas priorizado"});
+  if(tug>12)alerts.push({icon:"🚶",color:"#d97706",bg:"#fef9c3",text:`TUG ${tug}s — risco na marcha. MMII e equilíbrio dinâmico priorizados`});
+  if(calf>0&&calf<33)alerts.push({icon:"🦵",color:"#d97706",bg:"#fef9c3",text:`Panturrilha ${calf}cm — risco de sarcopenia`});
+  if(grip>0&&grip<20)alerts.push({icon:"✊",color:"#d97706",bg:"#fef9c3",text:`Força de preensão ${grip}kg — sarcopenia provável`});
+  if(a.aha?.hypertension||path.includes("hipertens"))alerts.push({icon:"❤️",color:"#6366f1",bg:"#eef2ff",text:"Hipertensão — cardio de baixa intensidade incluído"});
+  if(a.aha?.diabetes||path.includes("diabet"))alerts.push({icon:"💊",color:"#6366f1",bg:"#eef2ff",text:"Diabetes — controlar glicemia pré e pós-sessão"});
+  if(path.includes("artrit")||path.includes("artrose"))alerts.push({icon:"🦴",color:"#475569",bg:"#f1f5f9",text:"Artrite/Artrose — mobilidade priorizada"});
+  if(alerts.length===0)alerts.push({icon:"✅",color:"#16a34a",bg:"#dcfce7",text:"Sem alertas críticos. Programa de evolução funcional."});
+  return(
+    <Card style={{marginBottom:14}}>
+      <div style={{fontWeight:700,fontSize:13,marginBottom:8}}>📊 Perfil — avaliação de {fmt(assessment.date)}</div>
+      {alerts.map((al,i)=>(<div key={i} style={{background:al.bg,borderRadius:7,padding:"7px 10px",marginBottom:5,display:"flex",gap:7}}><span>{al.icon}</span><span style={{fontSize:12,color:al.color,fontWeight:600,lineHeight:1.4}}>{al.text}</span></div>))}
+    </Card>
+  );
+};
+
+// ─── STEP: FREQUÊNCIA E DIVISÃO ───────────────────────────────────────────────
+const StepFrequencia=({freq,setFreq,divisao,setDivisao,assessment,onNext,onBack})=>{
+  const opcoes=DIVISAO_OPTIONS[parseInt(freq)||3]||[];
+  const sugestao=assessment?suggestDivisao(parseInt(freq)||3,assessment):null;
+  useEffect(()=>{const op=opcoes.find(o=>o.modelo===sugestao?.modelo)||opcoes[opcoes.length>1?1:0];if(op&&!divisao)setDivisao(op);},[freq]);
+  const dias=["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].slice(0,parseInt(freq)||3);
+  return(
+    <Card>
+      <div style={{fontWeight:700,fontSize:15,marginBottom:14}}>Frequência e Divisão</div>
+      <Inp label="Frequência semanal" value={String(freq)} onChange={v=>{setFreq(parseInt(v)||3);setDivisao(null);}} opts={[{v:2,l:"2× por semana"},{v:3,l:"3× por semana"},{v:4,l:"4× por semana"},{v:5,l:"5× por semana"}]}/>
+      {sugestao&&<div style={{background:"#fff4ee",border:"1.5px solid #fed7aa",borderRadius:9,padding:"8px 12px",marginBottom:12,fontSize:12,color:"#92400e"}}>💡 Sugestão: <strong>{opcoes.find(o=>o.modelo===sugestao.modelo)?.label||sugestao.modelo}</strong></div>}
+      <div style={{fontSize:11,fontWeight:700,color:"#64748b",marginBottom:8,textTransform:"uppercase"}}>Modelo de divisão</div>
+      <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
+        {opcoes.map(op=>(
+          <div key={op.modelo} onClick={()=>setDivisao(op)} style={{border:`2px solid ${divisao?.modelo===op.modelo?O:"#e2e8f0"}`,borderRadius:11,padding:"12px 14px",cursor:"pointer",background:divisao?.modelo===op.modelo?"#fff4ee":"#fff"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div><div style={{fontWeight:700,fontSize:14,color:divisao?.modelo===op.modelo?O:"#0f172a"}}>{op.label}</div><div style={{fontSize:12,color:"#64748b",marginTop:1}}>{op.desc}</div></div>
+              <div style={{width:20,height:20,borderRadius:99,border:`2px solid ${divisao?.modelo===op.modelo?O:"#cbd5e1"}`,background:divisao?.modelo===op.modelo?O:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{divisao?.modelo===op.modelo&&<div style={{width:8,height:8,borderRadius:99,background:"#fff"}}/>}</div>
+            </div>
+            <div style={{display:"flex",gap:5,marginTop:10,flexWrap:"wrap"}}>
+              {op.sequencia.map((t,i)=>{const td=TREINO_DEFS[t];return(<div key={i} style={{textAlign:"center",minWidth:40}}><div style={{fontSize:10,color:"#94a3b8",marginBottom:2}}>{dias[i]||"D"+(i+1)}</div><div style={{background:td?.bg||"#f1f5f9",border:`1.5px solid ${td?.border||"#e2e8f0"}`,borderRadius:7,padding:"4px 5px",fontWeight:800,fontSize:11,color:td?.cor||"#64748b"}}>{t}</div></div>);})}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{display:"flex",gap:10}}><Btn variant="secondary" full onClick={onBack}>‹ Voltar</Btn><Btn full disabled={!divisao} onClick={onNext}>Ver Exercícios →</Btn></div>
+    </Card>
+  );
+};
+
+// ─── STEP: EXERCÍCIOS POR MOMENTO ─────────────────────────────────────────────
+const StepExercicios=({prescricao,setPrescricao,divisao,bibCustom,onNext,onBack})=>{
+  const [blocoIdx,setBlocoIdx]=useState(0);
+  const [treinoIdx,setTreinoIdx]=useState(0);
+  const blocoAtivo=BLOCOS[blocoIdx];
+  const treinosUnicos=[...new Set(divisao.sequencia)];
+  const treinoAtivo=treinosUnicos[treinoIdx];
+
+  const updateSessao=(bKey,tKey,sessao)=>setPrescricao(p=>({...p,[bKey]:{...(p[bKey]||{}),[tKey]:sessao}}));
+
+  return(
+    <div>
+      <div style={{background:"#fff4ee",border:"1.5px solid #fed7aa",borderRadius:10,padding:"9px 13px",marginBottom:12,fontSize:12,color:"#92400e"}}>
+        💡 Cada sessão está dividida em 3 momentos. Edite livremente cada parte.
+      </div>
+      <div style={{display:"flex",gap:0,marginBottom:8,background:"#f1f5f9",borderRadius:10,padding:3}}>
+        {BLOCOS.map((b,i)=>(<button key={b.key} onClick={()=>{setBlocoIdx(i);setTreinoIdx(0);}} style={{flex:1,border:"none",borderRadius:8,padding:"6px 3px",fontSize:10,fontWeight:700,cursor:"pointer",background:blocoIdx===i?b.cor.bg:"transparent",color:blocoIdx===i?b.cor.texto:"#94a3b8",lineHeight:1.3}}><div>B{i+1}</div><div style={{fontSize:9,marginTop:1}}>{b.semanas}</div></button>))}
+      </div>
+      <div style={{background:blocoAtivo.cor.bg,border:`1.5px solid ${blocoAtivo.cor.border}`,borderRadius:9,padding:"7px 12px",marginBottom:10}}>
+        <div style={{fontWeight:700,fontSize:12,color:blocoAtivo.cor.texto}}>{blocoAtivo.label} · sem. {blocoAtivo.semanas}</div>
+      </div>
+      <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+        {treinosUnicos.map((t,i)=>{const td=TREINO_DEFS[t];return(<button key={t} onClick={()=>setTreinoIdx(i)} style={{flex:1,minWidth:60,border:`1.5px solid ${treinoIdx===i?td.cor:td.border}`,borderRadius:9,padding:"7px 6px",fontSize:11,fontWeight:700,cursor:"pointer",background:treinoIdx===i?td.bg:"#fff",color:treinoIdx===i?td.cor:"#64748b",textAlign:"center"}}>{td.label}</button>);})}
+      </div>
+      <TreinoMomentos
+        key={`${blocoAtivo.key}-${treinoAtivo}`}
+        treinoKey={treinoAtivo}
+        blocoKey={blocoAtivo.key}
+        sessao={(prescricao[blocoAtivo.key]||{})[treinoAtivo]||{inicial:[],principal:[],final:[]}}
+        onChange={s=>updateSessao(blocoAtivo.key,treinoAtivo,s)}
+        bibCustom={bibCustom}
+        editMode={true}
+      />
+      <div style={{display:"flex",gap:10,marginTop:8}}><Btn variant="secondary" full onClick={onBack}>‹ Voltar</Btn><Btn full onClick={onNext}>Revisar →</Btn></div>
+    </div>
+  );
+};
+
+// ─── WIZARD NOVO PROGRAMA ─────────────────────────────────────────────────────
+const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,nav})=>{
+  const [step,setStep]=useState(1);
+  const [sid,setSid]=useState("");
+  const [titulo,setTitulo]=useState("");
+  const [freq,setFreq]=useState(3);
+  const [divisao,setDivisao]=useState(null);
+  const [obs,setObs]=useState("");
+  const [prescricao,setPrescricao]=useState({});
+  const student=students.find(s=>s.id===sid);
+  const lastAssessment=assessments.filter(a=>a.studentId===sid).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0];
+
+  const handleFreqDivisaoNext=()=>{const p=buildPrescricao(lastAssessment||null,divisao.sequencia);setPrescricao(p);setStep(3);};
+  const save=()=>{
+    if(!sid||!titulo||!divisao)return;
+    const prog={id:uid(),studentId:sid,titulo,semanas:24,freq,divisao,obs,prescricao,criadoEm:new Date().toISOString().slice(0,10),assessmentRef:lastAssessment?.id||null};
+    const updated=[...programs,prog];setPrograms(updated);LS.set("longevus_programs",updated);nav("ver",{id:prog.id});
+  };
+  const totalEx=Object.values(prescricao).reduce((a,b)=>a+Object.values(b||{}).reduce((c,s)=>c+Object.values(s||{}).reduce((d,arr)=>d+(arr?.length||0),0),0),0);
+
+  return(
+    <div>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:18}}>
+        <button onClick={()=>nav("lista")} style={{border:"none",background:"#f1f5f9",borderRadius:10,padding:"8px 12px",cursor:"pointer",fontSize:14,color:"#64748b",fontWeight:700}}>‹</button>
+        <div style={{fontWeight:800,fontSize:18}}>Novo Programa · 24 Semanas</div>
+      </div>
+      <div style={{display:"flex",gap:5,marginBottom:20}}>
+        {[["1","Configuração"],["2","Divisão"],["3","Exercícios"],["4","Salvar"]].map(([n,l],i)=>(
+          <div key={n} style={{flex:1,textAlign:"center",padding:"7px 3px",borderRadius:8,background:step===i+1?O:step>i+1?"#dcfce7":"#f1f5f9",border:`1.5px solid ${step===i+1?O:step>i+1?"#86efac":"#e2e8f0"}`}}>
+            <div style={{fontSize:10,fontWeight:700,color:step===i+1?"#fff":step>i+1?"#16a34a":"#94a3b8"}}>{step>i+1?"✓":n}</div>
+            <div style={{fontSize:9,color:step===i+1?"#fff":step>i+1?"#16a34a":"#94a3b8",marginTop:1}}>{l}</div>
+          </div>
+        ))}
+      </div>
+      {step===1&&(<Card><Inp label="Aluno *" value={sid} onChange={v=>{setSid(v);setDivisao(null);setPrescricao({});}} opts={[{v:"",l:"Selecione..."},...students.map(s=>({v:s.id,l:s.name+" ("+calcAge(s.dob)+" anos)"}))]}/>
+        {sid&&!lastAssessment&&<div style={{background:"#fef9c3",border:"1.5px solid #fde68a",borderRadius:9,padding:"8px 12px",marginBottom:10,fontSize:12,color:"#92400e"}}>⚠️ Nenhuma avaliação. Será usado protocolo genérico para 50+.</div>}
+        {sid&&lastAssessment&&<PerfilPrescricao assessment={lastAssessment}/>}
+        <Inp label="Título *" value={titulo} onChange={setTitulo} placeholder="ex: Programa Longevus 24 Semanas"/>
+        <Inp label="Observações gerais" value={obs} onChange={setObs} placeholder="Contexto clínico, metas, restrições..." rows={3}/>
+        <Btn full disabled={!sid||!titulo} onClick={()=>setStep(2)}>Próximo →</Btn></Card>)}
+      {step===2&&<StepFrequencia freq={freq} setFreq={setFreq} divisao={divisao} setDivisao={setDivisao} assessment={lastAssessment} onNext={handleFreqDivisaoNext} onBack={()=>setStep(1)}/>}
+      {step===3&&divisao&&<StepExercicios prescricao={prescricao} setPrescricao={setPrescricao} divisao={divisao} bibCustom={bibCustom} onNext={()=>setStep(4)} onBack={()=>setStep(2)}/>}
+      {step===4&&(
+        <div>
+          <Card>
+            <div style={{fontWeight:700,fontSize:15,marginBottom:12}}>Resumo</div>
+            {[["Aluno",student?.name||"—"],["Título",titulo],["Duração","24 semanas · 4 blocos"],["Frequência",freq+"× por semana"],["Divisão",divisao?.label||"—"],["Total de exercícios",String(totalEx)]].map(([l,v])=>(
+              <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #f1f5f9"}}><span style={{fontSize:13,color:"#64748b"}}>{l}</span><span style={{fontSize:13,fontWeight:700}}>{v}</span></div>
+            ))}
+            <div style={{marginTop:12,display:"flex",gap:5,flexWrap:"wrap"}}>
+              {divisao.sequencia.map((t,i)=>{const td=TREINO_DEFS[t];return(<div key={i} style={{textAlign:"center",minWidth:40}}><div style={{fontSize:10,color:"#94a3b8",marginBottom:2}}>D{i+1}</div><div style={{background:td?.bg,border:`1.5px solid ${td?.border}`,borderRadius:7,padding:"4px 5px",fontWeight:800,fontSize:11,color:td?.cor}}>{t}</div></div>);})}
+            </div>
+            {obs&&<div style={{marginTop:10,fontSize:12,color:"#64748b",fontStyle:"italic",padding:"7px 10px",background:"#f8fafc",borderRadius:7}}>📝 {obs}</div>}
+          </Card>
+          <div style={{display:"flex",gap:10}}><Btn variant="secondary" full onClick={()=>setStep(3)}>‹ Editar</Btn><Btn full onClick={save}>✅ Salvar Programa</Btn></div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── TELA: VER PROGRAMA ───────────────────────────────────────────────────────
+const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav})=>{
+  const prog=programs.find(p=>p.id===programId);
+  const student=students.find(s=>s.id===prog?.studentId);
+  const [editMode,setEditMode]=useState(false);
+  const [prescricao,setPrescricao]=useState(null);
+  const [blocoIdx,setBlocoIdx]=useState(0);
+  const [treinoIdx,setTreinoIdx]=useState(0);
+  useEffect(()=>{if(prog)setPrescricao(JSON.parse(JSON.stringify(prog.prescricao||{})));},[programId]);
+  if(!prog||!prescricao)return null;
+  const treinosUnicos=[...new Set(prog.divisao?.sequencia||["A"])];
+  const blocoAtivo=BLOCOS[blocoIdx];
+  const treinoAtivo=treinosUnicos[treinoIdx];
+  const tDef=TREINO_DEFS[treinoAtivo];
+  const saveEdits=()=>{const u=programs.map(p=>p.id===prog.id?{...p,prescricao}:p);setPrograms(u);LS.set("longevus_programs",u);setEditMode(false);};
+  const cancelEdit=()=>{setPrescricao(JSON.parse(JSON.stringify(prog.prescricao)));setEditMode(false);};
+  const deletePrograma=()=>{if(!window.confirm("Remover?"))return;const u=programs.filter(p=>p.id!==prog.id);setPrograms(u);LS.set("longevus_programs",u);nav("lista");};
+  const updateSessao=(bKey,tKey,sessao)=>setPrescricao(p=>({...p,[bKey]:{...(p[bKey]||{}),[tKey]:sessao}}));
+  const totalEx=Object.values(prescricao).reduce((a,b)=>a+Object.values(b||{}).reduce((c,s)=>c+Object.values(s||{}).reduce((d,arr)=>d+(arr?.length||0),0),0),0);
+
+  return(
+    <div>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+        <button onClick={()=>nav("lista")} style={{border:"none",background:"#f1f5f9",borderRadius:10,padding:"8px 12px",cursor:"pointer",fontSize:14,color:"#64748b",fontWeight:700}}>‹</button>
+        <div style={{flex:1}}><div style={{fontWeight:800,fontSize:17}}>{prog.titulo||"Programa"}</div><div style={{fontSize:12,color:"#94a3b8"}}>{student?.name} · {fmt(prog.criadoEm)}</div></div>
+        {editMode?(<div style={{display:"flex",gap:6}}><Btn sm variant="secondary" onClick={cancelEdit}>Cancelar</Btn><Btn sm onClick={saveEdits}>💾 Salvar</Btn></div>):(<Btn sm variant="ghost" onClick={()=>setEditMode(true)}>✏️ Editar</Btn>)}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:7,marginBottom:12}}>
+        {[["24","sem."],["4","blocos"],[String(prog.freq)+"×","sem."],[String(totalEx),"exerc."]].map(([v,l])=>(<div key={l} style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"9px 5px",textAlign:"center"}}><div style={{fontSize:16,fontWeight:800,color:O}}>{v}</div><div style={{fontSize:10,color:"#94a3b8",marginTop:1}}>{l}</div></div>))}
+      </div>
+      <Card style={{marginBottom:10,padding:"10px 14px"}}>
+        <div style={{fontSize:11,fontWeight:700,color:"#64748b",marginBottom:6,textTransform:"uppercase"}}>Semana tipo · {prog.divisao?.label}</div>
+        <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+          {(prog.divisao?.sequencia||[]).map((t,i)=>{const td=TREINO_DEFS[t];return(<div key={i} style={{textAlign:"center",minWidth:40}}><div style={{fontSize:10,color:"#94a3b8",marginBottom:2}}>D{i+1}</div><div style={{background:td?.bg,border:`1.5px solid ${td?.border}`,borderRadius:7,padding:"4px 5px",fontWeight:800,fontSize:11,color:td?.cor}}>{t}</div></div>);})}
+        </div>
+      </Card>
+      {prog.obs&&<Card style={{marginBottom:10,background:"#f8fafc",padding:"9px 13px"}}><div style={{fontSize:12,color:"#64748b",fontStyle:"italic"}}>📝 {prog.obs}</div></Card>}
+      <div style={{display:"flex",gap:0,marginBottom:8,background:"#f1f5f9",borderRadius:10,padding:3}}>
+        {BLOCOS.map((b,i)=>(<button key={b.key} onClick={()=>{setBlocoIdx(i);setTreinoIdx(0);}} style={{flex:1,border:"none",borderRadius:8,padding:"6px 3px",fontSize:10,fontWeight:700,cursor:"pointer",background:blocoIdx===i?b.cor.bg:"transparent",color:blocoIdx===i?b.cor.texto:"#94a3b8",lineHeight:1.3}}><div>B{i+1}</div><div style={{fontSize:8,marginTop:1}}>{b.semanas}</div></button>))}
+      </div>
+      <div style={{background:blocoAtivo.cor.bg,border:`1.5px solid ${blocoAtivo.cor.border}`,borderRadius:9,padding:"7px 12px",marginBottom:8}}>
+        <div style={{fontWeight:700,fontSize:12,color:blocoAtivo.cor.texto}}>{blocoAtivo.label} · sem. {blocoAtivo.semanas} · {blocoAtivo.desc}</div>
+      </div>
+      <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+        {treinosUnicos.map((t,i)=>{const td=TREINO_DEFS[t];return(<button key={t} onClick={()=>setTreinoIdx(i)} style={{flex:1,minWidth:60,border:`1.5px solid ${treinoIdx===i?td.cor:td.border}`,borderRadius:9,padding:"7px 6px",fontSize:11,fontWeight:700,cursor:"pointer",background:treinoIdx===i?td.bg:"#fff",color:treinoIdx===i?td.cor:"#64748b",textAlign:"center"}}>{td.label}</button>);})}
+      </div>
+      <TreinoMomentos
+        key={`${blocoAtivo.key}-${treinoAtivo}-${editMode}`}
+        treinoKey={treinoAtivo}
+        blocoKey={blocoAtivo.key}
+        sessao={(prescricao[blocoAtivo.key]||{})[treinoAtivo]||{inicial:[],principal:[],final:[]}}
+        onChange={s=>updateSessao(blocoAtivo.key,treinoAtivo,s)}
+        bibCustom={bibCustom}
+        editMode={editMode}
+      />
+      <div style={{marginTop:16,paddingTop:14,borderTop:"1px solid #f1f5f9"}}>
+        <Btn variant="danger" full onClick={deletePrograma}>🗑 Remover programa</Btn>
+      </div>
+    </div>
+  );
+};
+
+// ─── LISTA ────────────────────────────────────────────────────────────────────
+const Lista=({programs,students,nav})=>{
+  const [search,setSearch]=useState("");
+  const filtered=programs.filter(p=>{const st=students.find(s=>s.id===p.studentId);return(st?.name||"").toLowerCase().includes(search.toLowerCase())||(p.titulo||"").toLowerCase().includes(search.toLowerCase());});
+  return(
+    <div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
+        <div style={{fontWeight:800,fontSize:20}}>📋 Programas</div>
+        <div style={{display:"flex",gap:8}}>
+          <Btn sm variant="ghost" onClick={()=>window.open("longevus-biblioteca.html","_blank")}>📚 Biblioteca</Btn>
+          <Btn sm onClick={()=>nav("novo")}>+ Novo</Btn>
+        </div>
+      </div>
+      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por aluno ou título..." style={{width:"100%",padding:"10px 14px",borderRadius:10,border:"1.5px solid #e2e8f0",background:"#fff",fontSize:14,fontFamily:"inherit",marginBottom:14}}/>
+      {filtered.length===0?(
+        <Card style={{textAlign:"center",padding:40}}>
+          <div style={{fontSize:36,marginBottom:10}}>📋</div>
+          <div style={{color:"#94a3b8",marginBottom:14}}>Nenhum programa criado ainda.</div>
+          <Btn onClick={()=>nav("novo")}>Criar primeiro programa</Btn>
+        </Card>
+      ):(
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {filtered.map(p=>{
+            const st=students.find(s=>s.id===p.studentId);
+            const total=Object.values(p.prescricao||{}).reduce((a,b)=>a+Object.values(b||{}).reduce((c,s)=>c+Object.values(s||{}).reduce((d,arr)=>d+(arr?.length||0),0),0),0);
+            return(<Card key={p.id} onClick={()=>nav("ver",{id:p.id})} style={{padding:"14px 16px"}}>
+              <div style={{display:"flex",alignItems:"center",gap:12}}>
+                <div style={{width:44,height:44,borderRadius:12,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:800,color:O,flexShrink:0}}>{st?.name?.[0]?.toUpperCase()||"?"}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:15}}>{st?.name||"Aluno"}</div>
+                  <div style={{fontSize:12,color:"#94a3b8",marginTop:1}}>{p.titulo||"Programa"} · 24 sem · {p.divisao?.label||"—"}</div>
+                  <div style={{fontSize:12,color:"#64748b",marginTop:2}}>{total} exerc. · {fmt(p.criadoEm)}</div>
+                </div>
+                <div style={{fontSize:20,color:"#cbd5e1"}}>›</div>
+              </div>
+            </Card>);
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── APP ──────────────────────────────────────────────────────────────────────
+function App(){
+  const [students]=useState(()=>LS.get("longevus_students",[]));
+  const [assessments]=useState(()=>LS.get("longevus_assessments",[]));
+  const [programs,setPrograms]=useState(()=>LS.get("longevus_programs",[]));
+  const [bibCustom]=useState(()=>{
+    const db=typeof window!=="undefined"&&window.EXERCICIOS_DB?window.EXERCICIOS_DB:[];
+    const salvo=LS.get("longevus_biblioteca",[]);
+    if(!salvo||salvo.length===0) return db;
+    const savedIds=new Set(salvo.map(e=>e.id));
+    const novos=db.filter(e=>!savedIds.has(e.id));
+    return novos.length>0?[...salvo,...novos]:salvo;
+  });
+  const [page,setPage]=useState("lista");
+  const [pageProps,setPageProps]=useState({});
+  const nav=useCallback((p,props={})=>{setPage(p);setPageProps(props);window.scrollTo(0,0);},[]);
+  useEffect(()=>{LS.set("longevus_programs",programs);},[programs]);
+  return(
+    <>
+      <style>{`*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;color:#0f172a;}input,select,textarea{font-family:inherit;}input:focus,select:focus,textarea:focus{outline:none;border-color:#FF5603!important;box-shadow:0 0 0 3px #FF560318;}`}</style>
+      <div style={{minHeight:"100vh"}}>
+        <div style={{background:"#fff",borderBottom:"1.5px solid #e2e8f0",padding:"12px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <a href="longevus-app.html" style={{display:"flex",alignItems:"center",justifyContent:"center",width:32,height:32,borderRadius:8,background:"#f8fafc",border:"1px solid #e2e8f0",textDecoration:"none",color:"#0f172a",fontSize:18,fontWeight:700,flexShrink:0}}>&#8592;</a>
+            <img src={__LOGO__} alt="Longevus" style={{height:36,width:"auto",objectFit:"contain"}}/>
+            <div><div style={{fontWeight:800,fontSize:15}}>Longevus</div><div style={{fontSize:11,color:"#94a3b8"}}>Módulo Programas · 24 semanas</div></div>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <a href="longevus-biblioteca.html" style={{fontSize:11,color:"#64748b",textDecoration:"none",background:"#f1f5f9",borderRadius:8,padding:"5px 10px",fontWeight:600}}>📚 Biblioteca</a>
+            <div style={{fontSize:12,color:"#94a3b8"}}>{programs.length} prog.</div>
+          </div>
+        </div>
+        <div style={{padding:"20px 16px",maxWidth:640,margin:"0 auto"}}>
+          {page==="lista"&&<Lista programs={programs} students={students} nav={nav}/>}
+          {page==="novo"&&<NovoProgramaWizard students={students} assessments={assessments} programs={programs} setPrograms={setPrograms} bibCustom={bibCustom} nav={nav}/>}
+          {page==="ver"&&<VerPrograma programId={pageProps.id} programs={programs} setPrograms={setPrograms} students={students} bibCustom={bibCustom} nav={nav}/>}
+        </div>
+      </div>
+    </>
+  );
+}
+const root=ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App/>);
+</script>
+</body>
+</html>
