@@ -1379,17 +1379,18 @@ return (
 {i < progressionOrder.length-1 && <span style={{ color:"#cbd5e1",fontSize:12 }}>→</span>}
 </div>
 ))}
+</div>
 <div style={{ marginTop:18,marginBottom:8 }}>
 <div style={{ fontWeight:700,fontSize:13,color:"#0f172a",marginBottom:10 }}>Recomendacoes Complementares — Longevus 50+</div>
 <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
 {[
-{color:"#6366f1",title:"Autonomia no Cotidiano",text:"Incentivar participacao ativa em atividades domesticas leves e seguras, promovendo manutencao da autonomia funcional."},
-{color:"#8B5CF6",title:"Estimulacao Cognitiva Diaria",text:"Estimular leitura, conversas sociais, jogos de raciocinio, musica e estimulos mentais variados."},
-{color:"#dc2626",title:"Prevencao de Quedas",text:"Evitar tapetes soltos, manter boa iluminacao noturna e utilizar calcados estaveis e seguros."},
-{color:"#10B981",title:"Vinculo Social Ativo",text:"Estimular participacao em grupos de convivencia e atividades comunitarias."},
-{color:"#0EA5E9",title:"Hidratacao e Nutricao",text:"Hidratacao adequada ao longo do dia e alimentacao rica em proteinas para preservacao muscular."},
-{color:"#d97706",title:"Qualidade do Sono",text:"Rotinas de sono regulares para recuperacao muscular, funcao cognitiva e equilibrio hormonal."},
-{color:"#FF5603",title:"Acompanhamento Medico Regular",text:"Consultas periodicas, controle de medicamentos e monitoramento de pressao e glicemia."},
+{color:"#6366f1",title:"Autonomia no Cotidiano",text:"Incentivar participacao ativa em atividades domesticas leves e seguras."},
+{color:"#8B5CF6",title:"Estimulacao Cognitiva",text:"Estimular leitura, conversas sociais, jogos de raciocinio e musica."},
+{color:"#dc2626",title:"Prevencao de Quedas",text:"Evitar tapetes soltos, boa iluminacao noturna e calcados estaveis."},
+{color:"#10B981",title:"Vinculo Social",text:"Estimular participacao em grupos de convivencia e atividades comunitarias."},
+{color:"#0EA5E9",title:"Hidratacao e Nutricao",text:"Hidratacao adequada e alimentacao rica em proteinas."},
+{color:"#d97706",title:"Qualidade do Sono",text:"Rotinas de sono regulares para recuperacao e funcao cognitiva."},
+{color:"#FF5603",title:"Acompanhamento Medico",text:"Consultas periodicas e controle de pressao e glicemia."},
 ].map((r,i)=>(
 <div key={i} style={{ display:"flex",gap:10,padding:"10px 12px",background:"#f8fafc",borderRadius:10,border:"1px solid #e2e8f0",borderLeft:"4px solid "+r.color }}>
 <div style={{ width:10,height:10,borderRadius:99,background:r.color,marginTop:5,flexShrink:0 }}/>
@@ -1399,7 +1400,6 @@ return (
 </div>
 </div>
 ))}
-</div>
 </div>
 </div>
 <div style={{ fontSize:11,color:"#94a3b8",marginTop:8,fontStyle:"italic" }}>Ref: ACSM Guidelines · Blueprint Longevus v1.0</div>
@@ -2985,21 +2985,44 @@ const ProfFooter = ({ extra }) => (
 <div style={{ borderTop:"1.5px solid #e2e8f0", marginTop:32, paddingTop:16, display:"flex", justifyContent:"space-between", alignItems:"flex-end" }}>
 <div style={{ fontSize:11, color:"#94a3b8" }}>
 <div>Documento gerado pelo sistema Longevus</div>
-const ReportClinical = ({ assessment: a, student: st, notesClinical="", notesConduct="", notesGoals="" }) => {
+<div>{new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"})}</div>
+{extra && <div style={{ marginTop:4, color:"#64748b" }}>{extra}</div>}
+</div>
+<div style={{ textAlign:"right" }}>
+<div style={{ width:160, borderTop:"1px solid #334155", paddingTop:6, marginTop:32 }}>
+<div style={{ fontSize:12, fontWeight:700, color:"#0f172a" }}>{PROF.name}</div>
+<div style={{ fontSize:10, color:"#64748b" }}>CREF {PROF.cref}</div>
+</div>
+</div>
+</div>
+);
+const AIReportDisplay = ({ text, title }) => {
+if (!text?.trim()) return null;
+return (
+<div style={{ marginTop:20 }}>
+<div style={{ borderBottom:"2px solid #FF560322", paddingBottom:8, marginBottom:14 }}>
+<div style={{ fontWeight:800, fontSize:14, color:"#0f172a" }}>{title}</div>
+<div style={{ fontSize:11, color:"#64748b" }}>Prof. {PROF.name} · CREF {PROF.cref}</div>
+</div>
+<div style={{ fontSize:13, color:"#334155", lineHeight:1.8, whiteSpace:"pre-wrap" }}>{text}</div>
+</div>
+);
+};
+const ReportClinical = ({ assessment: a, student: st }) => {
 if (!a || !st) return null;
-const sex = st.sex || "";
 const gc = classifyGlobal(a.globalScore||0);
 const ahaCl = classifyAHA(a.aha?.score||0);
 const funcCl = classifyFunctional(a.functional?.score||0);
 const fitCl = classifyFitness(a.physical?.score||0);
 const cvScore = Math.max(0, 100-(a.aha?.score||0)*8);
-const recs = getRecommendations(null, null, null);
 const riskFlags = [];
 if (a.parqApplied && a.parqFailed) riskFlags.push("PAR-Q Positivo");
-if ((a.aha?.score||0) >= 4) riskFlags.push("Alto Risco Cardiovascular (AHA)");
-if (a.aha?.calf && parseFloat(a.aha.calf) < 31) riskFlags.push("Risco de Sarcopenia (Panturrilha < 31 cm)");
+if ((a.aha?.score||0) >= 4) riskFlags.push("Alto Risco Cardiovascular");
 if ((a.functional?.score||0) < 40) riskFlags.push("Capacidade Funcional Comprometida");
-if ((a.physical?.score||0) < 40) riskFlags.push("Aptidão Física Insuficiente");
+if ((a.physical?.score||0) < 40) riskFlags.push("Aptidao Fisica Insuficiente");
+const ST = ({children}) => (
+<div style={{ fontWeight:800,fontSize:12,color:"#FF5603",borderBottom:"1.5px solid #FF560322",paddingBottom:5,marginBottom:10,marginTop:18,textTransform:"uppercase" }}>{children}</div>
+);
 const F = ({label, value}) => value ? (
 <div style={{ display:"flex",gap:8,marginBottom:5,fontSize:12 }}>
 <span style={{ fontWeight:700,color:"#475569",minWidth:155,flexShrink:0 }}>{label}:</span>
@@ -3035,7 +3058,7 @@ return (
 {a.parqApplied&&<div>
 <ST>3. PAR-Q</ST>
 <div style={{ padding:"8px 12px",background:a.parqFailed?"#fef2f2":"#f0fdf4",border:"1.5px solid "+(a.parqFailed?"#fca5a5":"#86efac"),borderRadius:8 }}>
-<span style={{ fontWeight:700,fontSize:12,color:a.parqFailed?"#dc2626":"#16a34a" }}>{a.parqFailed?"POSITIVO — Avaliacao medica recomendada":"NEGATIVO — Liberado para atividade fisica"}</span>
+<span style={{ fontWeight:700,fontSize:12,color:a.parqFailed?"#dc2626":"#16a34a" }}>{a.parqFailed?"POSITIVO — Avaliacao medica recomendada":"NEGATIVO — Liberado"}</span>
 </div>
 </div>}
 {a.aha&&<div>
@@ -3061,29 +3084,8 @@ return (
 </div>
 );
 };
-<div style={{ borderBottom:"2px solid #FF560322", paddingBottom:8, marginBottom:14 }}>
-<div style={{ fontWeight:800, fontSize:14, color:"#0f172a" }}>{title}</div>
-<div style={{ fontSize:11, color:"#64748b" }}>Prof. {PROF.name} · CREF {PROF.cref}</div>
-</div>
-<div style={{ fontSize:13, color:"#334155", lineHeight:1.8, whiteSpace:"pre-wrap" }}>{text}</div>
-</div>
-);
-};
-const ReportClinical = ({ assessment: a, student: st, notesClinical="", notesConduct="", notesGoals="" }) => {
-if (!a || !st) return null;
-const sex = st.sex || "";
-const gc = classifyGlobal(a.globalScore||0);
-const ahaCl = classifyAHA(a.aha?.score||0);
-const funcCl = classifyFunctional(a.functional?.score||0);
-const fitCl = classifyFitness(a.physical?.score||0);
-const cvScore = Math.max(0, 100-(a.aha?.score||0)*8);
-const recs = getRecommendations(null, null, null);
-const riskFlags = [];
-if (a.parqApplied && a.parqFailed) riskFlags.push("PAR-Q Positivo");
-if ((a.aha?.score||0) >= 4) riskFlags.push("Alto Risco Cardiovascular (AHA)");
-if (a.aha?.calf && parseFloat(a.aha.calf) < 31) riskFlags.push("Risco de Sarcopenia (Panturrilha < 31 cm)");
-if ((a.functional?.score||0) < 40) riskFlags.push("Capacidade Funcional Comprometida");
-if ((a.physical?.score||0) < 40) riskFlags.push("Aptidão Física Insuficiente");
+
+
 const Row = ({label, value, unit=""}) => (
 <div style={{ display:"flex", justifyContent:"space-between", padding:"6px 0", borderBottom:"1px solid #f1f5f9" }}>
 <span style={{ fontSize:12, color:"#475569" }}>{label}</span>
