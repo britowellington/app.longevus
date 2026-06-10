@@ -2985,21 +2985,82 @@ const ProfFooter = ({ extra }) => (
 <div style={{ borderTop:"1.5px solid #e2e8f0", marginTop:32, paddingTop:16, display:"flex", justifyContent:"space-between", alignItems:"flex-end" }}>
 <div style={{ fontSize:11, color:"#94a3b8" }}>
 <div>Documento gerado pelo sistema Longevus</div>
-<div>{new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"})}</div>
-{extra && <div style={{ marginTop:4, color:"#64748b" }}>{extra}</div>}
+const ReportClinical = ({ assessment: a, student: st }) => {
+if (!a || !st) return null;
+const gc = classifyGlobal(a.globalScore||0);
+const ahaCl = classifyAHA(a.aha?.score||0);
+const funcCl = classifyFunctional(a.functional?.score||0);
+const fitCl = classifyFitness(a.physical?.score||0);
+const cvScore = Math.max(0, 100-(a.aha?.score||0)*8);
+const riskFlags = [];
+if (a.parqApplied && a.parqFailed) riskFlags.push("PAR-Q Positivo");
+if ((a.aha?.score||0) >= 4) riskFlags.push("Alto Risco Cardiovascular");
+if ((a.functional?.score||0) < 40) riskFlags.push("Capacidade Funcional Comprometida");
+if ((a.physical?.score||0) < 40) riskFlags.push("Aptidao Fisica Insuficiente");
+const ST = ({children}) => (
+<div style={{ fontWeight:800,fontSize:12,color:"#FF5603",borderBottom:"1.5px solid #FF560322",paddingBottom:5,marginBottom:10,marginTop:18,textTransform:"uppercase" }}>{children}</div>
+);
+const F = ({label, value}) => value ? (
+<div style={{ display:"flex",gap:8,marginBottom:5,fontSize:12 }}>
+<span style={{ fontWeight:700,color:"#475569",minWidth:155,flexShrink:0 }}>{label}:</span>
+<span style={{ color:"#0f172a" }}>{String(value)}</span>
 </div>
-<div style={{ textAlign:"right" }}>
-<div style={{ width:160, borderTop:"1px solid #334155", paddingTop:6, marginTop:32 }}>
-<div style={{ fontSize:12, fontWeight:700, color:"#0f172a" }}>{PROF.name}</div>
-<div style={{ fontSize:10, color:"#64748b" }}>CREF {PROF.cref}</div>
+) : null;
+return (
+<div style={{ padding:"0 20px 20px" }}>
+<ST>1. Identificacao</ST>
+<F label="Nome" value={st.name}/>
+<F label="Nascimento" value={st.dob}/>
+<F label="Sexo" value={st.sex==="M"?"Masculino":st.sex==="F"?"Feminino":""}/>
+<F label="Telefone" value={st.phone}/>
+<F label="Data avaliacao" value={a.date}/>
+{riskFlags.length>0&&<div style={{ marginTop:8,padding:"8px 12px",background:"#fef2f2",border:"1.5px solid #fca5a5",borderRadius:8 }}>
+<span style={{ fontWeight:700,fontSize:12,color:"#dc2626" }}>Alertas: {riskFlags.join(" · ")}</span>
+</div>}
+{(a.anamnese?.pathologies||a.anamnese?.medications||a.anamnese?.goals)&&<div>
+<ST>2. Anamnese</ST>
+<F label="Patologias" value={a.anamnese?.pathologies}/>
+<F label="Medicamentos" value={a.anamnese?.medications}/>
+<F label="Alergias" value={a.anamnese?.allergies}/>
+<F label="Cirurgias" value={a.anamnese?.surgeries}/>
+<F label="Ativ. fisica anterior" value={a.anamnese?.physActivityHistory}/>
+<F label="Horas de sono" value={a.anamnese?.sleepHours}/>
+<F label="Tabagismo" value={a.anamnese?.smoking}/>
+<F label="Alcool" value={a.anamnese?.alcohol}/>
+<F label="Queixas" value={a.anamnese?.mainComplaints}/>
+<F label="Dores" value={a.anamnese?.painLocation}/>
+<F label="Objetivos" value={a.anamnese?.goals}/>
+<F label="Observacoes" value={a.anamnese?.observations}/>
+</div>}
+{a.parqApplied&&<div>
+<ST>3. PAR-Q</ST>
+<div style={{ padding:"8px 12px",background:a.parqFailed?"#fef2f2":"#f0fdf4",border:"1.5px solid "+(a.parqFailed?"#fca5a5":"#86efac"),borderRadius:8 }}>
+<span style={{ fontWeight:700,fontSize:12,color:a.parqFailed?"#dc2626":"#16a34a" }}>{a.parqFailed?"POSITIVO — Avaliacao medica recomendada":"NEGATIVO — Liberado para atividade fisica"}</span>
 </div>
+</div>}
+{a.aha&&<div>
+<ST>4. Risco Cardiovascular AHA</ST>
+<div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"2px 16px" }}>
+<F label="Peso" value={a.aha.weight?(a.aha.weight+" kg"):null}/>
+<F label="Altura" value={a.aha.height?(a.aha.height+" cm"):null}/>
+<F label="IMC" value={a.aha.bmi?(a.aha.bmi+" kg/m2"):null}/>
+<F label="PAS" value={a.aha.sbp?(a.aha.sbp+" mmHg"):null}/>
+<F label="PAD" value={a.aha.dbp?(a.aha.dbp+" mmHg"):null}/>
+<F label="Cintura" value={a.aha.waist?(a.aha.waist+" cm"):null}/>
+<F label="Panturrilha" value={a.aha.calf?(a.aha.calf+" cm"):null}/>
+</div>
+<div style={{ padding:"7px 10px",background:ahaCl.bg,borderRadius:8,fontSize:12,fontWeight:700,color:ahaCl.color,marginTop:6 }}>Score AHA: {a.aha.score||0} pts — {ahaCl.label}</div>
+</div>}
+<ST>5. Indices Longevus</ST>
+<div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"2px 16px" }}>
+<F label="Indice Global" value={(a.globalScore||0)+" pts — "+gc.label}/>
+<F label="Cardiovascular" value={cvScore+" pts"}/>
+<F label="Funcional" value={(a.functional?.score||0)+" pts — "+funcCl.label}/>
+<F label="Aptidao Fisica" value={(a.physical?.score||0)+" pts — "+fitCl.label}/>
 </div>
 </div>
 );
-const AIReportDisplay = ({ text, title }) => {
-if (!text?.trim()) return null;
-return (
-<div style={{ marginTop:20 }}>
+};
 <div style={{ borderBottom:"2px solid #FF560322", paddingBottom:8, marginBottom:14 }}>
 <div style={{ fontWeight:800, fontSize:14, color:"#0f172a" }}>{title}</div>
 <div style={{ fontSize:11, color:"#64748b" }}>Prof. {PROF.name} · CREF {PROF.cref}</div>
