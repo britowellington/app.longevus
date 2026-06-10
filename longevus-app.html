@@ -1436,7 +1436,7 @@ const dN = parseInt(digitD);
 if (!isNaN(dN)) { total += Math.min(100, (dN / 9) * 100); count++; }
 return count > 0 ? Math.round(total / count) : 0;
 };
-const Result = ({ assessmentId, assessments, students, nav }) => {
+const Result = ({ assessmentId, assessments, setAssessments, students, nav }) => {
 const a=assessments.find(x=>x.id===assessmentId);
 if(!a) return <div style={{ textAlign:"center",padding:40,color:"#94a3b8" }}>Avaliação não encontrada.</div>;
 const st=students.find(s=>s.id===a.studentId);
@@ -1446,12 +1446,154 @@ const funcCl=classifyFunctional(a.functional?.score||0);
 const fitCl=classifyFitness(a.physical?.score||0);
 const cvScore=Math.max(0,100-(a.aha?.score||0)*8);
 const sex=st?.sex||"";
+const [activeTab,setActiveTab]=React.useState("resultado");
+const TABS=[
+{id:"resultado",label:"Resultado"},
+{id:"anamnese",label:"Anamnese"},
+{id:"parq",label:"PAR-Q"},
+{id:"avds",label:"AVDs"},
+{id:"testes",label:"Testes"},
+{id:"cardio",label:"Cardio"},
+{id:"cognitivo",label:"Cognitivo"},
+];
 return (
 <div>
-<div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:18 }}>
+<div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:12 }}>
 <button onClick={()=>nav("assessments")} style={{ background:"#f1f5f9",border:"none",borderRadius:9,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}><I n="back" s={17}/></button>
-<div style={{ fontWeight:800,fontSize:18,flex:1 }}>Resultado da Avaliação</div>
+<div style={{ fontWeight:800,fontSize:17,flex:1 }}>{st?.name||"Avaliação"}</div>
+<Badge color={gc.color} bg={gc.bg}>{gc.label}</Badge>
 </div>
+<div style={{ display:"flex",gap:3,overflowX:"auto",marginBottom:14,paddingBottom:2 }}>
+{TABS.map(t=>(
+<button key={t.id} onClick={()=>setActiveTab(t.id)} style={{ padding:"7px 12px",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:11,whiteSpace:"nowrap",flexShrink:0,background:activeTab===t.id?"#FF5603":"#f1f5f9",color:activeTab===t.id?"#fff":"#64748b" }}>{t.label}</button>
+))}
+</div>
+{activeTab==="anamnese"&&<Card style={{ marginBottom:14 }}>
+<div style={{ fontWeight:700,fontSize:14,color:"#FF5603",marginBottom:14,borderBottom:"1px solid #fee",paddingBottom:8 }}>Anamnese Clínica</div>
+{[
+["Patologias / Doenças",a.anamnese?.pathologies],
+["Medicamentos em uso",a.anamnese?.medications],
+["Alergias",a.anamnese?.allergies],
+["Cirurgias / Procedimentos",a.anamnese?.surgeries],
+["Atividade física anterior",a.anamnese?.physActivityHistory],
+["Modalidade(s)",a.anamnese?.physActivityType],
+["Frequência semanal",a.anamnese?.physActivityFreq],
+["Horas de sono/noite",a.anamnese?.sleepHours],
+["Qualidade do sono",a.anamnese?.sleepQuality],
+["Qualidade da alimentação",a.anamnese?.dietQuality],
+["Nível de estresse",a.anamnese?.stressLevel],
+["Tabagismo",a.anamnese?.smoking],
+["Consumo de álcool",a.anamnese?.alcohol],
+["Queixas / Sintomas",a.anamnese?.mainComplaints],
+["Localização de dores",a.anamnese?.painLocation],
+["Objetivos",a.anamnese?.goals],
+["Observações",a.anamnese?.observations],
+].filter(([,v])=>v&&String(v).trim()).map(([label,val])=>(
+<div key={label} style={{ marginBottom:10,borderBottom:"1px solid #f1f5f9",paddingBottom:8 }}>
+<div style={{ fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:"0.4px",marginBottom:3 }}>{label}</div>
+<div style={{ fontSize:14,color:"#0f172a",fontWeight:500 }}>{val}</div>
+</div>
+))}
+{[["Patologias","anamnese.pathologies"],["Medicamentos","anamnese.medications"]].every(([,k])=>!a.anamnese?.[k.split(".")[1]])&&
+<div style={{ color:"#94a3b8",fontSize:13 }}>Nenhum dado de anamnese registrado.</div>}
+</Card>}
+{activeTab==="parq"&&<Card style={{ marginBottom:14 }}>
+<div style={{ fontWeight:700,fontSize:14,color:"#FF5603",marginBottom:14,borderBottom:"1px solid #fee",paddingBottom:8 }}>PAR-Q — Prontidão para Atividade Física</div>
+{a.parqApplied
+? <div>
+<div style={{ padding:"12px 14px",borderRadius:10,background:a.parqFailed?"#fef2f2":"#f0fdf4",border:"1.5px solid "+(a.parqFailed?"#fca5a5":"#86efac"),marginBottom:12 }}>
+<div style={{ fontWeight:700,fontSize:14,color:a.parqFailed?"#dc2626":"#16a34a" }}>{a.parqFailed?"PAR-Q Positivo — Avaliação médica recomendada antes do início":"PAR-Q Negativo — Liberado para atividade física"}</div>
+</div>
+</div>
+: <div style={{ color:"#94a3b8",fontSize:13 }}>PAR-Q não aplicado nesta avaliação.</div>}
+</Card>}
+{activeTab==="avds"&&<Card style={{ marginBottom:14 }}>
+<div style={{ fontWeight:700,fontSize:14,color:"#FF5603",marginBottom:14,borderBottom:"1px solid #fee",paddingBottom:8 }}>AVDs e AIVDs — Funcionalidade</div>
+<div style={{ marginBottom:8,padding:"8px 12px",background:"#f8fafc",borderRadius:8,fontWeight:700,fontSize:14 }}>Score Funcional: {a.functional?.score||"—"}/100</div>
+{a.functional?.barthel&&<div style={{ marginBottom:14 }}>
+<div style={{ fontWeight:700,fontSize:13,marginBottom:8,color:"#475569" }}>Índice de Barthel — AVDs Básicas</div>
+{Object.entries(a.functional.barthel).map(([k,v])=>(
+<div key={k} style={{ display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #f1f5f9",fontSize:13 }}>
+<span style={{ color:"#475569" }}>{k}</span><span style={{ fontWeight:700 }}>{v}</span>
+</div>
+))}
+</div>}
+{a.functional?.lawton&&<div>
+<div style={{ fontWeight:700,fontSize:13,marginBottom:8,color:"#475569" }}>Escala de Lawton — AIVDs</div>
+{Object.entries(a.functional.lawton).map(([k,v])=>(
+<div key={k} style={{ display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #f1f5f9",fontSize:13 }}>
+<span style={{ color:"#475569" }}>{k}</span><span style={{ fontWeight:700 }}>{v}</span>
+</div>
+))}
+</div>}
+</Card>}
+{activeTab==="testes"&&<Card style={{ marginBottom:14 }}>
+<div style={{ fontWeight:700,fontSize:14,color:"#FF5603",marginBottom:14,borderBottom:"1px solid #fee",paddingBottom:8 }}>Testes Físicos</div>
+{[
+["Peso",a.aha?.weight,"kg"],
+["Altura",a.aha?.height,"cm"],
+["IMC",a.aha?.imc,"kg/m²"],
+["Circ. Abdominal",a.physical?.waist,"cm"],
+["Circ. Panturrilha",a.physical?.calf,"cm"],
+["SPPB Score",a.physical?.sppb,"pontos"],
+["TUG",a.physical?.tug,"seg"],
+["Sentar e Alcançar",a.physical?.sitreach,"cm"],
+["Preensão Manual",a.physical?.handgrip,"kgf"],
+["Sentar e Levantar",a.physical?.chairstand,"reps"],
+].filter(([,v])=>v).map(([label,val,unit])=>(
+<div key={label} style={{ display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #f1f5f9" }}>
+<div style={{ fontSize:13,color:"#475569" }}>{label}</div>
+<div style={{ fontWeight:700,fontSize:14,color:"#0f172a" }}>{val}{unit?" "+unit:""}</div>
+</div>
+))}
+</Card>}
+{activeTab==="cardio"&&<Card style={{ marginBottom:14 }}>
+<div style={{ fontWeight:700,fontSize:14,color:"#FF5603",marginBottom:14,borderBottom:"1px solid #fee",paddingBottom:8 }}>Avaliação Cardiorrespiratória</div>
+{a.cardioMode&&a.cardioMode!=="skip"
+? <div>
+<div style={{ fontSize:12,color:"#94a3b8",marginBottom:12 }}>Modalidade: <strong style={{ color:"#0f172a" }}>{a.cardioMode==="ergo"?"Ergoespirometria / TC6":a.cardioMode==="pred"?"VO2 Predito":"Teste de Campo"}</strong></div>
+{[
+["FC Repouso",a.cardioAssessment?.ergo?.fcRest||a.cardioAssessment?.pred?.fcRest,"bpm"],
+["FC Máxima",a.cardioAssessment?.ergo?.fcMax,"bpm"],
+["VO2max",a.cardioAssessment?.ergo?.vo2max||a.cardioAssessment?.pred?.vo2max,"ml/kg/min"],
+["PAS Repouso",a.cardioAssessment?.ergo?.pasSit,"mmHg"],
+["PAD Repouso",a.cardioAssessment?.ergo?.padSit,"mmHg"],
+["METs",a.cardioAssessment?.ergo?.mets,""],
+].filter(([,v])=>v).map(([label,val,unit])=>(
+<div key={label} style={{ display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #f1f5f9",fontSize:13 }}>
+<span style={{ color:"#475569" }}>{label}</span>
+<span style={{ fontWeight:700,color:"#0f172a" }}>{val}{unit?" "+unit:""}</span>
+</div>
+))}
+</div>
+: <div style={{ color:"#94a3b8",fontSize:13 }}>Avaliação cardiorrespiratória não realizada.</div>}
+</Card>}
+{activeTab==="cognitivo"&&<Card style={{ marginBottom:14 }}>
+<div style={{ fontWeight:700,fontSize:14,color:"#FF5603",marginBottom:14,borderBottom:"1px solid #fee",paddingBottom:8 }}>Avaliação Cognitiva</div>
+{a.cognitiveData&&a.cognitiveData.score>0
+? <div>
+{[
+["MMSE Total",a.cognitiveData.mmse?.total,"pontos"],
+["Dual Task — Simples",a.cognitiveData.dualTask?.single,"passos"],
+["Dual Task — Dupla",a.cognitiveData.dualTask?.dual,"passos"],
+["Fluência Verbal",a.cognitiveData.verbalFluency?.score,"palavras/min"],
+["Span Direto",a.cognitiveData.digitSpan?.direct,"dígitos"],
+["Span Inverso",a.cognitiveData.digitSpan?.inverse,"dígitos"],
+].filter(([,v])=>v).map(([label,val,unit])=>(
+<div key={label} style={{ display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #f1f5f9",fontSize:13 }}>
+<span style={{ color:"#475569" }}>{label}</span>
+<span style={{ fontWeight:700,color:"#0f172a" }}>{val}{unit?" "+unit:""}</span>
+</div>
+))}
+{a.cognitiveData.notes&&<div style={{ marginTop:12,padding:"10px 12px",background:"#f8fafc",borderRadius:8 }}>
+<div style={{ fontSize:11,color:"#94a3b8",fontWeight:700,marginBottom:4 }}>OBSERVAÇÕES</div>
+<div style={{ fontSize:13,color:"#475569" }}>{a.cognitiveData.notes}</div>
+</div>}
+</div>
+: <div style={{ color:"#94a3b8",fontSize:13 }}>Avaliação cognitiva não registrada.</div>}
+</Card>}
+{activeTab==="resultado"&&<div>
+
 <Card style={{ marginBottom:14,background:"linear-gradient(135deg,#fff4ee,#fff)",border:"1.5px solid #FF560320" }}>
 <div style={{ display:"flex",alignItems:"center",gap:14 }}>
 <div style={{ width:50,height:50,borderRadius:14,background:O,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:800,color:"#fff",flexShrink:0 }}>{st?.name?.[0]}</div>
@@ -1720,9 +1862,12 @@ return(<tr key={p2} style={{ borderBottom:"1px solid #f1f5f9" }}>
 </div>);
 })()}
 </Card>}
+
+</div>}
 </div>
 );
 };
+
 const AssessmentsList = ({ assessments, students, setAssessments, nav }) => {
 const [filter,setFilter]=useState("");
 const del=id=>{if(window.confirm("Remover?"))setAssessments(p=>p.filter(a=>a.id!==id));};
@@ -4773,7 +4918,7 @@ return (
 {page==="students"&&<Students students={students} setStudents={setStudents} nav={nav}/>}
 {page==="assessments"&&<AssessmentsList assessments={assessments} students={students} setAssessments={setAssessments} nav={nav}/>}
 {page==="newAssessment"&&<NewAssessment students={students} setAssessments={setAssessments} nav={nav} prefillStudentId={pageProps.studentId}/>}
-{page==="result"&&<Result assessmentId={pageProps.id} assessments={assessments} students={students} nav={nav}/>}
+{page==="result"&&<Result assessmentId={pageProps.id} assessments={assessments} setAssessments={setAssessments} students={students} nav={nav}/>}
 {page==="daily"&&<Daily students={students} assessments={assessments} dailyLogs={dailyLogs} setDailyLogs={setDailyLogs} cardioRecords={cardioRecords} setCardioRecords={setCardioRecords}/>}
 {page==="reports"&&<Reports students={students} assessments={assessments} setAssessments={setAssessments} dailyLogs={dailyLogs} sessions={sessions} nav={nav}/>
 }{page==="documents"&&<Documents students={students} documents={documents} setDocuments={setDocuments}/>
