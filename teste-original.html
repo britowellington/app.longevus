@@ -489,6 +489,7 @@ const student=students.find(s=>s.id===sid);
 const sex=student?.sex||"";
 const parqQs=["Médico disse que tem problema cardíaco?","Sente dor no peito durante atividade física?","Sentiu dor no peito no último mês (sem atividade)?","Perde equilíbrio por tontura ou já desmaiou?","Tem problema ósseo/articular que piora com exercício?","Toma medicamento para pressão ou coração?","Existe outro motivo pelo qual não deveria se exercitar?"];
 const calcAHA=()=>{
+if(aha.diabetes||aha.hypertension) return 6;
 let s=0;const bmi=parseFloat(aha.bmi);
 if(bmi>=25&&bmi<30)s+=1;if(bmi>=30)s+=2;
 const sbp=parseFloat(aha.sbp);if(sbp>=130&&sbp<140)s+=1;if(sbp>=140)s+=2;
