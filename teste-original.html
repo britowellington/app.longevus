@@ -2985,21 +2985,21 @@ const ProfFooter = ({ extra }) => (
 <div style={{ borderTop:"1.5px solid #e2e8f0", marginTop:32, paddingTop:16, display:"flex", justifyContent:"space-between", alignItems:"flex-end" }}>
 <div style={{ fontSize:11, color:"#94a3b8" }}>
 <div>Documento gerado pelo sistema Longevus</div>
-const ReportClinical = ({ assessment: a, student: st }) => {
+const ReportClinical = ({ assessment: a, student: st, notesClinical="", notesConduct="", notesGoals="" }) => {
 if (!a || !st) return null;
+const sex = st.sex || "";
 const gc = classifyGlobal(a.globalScore||0);
 const ahaCl = classifyAHA(a.aha?.score||0);
 const funcCl = classifyFunctional(a.functional?.score||0);
 const fitCl = classifyFitness(a.physical?.score||0);
 const cvScore = Math.max(0, 100-(a.aha?.score||0)*8);
+const recs = getRecommendations(null, null, null);
 const riskFlags = [];
 if (a.parqApplied && a.parqFailed) riskFlags.push("PAR-Q Positivo");
-if ((a.aha?.score||0) >= 4) riskFlags.push("Alto Risco Cardiovascular");
+if ((a.aha?.score||0) >= 4) riskFlags.push("Alto Risco Cardiovascular (AHA)");
+if (a.aha?.calf && parseFloat(a.aha.calf) < 31) riskFlags.push("Risco de Sarcopenia (Panturrilha < 31 cm)");
 if ((a.functional?.score||0) < 40) riskFlags.push("Capacidade Funcional Comprometida");
-if ((a.physical?.score||0) < 40) riskFlags.push("Aptidao Fisica Insuficiente");
-const ST = ({children}) => (
-<div style={{ fontWeight:800,fontSize:12,color:"#FF5603",borderBottom:"1.5px solid #FF560322",paddingBottom:5,marginBottom:10,marginTop:18,textTransform:"uppercase" }}>{children}</div>
-);
+if ((a.physical?.score||0) < 40) riskFlags.push("Aptidão Física Insuficiente");
 const F = ({label, value}) => value ? (
 <div style={{ display:"flex",gap:8,marginBottom:5,fontSize:12 }}>
 <span style={{ fontWeight:700,color:"#475569",minWidth:155,flexShrink:0 }}>{label}:</span>
