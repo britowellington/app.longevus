@@ -3007,7 +3007,7 @@ return (
 </div>
 );
 };
-const ReportClinical = ({ assessment: a, student: st, notesClinical="", notesConduct="", notesGoals="" }) => {
+const ReportClinical = ({ assessment: a, student: st }) => {
 if (!a || !st) return null;
 const sex = st.sex || "";
 const gc = classifyGlobal(a.globalScore||0);
@@ -3015,13 +3015,113 @@ const ahaCl = classifyAHA(a.aha?.score||0);
 const funcCl = classifyFunctional(a.functional?.score||0);
 const fitCl = classifyFitness(a.physical?.score||0);
 const cvScore = Math.max(0, 100-(a.aha?.score||0)*8);
-const recs = getRecommendations(null, null, null);
 const riskFlags = [];
 if (a.parqApplied && a.parqFailed) riskFlags.push("PAR-Q Positivo");
 if ((a.aha?.score||0) >= 4) riskFlags.push("Alto Risco Cardiovascular (AHA)");
-if (a.aha?.calf && parseFloat(a.aha.calf) < 31) riskFlags.push("Risco de Sarcopenia (Panturrilha < 31 cm)");
+if (a.aha?.calf && parseFloat(a.aha.calf) < 31) riskFlags.push("Risco de Sarcopenia");
 if ((a.functional?.score||0) < 40) riskFlags.push("Capacidade Funcional Comprometida");
-if ((a.physical?.score||0) < 40) riskFlags.push("Aptidão Física Insuficiente");
+if ((a.physical?.score||0) < 40) riskFlags.push("Aptidao Fisica Insuficiente");
+
+const SectionTitle = ({children}) => (
+<div style={{fontWeight:800,fontSize:13,color:"#FF5603",borderBottom:"2px solid #FF560322",paddingBottom:6,marginBottom:12,marginTop:20,textTransform:"uppercase",letterSpacing:"0.5px"}}>{children}</div>
+);
+const Field = ({label, value}) => value ? (
+<div style={{display:"flex",gap:8,marginBottom:6,fontSize:12}}>
+<span style={{fontWeight:700,color:"#475569",minWidth:160,flexShrink:0}}>{label}:</span>
+<span style={{color:"#0f172a"}}>{value}</span>
+</div>
+) : null;
+
+return (
+<div style={{padding:"0 20px 20px",fontFamily:"serif"}}>
+
+<SectionTitle>1. Identificacao do Aluno</SectionTitle>
+<Field label="Nome completo" value={st.name}/>
+<Field label="Data de nascimento" value={st.dob}/>
+<Field label="Sexo" value={st.sex==="M"?"Masculino":st.sex==="F"?"Feminino":""}/>
+<Field label="Telefone" value={st.phone}/>
+<Field label="Data da avaliacao" value={a.date}/>
+{riskFlags.length>0&&<div style={{marginTop:8,padding:"8px 12px",background:"#fef2f2",border:"1.5px solid #fca5a5",borderRadius:8}}>
+<span style={{fontWeight:700,fontSize:12,color:"#dc2626"}}>Alertas: </span>
+<span style={{fontSize:12,color:"#dc2626"}}>{riskFlags.join(" · ")}</span>
+</div>}
+
+{(a.anamnese?.pathologies||a.anamnese?.medications||a.anamnese?.mainComplaints||a.anamnese?.goals)&&<>
+<SectionTitle>2. Anamnese Clinica</SectionTitle>
+<Field label="Patologias / Doencas" value={a.anamnese?.pathologies}/>
+<Field label="Medicamentos em uso" value={a.anamnese?.medications}/>
+<Field label="Alergias" value={a.anamnese?.allergies}/>
+<Field label="Cirurgias anteriores" value={a.anamnese?.surgeries}/>
+<Field label="Atividade fisica anterior" value={a.anamnese?.physActivityHistory}/>
+<Field label="Modalidade(s)" value={a.anamnese?.physActivityType}/>
+<Field label="Frequencia semanal" value={a.anamnese?.physActivityFreq}/>
+<Field label="Horas de sono / noite" value={a.anamnese?.sleepHours}/>
+<Field label="Qualidade do sono" value={a.anamnese?.sleepQuality}/>
+<Field label="Qualidade da alimentacao" value={a.anamnese?.dietQuality}/>
+<Field label="Nivel de estresse" value={a.anamnese?.stressLevel}/>
+<Field label="Tabagismo" value={a.anamnese?.smoking}/>
+<Field label="Consumo de alcool" value={a.anamnese?.alcohol}/>
+<Field label="Queixas / Sintomas" value={a.anamnese?.mainComplaints}/>
+<Field label="Localizacao de dores" value={a.anamnese?.painLocation}/>
+<Field label="Objetivos" value={a.anamnese?.goals}/>
+<Field label="Observacoes" value={a.anamnese?.observations}/>
+</>}
+
+{a.parqApplied&&<>
+<SectionTitle>3. PAR-Q — Prontidao para Atividade Fisica</SectionTitle>
+<div style={{padding:"8px 12px",background:a.parqFailed?"#fef2f2":"#f0fdf4",border:"1.5px solid "+(a.parqFailed?"#fca5a5":"#86efac"),borderRadius:8,marginBottom:8}}>
+<span style={{fontWeight:700,fontSize:12,color:a.parqFailed?"#dc2626":"#16a34a"}}>{a.parqFailed?"POSITIVO — Avaliacao medica recomendada antes do inicio":"NEGATIVO — Liberado para atividade fisica"}</span>
+</div>
+</>}
+
+{a.aha&&<>
+<SectionTitle>4. Risco Cardiovascular (AHA)</SectionTitle>
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px 20px",marginBottom:8}}>
+<Field label="Peso" value={a.aha.weight?(a.aha.weight+" kg"):null}/>
+<Field label="Altura" value={a.aha.height?(a.aha.height+" cm"):null}/>
+<Field label="IMC" value={a.aha.bmi?(a.aha.bmi+" kg/m²"):null}/>
+<Field label="PAS repouso" value={a.aha.sbp?(a.aha.sbp+" mmHg"):null}/>
+<Field label="PAD repouso" value={a.aha.dbp?(a.aha.dbp+" mmHg"):null}/>
+<Field label="FC repouso" value={a.aha.hr?(a.aha.hr+" bpm"):null}/>
+<Field label="Cintura" value={a.aha.waist?(a.aha.waist+" cm"):null}/>
+<Field label="Quadril" value={a.aha.hip?(a.aha.hip+" cm"):null}/>
+<Field label="Panturrilha" value={a.aha.calf?(a.aha.calf+" cm"):null}/>
+</div>
+<div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
+{[["Tabagismo","smoker"],["Diabetes","diabetes"],["Hipertensao","hypertension"],["Dislipidemia","hyperlipid"],["Hist. familiar","familyHistory"],["Sedentarismo","sedentary"]].map(([l,k])=>(
+a.aha[k]?<span key={k} style={{fontSize:11,padding:"2px 8px",background:"#fef2f2",color:"#dc2626",borderRadius:99,fontWeight:700,border:"1px solid #fca5a5"}}>{l}</span>:null
+))}
+</div>
+<div style={{padding:"8px 12px",background:ahaCl.bg,border:"1.5px solid "+ahaCl.color+"44",borderRadius:8}}>
+<span style={{fontWeight:700,fontSize:12,color:ahaCl.color}}>Score AHA: {a.aha.score||0} pontos — {ahaCl.label}</span>
+</div>
+</>}
+
+<SectionTitle>5. Indices Longevus</SectionTitle>
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px 20px"}}>
+<Field label="Indice Global" value={(a.globalScore||0)+" pts — "+gc.label}/>
+<Field label="Score Cardiovascular" value={cvScore+" pts"}/>
+<Field label="Score Funcional" value={(a.functional?.score||0)+" pts — "+funcCl.label}/>
+<Field label="Score Aptidao Fisica" value={(a.physical?.score||0)+" pts — "+fitCl.label}/>
+{a.cognitiveData?.score>0&&<Field label="Score Cognitivo" value={a.cognitiveData.score+" pts"}/>}
+</div>
+
+{(a.physical?.sppb||a.physical?.tug||a.physical?.handgrip)&&<>
+<SectionTitle>6. Testes Fisicos</SectionTitle>
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px 20px"}}>
+<Field label="SPPB" value={a.physical?.sppb?(a.physical.sppb+" pts"):null}/>
+<Field label="TUG" value={a.physical?.tug?(a.physical.tug+" seg"):null}/>
+<Field label="Preensao Manual" value={a.physical?.handgrip?(a.physical.handgrip+" kgf"):null}/>
+<Field label="Sentar e Levantar" value={a.physical?.chairstand?(a.physical.chairstand+" reps"):null}/>
+<Field label="Sentar e Alcancar" value={a.physical?.sitreach?(a.physical.sitreach+" cm"):null}/>
+</div>
+</>}
+
+</div>
+);
+};
+
+
 const Row = ({label, value, unit=""}) => (
 <div style={{ display:"flex", justifyContent:"space-between", padding:"6px 0", borderBottom:"1px solid #f1f5f9" }}>
 <span style={{ fontSize:12, color:"#475569" }}>{label}</span>
