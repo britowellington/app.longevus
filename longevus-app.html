@@ -21,7 +21,7 @@ var __LOGO_2__ = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAAB4CAYAAAA5
 </script>
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useCallback, useRef } = React;
-// ── Supabase ─────────────────────────────────────────────────────────────────
+
 const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
 const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
 const DB = {
@@ -195,7 +195,7 @@ const gly = parseFloat(pre?.glycemia);
 const dp = during?.pas && during?.fc ? Math.round(parseFloat(during.pas) * parseFloat(during.fc)) : null;
 const pasDuring = parseFloat(during?.pas), padDuring = parseFloat(during?.pad);
 const pasPost = parseFloat(post?.pas), padPost = parseFloat(post?.pad);
-// ── PRESSÃO ARTERIAL (Zonas Longevus) ──────────────────────────────────────
+
 if (pas >= 180 || pad >= 110)
 return [{ level:"stop", icon:"🚫", title:"HAS Grau 3 / Crise Hipertensiva", text:"PAS ≥ 180 ou PAD ≥ 110 mmHg. Suspender exercício imediatamente e encaminhar para avaliação médica urgente.", ref:"Zonas Longevus — PA Grau 3", color:"#dc2626", bg:"#fee2e2", border:"#fca5a5" }];
 if (pas >= 160 || pad >= 100)
@@ -208,7 +208,7 @@ else if (pas >= 120 || (pad >= 80 && pad < 85))
 recs.push({ level:"ok", icon:"✅", title:"PA Normal — Continuar Normalmente", text:"PAS 120–129 mmHg. Sem restrição hemodinâmica. Intensidade conforme protocolo Longevus.", ref:"Zonas Longevus — PA Grau 2", color:"#16a34a", bg:"#dcfce7", border:"#86efac" });
 else if (pas > 0 && pas < 120 && pad > 0 && pad < 80)
 recs.push({ level:"ok", icon:"✅", title:"PA Ótima — Continuar Normalmente", text:"PA < 120/80 mmHg. Pressão arterial ideal. Sem restrições hemodinâmicas.", ref:"Zonas Longevus — PA Grau 1", color:"#16a34a", bg:"#dcfce7", border:"#86efac" });
-// ── FREQUÊNCIA CARDÍACA (Zonas Longevus) ───────────────────────────────────
+
 if (fc > 150)
 recs.push({ level:"stop", icon:"🚫", title:"FC Crítica — Encaminhar Imediatamente", text:"FC repouso > 150 bpm. Zona crítica. Não iniciar exercício. Verificar sintomas e acionar suporte médico.", ref:"Zonas Longevus — FC Grau 5", color:"#dc2626", bg:"#fee2e2", border:"#fca5a5" });
 else if (fc > 110)
@@ -219,7 +219,7 @@ else if (fc >= 60 && fc <= 100)
 recs.push({ level:"ok", icon:"✅", title:"FC Normal — Zona Aeróbica Ideal", text:"FC repouso 60–100 bpm. Frequência cardíaca normal. Intensidade 50–85% FCmáx conforme protocolo.", ref:"Zonas Longevus — FC Grau 2", color:"#16a34a", bg:"#dcfce7", border:"#86efac" });
 else if (fc > 0 && fc < 60)
 recs.push({ level:"caution", icon:"⚠️", title:"Bradicardia — Investigar se Sintomático", text:"FC repouso < 60 bpm. Verificar se aluno usa beta-bloqueador (esperado). Se sintomático (tontura, cansaço): investigar antes de exercitar.", ref:"Zonas Longevus — FC Grau 1", color:"#6366f1", bg:"#eef2ff", border:"#c7d2fe" });
-// ── GLICEMIA (Zonas Longevus) ───────────────────────────────────────────────
+
 if (gly > 0 && gly >= 300)
 return [{ level:"stop", icon:"🚫", title:"Hiperglicemia Grave — Suspender; Encaminhar", text:"Glicemia ≥ 300 mg/dL. Risco de cetoacidose diabética. Não iniciar exercício. Encaminhar para avaliação médica.", ref:"Zonas Longevus — Glicemia Grau 6", color:"#dc2626", bg:"#fee2e2", border:"#fca5a5" }];
 if (gly > 0 && gly < 70)
@@ -232,19 +232,19 @@ else if (gly >= 100 && gly < 140)
 recs.push({ level:"ok", icon:"✅", title:"Glicemia Normal — Continuar Normalmente", text:"Glicemia 100–139 mg/dL. Dentro da faixa normal para exercício. Monitorar conforme protocolo Longevus.", ref:"Zonas Longevus — Glicemia Grau 3", color:"#16a34a", bg:"#dcfce7", border:"#86efac" });
 else if (gly >= 70 && gly < 100)
 recs.push({ level:"info", icon:"ℹ️", title:"Glicemia Limite Baixo — Monitorar; Lanche Pré-Sessão", text:"Glicemia 70–99 mg/dL. Oferecer pequeno lanche pré-exercício (15–20g carboidrato). Monitorar sinais de hipoglicemia durante a sessão.", ref:"Zonas Longevus — Glicemia Grau 2", color:"#6366f1", bg:"#eef2ff", border:"#c7d2fe" });
-// ── SpO₂ ────────────────────────────────────────────────────────────────────
+
 if (spo2 > 0 && spo2 < 90)
 return [{ level:"stop", icon:"🚫", title:"SpO₂ Crítica — Interromper Imediatamente", text:"Saturação < 90%. Interromper exercício. Posicionar aluno sentado ou em decúbito elevado. Acionar suporte médico.", ref:"ACSM — Critério de parada SpO₂", color:"#dc2626", bg:"#fee2e2", border:"#fca5a5" }];
 if (spo2 >= 90 && spo2 < 94)
 recs.push({ level:"caution", icon:"⚠️", title:"SpO₂ Reduzida — Reduzir Intensidade", text:"Saturação 90–93%. Reduzir intensidade imediatamente. Exercícios de baixo consumo de O₂. Monitorar continuamente. Interromper se cair abaixo de 90%.", ref:"ACSM — SpO₂ zona de atenção", color:"#d97706", bg:"#fef9c3", border:"#fde68a" });
-// ── Duplo Produto ───────────────────────────────────────────────────────────
+
 if (dp && dp >= 28000)
 recs.push({ level:"stop", icon:"⛔", title:"Duplo Produto Crítico — Interromper", text:"DP = " + dp.toLocaleString("pt-BR") + " mmHg·bpm. Carga cardiovascular excessiva. Interromper sessão imediatamente.", ref:"ACSM — DP > 28.000", color:"#dc2626", bg:"#fee2e2", border:"#fca5a5" });
 else if (dp && dp >= 20000)
 recs.push({ level:"caution", icon:"⚠️", title:"Duplo Produto — Zona de Atenção", text:"DP = " + dp.toLocaleString("pt-BR") + " mmHg·bpm. Manter intensidade. Monitorar sinais e sintomas continuamente.", ref:"ACSM — DP 20.000–28.000", color:"#d97706", bg:"#fef9c3", border:"#fde68a" });
 if (pasDuring >= 220 || padDuring >= 105)
 recs.push({ level:"stop", icon:"⛔", title:"PA Crítica Durante Exercício", text:"PAS ≥ 220 ou PAD ≥ 105 mmHg durante esforço. Critério de parada imediata (ACSM).", ref:"ACSM — Critério de parada", color:"#dc2626", bg:"#fee2e2", border:"#fca5a5" });
-// ── Resposta pós-exercício ──────────────────────────────────────────────────
+
 if (pasPost > 0 && pas > 0 && pasPost > pas + 20)
 recs.push({ level:"caution", icon:"⚠️", title:"Resposta Pressórica Pós-Exercício", text:"PAS pós-exercício significativamente acima do valor pré. Prolongar volta à calma. Não interromper abruptamente. Monitorar por 20–30 min.", ref:"ACSM", color:"#d97706", bg:"#fef9c3", border:"#fde68a" });
 return recs;
@@ -534,14 +534,14 @@ return (
 <div style={{ height:6,background:"#e2e8f0",borderRadius:99,marginBottom:22 }}>
 <div style={{ height:6,background:O,borderRadius:99,width:`${((step+1)/steps.length)*100}%`,transition:"width .3s" }}/>
 </div>
-{/* STEP 0 */}
+
 {step===0&&<Card>
 <div style={{ fontWeight:700,marginBottom:16 }}>Selecionar Aluno</div>
 <Inp label="Aluno" value={sid} onChange={setSid} opts={[{v:"",l:"Selecione..."},...students.map(s=>({v:s.id,l:`${s.name} (${calcAge(s.dob)} anos)`}))]}/>
 {student&&<div style={{ background:"#f8fafc",borderRadius:10,padding:12,marginBottom:12 }}><div style={{ fontWeight:700 }}>{student.name}</div><div style={{ fontSize:13,color:"#64748b" }}>{calcAge(student.dob)} anos · {student.sex==="M"?"Masculino":student.sex==="F"?"Feminino":"—"}</div>{student.notes&&<div style={{ fontSize:12,color:"#94a3b8",marginTop:4 }}>{student.notes}</div>}</div>}
 <Btn full disabled={!sid} onClick={()=>setStep(1)}>Próximo →</Btn>
 </Card>}
-{/* STEP 1: PAR-Q */}
+
 {step===1&&<Card>
 <div style={{ fontWeight:700,marginBottom:4 }}>Anamnese</div>
 <div style={{ fontSize:13,color:"#64748b",marginBottom:18 }}>Histórico de saúde, hábitos e objetivos do aluno</div>
@@ -578,7 +578,7 @@ return (
 {step===2&&<Card>
 <div style={{ fontWeight:700,marginBottom:4 }}>PAR-Q</div>
 <div style={{ fontSize:13,color:"#64748b",marginBottom:16 }}>Questionário de prontidão para atividade física — opcional</div>
-{/* Toggle opcional */}
+
 <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",background:parqEnabled?"#fff4ee":"#f8fafc",border:`1.5px solid ${parqEnabled?"#FF560344":"#e2e8f0"}`,borderRadius:12,padding:"14px 16px",marginBottom:16 }}>
 <div>
 <div style={{ fontWeight:700,fontSize:14,color:parqEnabled?"#FF5603":"#0f172a" }}>Aplicar PAR-Q nesta avaliação?</div>
@@ -598,10 +598,10 @@ return (
 <Btn full onClick={()=>setStep(3)}>Próximo →</Btn>
 </div>
 </Card>}
-{/* STEP 3: AHA */}
+
 {step===3&&<Card>
 <div style={{ fontWeight:700,marginBottom:16 }}>Risco Cardiovascular (AHA)</div>
-{/* Peso e Altura → IMC automático */}
+
 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
 <Inp label="Peso (kg)" type="number" value={aha.weight} onChange={v=>{const bmi=v&&aha.height?((parseFloat(v))/(parseFloat(aha.height)/100)**2).toFixed(1):"";setAha(a=>({...a,weight:v,bmi}));}} placeholder="ex: 72"/>
 <Inp label="Altura (cm)" type="number" value={aha.height} onChange={v=>{const bmi=aha.weight&&v?((parseFloat(aha.weight))/(parseFloat(v)/100)**2).toFixed(1):"";setAha(a=>({...a,height:v,bmi}));}} placeholder="ex: 168"/>
@@ -638,7 +638,7 @@ return (
 <Btn full onClick={()=>setStep(4)}>Próximo →</Btn>
 </div>
 </Card>}
-{/* STEP 3: AVDs */}
+
 {step===4&&<Card>
 <div style={{ fontWeight:700,marginBottom:4 }}>Atividades da Vida Diária (AVDs)</div>
 <div style={{ fontSize:13,color:"#64748b",marginBottom:6 }}>Avaliação de Spirduso — Cuidados pessoais básicos</div>
@@ -658,7 +658,7 @@ return (
 <Btn full onClick={()=>setStep(5)}>Próximo →</Btn>
 </div>
 </Card>}
-{/* STEP 4: AIVDs */}
+
 {step===5&&<Card>
 <div style={{ fontWeight:700,marginBottom:4 }}>Atividades Instrumentais da Vida Diária (AIVDs)</div>
 <div style={{ fontSize:13,color:"#64748b",marginBottom:6 }}>Avaliação de Spirduso — Participação social e autonomia</div>
@@ -685,11 +685,11 @@ return (
 <Btn full onClick={()=>setStep(6)}>Próximo →</Btn>
 </div>
 </Card>}
-{/* STEP 5: Testes físicos */}
+
 {step===6&&<Card>
 <div style={{ fontWeight:700,marginBottom:4 }}>Testes Físicos</div>
 <div style={{ fontSize:13,color:"#64748b",marginBottom:16 }}>Selecione os testes realizados. O resultado aparece automaticamente.</div>
-{/* ── SPPB BALANCE ── */}
+
 {(phys.selected?.sppbBalance!==false)&&<div style={{ marginBottom:14,border:"1.5px solid #6366f133",borderRadius:12,padding:14 }}>
 <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:12 }}>
 <input type="checkbox" checked={phys.selected?.sppbBalance!==false} onChange={e=>setPhys(p=>({...p,selected:{...p.selected,sppbBalance:e.target.checked}}))} style={{ width:18,height:18,accentColor:"#FF5603",cursor:"pointer" }}/>
@@ -698,7 +698,7 @@ return (
 <div style={{ fontSize:11,color:"#94a3b8" }}>Cada posição mantida por 10 segundos</div>
 </div>
 </div>
-{/* Side-by-side */}
+
 <div style={{ marginBottom:10 }}>
 <div style={{ fontWeight:600,fontSize:13,color:"#475569",marginBottom:6 }}>1. Side-by-side (pés juntos)</div>
 <div style={{ display:"flex",gap:8 }}>
@@ -707,7 +707,7 @@ return (
 ))}
 </div>
 </div>
-{/* Semi-tandem — só mostra se passou no side-by-side */}
+
 {phys.sppbSide==="1"&&<div style={{ marginBottom:10 }}>
 <div style={{ fontWeight:600,fontSize:13,color:"#475569",marginBottom:6 }}>2. Semi-tandem (calcanhar ao lado do hálux)</div>
 <div style={{ display:"flex",gap:8 }}>
@@ -716,7 +716,7 @@ return (
 ))}
 </div>
 </div>}
-{/* Tandem — só mostra se passou no semi-tandem */}
+
 {phys.sppbSide==="1"&&phys.sppbSemi==="1"&&<div style={{ marginBottom:10 }}>
 <div style={{ fontWeight:600,fontSize:13,color:"#475569",marginBottom:6 }}>3. Tandem (calcanhar na ponta do pé)</div>
 <div style={{ display:"flex",gap:8 }}>
@@ -725,7 +725,7 @@ return (
 ))}
 </div>
 </div>}
-{/* Score SPPB Balance */}
+
 {phys.sppbSide&&<div style={{ marginTop:8 }}>
 {(()=>{
 const sc=(parseInt(phys.sppbSide)||0)===0?0:((parseInt(phys.sppbSemi)||0)+(parseInt(phys.sppbTandem)||0));
@@ -741,7 +741,7 @@ return cl?(<div style={{ background:cl.bg,border:"1.5px solid "+cl.color+"33",bo
 </div>}
 <textarea value={phys.obs_sppbBalance||""} onChange={e=>setPhys(p=>({...p,obs_sppbBalance:e.target.value}))} placeholder="Observações (dificuldade, apoio necessário, medo de cair...)" style={{ width:"100%",padding:"9px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:12,color:"#334155",resize:"none",minHeight:48,fontFamily:"inherit",boxSizing:"border-box",marginTop:8 }}/>
 </div>}
-{/* ── SPPB CHAIR STAND ── */}
+
 {(phys.selected?.sppbChair!==false)&&<div style={{ marginBottom:14,border:"1.5px solid #FF560333",borderRadius:12,padding:14 }}>
 <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:12 }}>
 <input type="checkbox" checked={phys.selected?.sppbChair!==false} onChange={e=>setPhys(p=>({...p,selected:{...p.selected,sppbChair:e.target.checked}}))} style={{ width:18,height:18,accentColor:"#FF5603",cursor:"pointer" }}/>
@@ -761,7 +761,7 @@ return cl?(<div style={{ background:cl.bg,border:"1.5px solid "+cl.color+"33",bo
 {(phys.sppbChair||phys.sppbChairUnable)&&<TestResult cl={classifySPPBChairStand(phys.sppbChairUnable?"unable":phys.sppbChair)}/>}
 <textarea value={phys.obs_sppbChair||""} onChange={e=>setPhys(p=>({...p,obs_sppbChair:e.target.value}))} placeholder="Observações (usou braços, dor, instabilidade...)" style={{ width:"100%",padding:"9px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:12,color:"#334155",resize:"none",minHeight:48,fontFamily:"inherit",boxSizing:"border-box",marginTop:8 }}/>
 </div>}
-{/* Demais testes */}
+
 {[
 { key:"grip",    label:"Força de Preensão Manual", unit:"kgf",    placeholder:"ex: 24", note:"Dinamômetro — mão dominante",             clFn: v=>classifyHandGrip(v,sex) },
 { key:"tug",     label:"TUG — Timed Up and Go",   unit:"segundos",placeholder:"ex: 12", note:"Levantar, caminhar 3m, voltar e sentar",  clFn: classifyTUG },
@@ -808,7 +808,7 @@ style={{ width:"100%",padding:"9px 12px",borderRadius:9,border:"1.5px solid #e2e
 {step===7&&<Card>
 <div style={{ fontWeight:700,marginBottom:4 }}>Avaliação Cardiorrespiratória</div>
 <div style={{ fontSize:13,color:"#64748b",marginBottom:16 }}>Etapa opcional — baseada em teste ergométrico ou predição clínica</div>
-{/* Seletor de modo */}
+
 <div style={{ display:"flex",gap:10,marginBottom:18 }}>
 {[{v:"ergo",label:"🟢 Teste Ergométrico",sub:"Dados reais do teste"},{v:"pred",label:"🟡 Predição Clínica",sub:"Sem teste disponível"},{v:"skip",label:"⏭️ Pular",sub:"Adicionar depois"}].map(m=>(
 <button key={m.v} onClick={()=>setCardioMode(m.v)} style={{ flex:1,padding:"10px 6px",borderRadius:11,border:`2px solid ${cardioMode===m.v?"#FF5603":"#e2e8f0"}`,background:cardioMode===m.v?"#fff4ee":"#f8fafc",cursor:"pointer",textAlign:"left" }}>
@@ -817,7 +817,7 @@ style={{ width:"100%",padding:"9px 12px",borderRadius:9,border:"1.5px solid #e2e
 </button>
 ))}
 </div>
-{/* MODO ERGOMÉTRICO */}
+
 {cardioMode==="ergo"&&<div>
 <div style={{ fontWeight:600,fontSize:12,color:"#FF5603",marginBottom:8 }}>Dados do Teste</div>
 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8 }}>
@@ -856,7 +856,7 @@ return cl ? <TestResult cl={cl}/> : null;
 <Inp label="FC limiar isquêmico" type="number" value={cardioAssessment.ergo.fcIschemic} onChange={v=>setCardioAssessment(c=>({...c,ergo:{...c.ergo,fcIschemic:v}}))} placeholder="140"/>
 <Inp label="Obs ECG" value={cardioAssessment.ergo.ecgObs} onChange={v=>setCardioAssessment(c=>({...c,ergo:{...c.ergo,ecgObs:v}}))} placeholder="Alterações..."/>
 </div>
-{/* Arritmias */}
+
 <div style={{ fontWeight:600,fontSize:12,color:"#FF5603",marginBottom:8,marginTop:4 }}>Arritmias</div>
 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:10 }}>
 {[{v:"none",l:"Sem arritmia"},{v:"ectopic",l:"Extrassístoles"},{v:"tvns",l:"TVNS"},{v:"af",l:"Fibrilação atrial"},{v:"svt",l:"Arr. supraventricular"},{v:"other",l:"Outra"}].map(o=>(
@@ -866,7 +866,7 @@ return cl ? <TestResult cl={cl}/> : null;
 </label>
 ))}
 </div>
-{/* Medicações */}
+
 <div style={{ fontWeight:600,fontSize:12,color:"#FF5603",marginBottom:8 }}>Medicações</div>
 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:6 }}>
 {[{v:"beta",l:"Beta-bloqueador"},{v:"antihyp",l:"Anti-hipertensivo"},{v:"vasodil",l:"Vasodilatador"},{v:"antiarr",l:"Antiarrítmico"},{v:"antidiab",l:"Antidiabético"},{v:"insulin",l:"Insulina"}].map(o=>(
@@ -876,7 +876,7 @@ return cl ? <TestResult cl={cl}/> : null;
 </label>
 ))}
 </div>
-{/* Cálculos ao vivo */}
+
 {cardioAssessment.ergo.fcMax&&<div style={{ background:"#f8fafc",borderRadius:12,padding:14,marginTop:12 }}>
 <div style={{ fontWeight:700,fontSize:13,color:"#0f172a",marginBottom:10 }}>⚡ Cálculos Automáticos</div>
 {(()=>{
@@ -929,7 +929,7 @@ return(<tr key={p} style={{ borderBottom:"1px solid #f1f5f9",background:safe?"#f
 })()}
 </div>}
 </div>}
-{/* MODO PREDIÇÃO */}
+
 {cardioMode==="pred"&&<div>
 <div style={{ fontWeight:600,fontSize:12,color:"#FF5603",marginBottom:8 }}>Dados para Predição</div>
 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8 }}>
@@ -952,7 +952,7 @@ return(<tr key={p} style={{ borderBottom:"1px solid #f1f5f9",background:safe?"#f
 </label>
 ))}
 </div>
-{/* Cálculo ao vivo */}
+
 {(cardioAssessment.pred.age||calcAge(student?.dob))&&(()=>{
 const age2=parseFloat(cardioAssessment.pred.age||calcAge(student?.dob));
 const fcMax2=cardioAssessment.pred.formula==="tanaka"?Math.round(208-0.7*age2):220-age2;
@@ -987,11 +987,11 @@ return(<div style={{ background:"#f8fafc",borderRadius:12,padding:14,marginTop:4
 <Btn full onClick={()=>setStep(8)}>Próximo →</Btn>
 </div>
 </Card>}
-{/* STEP 8 — AVALIAÇÃO COGNITIVA */}
+
 {step===8&&<Card>
 <div style={{ fontWeight:700,marginBottom:4 }}>🧠 Avaliação Cognitiva</div>
 <div style={{ fontSize:13,color:"#64748b",marginBottom:16 }}>Bateria Longevus — ~15 minutos · Aplicação verbal, sem equipamento</div>
-{/* ── MMSE ── */}
+
 <div style={{ background:"#eef2ff",border:"1.5px solid #c7d2fe",borderRadius:12,padding:14,marginBottom:14 }}>
 <div style={{ fontWeight:700,fontSize:14,color:"#6366f1",marginBottom:4 }}>1. MMSE — Triagem Cognitiva Geral</div>
 <div style={{ fontSize:12,color:"#64748b",marginBottom:12 }}>Faça cada pergunta verbalmente. Marque acerto (1) ou erro (0).</div>
@@ -1030,7 +1030,7 @@ setCognitiveData(d=>({...d,mmse:{...newMmse,total:String(t)}}));
 {cognitiveData.mmse.total&&<TestResult cl={classifyMMSE(cognitiveData.mmse.total)}/>}
 </div>
 </div>
-{/* ── DUAL TASK ── */}
+
 <div style={{ background:"#fff4ee",border:"1.5px solid #FF560344",borderRadius:12,padding:14,marginBottom:14 }}>
 <div style={{ fontWeight:700,fontSize:14,color:"#FF5603",marginBottom:4 }}>2. Dual Task Cost — Cognitivo-Motor</div>
 <div style={{ fontSize:12,color:"#64748b",marginBottom:12 }}>
@@ -1055,7 +1055,7 @@ return(
 );
 })()}
 </div>
-{/* ── FLUÊNCIA VERBAL ── */}
+
 <div style={{ background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:12,padding:14,marginBottom:14 }}>
 <div style={{ fontWeight:700,fontSize:14,color:"#16a34a",marginBottom:4 }}>3. Fluência Verbal por Categorias</div>
 <div style={{ fontSize:12,color:"#64748b",marginBottom:12 }}>
@@ -1066,7 +1066,7 @@ Conte as palavras válidas (sem repetições) e registre abaixo.
 <Inp label="Palavras ditas (opcional)" value={cognitiveData.verbalFluency.words} onChange={v=>setCognitiveData(d=>({...d,verbalFluency:{...d.verbalFluency,words:v}}))} placeholder="cachorro, gato, leão..."/>
 {cognitiveData.verbalFluency.score&&<TestResult cl={classifyVerbalFluency(cognitiveData.verbalFluency.score)}/>}
 </div>
-{/* ── SPAN DE DÍGITOS ── */}
+
 <div style={{ background:"#fdf4ff",border:"1.5px solid #e9d5ff",borderRadius:12,padding:14,marginBottom:14 }}>
 <div style={{ fontWeight:700,fontSize:14,color:"#7c3aed",marginBottom:4 }}>4. Span de Dígitos</div>
 <div style={{ fontSize:12,color:"#64748b",marginBottom:8 }}>
@@ -1087,9 +1087,9 @@ Conte as palavras válidas (sem repetições) e registre abaixo.
 </div>
 {cognitiveData.digitSpan.direct&&<TestResult cl={classifyDigitSpan(cognitiveData.digitSpan.direct,cognitiveData.digitSpan.inverse)}/>}
 </div>
-{/* Observações */}
+
 <Inp label="Observações cognitivas" value={cognitiveData.notes} onChange={v=>setCognitiveData(d=>({...d,notes:v}))} placeholder="Comportamento durante os testes, ansiedade, queixas relatadas..."/>
-{/* Score global */}
+
 {(cognitiveData.mmse.total||cognitiveData.dualTask.single||cognitiveData.verbalFluency.score||cognitiveData.digitSpan.direct)&&(()=>{
 const cs=calcCognitiveScore(cognitiveData.mmse.total,cognitiveData.dualTask.single,cognitiveData.dualTask.dual,cognitiveData.verbalFluency.score,cognitiveData.digitSpan.direct,cognitiveData.digitSpan.inverse);
 const cl=cs>=80?{label:"Excelente",color:"#16a34a",bg:"#dcfce7"}:cs>=65?{label:"Bom",color:"#65a30d",bg:"#ecfccb"}:cs>=50?{label:"Regular",color:"#d97706",bg:"#fef9c3"}:{label:"Comprometido",color:"#dc2626",bg:"#fee2e2"};
@@ -1276,7 +1276,7 @@ const training = getTrainingArchitecture(level, priorities, freq, env);
 const progressionOrder = ["Técnica", "Amplitude", "Repetições", "Séries", "Tempo sob tensão", "Carga", "Complexidade", "Potência"];
 return (
 <div style={{ marginTop:16 }}>
-{/* Header clicável */}
+
 <button onClick={()=>setExpanded(e=>!e)} style={{ width:"100%",background:"linear-gradient(135deg,#fff4ee,#fff)",border:"1.5px solid #FF560333",borderRadius:14,padding:"16px 18px",cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
 <div style={{ display:"flex",alignItems:"center",gap:12 }}>
 <div style={{ width:44,height:44,borderRadius:12,background:level.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22 }}>{level.archIcon}</div>
@@ -1291,7 +1291,7 @@ return (
 </div>
 </button>
 {expanded && <div style={{ border:"1.5px solid #FF560322",borderTop:"none",borderRadius:"0 0 14px 14px",padding:"18px",background:"#fff" }}>
-{/* Nível Funcional */}
+
 <div style={{ background:level.bg,border:"1.5px solid "+level.color+"33",borderRadius:12,padding:"14px 16px",marginBottom:16 }}>
 <div style={{ fontWeight:800,fontSize:16,color:level.color,marginBottom:6 }}>{level.label}</div>
 <div style={{ fontSize:13,color:"#334155",lineHeight:1.6 }}>{level.desc}</div>
@@ -1300,7 +1300,7 @@ return (
 <Badge color={level.color} bg={level.bg}>{level.archIcon} {level.arch}</Badge>
 </div>
 </div>
-{/* Config rápida */}
+
 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16 }}>
 <div>
 <div style={{ fontSize:11,fontWeight:700,color:"#475569",marginBottom:6 }}>Frequência semanal</div>
@@ -1319,7 +1319,7 @@ return (
 </div>
 </div>
 </div>
-{/* Prioridades Ranqueadas */}
+
 <div style={{ marginBottom:16 }}>
 <div style={{ fontWeight:700,fontSize:14,color:"#0f172a",marginBottom:10 }}>🎯 Prioridades de Treinamento</div>
 <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
@@ -1339,7 +1339,7 @@ return (
 ))}
 </div>
 </div>
-{/* Arquitetura de Treino */}
+
 <div style={{ marginBottom:16 }}>
 <div style={{ fontWeight:700,fontSize:14,color:"#0f172a",marginBottom:10 }}>🏗️ Arquitetura de Treino Sugerida</div>
 <div style={{ background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:12,padding:"14px" }}>
@@ -1355,7 +1355,7 @@ return (
 </div>
 </div>
 </div>
-{/* Blocos de Periodização */}
+
 <div style={{ marginBottom:16 }}>
 <div style={{ fontWeight:700,fontSize:14,color:"#0f172a",marginBottom:10 }}>📅 Periodização — 24 Semanas</div>
 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
@@ -1368,7 +1368,7 @@ return (
 ))}
 </div>
 </div>
-{/* Ordem de Progressão */}
+
 <div>
 <div style={{ fontWeight:700,fontSize:14,color:"#0f172a",marginBottom:10 }}>⬆️ Ordem Oficial de Progressão</div>
 <div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
@@ -1378,6 +1378,28 @@ return (
 {i < progressionOrder.length-1 && <span style={{ color:"#cbd5e1",fontSize:12 }}>→</span>}
 </div>
 ))}
+</div>
+<div style={{ marginTop:20,marginBottom:8 }}>
+<div style={{ fontWeight:700,fontSize:14,color:"#0f172a",marginBottom:12 }}>Recomendacoes Complementares — Longevus 50+</div>
+<div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+{[
+{icon:"🏠",color:"#6366f1",title:"Autonomia no Cotidiano",text:"Incentivar participacao ativa em atividades domesticas leves e seguras, promovendo a manutencao da autonomia funcional nas atividades do dia a dia."},
+{icon:"🧠",color:"#8B5CF6",title:"Estimulacao Cognitiva Diaria",text:"Estimular atividades cognitivas frequentes: leitura, conversas sociais, jogos de raciocinio, musica, memoria e estimulos mentais variados."},
+{icon:"🛡",color:"#dc2626",title:"Prevencao de Quedas no Domicilio",text:"Atencao especial ao ambiente domiciliar: evitar tapetes soltos, manter boa iluminacao noturna e utilizar calcados estaveis e seguros."},
+{icon:"👥",color:"#10B981",title:"Vinculo Social Ativo",text:"Estimular participacao em grupos de convivencia, atividades comunitarias e interacoes sociais regulares para reducao do isolamento e suporte emocional."},
+{icon:"💧",color:"#0EA5E9",title:"Hidratacao e Nutricao",text:"Orientar hidratacao adequada ao longo do dia (idosos tem menor percepcao de sede) e atencao a alimentacao rica em proteinas para preservacao da massa muscular."},
+{icon:"😴",color:"#d97706",title:"Qualidade do Sono",text:"Reforcar a importancia de rotinas de sono regulares. Sono de qualidade e essencial para recuperacao muscular, funcao cognitiva e equilíbrio hormonal."},
+{icon:"🩺",color:"#FF5603",title:"Acompanhamento Medico Regular",text:"Reforcar a necessidade de consultas medicas periodicas, controle de medicamentos e monitoramento de pressao arterial, glicemia e outros indices de saude."},
+].map((r,i)=>(
+<div key={i} style={{ display:"flex",gap:12,padding:"12px 14px",background:"#f8fafc",borderRadius:12,border:"1px solid #e2e8f0",borderLeft:"4px solid "+r.color }}>
+<div style={{ fontSize:20,flexShrink:0,marginTop:1 }}>{r.icon}</div>
+<div>
+<div style={{ fontWeight:700,fontSize:13,color:"#0f172a",marginBottom:3 }}>{r.title}</div>
+<div style={{ fontSize:12,color:"#475569",lineHeight:1.6 }}>{r.text}</div>
+</div>
+</div>
+))}
+</div>
 </div>
 <div style={{ fontSize:11,color:"#94a3b8",marginTop:8,fontStyle:"italic" }}>Ref: ACSM Guidelines · Blueprint Longevus v1.0</div>
 </div>
@@ -1450,6 +1472,7 @@ const [activeTab,setActiveTab]=React.useState("resultado");
 const TABS=[
 {id:"resultado",label:"Resultado"},
 {id:"anamnese",label:"Anamnese"},
+{id:"aha",label:"Risco CV"},
 {id:"parq",label:"PAR-Q"},
 {id:"avds",label:"AVDs"},
 {id:"testes",label:"Testes"},
@@ -1592,6 +1615,48 @@ return (
 </div>
 : <div style={{ color:"#94a3b8",fontSize:13 }}>Avaliação cognitiva não registrada.</div>}
 </Card>}
+{activeTab==="aha"&&<Card style={{ marginBottom:14 }}>
+<div style={{ fontWeight:700,fontSize:14,color:"#FF5603",marginBottom:14,borderBottom:"1px solid #fee",paddingBottom:8 }}>Risco Cardiovascular (AHA)</div>
+<div style={{ marginBottom:14 }}>
+{[
+["Peso",a.aha?.weight,"kg"],
+["Altura",a.aha?.height,"cm"],
+["IMC",a.aha?.bmi,"kg/m²"],
+["PAS (repouso)",a.aha?.sbp,"mmHg"],
+["PAD (repouso)",a.aha?.dbp,"mmHg"],
+["FC (repouso)",a.aha?.hr,"bpm"],
+["Cintura",a.aha?.waist,"cm"],
+["Quadril",a.aha?.hip,"cm"],
+["Panturrilha",a.aha?.calf,"cm"],
+].filter(([,v])=>v).map(([label,val,unit])=>(
+<div key={label} style={{ display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #f1f5f9" }}>
+<div style={{ fontSize:13,color:"#475569" }}>{label}</div>
+<div style={{ fontWeight:700,fontSize:14,color:"#0f172a" }}>{val}{unit?" "+unit:""}</div>
+</div>
+))}
+</div>
+<div style={{ fontWeight:700,fontSize:13,color:"#475569",marginBottom:10,marginTop:4 }}>Fatores de Risco</div>
+{[
+["Tabagismo","smoker"],
+["Diabetes","diabetes"],
+["Hipertensão","hypertension"],
+["Dislipidemia","hyperlipid"],
+["Histórico familiar","familyHistory"],
+["Sedentarismo","sedentary"],
+["Obesidade","obese"],
+].map(([label,key])=>(
+<div key={key} style={{ display:"flex",alignItems:"center",gap:10,padding:"6px 0",borderBottom:"1px solid #f1f5f9" }}>
+<div style={{ width:22,height:22,borderRadius:6,background:a.aha?.[key]?"#fef2f2":"#f0fdf4",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,flexShrink:0 }}>{a.aha?.[key]?"⚠️":"✅"}</div>
+<div style={{ fontSize:13,color:"#475569" }}>{label}</div>
+<div style={{ marginLeft:"auto",fontWeight:700,fontSize:12,color:a.aha?.[key]?"#dc2626":"#16a34a" }}>{a.aha?.[key]?"Sim":"Não"}</div>
+</div>
+))}
+<div style={{ marginTop:14,padding:"12px 14px",borderRadius:10,background:(a.aha?.score||0)>=4?"#fef2f2":(a.aha?.score||0)>=2?"#fff7ed":"#f0fdf4",border:"1.5px solid "+((a.aha?.score||0)>=4?"#fca5a5":(a.aha?.score||0)>=2?"#fed7aa":"#86efac") }}>
+<div style={{ fontSize:11,color:"#94a3b8",fontWeight:700,marginBottom:4 }}>SCORE DE RISCO AHA</div>
+<div style={{ fontWeight:800,fontSize:22,color:(a.aha?.score||0)>=4?"#dc2626":(a.aha?.score||0)>=2?"#d97706":"#16a34a" }}>{a.aha?.score||0} pontos</div>
+<div style={{ fontSize:12,color:"#64748b",marginTop:2 }}>{(a.aha?.score||0)>=4?"Alto risco cardiovascular":(a.aha?.score||0)>=2?"Risco moderado":"Baixo risco"}</div>
+</div>
+</Card>}
 {activeTab==="resultado"&&<div>
 
 <Card style={{ marginBottom:14,background:"linear-gradient(135deg,#fff4ee,#fff)",border:"1.5px solid #FF560320" }}>
@@ -1667,7 +1732,7 @@ return cl?(
 })}
 </div>
 </Card>
-{/* Avaliação Cognitiva */}
+
 {a?.cognitiveData?.score > 0 && <Card style={{ marginBottom:14 }}>
 <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12 }}>
 <div style={{ fontWeight:700 }}>🧠 Avaliação Cognitiva</div>
@@ -1684,7 +1749,7 @@ return <Badge color={cl.color} bg={cl.bg}>Score {cs} — {cl.label}</Badge>;
 {a.cognitiveData.digitSpan?.direct&&(()=>{const cl=classifyDigitSpan(a.cognitiveData.digitSpan.direct,a.cognitiveData.digitSpan.inverse);return cl?(<div style={{ background:cl.bg,borderRadius:9,padding:"10px 12px" }}><div style={{ fontSize:10,color:cl.color,fontWeight:700,textTransform:"uppercase" }}>SPAN DÍGITOS</div><div style={{ fontSize:18,fontWeight:900,color:cl.color }}>{a.cognitiveData.digitSpan.direct}↑ {a.cognitiveData.digitSpan.inverse?a.cognitiveData.digitSpan.inverse+"↓":""}</div><div style={{ fontSize:11,color:cl.color,fontWeight:700 }}>{cl.label}</div></div>):null;})()}
 </div>
 {a.cognitiveData.notes&&<div style={{ fontSize:12,color:"#64748b",marginTop:10 }}>📝 {a.cognitiveData.notes}</div>}
-{/* Gráfico radar cognitivo */}
+
 {(()=>{
 const cd=a.cognitiveData;
 const mmseVal=cd.mmse?.total?Math.round((parseInt(cd.mmse.total)/30)*100):null;
@@ -1729,13 +1794,13 @@ return(
 );
 })()}
 </Card>}
-{/* Botão Gerar Programa */}
+
 <div style={{ marginBottom:14 }}>
 <Btn full icon="zap" onClick={()=>nav("program",{studentId:a.studentId,assessmentId:a.id})}>⚡ Gerar Programa de Treinamento</Btn>
 </div>
-{/* Perfil Funcional Automático */}
+
 <FunctionalProfile assessment={a} student={st}/>
-{/* Cardiorrespiratório */}
+
 {a?.cardioMode && a.cardioMode !== "skip" && <Card style={{ marginBottom:14 }}>
 <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12 }}>
 <div style={{ fontWeight:700 }}>Avaliação Cardiorrespiratória</div>
@@ -1930,7 +1995,7 @@ return (
 <Inp label="SpO₂ (%)" type="number" value={data.spo2} onChange={v=>onChange({...data,spo2:v})} placeholder="98"/>
 <Inp label="Glicemia (mg/dL)" type="number" value={data.glycemia} onChange={v=>onChange({...data,glycemia:v})} placeholder="100"/>
 </div>
-{/* PSE / Borg Adaptada */}
+
 <div style={{ marginTop:10 }}>
 <div style={{ fontSize:11,fontWeight:700,color:"#475569",marginBottom:6 }}>PSE — Percepção Subjetiva de Esforço (0–10)</div>
 <div style={{ display:"flex",gap:4,marginBottom:6 }}>
@@ -2043,7 +2108,7 @@ const sex = st?.sex === "M" ? "masculino" : "feminino";
 const isImage = doc.fileType && doc.fileType.startsWith("image/");
 const isPDF = doc.fileType === "application/pdf";
 const base64Data = doc.fileData ? doc.fileData.split(",")[1] : null;
-// Prompt estruturado para extração de dados + análise clínica
+
 const systemPrompt = "Voce e um assistente clinico especializado em saude e educacao fisica para adultos 50+. " + "Analise o documento de " + nome + ", " + age + " anos, sexo " + sex + ". " + "Tipo: " + (doc.label||doc.type||"documento") + ". " + "Retorne SOMENTE JSON valido sem markdown com estes campos: resumo (2-3 frases), valoresAlterados (array de alteracoes com referencia), diagnosticos (array), medicamentos (array), fatoresRisco (array), contraindicacoes (array de restricoes para exercicio), cuidadosExercicio (array de cuidados para prescricao), intensidadeRecomendada (baixa/moderada/alta), monitoramentoEspecial (array de parametros a monitorar), analiseCompleta (texto clinico detalhado). Use aspas duplas no JSON. Escreva em portugues do Brasil."
 let messages = [];
 if (base64Data && (isImage || isPDF)) {
@@ -2063,7 +2128,7 @@ body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 2000, mess
 if (!res.ok) throw new Error("API error " + res.status);
 const data = await res.json();
 const rawText = data.content?.map(i => i.text||"").join("") || "";
-// Tentar parsear JSON estruturado
+
 let structured = null;
 try {
 const jsonMatch = rawText.match(/\{[\s\S]*\}/);
@@ -2408,7 +2473,7 @@ return (
 <div style={{ marginTop:20 }}>
 <div style={{ fontWeight:800, fontSize:16, color:"#0f172a", marginBottom:4 }}>💓 Prescrição Cardiovascular</div>
 <div style={{ fontSize:12, color:"#64748b", marginBottom:16 }}>Módulo híbrido — Teste Ergométrico ou Predição Clínica</div>
-{/* Seletor de modo */}
+
 <div style={{ display:"flex",gap:10,marginBottom:20 }}>
 {[
 {v:"ergo", label:"🟢 Teste Ergométrico", sub:"Dados reais do teste"},
@@ -2420,7 +2485,7 @@ return (
 </button>
 ))}
 </div>
-{/* ── MODO 1: ERGOMÉTRICO ── */}
+
 {mode==="ergo" && <>
 <Card style={{ marginBottom:14 }}>
 <div style={{ fontWeight:700,fontSize:14,color:"#0f172a",marginBottom:14 }}>📋 Card 1 — Dados do Teste</div>
@@ -2511,7 +2576,7 @@ return (
 <div style={{ fontSize:12,color:"#64748b",fontStyle:"italic" }}>Progressão: aumentar 5–10 min/semana. Reavaliar a cada 8–12 semanas.</div>
 </Card>}
 </>}
-{/* ── MODO 2: PREDIÇÃO CLÍNICA ── */}
+
 {mode==="pred" && <>
 <Card style={{ marginBottom:14 }}>
 <div style={{ fontWeight:700,fontSize:14,color:"#0f172a",marginBottom:14 }}>📋 Card 1 — Dados para Predição</div>
@@ -2598,7 +2663,7 @@ Zona alvo: <strong style={{ color:"#FF5603" }}>{predRisk.fcr}</strong> · Borg r
 </div>
 </Card>}
 </>}
-{/* ── TALK TEST (ambos modos) ── */}
+
 {mode && <Card style={{ marginBottom:14 }}>
 <div style={{ fontWeight:700,fontSize:14,color:"#0f172a",marginBottom:10 }}>🗣️ Talk Test (opcional)</div>
 <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
@@ -2617,7 +2682,7 @@ Zona alvo: <strong style={{ color:"#FF5603" }}>{predRisk.fcr}</strong> · Borg r
 ))}
 </div>
 </Card>}
-{/* ── ALERTAS DE SEGURANÇA ── */}
+
 {mode && <Card style={{ marginBottom:14, border:"1.5px solid #fca5a5", background:"#fff5f5" }}>
 <div style={{ fontWeight:700,fontSize:13,color:"#dc2626",marginBottom:10 }}>🚨 Critérios de Interrupção / Alerta</div>
 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:6 }}>
@@ -2710,7 +2775,7 @@ return isBetaBlocker ? (
 })()}
 <Inp label="Aluno *" value={form.studentId} onChange={v=>setForm(f=>({...f,studentId:v}))} opts={[{v:"",l:"Selecione..."},...students.map(s=>({v:s.id,l:s.name}))]}/>
 <Inp label="Data" type="date" value={form.date} onChange={v=>setForm(f=>({...f,date:v}))}/>
-{/* Disposição */}
+
 <div style={{ marginBottom:16 }}>
 <div style={{ fontSize:12,fontWeight:700,color:"#6366f1",marginBottom:10 }}>😊 Quão disposto você está agora?</div>
 <div style={{ display:"flex",justifyContent:"space-between",marginBottom:10 }}>
@@ -2736,7 +2801,7 @@ return isLow ? (
 ) : null;
 })()}
 </div>
-{/* Hidratação */}
+
 <div style={{ marginBottom:16 }}>
 <div style={{ fontSize:12,fontWeight:700,color:"#0891b2",marginBottom:10 }}>💧 Como foi seu consumo de água ontem?</div>
 <div style={{ display:"flex",justifyContent:"space-between",marginBottom:10 }}>
@@ -2778,7 +2843,7 @@ return isLow ? (
 {activeMoments.pre&&<MomentBlock title="Pré-exercício" color="#6366f1" data={form.pre} onChange={v=>setForm(f=>({...f,pre:v}))} showDP={false}/>}
 {activeMoments.during&&<MomentBlock title="Durante o Exercício" color={O} data={form.during} onChange={v=>setForm(f=>({...f,during:v}))} showDP={true}/>}
 {activeMoments.post&&<MomentBlock title="Pós-exercício" color="#16a34a" data={form.post} onChange={v=>setForm(f=>({...f,post:v}))} showDP={false}/>}
-{/* Faixas de intensidade + alertas automáticos */}
+
 {(form.pre.pas||form.pre.fc||form.pre.spo2||form.pre.glycemia)&&(()=>{
 const fc = parseFloat(form.pre.fc);
 const pas = parseFloat(form.pre.pas);
@@ -2787,7 +2852,7 @@ const recs2 = getRecommendations(form.pre, form.during, form.post);
 const hasStop = recs2.some(r=>r.level==="stop");
 return (
 <div style={{ marginTop:8,marginBottom:4 }}>
-{/* Alertas ACSM/AHA */}
+
 {recs2.length>0&&<div style={{ marginBottom:12 }}>
 <div style={{ fontSize:11,fontWeight:700,color:"#64748b",marginBottom:8,textTransform:"uppercase",letterSpacing:"0.5px" }}>📋 Alertas ACSM / AHA</div>
 <div style={{ display:"flex",flexDirection:"column",gap:6 }}>
@@ -2802,7 +2867,7 @@ return (
 ))}
 </div>
 </div>}
-{/* Tabela de faixas de intensidade — só mostra se não há contraindicação absoluta */}
+
 {!hasStop && fc > 0 && (()=>{
 const student = students.find(s=>s.id===form.studentId);
 const age = student ? calcAge(student.dob) : null;
@@ -2966,12 +3031,12 @@ const Row = ({label, value, unit=""}) => (
 return (
 <div className="print-page" style={{ padding:20 }}>
 <ProfHeader/>
-{/* Título */}
+
 <div style={{ background:"linear-gradient(135deg,#fff4ee,#fff)", border:"1.5px solid #FF560322", borderRadius:12, padding:"14px 18px", marginBottom:20 }}>
 <div style={{ fontWeight:800, fontSize:17, color:"#0f172a", marginBottom:4 }}>Relatório de Avaliação Física Integrada</div>
 <div style={{ fontSize:12, color:"#64748b" }}>Data: {fmt(a.date)} · Protocolo Longevus v1.0 (AHA/ACSM/Spirduso)</div>
 </div>
-{/* Dados do aluno */}
+
 <div className="report-section" style={{ marginBottom:20 }}>
 <div style={{ fontWeight:700, fontSize:13, color:"#FF5603", textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>Identificação do Aluno</div>
 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:0 }}>
@@ -2982,14 +3047,14 @@ return (
 </div>
 {st.notes && <div style={{ marginTop:8, fontSize:12, color:"#64748b", background:"#f8fafc", borderRadius:8, padding:"8px 12px" }}>Obs: {st.notes}</div>}
 </div>
-{/* Alertas */}
+
 {riskFlags.length > 0 && <div style={{ marginBottom:20 }}>
 <div style={{ fontWeight:700, fontSize:13, color:"#dc2626", textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>⚠️ Alertas Identificados</div>
 <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
 {riskFlags.map((f,i) => <div key={i} style={{ background:"#fee2e2", border:"1px solid #fca5a5", borderRadius:8, padding:"7px 12px", fontSize:12, fontWeight:600, color:"#dc2626" }}>• {f}</div>)}
 </div>
 </div>}
-{/* Scores */}
+
 <div className="report-section" style={{ marginBottom:20 }}>
 <div style={{ fontWeight:700, fontSize:13, color:"#FF5603", textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>Índices Longevus</div>
 <div style={{ display:"grid", gridTemplateColumns:`repeat(${a.cognitiveData?.score>0?5:4},1fr)`, gap:10 }}>
@@ -3002,14 +3067,14 @@ return (
 ))}
 </div>
 </div>
-{/* PAR-Q */}
+
 {a.parqApplied && <div className="report-section" style={{ marginBottom:20 }}>
 <div style={{ fontWeight:700, fontSize:13, color:"#FF5603", textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>PAR-Q</div>
 <div style={{ background: a.parqFailed?"#fee2e2":"#dcfce7", border:`1px solid ${a.parqFailed?"#fca5a5":"#86efac"}`, borderRadius:8, padding:"10px 14px", fontSize:12, fontWeight:700, color: a.parqFailed?"#dc2626":"#16a34a" }}>
 {a.parqFailed ? "⚠️ PAR-Q POSITIVO — Avaliação médica recomendada antes de iniciar programa de exercícios." : "✅ PAR-Q Negativo — Sem contraindicações identificadas pelo questionário."}
 </div>
 </div>}
-{/* AHA */}
+
 <div className="report-section" style={{ marginBottom:20 }}>
 <div style={{ fontWeight:700, fontSize:13, color:"#FF5603", textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>Risco Cardiovascular (AHA)</div>
 <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
@@ -3041,7 +3106,7 @@ return (
 {[["smoker","Tabagismo"],["diabetes","Diabetes"],["hypertension","Hipertensão"],["hyperlipid","Dislipidemia"],["family","Hist. Familiar DCV"]].filter(([k])=>a.aha?.[k]).map(([k,l])=>(<Badge key={k} color="#dc2626" bg="#fee2e2">{l}</Badge>))}
 </div>
 </div>
-{/* Funcional */}
+
 <div className="report-section" style={{ marginBottom:20 }}>
 <div style={{ fontWeight:700, fontSize:13, color:"#FF5603", textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>Capacidade Funcional (Spirduso)</div>
 <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
@@ -3070,7 +3135,7 @@ return (
 </div>
 </div>}
 </div>
-{/* Testes físicos */}
+
 <div className="report-section" style={{ marginBottom:20 }}>
 <div style={{ fontWeight:700, fontSize:13, color:"#FF5603", textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>Testes Físicos</div>
 <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:12,flexWrap:"wrap" }}>
@@ -3104,8 +3169,7 @@ return (
 <AIReportDisplay text={notesClinical} title="Observações Gerais — Prof. Wellington Brito · CREF 089836-G/SP"/>
 <AIReportDisplay text={notesConduct} title="Conduta Proposta — Prof. Wellington Brito · CREF 089836-G/SP"/>
 <AIReportDisplay text={notesGoals} title="Metas do Período — Prof. Wellington Brito · CREF 089836-G/SP"/>
-{/* Cardiorrespiratório */}
-{/* Cognição */}
+
 {a?.cognitiveData?.score > 0 && <div className="report-section" style={{ marginBottom:20 }}>
 <div style={{ fontWeight:700, fontSize:13, color:"#FF5603", textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>Avaliação Cognitiva — Bateria Longevus</div>
 <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
@@ -3197,7 +3261,7 @@ return (<div>
 </div>}
 {metCl && <div style={{ marginTop:8 }}><TestResult cl={metCl}/></div>}
 </div>}
-{/* Tabela de zonas */}
+
 {fcMax > 0 && <div style={{ marginBottom:10 }}>
 <div style={{ fontWeight:700, fontSize:12, color:"#475569", marginBottom:8 }}>Zonas de Treinamento Aeróbio</div>
 {hasBeta && <div style={{ background:"#eef2ff", borderRadius:8, padding:"7px 12px", marginBottom:8, fontSize:11, fontWeight:700, color:"#6366f1" }}>💊 Beta-bloqueador: priorizar PSE/Borg + sintomas</div>}
@@ -3254,7 +3318,7 @@ return (<div>
 <div style={{ fontSize:16, fontWeight:900, color:"#6366f1" }}>{fcRes2} bpm</div>
 </div>}
 </div>
-{/* Tabela zonas predição */}
+
 <div style={{ fontWeight:700, fontSize:12, color:"#475569", marginBottom:8 }}>Zonas de Treinamento Estimadas</div>
 {hasBeta2&&<div style={{ background:"#eef2ff", borderRadius:8, padding:"7px 12px", marginBottom:8, fontSize:11, fontWeight:700, color:"#6366f1" }}>💊 Beta-bloqueador: priorizar PSE/Borg + sintomas</div>}
 <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11 }}>
@@ -3349,7 +3413,7 @@ const cogCl=cogScore>=80?{color:"#16a34a",bg:"#dcfce7"}:cogScore>=65?{color:"#65
 const Δ=(val,d)=>d!==null&&val?<span style={{fontSize:10,color:d>0?"#16a34a":d<0?"#dc2626":"#94a3b8",marginLeft:3,fontWeight:700}}>{d>0?"▲":d<0?"▼":"–"}{Math.abs(d)}</span>:null;
 return(
 <div key={a.id} style={{border:`2px solid ${gc.color}22`,borderRadius:14,padding:"14px 16px",background:"#fff",position:"relative"}}>
-{/* Header */}
+
 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
 <div style={{fontSize:13,fontWeight:700,color:"#475569"}}>{fmt(a.date)}</div>
 <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -3357,7 +3421,7 @@ return(
 <Badge color={gc.color} bg={gc.bg}>{gc.label}</Badge>
 </div>
 </div>
-{/* Grid de índices */}
+
 <div style={{display:"grid",gridTemplateColumns:`repeat(${cogScore>0?4:3},1fr)`,gap:8}}>
 {[[" Cardio",cvScore,deltaCv,"#6366f1"],[" Func.",a.functional?.score,deltaFunc,"#FF5603"],[" Aptidão",a.physical?.score,deltaPhys,"#0891b2"],...(cogScore>0?[[" Cognitivo",cogScore,deltaCog,cogCl.color]]:[])]
 .map(([lbl,val,dv,cor])=>(
@@ -3586,31 +3650,31 @@ lines.push("• Risco de sarcopenia: treino de força e aporte proteico adequado
 }
 lines.push("");
 lines.push("Monitoramento por Sessão:");
-// Parâmetros que SEMPRE devem ser monitorados
+
 lines.push("• Pressão Arterial (PA): aferir ANTES e APÓS cada sessão. Suspender se PAS ≥ 180 mmHg ou PAD ≥ 110 mmHg.");
 lines.push("• Frequência Cardíaca (FC): aferir em repouso antes da sessão e ao término.");
-// Diabetes — glicemia obrigatória
+
 if (a.aha?.diabetes || a.anamnese?.pathologies?.toLowerCase().includes("diabet")) {
 lines.push("• Glicemia capilar: OBRIGATÓRIA antes e após cada sessão (paciente diabético). Referência: 100-250 mg/dL para exercício seguro. Abaixo de 70 mg/dL: tratar hipoglicemia antes de iniciar. Acima de 300 mg/dL: suspender sessão.");
 lines.push("• Manter fonte de carboidrato de rápida absorção disponível durante o treino.");
 }
-// Cardiopatia ou alto risco cardiovascular — saturação
+
 if ((a.aha?.score||0) >= 4 || a.anamnese?.pathologies?.toLowerCase().includes("cardio") || a.anamnese?.pathologies?.toLowerCase().includes("insuficiência")) {
 lines.push("• Saturação de oxigênio (SpO₂): monitorar durante o exercício, especialmente em cardiopatas e pneumopatas. Interromper se SpO₂ < 90%.");
 }
-// Hipertensão
+
 if (a.aha?.hypertension || (a.aha?.sbp && parseFloat(a.aha.sbp) >= 140)) {
 lines.push("• Hipertensão: aferir PA em todos os momentos (pré, durante e pós). Reduzir intensidade se PAS > 160 mmHg. Não iniciar sessão se PAS ≥ 180 mmHg.");
 }
-// Tabagismo
+
 if (a.aha?.smoker) {
 lines.push("• Tabagismo: monitorar SpO₂ e tolerância ao exercício aeróbico. Paciente tabagista pode apresentar menor capacidade ventilatória.");
 }
-// Uso de medicamentos que afetam FC
+
 if (a.anamnese?.medications?.toLowerCase().includes("beta") || a.anamnese?.medications?.toLowerCase().includes("propranolol") || a.anamnese?.medications?.toLowerCase().includes("atenolol")) {
 lines.push("• Beta-bloqueador em uso: FC pode estar artificialmente reduzida. Priorizar PSE/Borg (0-10) e sintomas como guia de intensidade, não apenas FC.");
 }
-// Risco de quedas — supervisão
+
 if (funcRisks.includes("quedas nos últimos 12 meses") || (a.physical?.tug && parseFloat(a.physical.tug) > 13.5)) {
 lines.push("• Risco de quedas identificado: supervisão constante durante todos os exercícios. Nunca deixar o aluno sem apoio próximo.");
 }
@@ -4114,7 +4178,7 @@ return (
 {prog.days.map((day, di) => (
 <div key={di} style={{ marginBottom:20 }}>
 <div style={{ fontWeight:800,fontSize:15,color:"#FF5603",borderBottom:"2px solid #FF560322",paddingBottom:6,marginBottom:12 }}>{day.day}</div>
-{/* Aquecimento */}
+
 <div style={{ marginBottom:10 }}>
 <div style={{ fontWeight:700,fontSize:12,color:"#6366f1",marginBottom:6 }}>🔥 AQUECIMENTO</div>
 {day.warmup?.map((ex,i) => ex && (
@@ -4125,7 +4189,7 @@ return (
 </div>
 ))}
 </div>
-{/* Sessões */}
+
 {day.sessions.map((session, si) => session.exercises?.length > 0 && (
 <div key={si} style={{ marginBottom:10 }}>
 <div style={{ fontWeight:700,fontSize:12,color:"#0f172a",marginBottom:6 }}>{session.icon} {session.priority.toUpperCase()}</div>
@@ -4140,7 +4204,7 @@ return (
 ))}
 </div>
 ))}
-{/* Desaquecimento */}
+
 <div>
 <div style={{ fontWeight:700,fontSize:12,color:"#16a34a",marginBottom:6 }}>🧘 DESAQUECIMENTO</div>
 {day.cooldown?.map((ex,i) => ex && (
@@ -4160,7 +4224,7 @@ return (
 return (
 <div>
 <div style={{ fontWeight:800,fontSize:20,marginBottom:18 }}>⚡ Gerador de Programa</div>
-{/* Seleção */}
+
 <Card style={{ marginBottom:14 }}>
 <div style={{ fontWeight:700,fontSize:14,marginBottom:12 }}>1. Selecionar Aluno e Avaliação</div>
 <Inp label="Aluno" value={selSt} onChange={v=>{setSelSt(v);setSelA("");setGenerated(null);}} opts={[{v:"",l:"Selecione..."},...students.map(s=>({v:s.id,l:`${s.name} (${calcAge(s.dob)} anos)`}))]}/>
@@ -4170,7 +4234,7 @@ return (
 {selA && assessment && <>
 <Card style={{ marginBottom:14 }}>
 <div style={{ fontWeight:700,fontSize:14,marginBottom:12 }}>2. Parâmetros do Programa</div>
-{/* Perfil rápido */}
+
 {(()=>{const lv=getFunctionalLevel(assessment,st);return(
 <div style={{ background:lv.bg,border:`1.5px solid ${lv.color}33`,borderRadius:10,padding:"10px 14px",marginBottom:14 }}>
 <div style={{ fontWeight:700,color:lv.color }}>{lv.archIcon} {lv.label}</div>
@@ -4229,7 +4293,7 @@ return (
 <div key={di} style={{ marginBottom:16,border:"1px solid #f1f5f9",borderRadius:12,overflow:"hidden" }}>
 <div style={{ background:"#FF560312",padding:"10px 14px",fontWeight:800,fontSize:14,color:"#FF5603" }}>{day.day}</div>
 <div style={{ padding:"12px 14px" }}>
-{/* Aquecimento */}
+
 <div style={{ marginBottom:10 }}>
 <div style={{ fontSize:11,fontWeight:700,color:"#6366f1",marginBottom:6,textTransform:"uppercase" }}>🔥 Aquecimento</div>
 {day.warmup?.filter(Boolean).map((ex,i)=>(
@@ -4240,7 +4304,7 @@ return (
 </div>
 ))}
 </div>
-{/* Blocos de exercícios */}
+
 {day.sessions.map((session, si) => session.exercises?.filter(Boolean).length > 0 && (
 <div key={si} style={{ marginBottom:10 }}>
 <div style={{ fontSize:11,fontWeight:700,color:"#0f172a",marginBottom:6,textTransform:"uppercase" }}>{session.icon} {session.priority}</div>
@@ -4276,7 +4340,7 @@ return (
 ))}
 </div>
 ))}
-{/* Desaquecimento */}
+
 <div>
 <div style={{ fontSize:11,fontWeight:700,color:"#16a34a",marginBottom:6,textTransform:"uppercase" }}>🧘 Desaquecimento</div>
 {day.cooldown?.filter(Boolean).map((ex,i)=>(
@@ -4303,9 +4367,7 @@ return (
 </div>
 );
 };
-// ═══════════════════════════════════════════════════════════════════════════════
-// ETAPA 3 — ACOMPANHAMENTO DE SESSÃO
-// ═══════════════════════════════════════════════════════════════════════════════
+
 const suggestProgression = (exercise, history) => {
 if (!history || history.length < 2) return null;
 const recent = history.slice(-3);
@@ -4370,17 +4432,17 @@ setSaved(true);
 setTimeout(() => { setSaved(false); setForm({ date:new Date().toISOString().split("T")[0], present:true, absenceReason:"", pse:5, notes:"", exercises: form.exercises.map(e => ({...e, load:"", obs:"", completed:true})) }); }, 1500);
 };
 const attendance = stSessions.length > 0 ? Math.round((stSessions.filter(s=>s.present).length/stSessions.length)*100) : 0;
-// ── RENDER ──────────────────────────────────────────────────────────────────
+
 return (
 <div>
 <div style={{ fontWeight:800,fontSize:20,marginBottom:18 }}>📋 Acompanhamento de Sessão</div>
-{/* Abas */}
+
 <div style={{ display:"flex",gap:8,marginBottom:16 }}>
 {[{v:"new",l:"➕ Nova Sessão"},{v:"history",l:"📊 Histórico"}].map(t=>(
 <button key={t.v} onClick={()=>setView(t.v)} style={{ flex:1,padding:"10px 0",borderRadius:10,border:"1.5px solid",borderColor:view===t.v?"#FF5603":"#e2e8f0",background:view===t.v?"#FF5603":"#f8fafc",color:view===t.v?"#fff":"#64748b",fontWeight:700,fontSize:13,cursor:"pointer" }}>{t.l}</button>
 ))}
 </div>
-{/* NOVA SESSÃO */}
+
 {view==="new" && <>
 <Card style={{ marginBottom:14 }}>
 <div style={{ fontWeight:700,fontSize:14,marginBottom:12 }}>1. Selecionar Aluno e Programa</div>
@@ -4464,13 +4526,13 @@ return(
 <Btn full onClick={save} disabled={saved}>{saved?"✅ Salvo!":"💾 Salvar Sessão"}</Btn>
 </>}
 </>}
-{/* HISTÓRICO */}
+
 {view==="history" && <>
 <Card style={{ marginBottom:14 }}>
 <Inp label="Aluno" value={selSt} onChange={setSelSt} opts={[{v:"",l:"Selecione..."},...students.map(s=>({v:s.id,l:s.name}))]}/>
 </Card>
 {selSt && <>
-{/* Resumo */}
+
 <Card style={{ marginBottom:14 }}>
 <div style={{ fontWeight:700,fontSize:14,marginBottom:12 }}>📊 Resumo de Adesão</div>
 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10 }}>
@@ -4485,12 +4547,12 @@ return(
 </div>
 ))}
 </div>
-{/* Barra de adesão */}
+
 <div style={{ marginTop:12,background:"#f1f5f9",borderRadius:99,height:8,overflow:"hidden" }}>
 <div style={{ height:"100%",borderRadius:99,background:attendance>=80?"#16a34a":attendance>=60?"#d97706":"#dc2626",width:attendance+"%",transition:"width 0.5s" }}/>
 </div>
 </Card>
-{/* Lista de sessões */}
+
 {stSessions.length===0
 ? <Card style={{ textAlign:"center",padding:32,color:"#94a3b8" }}>Nenhuma sessão registrada ainda.</Card>
 : stSessions.map(s=>{
@@ -4531,9 +4593,7 @@ return(
 </div>
 );
 };
-// ═══════════════════════════════════════════════════════════════════════════════
-// RELATÓRIO DE MONITORAMENTO
-// ═══════════════════════════════════════════════════════════════════════════════
+
 const ReportMonitoring = ({ student: st, logs, period }) => {
 if (!st || !logs || logs.length === 0) return null;
 const periodLabels = { 1:"Mensal", 2:"Bimestral", 3:"Trimestral", 6:"Semestral", 12:"Anual" };
@@ -4545,7 +4605,7 @@ const present = filtered.filter(l => l.pre?.sbp || l.pre?.fc || l.post?.sbp || l
 const total = filtered.length;
 const attendance = total > 0 ? Math.round((present.length/total)*100) : 0;
 const avg = (arr, fn) => { const v = arr.map(fn).filter(x=>x&&!isNaN(parseFloat(x))); return v.length ? (v.reduce((a,b)=>a+parseFloat(b),0)/v.length).toFixed(1) : "—"; };
-// Sinais vitais
+
 const avgPreSbp  = avg(present, l=>l.pre?.sbp||l.pre?.pas);
 const avgPrePad  = avg(present, l=>l.pre?.pad);
 const avgPreFc   = avg(present, l=>l.pre?.fc);
@@ -4554,19 +4614,19 @@ const avgPostPad = avg(present, l=>l.post?.pad);
 const avgPostFc  = avg(present, l=>l.post?.fc);
 const avgSpo2    = avg(present, l=>l.pre?.spo2);
 const avgGly     = avg(present, l=>l.pre?.glycemia);
-// PSE
+
 const hasPSE = filtered.some(l => l.pre?.pse!==""&&l.pre?.pse!==undefined || l.during?.pse!==""&&l.during?.pse!==undefined || l.post?.pse!==""&&l.post?.pse!==undefined);
 const avgPsePre    = avg(filtered, l=>l.pre?.pse);
 const avgPseDuring = avg(filtered, l=>l.during?.pse);
 const avgPsePost   = avg(filtered, l=>l.post?.pse);
-// Disposição e hidratação
+
 const avgDisp = avg(filtered, l=>l.disposition);
 const avgHyd  = avg(filtered, l=>l.hydration);
 const avgDispNum = parseFloat(avgDisp);
 const avgHydNum  = parseFloat(avgHyd);
 const dispLabels = ["","Exausto","Cansado","Neutro","Disposto","Animado"];
 const dispEmoji  = ["","😣","😴","😐","🙂","😁"];
-// Alertas
+
 const alertCount = present.filter(l => {
 const s = parseFloat(l.pre?.sbp||l.pre?.pas);
 const d = parseFloat(l.pre?.pad);
@@ -4575,7 +4635,7 @@ const spo2 = parseFloat(l.pre?.spo2);
 const gly = parseFloat(l.pre?.glycemia);
 return (s>=160)||(d>=100)||(fc>110)||(spo2>0&&spo2<94)||(gly>0&&(gly<70||gly>=200));
 }).length;
-// PSE médio durante — classificação
+
 const pseDuringNum = parseFloat(avgPseDuring);
 const pseDuringCl = !isNaN(pseDuringNum) ? classifyPSE(Math.round(pseDuringNum)) : null;
 return (
@@ -4593,7 +4653,7 @@ Período: {cutoff.toLocaleDateString("pt-BR")} a {now.toLocaleDateString("pt-BR"
 {total === 0 ? (
 <div style={{ textAlign:"center", color:"#94a3b8", padding:40 }}>Nenhum registro no período selecionado.</div>
 ) : <>
-{/* Resumo */}
+
 <div className="report-section" style={{ marginBottom:18 }}>
 <div style={{ fontWeight:700, fontSize:13, color:"#FF5603", textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>Resumo do Período</div>
 <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8 }}>
@@ -4610,7 +4670,7 @@ Período: {cutoff.toLocaleDateString("pt-BR")} a {now.toLocaleDateString("pt-BR"
 ))}
 </div>
 </div>
-{/* Sinais Vitais */}
+
 <div className="report-section" style={{ marginBottom:18 }}>
 <div style={{ fontWeight:700, fontSize:13, color:"#FF5603", textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>Sinais Vitais — Médias do Período</div>
 <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:10 }}>
@@ -4632,7 +4692,7 @@ Período: {cutoff.toLocaleDateString("pt-BR")} a {now.toLocaleDateString("pt-BR"
 ⚠️ {alertCount} sessão(ões) com alertas de sinais vitais fora das Zonas Longevus no período.
 </div>}
 </div>
-{/* PSE */}
+
 {hasPSE && <div className="report-section" style={{ marginBottom:18 }}>
 <div style={{ fontWeight:700, fontSize:13, color:"#FF5603", textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>Percepção Subjetiva de Esforço (PSE 0–10)</div>
 <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:pseDuringCl?10:0 }}>
@@ -4652,7 +4712,7 @@ Período: {cutoff.toLocaleDateString("pt-BR")} a {now.toLocaleDateString("pt-BR"
 PSE médio durante o exercício: {avgPseDuring}/10 — {pseDuringCl.label}. {pseDuringCl.rec}
 </div>}
 </div>}
-{/* Disposição e Hidratação */}
+
 {(filtered.some(l=>l.disposition)||filtered.some(l=>l.hydration)) && <div className="report-section" style={{ marginBottom:18 }}>
 <div style={{ fontWeight:700, fontSize:13, color:"#FF5603", textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>Bem-estar e Hidratação</div>
 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
@@ -4670,7 +4730,7 @@ PSE médio durante o exercício: {avgPseDuring}/10 — {pseDuringCl.label}. {pse
 </div>}
 </div>
 </div>}
-{/* Tabela de sessões */}
+
 <div className="report-section" style={{ marginBottom:18 }}>
 <div style={{ fontWeight:700, fontSize:13, color:"#FF5603", textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>Histórico de Sessões</div>
 <div style={{ overflowX:"auto" }}>
@@ -4800,7 +4860,7 @@ return (
 <Inp label="" value={selA} onChange={setSelA} opts={[{v:"",l:"Selecione..."},...stA.slice().reverse().map(a=>{const gc=classifyGlobal(a.globalScore||0);return{v:a.id,l:`${fmt(a.date)} — ${gc.label} (${a.globalScore||0} pts)`};})]}/>
 </Card>
 )}
-{/* Botão direto para monitoring */}
+
 {reportType==="monitoring" && selSt && (
 <Card style={{ marginBottom:14, border:"1.5px solid #FF560322" }}>
 <div style={{ fontWeight:700,fontSize:14,marginBottom:4 }}>📊 Relatório de Monitoramento</div>
@@ -4845,7 +4905,7 @@ const [dbReady,setDbReady]=useState(false);
 const [hubResults,setHubResults]=useState(()=>LS.get("longevus_hub_results",[]));
 useEffect(()=>{LS.set("longevus_hub_results",hubResults);},[hubResults]);
 const [syncing,setSyncing]=useState(false);
-// Carregar dados do Supabase ao iniciar
+
 useEffect(()=>{
 (async()=>{
 setSyncing(true);
@@ -4868,7 +4928,7 @@ setSyncing(false);
 },[]);
 const [page,setPage]=useState("dashboard");
 const [pageProps,setPageProps]=useState({});
-// Sync local
+
 useEffect(()=>{LS.set("longevus_students",students);},[students]);
 useEffect(()=>{LS.set("longevus_assessments",assessments);},[assessments]);
 useEffect(()=>{LS.set("longevus_daily",dailyLogs);},[dailyLogs]);
@@ -4876,7 +4936,7 @@ useEffect(()=>{LS.set("longevus_docs",documents);},[documents]);
 useEffect(()=>{LS.set("longevus_cardio",cardioRecords);},[cardioRecords]);
 useEffect(()=>{LS.set("longevus_programs",programs);},[programs]);
 useEffect(()=>{LS.set("longevus_sessions",sessions);},[sessions]);
-// Sync Supabase — salva cada item individualmente
+
 useEffect(()=>{ if(dbReady) students.forEach(s=>DB.save("students",s.id,s)); },[students,dbReady]);
 useEffect(()=>{ if(dbReady) assessments.forEach(a=>DB.save("assessments",a.id,a,a.studentId)); },[assessments,dbReady]);
 useEffect(()=>{ if(dbReady) dailyLogs.forEach(l=>DB.save("daily_logs",l.id,l,l.studentId)); },[dailyLogs,dbReady]);
@@ -4937,7 +4997,7 @@ return (
 <span style={{ fontSize:10,fontWeight:activePage===n.id?700:500 }}>{n.label}</span>
 </button>
 ))}
-{/* Botão hamburguer */}
+
 <button onClick={()=>setMenuOpen(o=>!o)} style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,padding:"9px 4px 8px",border:"none",background:"transparent",cursor:"pointer",color:menuOpen||menuItems.some(m=>m.id===activePage)?"#FF5603":"#94a3b8",position:"relative" }}>
 <div style={{ display:"flex",flexDirection:"column",gap:4,alignItems:"center",justifyContent:"center" }}>
 <div style={{ width:18,height:2,borderRadius:2,background:menuOpen||menuItems.some(m=>m.id===activePage)?"#FF5603":"#94a3b8",transition:"background 0.2s" }}/>
@@ -4945,7 +5005,7 @@ return (
 <div style={{ width:18,height:2,borderRadius:2,background:menuOpen||menuItems.some(m=>m.id===activePage)?"#FF5603":"#94a3b8",transition:"background 0.2s" }}/>
 </div>
 <span style={{ fontSize:10,fontWeight:menuOpen||menuItems.some(m=>m.id===activePage)?700:500 }}>Mais</span>
-{/* Menu dropdown */}
+
 {menuOpen&&<div style={{ position:"absolute",bottom:"100%",right:0,background:"#fff",borderRadius:"14px 14px 0 14px",boxShadow:"0 -4px 24px #0000001a",border:"1.5px solid #f1f5f9",minWidth:180,zIndex:999,overflow:"hidden" }}>
 {menuItems.map(m=>{
 const isActive = activePage===m.id;
@@ -4970,7 +5030,7 @@ return(
 }
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App/>);
-// ═══════════════════════════════════════════════════════════════════════════════
+
 const CognitiveHub = ({ students, hubResults, setHubResults }) => {
   const [selSt, setSelSt] = useState("");
   const st = students.find(s => s.id === selSt);
@@ -5023,7 +5083,6 @@ const CognitiveHub = ({ students, hubResults, setHubResults }) => {
     </div>
   );
 };
-
 
 </script>
 </body>
