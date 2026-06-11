@@ -1558,12 +1558,13 @@ return (
 ["Altura",a.aha?.height,"cm"],
 ["IMC",a.aha?.imc,"kg/m²"],
 ["Circ. Abdominal",a.physical?.waist,"cm"],
-["Circ. Panturrilha",a.physical?.calf,"cm"],
-["SPPB Score",a.physical?.sppb,"pontos"],
+["Circ. Panturrilha",a.aha?.calf,"cm"],
+["SPPB Equilíbrio",a.physical?.sppbBalanceScore!==undefined?String(a.physical.sppbBalanceScore):"","pts"],
+["SPPB Chair Stand",a.physical?.sppbChairUnable?"Incapaz":(a.physical?.sppbChair||""),"seg"],
 ["TUG",a.physical?.tug,"seg"],
+["Preensão Manual",a.physical?.grip,"kgf"],
 ["Sentar e Alcançar",a.physical?.sitreach,"cm"],
-["Preensão Manual",a.physical?.handgrip,"kgf"],
-["Sentar e Levantar",a.physical?.chairstand,"reps"],
+["Marcha Estacionária",a.physical?.march,"passos"],
 ].filter(([,v])=>v).map(([label,val,unit])=>(
 <div key={label} style={{ display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #f1f5f9" }}>
 <div style={{ fontSize:13,color:"#475569" }}>{label}</div>
@@ -3241,9 +3242,9 @@ return (
 <Badge color={fitCl.color} bg={fitCl.bg}>{fitCl.label} — Score: {a.physical?.score}/100</Badge>
 </div>
 <div style={{ display:"flex", flexDirection:"column", gap:8, marginTop:10 }}>
-{[["Levantar/Sentar 30s", a.physical?.chair, v=>classifyChairStand(v,sex), "reps"],
+{[["SPPB — Equilíbrio", a.physical?.sppbBalanceScore!==undefined?String(a.physical.sppbBalanceScore):null, v=>classifySPPBBalance(parseFloat(v)), "pts"],
+["SPPB — Chair Stand", a.physical?.sppbChairUnable?"unable":(a.physical?.sppbChair||null), v=>classifySPPBChairStand(v), a.physical?.sppbChairUnable?"":"seg"],
 ["Preensão Manual", a.physical?.grip, v=>classifyHandGrip(v,sex), "kgf"],
-["Equilíbrio Unipodal", a.physical?.balance, classifyBalance1Leg, "seg"],
 ["TUG — Timed Up and Go", a.physical?.tug, classifyTUG, "seg"],
 ["Sentar e Alcançar", a.physical?.sitreach, classifySitReach, "cm"],
 ["Marcha Estacionária 2min", a.physical?.march, v=>classifyMarch(v,sex), "passos"],
