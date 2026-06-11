@@ -1797,10 +1797,8 @@ return(
 </Card>}
 {/* Botão Gerar Programa */}
 <div style={{ marginBottom:14 }}>
-<Btn full icon="zap" onClick={()=>nav("program",{studentId:a.studentId,assessmentId:a.id})}>⚡ Gerar Programa de Treinamento</Btn>
+<Btn full icon="zap" onClick={()=>nav("extprograma")}>⚡ Gerar Programa de Treinamento</Btn>
 </div>
-{/* Perfil Funcional Automático */}
-<FunctionalProfile assessment={a} student={st}/>
 {/* Cardiorrespiratório */}
 {a?.cardioMode && a.cardioMode !== "skip" && <Card style={{ marginBottom:14 }}>
 <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12 }}>
@@ -2701,6 +2699,7 @@ Zona alvo: <strong style={{ color:"#FF5603" }}>{predRisk.fcr}</strong> · Borg r
 const Daily = ({ students, assessments, dailyLogs, setDailyLogs, cardioRecords, setCardioRecords }) => {
 const [modal,setModal]=useState(false);
 const [cardioModal,setCardioModal]=useState(false);
+const [detailsModal,setDetailsModal]=useState(false);
 const [selCardioSt,setSelCardioSt]=useState("");
 const [filterSt,setFilterSt]=useState("");
 const [activeMoments,setActiveMoments]=useState({pre:true,during:false,post:false});
@@ -2757,6 +2756,79 @@ setCardioModal(false);
 }}
 />}
 </Modal>}
+{detailsModal&&(()=>{
+const dSt = students.find(s=>s.id===form.studentId);
+const dA = dSt ? [...(assessments||[])].filter(a=>a.studentId===dSt.id).sort((a,b)=>b.date?.localeCompare(a.date))[0] : null;
+const dLogs = dSt ? [...dailyLogs].filter(l=>l.studentId===dSt.id).sort((a,b)=>b.date?.localeCompare(a.date)) : [];
+const lastLog = dLogs[0];
+const riskFlags = [];
+if (dA?.parqApplied && dA?.parqFailed) riskFlags.push({t:"PAR-Q Positivo",c:"#dc2626",bg:"#fee2e2"});
+if ((dA?.aha?.score||0)>=4) riskFlags.push({t:"Alto Risco Cardiovascular (AHA)",c:"#dc2626",bg:"#fee2e2"});
+if (dA?.aha?.calf && parseFloat(dA.aha.calf)<31) riskFlags.push({t:"Risco de Sarcopenia (Panturrilha < 31cm)",c:"#ea580c",bg:"#ffedd5"});
+if ((dA?.functional?.score||0)<40) riskFlags.push({t:"Capacidade Funcional Comprometida",c:"#d97706",bg:"#fef9c3"});
+if (dA?.physical?.tug && parseFloat(dA.physical.tug)>13.5) riskFlags.push({t:"Risco de Quedas (TUG alterado)",c:"#dc2626",bg:"#fee2e2"});
+const dispLabel = {1:"😣 Exausto",2:"😴 Cansado",3:"😐 Neutro",4:"🙂 Disposto",5:"😁 Animado"};
+const hydrLabel = {1:"Muito pouco",2:"Pouco",3:"Regular",4:"Bom",5:"Ótimo"};
+return (
+<div style={{ position:"fixed",inset:0,background:"#0009",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:1100 }}>
+<div style={{ background:"#fff",borderRadius:"20px 20px 0 0",width:"100%",maxWidth:600,maxHeight:"88vh",overflowY:"auto",paddingBottom:80 }}>
+<div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 20px 14px",borderBottom:"1px solid #f1f5f9",position:"sticky",top:0,background:"#fff",zIndex:10 }}>
+<div style={{ fontWeight:800,fontSize:17,color:"#0f172a" }}>🩺 {dSt?.name||"Aluno"}</div>
+<button onClick={()=>setDetailsModal(false)} style={{ background:"#f1f5f9",border:"none",borderRadius:8,width:32,height:32,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}><I n="x" s={15}/></button>
+</div>
+<div style={{ padding:"18px 20px 20px",display:"flex",flexDirection:"column",gap:14 }}>
+{riskFlags.length>0&&<div>
+<div style={{ fontWeight:700,fontSize:12,color:"#dc2626",textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:6 }}>⚠️ Alertas de Risco</div>
+<div style={{ display:"flex",flexDirection:"column",gap:5 }}>
+{riskFlags.map((f,i)=><div key={i} style={{ background:f.bg,border:"1px solid "+f.c+"44",borderRadius:8,padding:"6px 10px",fontSize:12,fontWeight:700,color:f.c }}>• {f.t}</div>)}
+</div>
+</div>}
+{(dA?.anamnese?.pathologies||dA?.anamnese?.medications)&&<div>
+<div style={{ fontWeight:700,fontSize:12,color:"#FF5603",textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:6 }}>🏥 Saúde</div>
+{dA.anamnese.pathologies&&<div style={{ background:"#f8fafc",borderRadius:8,padding:"8px 10px",marginBottom:5 }}>
+<div style={{ fontSize:10,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:2 }}>Patologias</div>
+<div style={{ fontSize:13,color:"#0f172a" }}>{dA.anamnese.pathologies}</div>
+</div>}
+{dA.anamnese.medications&&<div style={{ background:"#f8fafc",borderRadius:8,padding:"8px 10px" }}>
+<div style={{ fontSize:10,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:2 }}>Medicamentos</div>
+<div style={{ fontSize:13,color:"#0f172a" }}>{dA.anamnese.medications}</div>
+</div>}
+</div>}
+{(dA?.anamnese?.mainComplaints||dA?.anamnese?.painLocation)&&<div>
+<div style={{ fontWeight:700,fontSize:12,color:"#FF5603",textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:6 }}>💬 Queixas Relatadas</div>
+{dA.anamnese.mainComplaints&&<div style={{ background:"#f8fafc",borderRadius:8,padding:"8px 10px",marginBottom:5 }}>
+<div style={{ fontSize:10,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:2 }}>Sintomas</div>
+<div style={{ fontSize:13,color:"#0f172a" }}>{dA.anamnese.mainComplaints}</div>
+</div>}
+{dA.anamnese.painLocation&&<div style={{ background:"#fff4ee",border:"1px solid #FF560322",borderRadius:8,padding:"8px 10px" }}>
+<div style={{ fontSize:10,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:2 }}>Localização de dores</div>
+<div style={{ fontSize:13,color:"#0f172a" }}>{dA.anamnese.painLocation}</div>
+</div>}
+</div>}
+{dA?.anamnese?.goals&&<div>
+<div style={{ fontWeight:700,fontSize:12,color:"#FF5603",textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:6 }}>🎯 Objetivos</div>
+<div style={{ background:"#f0fdf4",border:"1px solid #86efac",borderRadius:8,padding:"8px 10px" }}>
+<div style={{ fontSize:13,color:"#0f172a" }}>{dA.anamnese.goals}</div>
+</div>
+</div>}
+{lastLog&&<div>
+<div style={{ fontWeight:700,fontSize:12,color:"#FF5603",textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:6 }}>📅 Último Registro — {fmt(lastLog.date)}</div>
+<div style={{ display:"flex",flexDirection:"column",gap:5 }}>
+{lastLog.disposition&&<div style={{ background:"#f8fafc",borderRadius:8,padding:"7px 10px",fontSize:13 }}><span style={{ color:"#94a3b8",fontSize:11 }}>Disposição: </span><span style={{ fontWeight:700 }}>{dispLabel[lastLog.disposition]||lastLog.disposition}</span></div>}
+{lastLog.hydration&&<div style={{ background:"#f8fafc",borderRadius:8,padding:"7px 10px",fontSize:13 }}><span style={{ color:"#94a3b8",fontSize:11 }}>Hidratação: </span><span style={{ fontWeight:700 }}>💧 {hydrLabel[lastLog.hydration]||lastLog.hydration}</span></div>}
+{lastLog.pre?.pain&&<div style={{ background:"#fff4ee",border:"1px solid #FF560322",borderRadius:8,padding:"7px 10px",fontSize:13 }}><span style={{ color:"#94a3b8",fontSize:11 }}>Dor/Desconforto (pré): </span><span style={{ fontWeight:700,color:"#ea580c" }}>{lastLog.pre.pain}</span></div>}
+{lastLog.during?.pain&&<div style={{ background:"#fff4ee",border:"1px solid #FF560322",borderRadius:8,padding:"7px 10px",fontSize:13 }}><span style={{ color:"#94a3b8",fontSize:11 }}>Dor/Desconforto (durante): </span><span style={{ fontWeight:700,color:"#ea580c" }}>{lastLog.during.pain}</span></div>}
+{lastLog.post?.pain&&<div style={{ background:"#fff4ee",border:"1px solid #FF560322",borderRadius:8,padding:"7px 10px",fontSize:13 }}><span style={{ color:"#94a3b8",fontSize:11 }}>Dor/Desconforto (pós): </span><span style={{ fontWeight:700,color:"#ea580c" }}>{lastLog.post.pain}</span></div>}
+{lastLog.notes&&<div style={{ background:"#f8fafc",borderRadius:8,padding:"7px 10px",fontSize:13 }}><span style={{ color:"#94a3b8",fontSize:11 }}>Obs: </span><span>{lastLog.notes}</span></div>}
+</div>
+</div>}
+{!dA&&<div style={{ textAlign:"center",color:"#94a3b8",fontSize:13,padding:"20px 0" }}>Nenhuma avaliação registrada para este aluno.</div>}
+<button onClick={()=>setDetailsModal(false)} style={{ width:"100%",padding:"12px 0",background:"#FF5603",color:"#fff",border:"none",borderRadius:10,fontWeight:700,fontSize:14,cursor:"pointer",marginTop:4 }}>Fechar</button>
+</div>
+</div>
+</div>
+);
+})()}
 {modal&&<Modal title="Novo Registro" onClose={()=>setModal(false)}>
 {(()=>{
 const selStudent = students.find(s=>s.id===form.studentId);
@@ -2775,6 +2847,7 @@ return isBetaBlocker ? (
 ) : null;
 })()}
 <Inp label="Aluno *" value={form.studentId} onChange={v=>setForm(f=>({...f,studentId:v}))} opts={[{v:"",l:"Selecione..."},...students.map(s=>({v:s.id,l:s.name}))]}/>
+{form.studentId&&<button onClick={()=>setDetailsModal(true)} style={{ width:"100%",marginBottom:12,padding:"10px 0",background:"#f0f9ff",border:"1.5px solid #0ea5e9",borderRadius:10,color:"#0369a1",fontWeight:700,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6 }}>🩺 Detalhes do Aluno</button>}
 <Inp label="Data" type="date" value={form.date} onChange={v=>setForm(f=>({...f,date:v}))}/>
 {/* Disposição */}
 <div style={{ marginBottom:16 }}>
@@ -3048,6 +3121,31 @@ return (
 </div>
 {st.notes && <div style={{ marginTop:8, fontSize:12, color:"#64748b", background:"#f8fafc", borderRadius:8, padding:"8px 12px" }}>Obs: {st.notes}</div>}
 </div>
+{/* Anamnese */}
+{a.anamnese && (a.anamnese.pathologies||a.anamnese.medications||a.anamnese.allergies||a.anamnese.surgeries||a.anamnese.mainComplaints||a.anamnese.goals) && <div className="report-section" style={{ marginBottom:20 }}>
+<div style={{ fontWeight:700, fontSize:13, color:"#FF5603", textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>Anamnese Clínica</div>
+<div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:0 }}>
+{a.anamnese.pathologies&&<Row label="Patologias / Doenças" value={a.anamnese.pathologies}/>}
+{a.anamnese.medications&&<Row label="Medicamentos em uso" value={a.anamnese.medications}/>}
+{a.anamnese.allergies&&<Row label="Alergias" value={a.anamnese.allergies}/>}
+{a.anamnese.surgeries&&<Row label="Cirurgias / Procedimentos" value={a.anamnese.surgeries}/>}
+{a.anamnese.mainComplaints&&<Row label="Queixas / Sintomas" value={a.anamnese.mainComplaints}/>}
+{a.anamnese.painLocation&&<Row label="Localização de dores" value={a.anamnese.painLocation}/>}
+{a.anamnese.goals&&<Row label="Objetivos" value={a.anamnese.goals}/>}
+</div>
+{(a.anamnese.physActivityHistory||a.anamnese.sleepHours||a.anamnese.sleepQuality||a.anamnese.dietQuality||a.anamnese.stressLevel||a.anamnese.smoking||a.anamnese.alcohol) && <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:0, marginTop:6 }}>
+{a.anamnese.physActivityHistory&&<Row label="Atividade física" value={({nunca:"Nunca praticou",passado:"Praticou no passado",irregular:"Pratica irregularmente",regular:"Pratica regularmente"})[a.anamnese.physActivityHistory]||a.anamnese.physActivityHistory}/>}
+{a.anamnese.physActivityType&&<Row label="Modalidade(s)" value={a.anamnese.physActivityType}/>}
+{a.anamnese.physActivityFreq&&<Row label="Frequência semanal" value={a.anamnese.physActivityFreq}/>}
+{a.anamnese.sleepHours&&<Row label="Horas de sono/noite" value={a.anamnese.sleepHours}/>}
+{a.anamnese.sleepQuality&&<Row label="Qualidade do sono" value={({ruim:"Ruim",regular:"Regular",boa:"Boa",otima:"Ótima"})[a.anamnese.sleepQuality]||a.anamnese.sleepQuality}/>}
+{a.anamnese.dietQuality&&<Row label="Qualidade da alimentação" value={({ruim:"Ruim",regular:"Regular",boa:"Boa",otima:"Ótima"})[a.anamnese.dietQuality]||a.anamnese.dietQuality}/>}
+{a.anamnese.stressLevel&&<Row label="Nível de estresse" value={({baixo:"Baixo",moderado:"Moderado",alto:"Alto",muito_alto:"Muito alto"})[a.anamnese.stressLevel]||a.anamnese.stressLevel}/>}
+{a.anamnese.smoking&&<Row label="Tabagismo" value={({nao:"Não fuma",ex:"Ex-fumante",sim:"Fumante"})[a.anamnese.smoking]||a.anamnese.smoking}/>}
+{a.anamnese.alcohol&&<Row label="Consumo de álcool" value={({nao:"Não consome",ocasional:"Ocasional",regular:"Regular"})[a.anamnese.alcohol]||a.anamnese.alcohol}/>}
+</div>}
+{a.anamnese.observations&&<div style={{ marginTop:8, fontSize:12, color:"#64748b", background:"#f8fafc", borderRadius:8, padding:"8px 12px" }}>Obs: {a.anamnese.observations}</div>}
+</div>}
 {/* Alertas */}
 {riskFlags.length > 0 && <div style={{ marginBottom:20 }}>
 <div style={{ fontWeight:700, fontSize:13, color:"#dc2626", textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>⚠️ Alertas Identificados</div>
@@ -3770,6 +3868,15 @@ if (risk.alert) lines.push("⚠️ " + risk.alert);
 if (p.medications?.includes("beta")) lines.push("⚠️ Beta-bloqueador: priorizar PSE/Borg como guia de intensidade.");
 }
 }
+lines.push("");
+lines.push("Recomendações de Estilo de Vida:");
+lines.push("• Estimular atividades de socialização pelo menos 2x/semana, como grupos de caminhada, dança, convivência, atividades religiosas, oficinas ou encontros familiares, auxiliando na saúde emocional e cognitiva.");
+lines.push("• Incentivar participação ativa em atividades domésticas leves e seguras, promovendo manutenção da autonomia funcional nas atividades do dia a dia.");
+lines.push("• Estimular atividades cognitivas frequentes: leitura, conversas sociais, jogos simples de raciocínio, música, memória e estímulos mentais variados.");
+lines.push("• Atenção especial à prevenção de quedas no ambiente domiciliar: evitar tapetes soltos, manter boa iluminação noturna e utilizar calçados estáveis e seguros.");
+lines.push("• Manter hidratação adequada ao longo do dia, especialmente antes, durante e após a prática de exercícios físicos.");
+lines.push("• Priorizar sono de qualidade (7 a 9 horas/noite), com horários regulares, ambiente escuro e silencioso, evitando telas antes de dormir.");
+lines.push("• Seguir orientações médicas e nutricionais vigentes, mantendo uso correto dos medicamentos e acompanhamento periódico de saúde.");
 return lines.join(NL);
 };
 const buildPrompt = (type, a, student, stA, stL) => {
