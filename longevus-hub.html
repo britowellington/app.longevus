@@ -3482,20 +3482,64 @@ function ModuleBalloon({onBack}) {
 
 
 
+const NAV_ITEMS=[
+  {id:"inicio",label:"Início",icon:"home",url:"longevus-app.html"},
+  {id:"alunos",label:"Alunos",icon:"users",url:"longevus-app.html"},
+  {id:"avaliacoes",label:"Avaliações",icon:"clip",url:"longevus-app.html"},
+  {id:"programa",label:"Programa",icon:"zap",url:"longevus-programa.html"},
+];
+const MENU_ITEMS=[
+  {id:"hub",label:"Hub Cognitivo",icon:"zap",url:"longevus-hub.html"},
+  {id:"monitoramento",label:"Monitoramento",icon:"act",url:"longevus-app.html"},
+  {id:"relatorios",label:"Relatórios",icon:"bar",url:"longevus-app.html"},
+  {id:"documentos",label:"Documentos",icon:"clip",url:"longevus-app.html"},
+  {id:"biblioteca",label:"Biblioteca",icon:"clip",url:"longevus-biblioteca.html"},
+  {id:"gerador",label:"Gerador de Programa",icon:"zap",url:"longevus-programa.html"},
+];
+const INav=({n,s=21,c="currentColor"})=>{const paths={home:["M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z","M9 22V12h6v10"],users:["M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2","M23 21v-2a4 4 0 0 0-3-3.87","M16 3.13a4 4 0 0 1 0 7.75"],clip:["M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2","M9 3h6v4H9z","M9 12h6","M9 16h4"],act:["M22 12h-4l-3 9L9 3l-3 9H2"],bar:["M18 20V10","M12 20V4","M6 20v-6"],zap:["M13 2L3 14h9l-1 8 10-12h-9z"],menu:["M3 12h18","M3 6h18","M3 18h18"]};return(<svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">{(paths[n]||[]).map((d,i)=><path key={i} d={d}/>)}</svg>);};
+function NavBar({active}){
+  const [menuOpen,setMenuOpen]=React.useState(false);
+  const go=url=>window.open(url,"_self");
+  return(
+    <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#fff",borderTop:"1.5px solid #e2e8f0",display:"flex",zIndex:200,paddingBottom:"env(safe-area-inset-bottom)"}}>
+      {NAV_ITEMS.map(n=>(
+        <button key={n.id} onClick={()=>go(n.url)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,padding:"9px 4px 8px",border:"none",background:"transparent",cursor:"pointer",color:active===n.id?"#FF5603":"#94a3b8"}}>
+          <INav n={n.icon} s={21} c={active===n.id?"#FF5603":"#94a3b8"}/>
+          <span style={{fontSize:10,fontWeight:active===n.id?700:500}}>{n.label}</span>
+        </button>
+      ))}
+      <button onClick={()=>setMenuOpen(o=>!o)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,padding:"9px 4px 8px",border:"none",background:"transparent",cursor:"pointer",color:menuOpen?"#FF5603":"#94a3b8",position:"relative"}}>
+        <INav n="menu" s={21} c={menuOpen?"#FF5603":"#94a3b8"}/>
+        <span style={{fontSize:10,fontWeight:menuOpen?700:500}}>Mais</span>
+        {menuOpen&&<div style={{position:"absolute",bottom:"100%",right:0,background:"#fff",borderRadius:"14px 14px 0 14px",boxShadow:"0 -4px 24px #0000001a",border:"1.5px solid #f1f5f9",minWidth:200,zIndex:999,overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
+          {MENU_ITEMS.map(m=>(
+            <button key={m.id} onClick={()=>go(m.url)} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"14px 18px",border:"none",background:"#fff",cursor:"pointer",borderBottom:"1px solid #f8fafc"}}>
+              <INav n={m.icon} s={18} c="#64748b"/>
+              <span style={{fontSize:14,fontWeight:500,color:"#0f172a"}}>{m.label}</span>
+            </button>
+          ))}
+        </div>}
+      </button>
+    </div>
+  );
+}
 function App(){
   const [mod,setMod]=useState(null);
   const back=()=>setMod(null);
-  if(!mod) return <HubHome onOpen={setMod}/>;
-  if(mod==="cartas")     return <ModuleCartas     onBack={back}/>;
-  if(mod==="sequencia")  return <ModuleSequencia  onBack={back}/>;
-  if(mod==="genio")      return <ModuleGenio      onBack={back}/>;
-  if(mod==="pares")      return <ModulePares      onBack={back}/>;
-  if(mod==="padroes")    return <ModulePadroes    onBack={back}/>;
-  if(mod==="caca")       return <ModuleCaca       onBack={back}/>;
-  if(mod==="listar")     return <ModuleListar     onBack={back}/>;
-  if(mod==="completar")  return <ModuleCompletar  onBack={back}/>;
-  if(mod==="baloes")     return <ModuleBalloon    onBack={back}/>;
-  return <HubHome onOpen={setMod}/>;
+  const content = (()=>{
+    if(!mod) return <HubHome onOpen={setMod}/>;
+    if(mod==="cartas")     return <ModuleCartas     onBack={back}/>;
+    if(mod==="sequencia")  return <ModuleSequencia  onBack={back}/>;
+    if(mod==="genio")      return <ModuleGenio      onBack={back}/>;
+    if(mod==="pares")      return <ModulePares      onBack={back}/>;
+    if(mod==="padroes")    return <ModulePadroes    onBack={back}/>;
+    if(mod==="caca")       return <ModuleCaca       onBack={back}/>;
+    if(mod==="listar")     return <ModuleListar     onBack={back}/>;
+    if(mod==="completar")  return <ModuleCompletar  onBack={back}/>;
+    if(mod==="baloes")     return <ModuleBalloon    onBack={back}/>;
+    return <HubHome onOpen={setMod}/>;
+  })();
+  return <><div style={{paddingBottom:80}}>{content}</div><NavBar active="hub"/></>;
 }
 
 
