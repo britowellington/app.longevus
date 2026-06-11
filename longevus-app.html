@@ -3728,140 +3728,151 @@ const lines = [
 nome+", "+age+" anos, sexo "+sex+"."+(student.notes?" Observações: "+student.notes+".":""),
 "",
 "RESUMO CLÍNICO",
-pronoun.charAt(0).toUpperCase()+pronoun.slice(1)+" "+nome+" foi submetid"+pronoun2+" à avaliação física integrada pelo protocolo Longevus. O índice global obtido foi de "+(a.globalScore||0)+" pontos, classificado como "+gc.label+". Índice cardiovascular: "+cvScore+". Funcional: "+(a.functional?.score||0)+" ("+funcCl.label+"). Aptidão Física: "+(a.physical?.score||0)+" ("+fitCl.label+").",
+pronoun.charAt(0).toUpperCase()+pronoun.slice(1)+" "+nome+", "+age+" anos, foi avaliado"+pronoun2+" pelo protocolo Longevus em "+data+". Índice global: "+(a.globalScore||0)+" pts — "+gc.label+". "
++(riskFactors.length>0?"Fatores de risco cardiovascular: "+riskFactors.join(", ")+". ":"Sem fatores de risco cardiovascular identificados. ")
++(avdProbs.length>0?"Limitações nas AVDs: "+avdProbs.join(", ")+". ":"")
++(aivdProbs.length>0?"Limitações nas AIVDs: "+aivdProbs.join(", ")+". ":"")
++(a.anamnese?.goals?"Objetivo: "+a.anamnese.goals+".":""),
 "",
-...(a.parqApplied ? [
-"PAR-Q",
-a.parqFailed
-? "PAR-Q POSITIVO — respostas afirmativas identificadas. Avaliação médica prévia recomendada conforme diretriz ACSM/AHA."
-+" "+(Object.entries(a.parq||{}).filter(([,v])=>v===true).map(([k])=>({q1:"Doença cardíaca",q2:"Dor no peito com esforço",q3:"Tontura/desmaio",q4:"Problema ósseo/articular",q5:"Medicamento para PA/coração",q6:"Razão para não exercitar",q7:"Mais de 65 anos/sedentário"})[k]).filter(Boolean).join("; "))
-: "PAR-Q negativo. Sem contraindicações identificadas pelo questionário de prontidão para atividade física.",
-"",
-] : []),
-...(a.anamnese&&(a.anamnese.pathologies||a.anamnese.medications||a.anamnese.allergies||a.anamnese.surgeries||a.anamnese.mainComplaints||a.anamnese.goals) ? [
-"ANAMNESE CLÍNICA",
-...(a.anamnese.pathologies?["Patologias / Doenças: "+a.anamnese.pathologies]:[]),
-...(a.anamnese.medications?["Medicamentos em uso: "+a.anamnese.medications]:[]),
-...(a.anamnese.allergies?["Alergias: "+a.anamnese.allergies]:[]),
-...(a.anamnese.surgeries?["Cirurgias / Procedimentos: "+a.anamnese.surgeries]:[]),
-...(a.anamnese.mainComplaints?["Queixas / Sintomas: "+a.anamnese.mainComplaints]:[]),
-...(a.anamnese.painLocation?["Localização de dores: "+a.anamnese.painLocation]:[]),
-...(a.anamnese.goals?["Objetivos: "+a.anamnese.goals]:[]),
-...(a.anamnese.physActivityHistory?["Atividade física: "+({nunca:"Nunca praticou",passado:"Praticou no passado",irregular:"Pratica irregularmente",regular:"Pratica regularmente"})[a.anamnese.physActivityHistory]]:[]),
-...(a.anamnese.sleepHours||a.anamnese.sleepQuality?["Sono: "+(a.anamnese.sleepHours?a.anamnese.sleepHours+"h/noite":"")+(a.anamnese.sleepQuality?" — qualidade "+({ruim:"Ruim",regular:"Regular",boa:"Boa",otima:"Ótima"})[a.anamnese.sleepQuality]:"")]:[]),
-...(a.anamnese.stressLevel?["Nível de estresse: "+({baixo:"Baixo",moderado:"Moderado",alto:"Alto",muito_alto:"Muito alto"})[a.anamnese.stressLevel]]:[]),
-...(a.anamnese.smoking&&a.anamnese.smoking!=="nao"?["Tabagismo: "+({ex:"Ex-fumante",sim:"Fumante ativo"})[a.anamnese.smoking]]:[]),
-...(a.anamnese.alcohol&&a.anamnese.alcohol!=="nao"?["Álcool: "+({ocasional:"Consumo ocasional",regular:"Consumo regular"})[a.anamnese.alcohol]]:[]),
-...(a.anamnese.observations?["Observações: "+a.anamnese.observations]:[]),
-"",
-] : []),
-"RISCO CARDIOVASCULAR (AHA)",
-"Classificação: "+ahaCl.label+" (score AHA: "+(a.aha?.score||0)+")."
-+(a.aha?.bmi?" IMC: "+a.aha.bmi+" kg/m².":"")
-+(a.aha?.sbp?" PA: "+a.aha.sbp+"/"+a.aha.dbp+" mmHg.":"")
-+(a.aha?.hr?" FC repouso: "+a.aha.hr+" bpm.":"")
-+(a.aha?.waist?" Cintura: "+a.aha.waist+" cm.":"")
-+(a.aha?.calf?" Panturrilha: "+a.aha.calf+" cm — "+(calfRisk?.label||"—")+".":"")
-+(riskFactors.length>0?" Fatores de risco: "+riskFactors.join(", ")+".":""),
-(a.aha?.score||0)>=4
-? "Risco ALTO: iniciar com baixa intensidade (40-50% FCmáx), monitoramento contínuo de PA e FC, avaliação médica recomendada antes de intensidades moderadas a altas (AHA/ACSM)."
-: (a.aha?.score||0)>=2
-? "Risco MODERADO: intensidade 50-70% FCmáx, aferir PA antes e após as sessões (AHA/ACSM)."
-: "Baixo risco cardiovascular. Exercício de intensidade moderada a vigorosa indicado com progressão gradual (ACSM).",
-"",
-"CAPACIDADE FUNCIONAL (SPIRDUSO)",
-"Score: "+(a.functional?.score||0)+"/100 — "+funcCl.label+"."
-+(avdProbs.length>0?" Limitações nas AVDs: "+avdProbs.join(", ")+".":"")
-+(aivdProbs.length>0?" Limitações nas AIVDs: "+aivdProbs.join(", ")+".":"")
-+(funcRisks.length>0?" Riscos funcionais: "+funcRisks.join(", ")+".":""),
-(a.functional?.score||0)<40
-? "Capacidade funcional comprometida. Programa de reabilitação funcional indicado, com foco em AVDs, equilíbrio e mobilidade (Spirduso et al.)."
-: (a.functional?.score||0)<60
-? "Capacidade funcional abaixo da média. Estimular independência funcional com treino de equilíbrio, coordenação e força funcional."
-: "Boa capacidade funcional. Manter programa multicomponente para prevenir declínio (ACSM para adultos 50+).",
-"",
-"TESTES FÍSICOS",
-"Classificação geral: "+fitCl.label+" (score: "+(a.physical?.score||0)+"/100).",
 ];
-testLines.forEach(t=>lines.push("• "+t));
-const weakTests = [];
-if (a.physical?.tug&&parseFloat(a.physical.tug)>13.5) weakTests.push("TUG alterado: priorizar treino de marcha e equilíbrio dinâmico");
-if (a.physical?.sppbBalanceScore!==undefined&&parseFloat(a.physical.sppbBalanceScore)<2) weakTests.push("Equilíbrio comprometido: treino de equilíbrio estático e dinâmico indicado");
-if (a.physical?.grip&&classifyHandGrip(a.physical.grip,student.sex)?.label==="Fraco") weakTests.push("Preensão reduzida: possível sarcopenia, treino de força prioritário");
-if (weakTests.length>0) {
+if (a.parqApplied) {
+lines.push("PAR-Q");
+if (a.parqFailed) {
+const parqPos = Object.entries(a.parq||{}).filter(([,v])=>v===true).map(([k])=>({q1:"Doença cardíaca",q2:"Dor no peito com esforço",q3:"Tontura/desmaio",q4:"Problema ósseo/articular",q5:"Medicamento para PA/coração",q6:"Razão para não exercitar",q7:"Mais de 65 anos/sedentário"})[k]).filter(Boolean);
+lines.push("PAR-Q POSITIVO — Avaliação médica prévia recomendada (ACSM/AHA)."+(parqPos.length>0?" Respostas afirmativas: "+parqPos.join("; ")+".":""));
+} else { lines.push("PAR-Q negativo. Sem contraindicações identificadas."); }
 lines.push("");
-lines.push("Pontos de atenção:");
-weakTests.forEach(w=>lines.push("• "+w+"."));
 }
+if (a.anamnese&&(a.anamnese.pathologies||a.anamnese.medications||a.anamnese.mainComplaints)) {
+lines.push("ANAMNESE CLÍNICA");
+if (a.anamnese.pathologies) lines.push("Patologias: "+a.anamnese.pathologies);
+if (a.anamnese.medications) lines.push("Medicamentos: "+a.anamnese.medications);
+if (a.anamnese.allergies) lines.push("Alergias: "+a.anamnese.allergies);
+if (a.anamnese.surgeries) lines.push("Cirurgias: "+a.anamnese.surgeries);
+if (a.anamnese.mainComplaints) lines.push("Queixas: "+a.anamnese.mainComplaints);
+if (a.anamnese.painLocation) lines.push("Dores: "+a.anamnese.painLocation);
+if (a.anamnese.physActivityHistory) lines.push("Atividade física: "+({nunca:"Nunca praticou",passado:"Praticou no passado",irregular:"Pratica irregularmente",regular:"Pratica regularmente"})[a.anamnese.physActivityHistory]);
+if (a.anamnese.sleepHours||a.anamnese.sleepQuality) lines.push("Sono: "+(a.anamnese.sleepHours?a.anamnese.sleepHours+"h/noite ":"")+(a.anamnese.sleepQuality?"— "+({ruim:"Ruim",regular:"Regular",boa:"Boa",otima:"Ótima"})[a.anamnese.sleepQuality]:""));
+if (a.anamnese.stressLevel) lines.push("Estresse: "+({baixo:"Baixo",moderado:"Moderado",alto:"Alto",muito_alto:"Muito alto"})[a.anamnese.stressLevel]);
+if (a.anamnese.smoking&&a.anamnese.smoking!=="nao") lines.push("Tabagismo: "+({ex:"Ex-fumante",sim:"Fumante ativo"})[a.anamnese.smoking]);
+if (a.anamnese.alcohol&&a.anamnese.alcohol!=="nao") lines.push("Álcool: "+({ocasional:"Ocasional",regular:"Regular"})[a.anamnese.alcohol]);
+if (a.anamnese.observations) lines.push("Obs: "+a.anamnese.observations);
 lines.push("");
-if (a?.cognitiveData?.score > 0) {
-const cd = a.cognitiveData;
-lines.push("AVALIAÇÃO COGNITIVA — BATERIA LONGEVUS");
-lines.push("Score Cognitivo Global: " + cd.score + "/100" + (cd.score>=80?" — Excelente":cd.score>=65?" — Bom":cd.score>=50?" — Regular":" — Comprometido"));
-if (cd.mmse?.total) {
-const cl = classifyMMSE(cd.mmse.total);
-lines.push("MMSE: " + cd.mmse.total + "/30 — " + (cl?.label||"—") + (cl?" — "+cl.desc:""));
 }
-if (cd.dualTask?.single && cd.dualTask?.dual) {
-const cl = classifyDualTask(cd.dualTask.single, cd.dualTask.dual);
-if (cl) lines.push("Dual Task Cost: " + cl.cost + "% — " + cl.label + " — " + cl.desc);
+const impacts = [];
+if (a.aha?.diabetes||a.anamnese?.pathologies?.toLowerCase().includes("diabet")) {
+impacts.push("Diabetes: aumenta o risco de hipoglicemia e hiperglicemia durante o exercício, podendo causar tontura, fraqueza e perda de consciência. Exige monitoramento obrigatório da glicemia antes e após cada sessão e ajuste de intensidade conforme os níveis glicêmicos.");
 }
-if (cd.verbalFluency?.score) {
-const cl = classifyVerbalFluency(cd.verbalFluency.score);
-lines.push("Fluência Verbal: " + cd.verbalFluency.score + " palavras — " + (cl?.label||"—") + (cl?" — "+cl.desc:""));
+if (a.aha?.hypertension||a.anamnese?.pathologies?.toLowerCase().includes("hipertens")||(a.aha?.sbp&&parseFloat(a.aha.sbp)>=140)) {
+impacts.push("Hipertensão arterial: pressão elevada aumenta o risco cardiovascular durante o esforço, pode limitar a intensidade e exige aferição de PA em todos os momentos da sessão. Exercícios de alta intensidade e manobra de Valsalva são contraindicados.");
 }
-if (cd.digitSpan?.direct) {
-const cl = classifyDigitSpan(cd.digitSpan.direct, cd.digitSpan.inverse);
-lines.push("Span de Dígitos: Direto " + cd.digitSpan.direct + (cd.digitSpan.inverse?" / Inverso "+cd.digitSpan.inverse:"") + " — " + (cl?.label||"—") + (cl?" — "+cl.desc:""));
+if ((a.aha?.score||0)>=4) {
+impacts.push("Risco cardiovascular alto (AHA): requer início com exercícios de baixa intensidade, progressão lenta e liberação médica antes de intensidades moderadas a altas. O coração pode ter menor reserva para responder ao esforço físico.");
 }
-if (cd.notes) lines.push("Observações cognitivas: " + cd.notes);
+if (calfRisk?.label?.includes("Alto")||calfRisk?.label?.includes("Sarcopenia")) {
+impacts.push("Risco de sarcopenia (panturrilha reduzida): a perda de massa muscular compromete força, equilíbrio e locomoção segura. Aumenta o risco de quedas, fraturas e perda de independência. Treino de força resistida é prioritário.");
+}
+if (avdProbs.length>0) {
+impacts.push("Limitações nas AVDs ("+avdProbs.join(", ")+"): dificuldades nas atividades básicas indicam dependência parcial ou total em funções essenciais. O programa deve simular e reforçar esses movimentos para recuperar ou preservar a autonomia.");
+}
+if (aivdProbs.length>0) {
+impacts.push("Limitações nas AIVDs ("+aivdProbs.join(", ")+"): dificuldades em atividades instrumentais como compras, transporte ou gestão de medicamentos indicam redução da independência social. O programa deve incluir treino cognitivo-motor e suporte à autonomia.");
+}
+if (a.functional?.balance) {
+impacts.push("Limitação de equilíbrio (questionário funcional): risco elevado de quedas em situações do cotidiano como subir escadas, caminhar em superfícies irregulares ou executar tarefas simultâneas. Treino de equilíbrio é componente obrigatório.");
+}
+if (a.physical?.tug&&parseFloat(a.physical.tug)>13.5) {
+impacts.push("TUG alterado ("+a.physical.tug+"s): indica comprometimento de marcha e mobilidade dinâmica com risco elevado de quedas. Impacta diretamente a capacidade de levantar de cadeiras, caminhar e mudar de direção com segurança.");
+}
+if (a.physical?.sppbBalanceScore!==undefined&&parseFloat(a.physical.sppbBalanceScore)<3) {
+impacts.push("SPPB Equilíbrio comprometido ("+a.physical.sppbBalanceScore+"/4 pts): dificuldade em manter posições estáticas. Maior vulnerabilidade a tropeços e quedas em situações simples como se vestir em pé, tomar banho ou caminhar em superfícies irregulares.");
+}
+if (a.physical?.sppbChairUnable||(a.physical?.sppbChair&&classifySPPBChairStand(a.physical.sppbChairUnable?"unable":a.physical.sppbChair)?.score<=1)) {
+impacts.push("SPPB Chair Stand comprometido: fraqueza significativa de membros inferiores que impacta diretamente o uso do vaso sanitário, entrar e sair do carro, levantar do sofá e subir escadas com segurança.");
+}
+if (a.physical?.grip) {
+const gripCl = classifyHandGrip(a.physical.grip, student.sex);
+if (gripCl?.label==="Fraco"||gripCl?.label==="Regular") {
+impacts.push("Preensão manual reduzida ("+a.physical.grip+" kgf — "+gripCl.label+"): indicador global de perda muscular associado a sarcopenia, maior risco de quedas e dificuldade em tarefas diárias como abrir embalagens, segurar objetos e se apoiar.");
+}
+}
+if (a.physical?.sitreach!==undefined&&a.physical.sitreach!=="") {
+const srCl = classifySitReach(a.physical.sitreach);
+if (srCl?.label==="Fraco"||srCl?.label==="Regular") {
+impacts.push("Flexibilidade reduzida ("+a.physical.sitreach+"cm — "+srCl.label+"): encurtamento muscular aumenta o risco de dores lombares, lesões e dificulta movimentos cotidianos como amarrar calçados, pegar objetos no chão e calçar meias.");
+}
+}
+if (a.physical?.march) {
+const marchCl = classifyMarch(a.physical.march, student.sex);
+if (marchCl?.label==="Fraco"||marchCl?.label==="Regular") {
+impacts.push("Resistência de marcha reduzida ("+a.physical.march+" passos — "+marchCl.label+"): capacidade aeróbica limitada para atividades de média duração. Pode causar cansaço excessivo em caminhadas, escadas e tarefas domésticas.");
+}
+}
+if (a.cognitiveData?.mmse?.total&&parseInt(a.cognitiveData.mmse.total)<24) {
+const mmseCl = classifyMMSE(a.cognitiveData.mmse.total);
+const mmseVal = parseInt(a.cognitiveData.mmse.total);
+impacts.push("Comprometimento cognitivo (MMSE "+a.cognitiveData.mmse.total+"/30 — "+mmseCl?.label+"): pode afetar a capacidade de seguir sequências de exercícios, memorizar orientações e manter atenção. Exige comandos simples, supervisão constante e comunicação com médico."+( mmseVal<18?" Encaminhamento neurológico/geriátrico recomendado.":""));
+}
+if (a.cognitiveData?.dualTask?.single&&a.cognitiveData?.dualTask?.dual) {
+const dtCl = classifyDualTask(a.cognitiveData.dualTask.single, a.cognitiveData.dualTask.dual);
+if (dtCl?.cost>20) {
+impacts.push("Dual Task Cost elevado ("+dtCl.cost+"%): dificuldade em realizar duas tarefas simultâneas como caminhar e falar, ou andar e desviar de obstáculos. Aumenta o risco de quedas em ambientes com distrações.");
+}
+}
+if (a.cognitiveData?.verbalFluency?.score) {
+const vfCl = classifyVerbalFluency(a.cognitiveData.verbalFluency.score);
+if (vfCl?.label==="Comprometido"||vfCl?.label==="Regular"||vfCl?.label==="Fraco") {
+impacts.push("Fluência verbal reduzida ("+a.cognitiveData.verbalFluency.score+" palavras/min — "+vfCl.label+"): indica dificuldade de acesso ao vocabulário e organização do pensamento. No cotidiano, pode se manifestar como dificuldade para manter conversas, expressar necessidades, participar de grupos sociais e seguir orientações verbais durante o treino. Está associada a declínio cognitivo e isolamento social.");
+}
+}
+if (a.cognitiveData?.digitSpan?.direct) {
+const dsCl = classifyDigitSpan(a.cognitiveData.digitSpan.direct, a.cognitiveData.digitSpan.inverse);
+if (dsCl?.label==="Comprometido"||dsCl?.label==="Regular"||dsCl?.label==="Fraco") {
+impacts.push("Memória de trabalho reduzida (Span de Dígitos — "+dsCl.label+"): dificuldade em reter e manipular informações temporariamente. No dia a dia, afeta a capacidade de memorizar sequências de exercícios, lembrar instruções recentes, gerenciar medicamentos e realizar tarefas que exigem múltiplos passos como cozinhar e usar transporte público.");
+}
+}
+if ((a.functional?.score||0)<40) {
+impacts.push("Capacidade funcional muito comprometida (score "+a.functional?.score+"/100): nível de dependência significativo nas atividades do dia a dia. O programa deve priorizar segurança, aprendizagem motora e exercícios assistidos antes de qualquer progressão.");
+}
+if (impacts.length>0) {
+lines.push("IMPACTO CLÍNICO — O QUE OS RESULTADOS SIGNIFICAM");
+impacts.forEach(imp=>lines.push("• "+imp));
 lines.push("");
 }
 if (a?.cardioMode && a.cardioMode !== "skip") {
 lines.push("AVALIAÇÃO CARDIORRESPIRATÓRIA");
-lines.push("Modo: " + (a.cardioMode==="ergo"?"Teste Ergométrico Real":"Predição Clínica"));
 if (a.cardioMode==="ergo" && a.cardioAssessment?.ergo) {
 const e = a.cardioAssessment.ergo;
 const vo2 = e.vo2max || (e.mets?(parseFloat(e.mets)*3.5).toFixed(1):null);
 const fcMax = parseFloat(e.fcMax), fcRest = parseFloat(e.fcRest);
 const fcRes = fcMax && fcRest ? fcMax - fcRest : null;
-const dp = fcMax && e.pasPeak ? Math.round(fcMax*parseFloat(e.pasPeak)) : null;
-const metCl = metClass(e.mets);
-if (e.fcRest) lines.push("FC repouso: " + e.fcRest + " bpm");
-if (e.fcMax) lines.push("FC máxima atingida: " + e.fcMax + " bpm");
-if (fcRes) lines.push("FC Reserva (Karvonen): " + fcRes + " bpm");
-if (e.mets) lines.push("METs atingidos: " + e.mets + (metCl?" — "+metCl.label.split("(")[0].trim():""));
-if (vo2) lines.push("VO2max " + (e.vo2measured?"medido":"estimado METs×3.5") + ": " + parseFloat(vo2).toFixed(1) + " ml/kg/min" + (classifyVO2(vo2,calcAge(student?.dob),student?.sex)?" — "+classifyVO2(vo2,calcAge(student?.dob),student?.sex).label:""));
-if (dp) lines.push("Duplo Produto pico: " + dp.toLocaleString("pt-BR") + " mmHg·bpm");
-if (e.fcIschemic) lines.push("Limiar isquêmico: " + e.fcIschemic + " bpm — Zona segura: abaixo de " + (parseFloat(e.fcIschemic)-10) + " bpm");
-if (e.pasPeak) lines.push("PAS pico esforço: " + e.pasPeak + " mmHg");
-if (e.medications?.includes("beta")) lines.push("⚠️ Beta-bloqueador em uso: priorizar PSE/Borg como guia de intensidade.");
-if (e.arrythmias?.length>0&&!e.arrythmias.includes("none")) lines.push("⚠️ Arritmia identificada — monitoramento cardiovascular ampliado indicado.");
-if (e.symptomType&&e.symptomType!=="") lines.push("Sintoma limitante: " + ({chest:"Dor torácica",dyspnea:"Dispneia",fatigue:"Fadiga",dizziness:"Tontura",palp:"Palpitação",other:"Outro"})[e.symptomType] + " (FC início: " + (e.fcSymptom||"—") + " bpm)");
-if (fcMax) {
-lines.push("");
-lines.push("Zonas de Treinamento Aeróbio (Karvonen" + (fcRes?"":" — sem FC repouso, usando %FCmáx") + "):");
-[0.40,0.50,0.60,0.70,0.80].forEach(p=>{
-const karv = fcRes ? Math.round(fcRes*p+fcRest) : null;
-const pctFc = Math.round(fcMax*p);
-const borg = p<=0.50?"PSE 2–3":p<=0.60?"PSE 4–5":p<=0.70?"PSE 5–6":"PSE 6–7";
-const zona = p<=0.50?"Leve":p<=0.60?"Moderada":p<=0.70?"Moderado-Vigorosa":"Vigorosa";
-lines.push("  " + Math.round(p*100) + "%: " + (karv?karv+" bpm (Karvonen) / ":"")+pctFc+" bpm (%FCmáx) — "+borg+" — "+zona);
-});
-}
+if (e.fcRest) lines.push("FC repouso: "+e.fcRest+" bpm");
+if (e.fcMax) lines.push("FC máxima: "+e.fcMax+" bpm");
+if (fcRes) lines.push("FC Reserva: "+fcRes+" bpm");
+if (vo2) lines.push("VO2max: "+parseFloat(vo2).toFixed(1)+" ml/kg/min"+(classifyVO2(vo2,calcAge(student?.dob),student?.sex)?" — "+classifyVO2(vo2,calcAge(student?.dob),student?.sex).label:""));
+if (e.medications?.includes("beta")) lines.push("⚠️ Beta-bloqueador: priorizar PSE/Borg.");
+if (e.arrythmias?.length>0&&!e.arrythmias.includes("none")) lines.push("⚠️ Arritmia identificada.");
 } else if (a.cardioMode==="pred" && a.cardioAssessment?.pred) {
 const p = a.cardioAssessment.pred;
 const age3 = parseFloat(p.age || calcAge(student?.dob));
 const fcMax2 = p.formula==="tanaka" ? Math.round(208-0.7*age3) : 220-age3;
 const fcRes2 = p.fcRest ? fcMax2 - parseFloat(p.fcRest) : null;
 const risk = riskStratify(p);
-lines.push("FCmáx estimada (" + (p.formula==="tanaka"?"Tanaka":"Tradicional") + "): " + fcMax2 + " bpm");
-if (fcRes2) lines.push("FC Reserva estimada: " + fcRes2 + " bpm");
-lines.push("Estratificação de risco: " + risk.label);
-lines.push("Zona recomendada: " + risk.fcr + " · Borg: " + risk.borg);
-if (risk.alert) lines.push("⚠️ " + risk.alert);
-if (p.medications?.includes("beta")) lines.push("⚠️ Beta-bloqueador: priorizar PSE/Borg como guia de intensidade.");
+lines.push("FCmáx estimada ("+(p.formula==="tanaka"?"Tanaka":"Tradicional")+"): "+fcMax2+" bpm");
+if (fcRes2) lines.push("FC Reserva estimada: "+fcRes2+" bpm");
+lines.push("Estratificação: "+risk.label+" | Zona: "+risk.fcr+" · Borg: "+risk.borg);
+if (risk.alert) lines.push("⚠️ "+risk.alert);
 }
+lines.push("");
+}
+if (a?.cognitiveData?.score > 0) {
+const cd = a.cognitiveData;
+lines.push("AVALIAÇÃO COGNITIVA");
+lines.push("Score: "+cd.score+"/100 — "+(cd.score>=80?"Excelente":cd.score>=65?"Bom":cd.score>=50?"Regular":"Comprometido"));
+if (cd.mmse?.total) lines.push("MMSE: "+cd.mmse.total+"/30 — "+(classifyMMSE(cd.mmse.total)?.label||"—"));
+if (cd.dualTask?.single&&cd.dualTask?.dual) { const cl=classifyDualTask(cd.dualTask.single,cd.dualTask.dual); if(cl) lines.push("Dual Task: "+cl.cost+"% — "+cl.label); }
+if (cd.verbalFluency?.score) lines.push("Fluência Verbal: "+cd.verbalFluency.score+" palavras — "+(classifyVerbalFluency(cd.verbalFluency.score)?.label||"—"));
+if (cd.digitSpan?.direct) lines.push("Span Dígitos: Direto "+cd.digitSpan.direct+(cd.digitSpan.inverse?" / Inv. "+cd.digitSpan.inverse:"")+" — "+(classifyDigitSpan(cd.digitSpan.direct,cd.digitSpan.inverse)?.label||"—"));
 lines.push("");
 }
 lines.push("RECOMENDAÇÕES");
@@ -3870,67 +3881,51 @@ lines.push("Prescrição de Exercício:");
 lines.push("• Intensidade: "+intens+" (ACSM/AHA).");
 lines.push("• Frequência: mínimo 3 sessões/semana, idealmente 5x para aeróbico.");
 lines.push("• Modalidades: aeróbico (caminhada, bicicleta), resistido (50-70% 1RM), equilíbrio e flexibilidade.");
-if (funcRisks.includes("quedas nos últimos 12 meses")||(a.physical?.tug&&parseFloat(a.physical.tug)>13.5)) {
-lines.push("• Prevenção de quedas: treino de equilíbrio e fortalecimento de MMII obrigatório.");
-}
-if (calfRisk?.label.includes("Sarcopenia")||calfRisk?.label.includes("Alto")) {
-lines.push("• Risco de sarcopenia: treino de força e aporte proteico adequado (mín. 1,2g/kg/dia) recomendados.");
-}
+if (funcRisks.includes("quedas nos últimos 12 meses")||(a.physical?.tug&&parseFloat(a.physical.tug)>13.5)) lines.push("• Prevenção de quedas: treino de equilíbrio e fortalecimento de MMII obrigatório.");
+if (calfRisk?.label?.includes("Sarcopenia")||calfRisk?.label?.includes("Alto")) lines.push("• Risco de sarcopenia: treino de força e aporte proteico (mín. 1,2g/kg/dia) recomendados.");
 lines.push("");
 lines.push("Monitoramento por Sessão:");
-lines.push("• Pressão Arterial (PA): aferir ANTES e APÓS cada sessão. Suspender se PAS ≥ 180 mmHg ou PAD ≥ 110 mmHg.");
-lines.push("• Frequência Cardíaca (FC): aferir em repouso antes da sessão e ao término.");
-if (a.aha?.diabetes || a.anamnese?.pathologies?.toLowerCase().includes("diabet")) {
-lines.push("• Glicemia capilar: OBRIGATÓRIA antes e após cada sessão (paciente diabético). Referência: 100-250 mg/dL para exercício seguro. Abaixo de 70 mg/dL: tratar hipoglicemia antes de iniciar. Acima de 300 mg/dL: suspender sessão.");
-lines.push("• Manter fonte de carboidrato de rápida absorção disponível durante o treino.");
+lines.push("• PA: aferir ANTES e APÓS cada sessão. Suspender se PAS ≥ 180 ou PAD ≥ 110 mmHg.");
+lines.push("• FC: aferir em repouso antes e ao término.");
+if (a.aha?.diabetes||a.anamnese?.pathologies?.toLowerCase().includes("diabet")) {
+lines.push("• Glicemia: OBRIGATÓRIA antes e após (diabético). Referência: 100-250 mg/dL. Abaixo de 70: tratar hipoglicemia. Acima de 300: suspender.");
+lines.push("• Manter carboidrato de rápida absorção disponível.");
 }
-if ((a.aha?.score||0) >= 4 || a.anamnese?.pathologies?.toLowerCase().includes("cardio") || a.anamnese?.pathologies?.toLowerCase().includes("insuficiência")) {
-lines.push("• Saturação de oxigênio (SpO₂): monitorar durante o exercício, especialmente em cardiopatas e pneumopatas. Interromper se SpO₂ < 90%.");
-}
-if (a.aha?.hypertension || (a.aha?.sbp && parseFloat(a.aha.sbp) >= 140)) {
-lines.push("• Hipertensão: aferir PA em todos os momentos (pré, durante e pós). Reduzir intensidade se PAS > 160 mmHg. Não iniciar sessão se PAS ≥ 180 mmHg.");
-}
-if (a.aha?.smoker) {
-lines.push("• Tabagismo: monitorar SpO₂ e tolerância ao exercício aeróbico. Paciente tabagista pode apresentar menor capacidade ventilatória.");
-}
-if (a.anamnese?.medications?.toLowerCase().includes("beta") || a.anamnese?.medications?.toLowerCase().includes("propranolol") || a.anamnese?.medications?.toLowerCase().includes("atenolol")) {
-lines.push("• Beta-bloqueador em uso: FC pode estar artificialmente reduzida. Priorizar PSE/Borg (0-10) e sintomas como guia de intensidade, não apenas FC.");
-}
-if (funcRisks.includes("quedas nos últimos 12 meses") || (a.physical?.tug && parseFloat(a.physical.tug) > 13.5)) {
-lines.push("• Risco de quedas identificado: supervisão constante durante todos os exercícios. Nunca deixar o aluno sem apoio próximo.");
-}
+if ((a.aha?.score||0)>=4||a.anamnese?.pathologies?.toLowerCase().includes("cardio")||a.anamnese?.pathologies?.toLowerCase().includes("insuficiência")) lines.push("• SpO₂: monitorar durante o exercício. Interromper se < 90%.");
+if (a.aha?.hypertension||(a.aha?.sbp&&parseFloat(a.aha.sbp)>=140)) lines.push("• Hipertensão: aferir PA em todos os momentos. Reduzir se PAS > 160. Não iniciar se PAS ≥ 180 mmHg.");
+if (a.aha?.smoker) lines.push("• Tabagismo: monitorar SpO₂ e tolerância aeróbica.");
+if (a.anamnese?.medications?.toLowerCase().includes("beta")||a.anamnese?.medications?.toLowerCase().includes("propranolol")||a.anamnese?.medications?.toLowerCase().includes("atenolol")) lines.push("• Beta-bloqueador: priorizar PSE/Borg (0-10), não apenas FC.");
+if (funcRisks.includes("quedas nos últimos 12 meses")||(a.physical?.tug&&parseFloat(a.physical.tug)>13.5)) lines.push("• Risco de quedas: supervisão constante. Nunca deixar sem apoio próximo.");
 lines.push("");
 lines.push("Sinais de Alerta — Interromper Imediatamente se:");
 lines.push("• Dor torácica, pressão no peito ou irradiação para braço/mandíbula.");
-lines.push("• Dispneia desproporcional ao esforço ou fala fragmentada.");
-lines.push("• Tontura, náusea, palidez intensa ou sudorese fria.");
+lines.push("• Dispneia desproporcional ou fala fragmentada.");
+lines.push("• Tontura, náusea, palidez ou sudorese fria.");
 lines.push("• Palpitações ou arritmia percebida.");
 lines.push("• Confusão mental, perda de equilíbrio súbita ou alteração de consciência.");
-if (a.aha?.diabetes || a.anamnese?.pathologies?.toLowerCase().includes("diabet")) {
-lines.push("• Tremor, fome súbita, irritabilidade ou suor frio (sinais de hipoglicemia).");
-}
+if (a.aha?.diabetes||a.anamnese?.pathologies?.toLowerCase().includes("diabet")) lines.push("• Tremor, fome súbita, irritabilidade ou suor frio (hipoglicemia).");
 if (a?.cognitiveData?.score > 0) {
 const cd = a.cognitiveData;
-const hasDualTaskIssue = cd.dualTask?.single && cd.dualTask?.dual && classifyDualTask(cd.dualTask.single, cd.dualTask.dual)?.cost > 20;
-const hasMMSEIssue = cd.mmse?.total && parseInt(cd.mmse.total) < 24;
-if (hasDualTaskIssue || hasMMSEIssue) {
+const hasDT = cd.dualTask?.single&&cd.dualTask?.dual&&classifyDualTask(cd.dualTask.single,cd.dualTask.dual)?.cost>20;
+const hasMMSE = cd.mmse?.total&&parseInt(cd.mmse.total)<24;
+if (hasDT||hasMMSE) {
 lines.push("");
-lines.push("Recomendações Cognitivas para Prescrição:");
-if (hasDualTaskIssue) lines.push("• Dual Task Cost elevado: iniciar treino neurofuncional apenas no nível básico (marcha + tarefa simples). Progredir gradualmente conforme tolerância.");
-if (hasMMSEIssue) lines.push("• MMSE abaixo de 24: exercícios cognitivos simples, comandos claros e objetivos. Supervisão constante. Comunicar ao médico responsável.");
-lines.push("• Incluir dual task na prescrição: caminhada + contagem, step + decisão, marcha + comando.");
+lines.push("Recomendações Cognitivas:");
+if (hasMMSE) lines.push("• MMSE < 24: comandos simples, supervisão constante, comunicar ao médico.");
+if (hasDT) lines.push("• Dual Task elevado: iniciar neurofuncional no nível básico, progredir gradualmente.");
+lines.push("• Incluir dual task: caminhada + contagem, step + decisão, marcha + comando.");
 lines.push("• Reavaliar bateria cognitiva a cada 24 semanas.");
 }
 }
 lines.push("");
 lines.push("Recomendações de Estilo de Vida:");
-lines.push("• Estimular atividades de socialização pelo menos 2x/semana, como grupos de caminhada, dança, convivência, atividades religiosas, oficinas ou encontros familiares, auxiliando na saúde emocional e cognitiva.");
-lines.push("• Incentivar participação ativa em atividades domésticas leves e seguras, promovendo manutenção da autonomia funcional nas atividades do dia a dia.");
-lines.push("• Estimular atividades cognitivas frequentes: leitura, conversas sociais, jogos simples de raciocínio, música, memória e estímulos mentais variados.");
-lines.push("• Atenção especial à prevenção de quedas no ambiente domiciliar: evitar tapetes soltos, manter boa iluminação noturna e utilizar calçados estáveis e seguros.");
-lines.push("• Manter hidratação adequada ao longo do dia, especialmente antes, durante e após a prática de exercícios físicos.");
-lines.push("• Priorizar sono de qualidade (7 a 9 horas/noite), com horários regulares, ambiente escuro e silencioso, evitando telas antes de dormir.");
-lines.push("• Seguir orientações médicas e nutricionais vigentes, mantendo uso correto dos medicamentos e acompanhamento periódico de saúde.");
+lines.push("• Socialização: pelo menos 2x/semana — grupos de caminhada, dança, atividades religiosas, encontros familiares.");
+lines.push("• Autonomia: incentivar atividades domésticas leves e seguras.");
+lines.push("• Cognição: leitura, conversas, jogos de raciocínio, música e memória.");
+lines.push("• Quedas: evitar tapetes soltos, manter iluminação adequada, usar calçados estáveis.");
+lines.push("• Hidratação adequada antes, durante e após o exercício.");
+lines.push("• Sono de qualidade (7-9h/noite) com horários regulares.");
+lines.push("• Seguir orientações médicas e uso correto dos medicamentos.");
 return lines.join(NL);
 };
 const buildPrompt = (type, a, student, stA, stL) => {
