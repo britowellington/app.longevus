@@ -1597,7 +1597,7 @@ return (
 {a.cardioMode==="ergo"&&a.cardioAssessment?.ergo&&(()=>{
 const e=a.cardioAssessment.ergo;
 const vo2=e.vo2max||(e.mets?(parseFloat(e.mets)*3.5).toFixed(1):null);
-const vo2cl=vo2?classifyVO2(vo2,calcAge(student?.dob),sex):null;
+const vo2cl=vo2?classifyVO2(vo2,calcAge(st?.dob),sex):null;
 const fcMax=parseFloat(e.fcMax),fcRest=parseFloat(e.fcRest);
 const fcRes=fcMax&&fcRest?fcMax-fcRest:null;
 const dp=fcMax&&e.pasPeak?Math.round(fcMax*parseFloat(e.pasPeak)):null;
@@ -1655,7 +1655,7 @@ return(<tr key={pc} style={{ borderBottom:"1px solid #f1f5f9" }}>
 })()}
 {a.cardioMode==="pred"&&a.cardioAssessment?.pred&&(()=>{
 const p=a.cardioAssessment.pred;
-const age3=parseFloat(p.age||calcAge(student?.dob));
+const age3=parseFloat(p.age||calcAge(st?.dob));
 const fcMax2=p.formula==="tanaka"?Math.round(208-0.7*age3):220-age3;
 const fcRes2=p.fcRest?fcMax2-parseFloat(p.fcRest):null;
 const risk=riskStratify(p);
