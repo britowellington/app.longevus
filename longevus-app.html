@@ -60,7 +60,8 @@ return a;
 };
 const fmt = (d) => d ? new Date(d + "T00:00:00").toLocaleDateString("pt-BR") : "—";
 const O = "#FF5603";
-const classifyAHA = (s) => s <= 1 ? { label:"Baixo Risco", color:"#16a34a", bg:"#dcfce7" } : s <= 3 ? { label:"Risco Moderado", color:"#d97706", bg:"#fef9c3" } : { label:"Alto Risco", color:"#dc2626", bg:"#fee2e2" };
+const classifyAHA = (s) => s <= 1 ? { label:"Baixo Risco", color:"#16a34a", bg:"#dcfce7" } : s <= 4 ? { label:"Risco Moderado", color:"#d97706", bg:"#fef9c3" } : { label:"Alto Risco", color:"#dc2626", bg:"#fee2e2" };
+const classifyCV = (pct) => pct >= 92 ? { label:"Baixo Risco", color:"#16a34a", bg:"#dcfce7" } : pct >= 69 ? { label:"Risco Moderado", color:"#d97706", bg:"#fef9c3" } : { label:"Alto Risco", color:"#dc2626", bg:"#fee2e2" };
 const classifyFunctional = (s) => s >= 80 ? { label:"Fisicamente Elite", color:"#16a34a", bg:"#dcfce7" } : s >= 60 ? { label:"Fisicamente Ativo", color:"#65a30d", bg:"#ecfccb" } : s >= 40 ? { label:"Fisicamente Independente", color:"#d97706", bg:"#fef9c3" } : s >= 20 ? { label:"Fisicamente Frágil", color:"#ea580c", bg:"#ffedd5" } : { label:"Fisicamente Dependente", color:"#dc2626", bg:"#fee2e2" };
 const classifyFitness = (s) => s >= 80 ? { label:"Excelente", color:"#16a34a", bg:"#dcfce7" } : s >= 60 ? { label:"Bom", color:"#65a30d", bg:"#ecfccb" } : s >= 40 ? { label:"Regular", color:"#d97706", bg:"#fef9c3" } : { label:"Fraco", color:"#dc2626", bg:"#fee2e2" };
 const classifyCognitive = (s) => s >= 80 ? { label:"Excelente", color:"#16a34a", bg:"#dcfce7" } : s >= 65 ? { label:"Bom", color:"#65a30d", bg:"#ecfccb" } : s >= 50 ? { label:"Regular", color:"#d97706", bg:"#fef9c3" } : { label:"Comprometido", color:"#dc2626", bg:"#fee2e2" };
@@ -496,7 +497,6 @@ const student=students.find(s=>s.id===sid);
 const sex=student?.sex||"";
 const parqQs=["Médico disse que tem problema cardíaco?","Sente dor no peito durante atividade física?","Sentiu dor no peito no último mês (sem atividade)?","Perde equilíbrio por tontura ou já desmaiou?","Tem problema ósseo/articular que piora com exercício?","Toma medicamento para pressão ou coração?","Existe outro motivo pelo qual não deveria se exercitar?"];
 const calcAHA=()=>{
-if(aha.diabetes||aha.hypertension) return 6;
 let s=0;const bmi=parseFloat(aha.bmi);
 if(bmi>=25&&bmi<30)s+=1;if(bmi>=30)s+=2;
 const sbp=parseFloat(aha.sbp);if(sbp>=130&&sbp<140)s+=1;if(sbp>=140)s+=2;
@@ -523,7 +523,7 @@ return tot>0?Math.round((pts/tot)*100):0;
 };
 const finish=()=>{
 const ahaScore=calcAHA(),funcScore=calcFunc(),physScore=calcPhys();
-const cvScore=Math.max(0,100-ahaScore*8);
+const cvScore=Math.max(0,Math.round(100-(ahaScore/13)*100));
 const global=Math.round(cvScore*0.35+funcScore*0.35+physScore*0.30);
 const cogScore=calcCognitiveScore(cognitiveData.mmse.total,cognitiveData.dualTask.single,cognitiveData.dualTask.dual,cognitiveData.verbalFluency.score,cognitiveData.digitSpan.direct,cognitiveData.digitSpan.inverse);
 const a={id:uid(),studentId:sid,date:todayStr(),anamnese,parqFailed:parqEnabled&&Object.values(parq).some(v=>v===true),parqApplied:parqEnabled,parq,aha:{...aha,score:ahaScore},avd,aivd,functional:{...funcRisk,score:funcScore},physical:{...phys,score:physScore,sppbBalanceScore:(phys.sppbSide==="0"?0:(parseInt(phys.sppbSemi)||0)+(parseInt(phys.sppbTandem)||0)),sppbChairScore:(classifySPPBChairStand(phys.sppbChairUnable?"unable":phys.sppbChair)?.score||0)},globalScore:global,cardioMode,cardioAssessment,cognitiveData:{...cognitiveData,score:cogScore}};
@@ -1474,7 +1474,7 @@ const gc=classifyGlobal(a.globalScore||0);
 const ahaCl=classifyAHA(a.aha?.score||0);
 const funcCl=classifyFunctional(a.functional?.score||0);
 const fitCl=classifyFitness(a.physical?.score||0);
-const cvScore=Math.max(0,100-(a.aha?.score||0)*8);
+const cvScore=Math.max(0,Math.round(100-((a.aha?.score||0)/13)*100));
 const sex=st?.sex||"";
 const [activeTab,setActiveTab]=React.useState("resultado");
 const TABS=[
@@ -1684,7 +1684,7 @@ return (
 <Card style={{ marginBottom:14 }}>
 <div style={{ fontWeight:700,marginBottom:16 }}>Índices Longevus</div>
 <div style={{ display:"flex",justifyContent:"space-around",flexWrap:"wrap",gap:8 }}>
-<ScoreRing score={cvScore} label="Risco Cardiovascular" color={classifyGlobal(cvScore).color}/>
+<ScoreRing score={cvScore} label="Risco Cardiovascular" color={classifyCV(cvScore).color}/>
 <ScoreRing score={a.functional?.score||0} label="Capacidade Funcional" color={funcCl.color}/>
 <ScoreRing score={a.physical?.score||0} label="Aptidão Física" color={fitCl.color}/>
 {a.cognitiveData?.score>0&&<ScoreRing score={a.cognitiveData.score} label="Capacidade Cognitiva" color={classifyCognitive(a.cognitiveData.score).color}/>}
@@ -3097,7 +3097,7 @@ const gc = classifyGlobal(a.globalScore||0);
 const ahaCl = classifyAHA(a.aha?.score||0);
 const funcCl = classifyFunctional(a.functional?.score||0);
 const fitCl = classifyFitness(a.physical?.score||0);
-const cvScore = Math.max(0, 100-(a.aha?.score||0)*8);
+const cvScore = Math.max(0, Math.round(100-((a.aha?.score||0)/13)*100));
 const recs = getRecommendations(null, null, null);
 const riskFlags = [];
 if (a.parqApplied && a.parqFailed) riskFlags.push("PAR-Q Positivo");
@@ -3166,7 +3166,7 @@ return (
 <div className="report-section" style={{ marginBottom:20 }}>
 <div style={{ fontWeight:700, fontSize:13, color:"#FF5603", textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>Índices Longevus</div>
 <div style={{ display:"grid", gridTemplateColumns:`repeat(${a.cognitiveData?.score>0?5:4},1fr)`, gap:10 }}>
-{[["Risco Cardiovascular", cvScore, classifyGlobal(cvScore)],["Capacidade Funcional", a.functional?.score||0, funcCl],["Aptidão Física", a.physical?.score||0, fitCl],...(a.cognitiveData?.score>0?[["Capacidade Cognitiva", a.cognitiveData.score, classifyCognitive(a.cognitiveData.score)]]:[]),["Índice Global", a.globalScore||0, gc]].map(([lbl,val,cl])=>(
+{[["Risco Cardiovascular", cvScore, classifyCV(cvScore)],["Capacidade Funcional", a.functional?.score||0, funcCl],["Aptidão Física", a.physical?.score||0, fitCl],...(a.cognitiveData?.score>0?[["Capacidade Cognitiva", a.cognitiveData.score, classifyCognitive(a.cognitiveData.score)]]:[]),["Índice Global", a.globalScore||0, gc]].map(([lbl,val,cl])=>(
 <div key={lbl} style={{ background:cl.bg, border:`1.5px solid ${cl.color}33`, borderRadius:10, padding:"12px 8px", textAlign:"center" }}>
 <div style={{ fontSize:26, fontWeight:900, color:cl.color }}>{Math.round(val)}</div>
 <div style={{ fontSize:10, fontWeight:700, color:cl.color, marginBottom:3 }}>{cl.label}</div>
@@ -3511,7 +3511,7 @@ return (
 const gc=classifyGlobal(a.globalScore||0);
 const prev=i>0?stA[i-1]:null;
 const delta=prev?(a.globalScore||0)-(prev.globalScore||0):null;
-const cvScore=a.aha?.score!==undefined?Math.max(0,100-a.aha.score*8):null;
+const cvScore=a.aha?.score!==undefined?Math.max(0,Math.round(100-(a.aha.score/13)*100)):null;
 const prevCv=prev?.aha?.score!==undefined?Math.max(0,100-prev.aha.score*8):null;
 const deltaCv=prev&&cvScore!==null&&prevCv!==null?cvScore-prevCv:null;
 const deltaFunc=prev?(a.functional?.score||0)-(prev.functional?.score||0):null;
@@ -3609,7 +3609,7 @@ const gc = classifyGlobal(a.globalScore || 0);
 const ahaCl = classifyAHA(a.aha?.score || 0);
 const funcCl = classifyFunctional(a.functional?.score || 0);
 const fitCl = classifyFitness(a.physical?.score || 0);
-const cvScore = Math.max(0, 100 - (a.aha?.score || 0) * 8);
+const cvScore = Math.max(0, Math.round(100 - ((a.aha?.score || 0)/13) * 100));
 const NL = "\n";
 const riskMap = {smoker:"tabagismo",diabetes:"diabetes",hypertension:"hipertensão arterial",hyperlipid:"dislipidemia",family:"histórico familiar de DCV"};
 const riskFactors = Object.keys(riskMap).filter(k=>a.aha?.[k]).map(k=>riskMap[k]);
