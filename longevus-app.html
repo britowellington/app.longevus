@@ -1706,19 +1706,63 @@ return(<tr key={p2} style={{ borderBottom:"1px solid #f1f5f9" }}>
 <div style={{ fontWeight:700,fontSize:14,color:"#FF5603",marginBottom:14,borderBottom:"1px solid #fee",paddingBottom:8 }}>Avaliação Cognitiva</div>
 {a.cognitiveData&&a.cognitiveData.score>0
 ? <div>
+<div style={{ marginBottom:14,padding:"8px 12px",background:"#f8fafc",borderRadius:8,fontWeight:700,fontSize:14 }}>Score Cognitivo: {a.cognitiveData.score}/100</div>
+<div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+{a.cognitiveData.mmse?.total&&(()=>{const cl=classifyMMSE(a.cognitiveData.mmse.total);return cl?(<div style={{ background:cl.bg,borderRadius:9,padding:"10px 12px" }}>
+<div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4 }}>
+<span style={{ fontSize:11,color:cl.color,fontWeight:700,textTransform:"uppercase" }}>MMSE</span>
+<span style={{ fontSize:18,fontWeight:900,color:cl.color }}>{a.cognitiveData.mmse.total}/30</span>
+</div>
+<div style={{ fontSize:11,color:cl.color,fontWeight:700,marginBottom:4 }}>{cl.label}</div>
+<div style={{ fontSize:12,color:"#475569",lineHeight:1.4,marginBottom:8 }}>{cl.desc}</div>
+<div style={{ display:"flex",flexDirection:"column",gap:4 }}>
 {[
-["MMSE Total",a.cognitiveData.mmse?.total,"pontos"],
-["Dual Task — Simples",a.cognitiveData.dualTask?.single,"passos"],
-["Dual Task — Dupla",a.cognitiveData.dualTask?.dual,"passos"],
-["Fluência Verbal",a.cognitiveData.verbalFluency?.score,"palavras/min"],
-["Span Direto",a.cognitiveData.digitSpan?.direct,"dígitos"],
-["Span Inverso",a.cognitiveData.digitSpan?.inverse,"dígitos"],
-].filter(([,v])=>v).map(([label,val,unit])=>(
-<div key={label} style={{ display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #f1f5f9",fontSize:13 }}>
-<span style={{ color:"#475569" }}>{label}</span>
-<span style={{ fontWeight:700,color:"#0f172a" }}>{val}{unit?" "+unit:""}</span>
+{k:"q1",l:"Orientação temporal",max:5},
+{k:"q2",l:"Orientação espacial",max:5},
+{k:"q3",l:"Registro de memória",max:3},
+{k:"q4",l:"Atenção e cálculo",max:5},
+{k:"q5",l:"Evocação",max:3},
+{k:"q6",l:"Nomeação",max:2},
+{k:"q7",l:"Repetição",max:1},
+{k:"q8",l:"Comando",max:3},
+{k:"q9",l:"Leitura e escrita",max:2},
+{k:"q10",l:"Cópia",max:1},
+].map(q=>(
+<div key={q.k} style={{ display:"flex",justifyContent:"space-between",fontSize:12,padding:"3px 0",borderTop:"1px solid "+cl.color+"22" }}>
+<span style={{ color:"#475569" }}>{q.l}</span>
+<span style={{ fontWeight:700,color:"#0f172a" }}>{a.cognitiveData.mmse[q.k]||0}/{q.max}</span>
 </div>
 ))}
+</div>
+</div>):null;})()}
+{a.cognitiveData.dualTask?.single&&a.cognitiveData.dualTask?.dual&&(()=>{const cl=classifyDualTask(a.cognitiveData.dualTask.single,a.cognitiveData.dualTask.dual);return cl?(<div style={{ background:cl.bg,borderRadius:9,padding:"10px 12px" }}>
+<div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4 }}>
+<span style={{ fontSize:11,color:cl.color,fontWeight:700,textTransform:"uppercase" }}>Dual Task Cost</span>
+<span style={{ fontSize:18,fontWeight:900,color:cl.color }}>{cl.cost}%</span>
+</div>
+<div style={{ fontSize:11,color:"#64748b",marginBottom:4 }}>Simples: {a.cognitiveData.dualTask.single} passos · Dupla: {a.cognitiveData.dualTask.dual} passos</div>
+<div style={{ fontSize:11,color:cl.color,fontWeight:700,marginBottom:4 }}>{cl.label}</div>
+<div style={{ fontSize:12,color:"#475569",lineHeight:1.4 }}>{cl.desc}</div>
+</div>):null;})()}
+{a.cognitiveData.verbalFluency?.score&&(()=>{const cl=classifyVerbalFluency(a.cognitiveData.verbalFluency.score);return cl?(<div style={{ background:cl.bg,borderRadius:9,padding:"10px 12px" }}>
+<div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4 }}>
+<span style={{ fontSize:11,color:cl.color,fontWeight:700,textTransform:"uppercase" }}>Fluência Verbal</span>
+<span style={{ fontSize:18,fontWeight:900,color:cl.color }}>{a.cognitiveData.verbalFluency.score} palavras/min</span>
+</div>
+<div style={{ fontSize:11,color:cl.color,fontWeight:700,marginBottom:4 }}>{cl.label}</div>
+<div style={{ fontSize:12,color:"#475569",lineHeight:1.4 }}>{cl.desc}</div>
+{a.cognitiveData.verbalFluency.words&&<div style={{ fontSize:11,color:"#64748b",marginTop:6,fontStyle:"italic" }}>Palavras ditas: {a.cognitiveData.verbalFluency.words}</div>}
+</div>):null;})()}
+{a.cognitiveData.digitSpan?.direct&&(()=>{const cl=classifyDigitSpan(a.cognitiveData.digitSpan.direct,a.cognitiveData.digitSpan.inverse);return cl?(<div style={{ background:cl.bg,borderRadius:9,padding:"10px 12px" }}>
+<div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4 }}>
+<span style={{ fontSize:11,color:cl.color,fontWeight:700,textTransform:"uppercase" }}>Span de Dígitos</span>
+<span style={{ fontSize:18,fontWeight:900,color:cl.color }}>{a.cognitiveData.digitSpan.direct}↑ {a.cognitiveData.digitSpan.inverse?a.cognitiveData.digitSpan.inverse+"↓":""}</span>
+</div>
+<div style={{ fontSize:11,color:"#64748b",marginBottom:4 }}>Direto: {a.cognitiveData.digitSpan.direct} dígitos{a.cognitiveData.digitSpan.inverse?" · Inverso: "+a.cognitiveData.digitSpan.inverse+" dígitos":""}</div>
+<div style={{ fontSize:11,color:cl.color,fontWeight:700,marginBottom:4 }}>{cl.label}</div>
+<div style={{ fontSize:12,color:"#475569",lineHeight:1.4 }}>{cl.desc}</div>
+</div>):null;})()}
+</div>
 {a.cognitiveData.notes&&<div style={{ marginTop:12,padding:"10px 12px",background:"#f8fafc",borderRadius:8 }}>
 <div style={{ fontSize:11,color:"#94a3b8",fontWeight:700,marginBottom:4 }}>OBSERVAÇÕES</div>
 <div style={{ fontSize:13,color:"#475569" }}>{a.cognitiveData.notes}</div>
