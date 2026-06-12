@@ -146,6 +146,14 @@ if (total === 2) return { label:"Regular (2/4)", desc:"Equilíbrio reduzido. Dif
 if (total === 1) return { label:"Comprometido (1/4)", desc:"Equilíbrio significativamente comprometido. Risco elevado de quedas.", color:"#ea580c", bg:"#ffedd5", score:total };
 return { label:"Muito Comprometido (0/4)", desc:"Incapaz de manter posições de equilíbrio. Risco muito alto de quedas.", color:"#dc2626", bg:"#fee2e2", score:0 };
 };
+const classifySPPBBalanceScore = (totalScore) => {
+const total = parseInt(totalScore)||0;
+if (total === 4) return { label:"Excelente (4/4)", desc:"Equilíbrio estático preservado em todos os níveis. Baixo risco de quedas (SPPB).", color:"#16a34a", bg:"#dcfce7", score:total };
+if (total === 3) return { label:"Bom (3/4)", desc:"Bom equilíbrio. Tandem levemente comprometido.", color:"#65a30d", bg:"#ecfccb", score:total };
+if (total === 2) return { label:"Regular (2/4)", desc:"Equilíbrio reduzido. Dificuldade no tandem. Treino de equilíbrio indicado.", color:"#d97706", bg:"#fef9c3", score:total };
+if (total === 1) return { label:"Comprometido (1/4)", desc:"Equilíbrio significativamente comprometido. Risco elevado de quedas.", color:"#ea580c", bg:"#ffedd5", score:total };
+return { label:"Muito Comprometido (0/4)", desc:"Incapaz de manter posições de equilíbrio. Risco muito alto de quedas.", color:"#dc2626", bg:"#fee2e2", score:0 };
+};
 const classifySPPBChairStand = (v) => {
 if (v === "unable" || v === "0" || v === "") return { label:"Incapaz (0 pt)", desc:"Incapaz de completar 5 repetições. Fraqueza severa de MMII. Intervenção imediata necessária.", color:"#dc2626", bg:"#fee2e2", score:0 };
 const n = parseFloat(v); if (!n) return null;
@@ -396,7 +404,7 @@ const [form,setForm]=useState({name:"",dob:"",sex:"",phone:"",email:"",whatsapp:
 const [search,setSearch]=useState("");
 const open=(s=null)=>{setForm(s?{name:s.name,dob:s.dob||"",sex:s.sex||"",phone:s.phone||"",notes:s.notes||""}:{name:"",dob:"",sex:"",phone:"",notes:""});setEditId(s?.id||null);setModal(true);};
 const save=()=>{if(!form.name.trim())return;if(editId)setStudents(p=>p.map(s=>s.id===editId?{...s,...form}:s));else setStudents(p=>[...p,{id:uid(),...form,createdAt:todayStr()}]);setModal(false);};
-const del=id=>{if(window.confirm("Remover aluno?"))setStudents(p=>p.filter(s=>s.id!==id));};
+const del=id=>{if(window.confirm("Remover aluno?")){DB.remove("students",id);setStudents(p=>p.filter(s=>s.id!==id));}};
 const filtered=students.filter(s=>s.name?.toLowerCase().includes(search.toLowerCase()));
 return (
 <div>
@@ -1560,7 +1568,7 @@ return (
 ["Circ. Abdominal",a.physical?.waist,"cm"],
 ["Circ. Panturrilha",a.aha?.calf,"cm"],
 ["SPPB Equilíbrio",a.physical?.sppbBalanceScore!==undefined?String(a.physical.sppbBalanceScore):"","pts"],
-["SPPB Chair Stand",a.physical?.sppbChairUnable?"Incapaz":(a.physical?.sppbChair||""),"seg"],
+["SPPB — Teste de Sentar e Levantar",a.physical?.sppbChairUnable?"Incapaz":(a.physical?.sppbChair||""),"seg"],
 ["TUG",a.physical?.tug,"seg"],
 ["Preensão Manual",a.physical?.grip,"kgf"],
 ["Sentar e Alcançar",a.physical?.sitreach,"cm"],
@@ -1711,7 +1719,7 @@ return (
 <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
 {[
 ...(a.physical?.sppbSide !== undefined ? [["SPPB Equilíbrio", String((a.physical.sppbSide==="0"?0:(parseInt(a.physical.sppbSemi)||0)+(parseInt(a.physical.sppbTandem)||0))), ()=>classifySPPBBalance(a.physical.sppbSide,a.physical.sppbSemi,a.physical.sppbTandem), "/ 4 pts"]] : []),
-...(a.physical?.sppbChair||a.physical?.sppbChairUnable ? [["SPPB Chair Stand", a.physical.sppbChairUnable?"Incapaz":a.physical.sppbChair, v=>classifySPPBChairStand(a.physical.sppbChairUnable?"unable":v), a.physical.sppbChairUnable?"":"seg"]] : []),
+...(a.physical?.sppbChair||a.physical?.sppbChairUnable ? [["SPPB — Teste de Sentar e Levantar", a.physical.sppbChairUnable?"Incapaz":a.physical.sppbChair, v=>classifySPPBChairStand(a.physical.sppbChairUnable?"unable":v), a.physical.sppbChairUnable?"":"seg"]] : []),
 ["Preensão Manual", a.physical?.grip, v=>classifyHandGrip(v,sex), "kgf"],
 ["TUG", a.physical?.tug, classifyTUG, "seg"],
 ["Sentar e Alcançar", a.physical?.sitreach, classifySitReach, "cm"],
@@ -1935,7 +1943,7 @@ return(<tr key={p2} style={{ borderBottom:"1px solid #f1f5f9" }}>
 
 const AssessmentsList = ({ assessments, students, setAssessments, nav }) => {
 const [filter,setFilter]=useState("");
-const del=id=>{if(window.confirm("Remover?"))setAssessments(p=>p.filter(a=>a.id!==id));};
+const del=id=>{if(window.confirm("Remover?")){DB.remove("assessments",id);setAssessments(p=>p.filter(a=>a.id!==id));}};
 const sorted=[...assessments].filter(a=>{const st=students.find(s=>s.id===a.studentId);return !filter||st?.name?.toLowerCase().includes(filter.toLowerCase());}).sort((a,b)=>b.date?.localeCompare(a.date));
 return (
 <div>
@@ -3243,8 +3251,8 @@ return (
 <Badge color={fitCl.color} bg={fitCl.bg}>{fitCl.label} — Score: {a.physical?.score}/100</Badge>
 </div>
 <div style={{ display:"flex", flexDirection:"column", gap:8, marginTop:10 }}>
-{[["SPPB — Equilíbrio", a.physical?.sppbBalanceScore!==undefined?String(a.physical.sppbBalanceScore):null, v=>classifySPPBBalance(parseFloat(v)), "pts"],
-["SPPB — Chair Stand", a.physical?.sppbChairUnable?"unable":(a.physical?.sppbChair||null), v=>classifySPPBChairStand(v), a.physical?.sppbChairUnable?"":"seg"],
+{[["SPPB — Equilíbrio", a.physical?.sppbBalanceScore!==undefined?String(a.physical.sppbBalanceScore):null, v=>classifySPPBBalanceScore(v), "pts"],
+["SPPB — Teste de Sentar e Levantar", a.physical?.sppbChairUnable?"unable":(a.physical?.sppbChair||null), v=>classifySPPBChairStand(v), a.physical?.sppbChairUnable?"":"seg"],
 ["Preensão Manual", a.physical?.grip, v=>classifyHandGrip(v,sex), "kgf"],
 ["TUG — Timed Up and Go", a.physical?.tug, classifyTUG, "seg"],
 ["Sentar e Alcançar", a.physical?.sitreach, classifySitReach, "cm"],
@@ -3617,8 +3625,8 @@ const aivdMap = {shopping:"compras",finance:"finanças",transport:"transporte",m
 const aivdProbs = a.aivd ? Object.keys(aivdMap).filter(k=>a.aivd[k]<2).map(k=>aivdMap[k]+(a.aivd[k]===1?" (com auxílio)":" (dependente)")) : [];
 const calfRisk = a.aha?.calf ? classifyCalf(a.aha.calf, student.sex) : null;
 const testLines = [
-a.physical?.sppbBalanceScore!==undefined ? "SPPB Equilíbrio: "+a.physical.sppbBalanceScore+" pts — "+(classifySPPBBalance(parseFloat(a.physical.sppbBalanceScore))?.label||"—") : null,
-(a.physical?.sppbChair||a.physical?.sppbChairUnable) ? "SPPB Chair Stand: "+(a.physical.sppbChairUnable?"Incapaz":a.physical.sppbChair+"seg")+" — "+(classifySPPBChairStand(a.physical.sppbChairUnable?"unable":a.physical.sppbChair)?.label||"—") : null,
+a.physical?.sppbBalanceScore!==undefined ? "SPPB Equilíbrio: "+a.physical.sppbBalanceScore+" pts — "+(classifySPPBBalanceScore(a.physical.sppbBalanceScore)?.label||"—") : null,
+(a.physical?.sppbChair||a.physical?.sppbChairUnable) ? "SPPB — Teste de Sentar e Levantar: "+(a.physical.sppbChairUnable?"Incapaz":a.physical.sppbChair+"seg")+" — "+(classifySPPBChairStand(a.physical.sppbChairUnable?"unable":a.physical.sppbChair)?.label||"—") : null,
 a.physical?.grip  ? "Preensão Manual: "+a.physical.grip+" kgf — "+(classifyHandGrip(a.physical.grip,student.sex)?.label||"—") : null,
 a.physical?.tug   ? "TUG: "+a.physical.tug+" seg — "+(classifyTUG(a.physical.tug)?.label||"—") : null,
 (a.physical?.sitreach!==undefined&&a.physical?.sitreach!=="") ? "Sentar e Alcançar: "+a.physical.sitreach+" cm — "+(classifySitReach(a.physical.sitreach)?.label||"—") : null,
@@ -3649,7 +3657,7 @@ nome+" apresentou evolução "+tend+" no período analisado. O índice Índice G
 const comparisons = [];
 const tests = [
 ["SPPB Equilíbrio", f=>f.physical?.sppbBalanceScore!==undefined?String(f.physical.sppbBalanceScore):null, "pts"],
-["SPPB Chair Stand", f=>f.physical?.sppbChairUnable?"Incapaz":(f.physical?.sppbChair||null), "seg"],
+["SPPB — Teste de Sentar e Levantar", f=>f.physical?.sppbChairUnable?"Incapaz":(f.physical?.sppbChair||null), "seg"],
 ["TUG", f=>f.physical?.tug, "seg"],
 ["Preensão Manual", f=>f.physical?.grip, "kgf"],
 ["Sentar e Alcançar", f=>f.physical?.sitreach!==undefined&&f.physical.sitreach!==""?f.physical.sitreach:null, "cm"],
@@ -3693,8 +3701,8 @@ if (a.aha?.bmi&&parseFloat(a.aha.bmi)>=30) findings.push("IMC indicativo de obes
 if (calfRisk?.label.includes("Alto")) findings.push("circunferência de panturrilha reduzida ("+a.aha.calf+" cm) com risco elevado para sarcopenia");
 if ((a.functional?.score||0)<40) findings.push("capacidade funcional comprometida ("+funcCl.label+", score "+a.functional?.score+"/100)");
 if (a.physical?.tug&&parseFloat(a.physical.tug)>13.5) findings.push("TUG alterado ("+a.physical.tug+"s), indicando risco de quedas");
-if (a.physical?.sppbChairUnable) findings.push("SPPB Chair Stand: incapaz de realizar — risco elevado de sarcopenia e quedas");
-else if (a.physical?.sppbChair&&classifySPPBChairStand(a.physical.sppbChair)?.score<=1) findings.push("SPPB Chair Stand comprometido ("+a.physical.sppbChair+"s) — força de MMII reduzida");
+if (a.physical?.sppbChairUnable) findings.push("SPPB — Teste de Sentar e Levantar: incapaz de realizar — risco elevado de sarcopenia e quedas");
+else if (a.physical?.sppbChair&&classifySPPBChairStand(a.physical.sppbChair)?.score<=1) findings.push("SPPB — Teste de Sentar e Levantar comprometido ("+a.physical.sppbChair+"s) — força de MMII reduzida");
 if (a.cognitiveData?.mmse?.total&&parseInt(a.cognitiveData.mmse.total)<18) findings.push("MMSE "+a.cognitiveData.mmse.total+"/30 — "+classifyMMSE(a.cognitiveData.mmse.total)?.label+" — encaminhamento neurológico/geriátrico recomendado");
 else if (a.cognitiveData?.mmse?.total&&parseInt(a.cognitiveData.mmse.total)<24) findings.push("MMSE "+a.cognitiveData.mmse.total+"/30 — "+classifyMMSE(a.cognitiveData.mmse.total)?.label+" — acompanhamento cognitivo recomendado");
 if (a.anamnese?.pathologies) findings.push("patologias relatadas: "+a.anamnese.pathologies);
@@ -3788,7 +3796,7 @@ if (a.physical?.sppbBalanceScore!==undefined&&parseFloat(a.physical.sppbBalanceS
 impacts.push("SPPB Equilíbrio comprometido ("+a.physical.sppbBalanceScore+"/4 pts): dificuldade em manter posições estáticas. Maior vulnerabilidade a tropeços e quedas em situações simples como se vestir em pé, tomar banho ou caminhar em superfícies irregulares.");
 }
 if (a.physical?.sppbChairUnable||(a.physical?.sppbChair&&classifySPPBChairStand(a.physical.sppbChairUnable?"unable":a.physical.sppbChair)?.score<=1)) {
-impacts.push("SPPB Chair Stand comprometido: fraqueza significativa de membros inferiores que impacta diretamente o uso do vaso sanitário, entrar e sair do carro, levantar do sofá e subir escadas com segurança.");
+impacts.push("SPPB — Teste de Sentar e Levantar comprometido: fraqueza significativa de membros inferiores que impacta diretamente o uso do vaso sanitário, entrar e sair do carro, levantar do sofá e subir escadas com segurança.");
 }
 if (a.physical?.grip) {
 const gripCl = classifyHandGrip(a.physical.grip, student.sex);
@@ -3977,7 +3985,7 @@ const dados = [
 "",
 "TESTES FISICOS:",
 a?.physical?.sppbSide !== undefined ? "SPPB Equilibrio: " + ((a.physical.sppbSide==="0"?0:(parseInt(a.physical.sppbSemi)||0)+(parseInt(a.physical.sppbTandem)||0))) + "/4 pts — " + (classifySPPBBalance(a.physical.sppbSide,a.physical.sppbSemi,a.physical.sppbTandem)?.label||"—") : "—",
-(a?.physical?.sppbChair||a?.physical?.sppbChairUnable) ? "SPPB Chair Stand: " + (a.physical.sppbChairUnable?"Incapaz":a.physical.sppbChair+"s") + " — " + (classifySPPBChairStand(a.physical.sppbChairUnable?"unable":a.physical.sppbChair)?.label||"—") : "—",
+(a?.physical?.sppbChair||a?.physical?.sppbChairUnable) ? "SPPB — Teste de Sentar e Levantar: " + (a.physical.sppbChairUnable?"Incapaz":a.physical.sppbChair+"s") + " — " + (classifySPPBChairStand(a.physical.sppbChairUnable?"unable":a.physical.sppbChair)?.label||"—") : "—",
 "Preensao Manual: " + (a?.physical?.grip||"—") + " kgf — " + (classifyHandGrip(a?.physical?.grip, student?.sex)?.label||"—"),
 "TUG: " + (a?.physical?.tug||"—") + " seg — " + (classifyTUG(a?.physical?.tug)?.label||"—"),
 "Sentar e Alcancar: " + (a?.physical?.sitreach||"—") + " cm — " + (classifySitReach(a?.physical?.sitreach)?.label||"—"),
