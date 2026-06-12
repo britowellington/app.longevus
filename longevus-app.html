@@ -1540,23 +1540,33 @@ return (
 </Card>}
 {activeTab==="avds"&&<Card style={{ marginBottom:14 }}>
 <div style={{ fontWeight:700,fontSize:14,color:"#FF5603",marginBottom:14,borderBottom:"1px solid #fee",paddingBottom:8 }}>AVDs e AIVDs — Funcionalidade</div>
-<div style={{ marginBottom:8,padding:"8px 12px",background:"#f8fafc",borderRadius:8,fontWeight:700,fontSize:14 }}>Score Funcional: {a.functional?.score||"—"}/100</div>
-{a.functional?.barthel&&<div style={{ marginBottom:14 }}>
-<div style={{ fontWeight:700,fontSize:13,marginBottom:8,color:"#475569" }}>Índice de Barthel — AVDs Básicas</div>
-{Object.entries(a.functional.barthel).map(([k,v])=>(
-<div key={k} style={{ display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #f1f5f9",fontSize:13 }}>
-<span style={{ color:"#475569" }}>{k}</span><span style={{ fontWeight:700 }}>{v}</span>
-</div>
+<div style={{ marginBottom:14,padding:"8px 12px",background:"#f8fafc",borderRadius:8,fontWeight:700,fontSize:14 }}>Score Funcional: {a.functional?.score||"—"}/100</div>
+{a.avd&&<div style={{ marginBottom:14 }}>
+<div style={{ fontWeight:700,fontSize:13,marginBottom:8,color:"#475569" }}>AVDs — Atividades Básicas (Índice de Barthel simplificado)</div>
+<div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
+{[["Alimentação",a.avd.eating],["Banho",a.avd.bathing],["Vestuário",a.avd.dressing],["Higiene pessoal",a.avd.toileting],["Transferência",a.avd.transferring]].map(([k,v])=>(
+<div key={k} style={{ background:"#f8fafc",borderRadius:8,padding:"6px 10px",fontSize:13 }}><span style={{ color:"#94a3b8" }}>{k}: </span><span style={{ fontWeight:700,color:v===2?"#16a34a":v===1?"#d97706":"#dc2626" }}>{v===2?"Independente":v===1?"Com auxílio":"Dependente"}</span></div>
 ))}
-</div>}
-{a.functional?.lawton&&<div>
-<div style={{ fontWeight:700,fontSize:13,marginBottom:8,color:"#475569" }}>Escala de Lawton — AIVDs</div>
-{Object.entries(a.functional.lawton).map(([k,v])=>(
-<div key={k} style={{ display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #f1f5f9",fontSize:13 }}>
-<span style={{ color:"#475569" }}>{k}</span><span style={{ fontWeight:700 }}>{v}</span>
 </div>
-))}
 </div>}
+{a.aivd&&<div style={{ marginBottom:14 }}>
+<div style={{ fontWeight:700,fontSize:13,marginBottom:8,color:"#475569" }}>AIVDs — Atividades Instrumentais (Escala de Lawton)</div>
+<div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
+{[["Compras",a.aivd.shopping],["Finanças",a.aivd.finance],["Transporte",a.aivd.transport],["Medicação",a.aivd.medication],["Tarefas domésticas",a.aivd.housework],["Telefone/Celular",a.aivd.telephone]].map(([k,v])=>(
+<div key={k} style={{ background:"#f8fafc",borderRadius:8,padding:"6px 10px",fontSize:13 }}><span style={{ color:"#94a3b8" }}>{k}: </span><span style={{ fontWeight:700,color:v===2?"#16a34a":v===1?"#d97706":"#dc2626" }}>{v===2?"Independente":v===1?"Com auxílio":"Dependente"}</span></div>
+))}
+</div>
+</div>}
+{a.functional&&(a.functional.falls||a.functional.balance||a.functional.physlim||a.functional.selfhealth)&&<div>
+<div style={{ fontWeight:700,fontSize:13,marginBottom:8,color:"#475569" }}>Fatores de Risco Funcional</div>
+<div style={{ display:"flex",flexDirection:"column",gap:6 }}>
+{a.functional.falls&&<div style={{ background:"#fee2e2",borderRadius:8,padding:"7px 10px",fontSize:13,fontWeight:700,color:"#dc2626" }}>⚠️ Quedas nos últimos 12 meses</div>}
+{a.functional.balance&&<div style={{ background:"#fee2e2",borderRadius:8,padding:"7px 10px",fontSize:13,fontWeight:700,color:"#dc2626" }}>⚠️ Limitação de equilíbrio</div>}
+{a.functional.physlim&&<div style={{ background:"#ffedd5",borderRadius:8,padding:"7px 10px",fontSize:13,fontWeight:700,color:"#ea580c" }}>⚠️ Limitação física relatada</div>}
+{a.functional.selfhealth!==undefined&&<div style={{ background:"#f8fafc",borderRadius:8,padding:"7px 10px",fontSize:13 }}><span style={{ color:"#94a3b8" }}>Autopercepção de saúde: </span><span style={{ fontWeight:700 }}>{["Ruim","Regular","Boa"][a.functional.selfhealth]||a.functional.selfhealth}</span></div>}
+</div>
+</div>}
+{!a.avd&&!a.aivd&&<div style={{ color:"#94a3b8",fontSize:13 }}>AVDs/AIVDs não registradas.</div>}
 </Card>}
 {activeTab==="testes"&&<Card style={{ marginBottom:14 }}>
 <div style={{ fontWeight:700,fontSize:14,color:"#FF5603",marginBottom:14,borderBottom:"1px solid #fee",paddingBottom:8 }}>Testes Físicos</div>
@@ -1583,20 +1593,112 @@ return (
 <div style={{ fontWeight:700,fontSize:14,color:"#FF5603",marginBottom:14,borderBottom:"1px solid #fee",paddingBottom:8 }}>Avaliação Cardiorrespiratória</div>
 {a.cardioMode&&a.cardioMode!=="skip"
 ? <div>
-<div style={{ fontSize:12,color:"#94a3b8",marginBottom:12 }}>Modalidade: <strong style={{ color:"#0f172a" }}>{a.cardioMode==="ergo"?"Ergoespirometria / TC6":a.cardioMode==="pred"?"VO2 Predito":"Teste de Campo"}</strong></div>
-{[
-["FC Repouso",a.cardioAssessment?.ergo?.fcRest||a.cardioAssessment?.pred?.fcRest,"bpm"],
-["FC Máxima",a.cardioAssessment?.ergo?.fcMax,"bpm"],
-["VO2max",a.cardioAssessment?.ergo?.vo2max||a.cardioAssessment?.pred?.vo2max,"ml/kg/min"],
-["PAS Repouso",a.cardioAssessment?.ergo?.pasSit,"mmHg"],
-["PAD Repouso",a.cardioAssessment?.ergo?.padSit,"mmHg"],
-["METs",a.cardioAssessment?.ergo?.mets,""],
-].filter(([,v])=>v).map(([label,val,unit])=>(
+<div style={{ fontSize:12,color:"#94a3b8",marginBottom:12 }}>Modalidade: <strong style={{ color:"#0f172a" }}>{a.cardioMode==="ergo"?"Ergoespirometria / Teste Ergométrico":"Predição Clínica (VO2 Predito)"}</strong></div>
+{a.cardioMode==="ergo"&&a.cardioAssessment?.ergo&&(()=>{
+const e=a.cardioAssessment.ergo;
+const vo2=e.vo2max||(e.mets?(parseFloat(e.mets)*3.5).toFixed(1):null);
+const vo2cl=vo2?classifyVO2(vo2,calcAge(student?.dob),sex):null;
+const fcMax=parseFloat(e.fcMax),fcRest=parseFloat(e.fcRest);
+const fcRes=fcMax&&fcRest?fcMax-fcRest:null;
+const dp=fcMax&&e.pasPeak?Math.round(fcMax*parseFloat(e.pasPeak)):null;
+const metCl=metClass(e.mets);
+const hasBeta=e.medications?.includes("beta");
+const hasArr=e.arrythmias?.length>0&&!e.arrythmias.includes("none");
+return(<div>
+{[["FC Repouso",e.fcRest,"bpm"],["FC Máxima",e.fcMax,"bpm"],["METs",e.mets,"METs"],["PAS Repouso",e.pasSit,"mmHg"],["PAS Pico",e.pasPeak,"mmHg"],["FC Reserva",fcRes,fcRes?"bpm":null],["Duplo Produto",dp?dp.toLocaleString("pt-BR"):null,dp?"mmHg·bpm":null],["FC Limiar Isq.",e.fcIschemic?e.fcIschemic+" bpm":null,null],["Zona Segura",e.fcIschemic?(parseFloat(e.fcIschemic)-10)+" bpm":null,null]].filter(([,v])=>v).map(([label,val,unit])=>(
 <div key={label} style={{ display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #f1f5f9",fontSize:13 }}>
-<span style={{ color:"#475569" }}>{label}</span>
-<span style={{ fontWeight:700,color:"#0f172a" }}>{val}{unit?" "+unit:""}</span>
+<span style={{ color:"#475569" }}>{label}</span><span style={{ fontWeight:700,color:"#0f172a" }}>{val}{unit?" "+unit:""}</span>
 </div>
 ))}
+{vo2&&<div style={{ background:"#f0fdf4",border:"1px solid #86efac",borderRadius:10,padding:12,marginTop:10 }}>
+<div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6 }}>
+<div style={{ fontWeight:700,fontSize:13,color:"#16a34a" }}>🫁 VO₂máx — {e.vo2measured?"Medido":"Estimado (METs×3.5)"}</div>
+<div style={{ fontWeight:900,fontSize:18,color:"#16a34a" }}>{parseFloat(vo2).toFixed(1)} ml/kg/min</div>
+</div>
+{vo2cl&&<div style={{ background:vo2cl.bg,borderRadius:8,padding:"8px 12px" }}>
+<div style={{ fontWeight:700,fontSize:12,color:vo2cl.color }}>{vo2cl.label}</div>
+<div style={{ fontSize:11,color:"#475569" }}>{vo2cl.desc}</div>
+</div>}
+{metCl&&<div style={{ marginTop:8 }}><TestResult cl={metCl}/></div>}
+</div>}
+{fcMax>0&&<div style={{ marginTop:10 }}>
+<div style={{ fontWeight:700,fontSize:12,color:"#475569",marginBottom:8 }}>Zonas de Treinamento Aeróbio</div>
+{hasBeta&&<div style={{ background:"#eef2ff",borderRadius:8,padding:"7px 12px",marginBottom:8,fontSize:11,fontWeight:700,color:"#6366f1" }}>💊 Beta-bloqueador: priorizar PSE/Borg + sintomas</div>}
+<table style={{ width:"100%",borderCollapse:"collapse",fontSize:11 }}>
+<thead><tr style={{ background:"#f8fafc" }}>
+{["Intensidade",fcRes?"FC Karvonen":null,"%FCmáx","PSE (0–10)","Zona"].filter(Boolean).map(h=><th key={h} style={{ padding:"6px 8px",textAlign:"left",fontWeight:700,color:"#475569",borderBottom:"1.5px solid #e2e8f0" }}>{h}</th>)}
+</tr></thead>
+<tbody>{[0.40,0.50,0.60,0.70,0.80].map(pc=>{
+const karv=fcRes?Math.round(fcRes*pc+fcRest):null;
+const pctFc=Math.round(fcMax*pc);
+const safe=e.fcIschemic?(karv||pctFc)<parseFloat(e.fcIschemic)-10:true;
+const borg=pc<=0.50?"2–3":pc<=0.60?"4–5":pc<=0.70?"5–6":"6–7";
+const zona=pc<=0.50?"Leve":pc<=0.60?"Moderada":pc<=0.70?"Mod-Vigorosa":"Vigorosa";
+const color=safe?"#16a34a":"#dc2626";
+return(<tr key={pc} style={{ borderBottom:"1px solid #f1f5f9" }}>
+<td style={{ padding:"6px 8px",fontWeight:800 }}>{Math.round(pc*100)}%</td>
+{fcRes&&<td style={{ padding:"6px 8px",fontWeight:800,color }}>{karv} bpm{!safe?" ⚠️":""}</td>}
+<td style={{ padding:"6px 8px",color }}>{pctFc} bpm{!fcRes&&!safe?" ⚠️":""}</td>
+<td style={{ padding:"6px 8px",color:"#64748b" }}>{borg}</td>
+<td style={{ padding:"6px 8px" }}><span style={{ background:"#16a34a18",color:"#16a34a",padding:"2px 7px",borderRadius:99,fontSize:11,fontWeight:700 }}>{zona}</span></td>
+</tr>);
+})}</tbody>
+</table>
+</div>}
+<div style={{ display:"flex",flexWrap:"wrap",gap:6,marginTop:10 }}>
+{hasBeta&&<Badge color="#6366f1" bg="#eef2ff">💊 Beta-bloqueador</Badge>}
+{hasArr&&<Badge color="#dc2626" bg="#fee2e2">⚠️ Arritmia detectada</Badge>}
+{e.symptomType&&e.symptomType!==""&&<Badge color="#ea580c" bg="#ffedd5">🚩 {({chest:"Dor torácica",dyspnea:"Dispneia",fatigue:"Fadiga",dizziness:"Tontura",palp:"Palpitação",other:"Outro"})[e.symptomType]}</Badge>}
+</div>
+{e.ecgObs&&<div style={{ fontSize:11,color:"#64748b",marginTop:8 }}>ECG: {e.ecgObs}</div>}
+</div>);
+})()}
+{a.cardioMode==="pred"&&a.cardioAssessment?.pred&&(()=>{
+const p=a.cardioAssessment.pred;
+const age3=parseFloat(p.age||calcAge(student?.dob));
+const fcMax2=p.formula==="tanaka"?Math.round(208-0.7*age3):220-age3;
+const fcRes2=p.fcRest?fcMax2-parseFloat(p.fcRest):null;
+const risk=riskStratify(p);
+const hasBeta2=p.medications?.includes("beta");
+return(<div>
+<div style={{ background:risk.bg,border:`1.5px solid ${risk.color}33`,borderRadius:10,padding:12,marginBottom:10 }}>
+<div style={{ fontWeight:800,fontSize:14,color:risk.color,marginBottom:4 }}>{risk.label}</div>
+<div style={{ fontSize:12,color:"#334155" }}>Zona recomendada: <strong>{risk.fcr}</strong> · Borg: <strong>{risk.borg}</strong></div>
+{risk.alert&&<div style={{ fontSize:11,color:risk.color,fontWeight:700,marginTop:4 }}>⚠️ {risk.alert}</div>}
+</div>
+<div style={{ display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6,marginBottom:10 }}>
+<div style={{ background:"#f8fafc",borderRadius:8,padding:"8px 10px" }}>
+<div style={{ fontSize:9,color:"#94a3b8",fontWeight:700 }}>FCmáx ESTIMADA</div>
+<div style={{ fontSize:16,fontWeight:900,color:"#FF5603" }}>{fcMax2} bpm</div>
+<div style={{ fontSize:9,color:"#64748b" }}>{p.formula==="tanaka"?"Tanaka":"Tradicional"}</div>
+</div>
+{fcRes2&&<div style={{ background:"#f8fafc",borderRadius:8,padding:"8px 10px" }}>
+<div style={{ fontSize:9,color:"#94a3b8",fontWeight:700 }}>FC RESERVA</div>
+<div style={{ fontSize:16,fontWeight:900,color:"#6366f1" }}>{fcRes2} bpm</div>
+</div>}
+</div>
+<div style={{ fontWeight:700,fontSize:12,color:"#475569",marginBottom:8 }}>Zonas de Treinamento Estimadas</div>
+{hasBeta2&&<div style={{ background:"#eef2ff",borderRadius:8,padding:"7px 12px",marginBottom:8,fontSize:11,fontWeight:700,color:"#6366f1" }}>💊 Beta-bloqueador: priorizar PSE/Borg + sintomas</div>}
+<table style={{ width:"100%",borderCollapse:"collapse",fontSize:11 }}>
+<thead><tr style={{ background:"#f8fafc" }}>
+{["Intensidade",fcRes2?"FC Karvonen":null,"%FCmáx","PSE (0–10)","Zona"].filter(Boolean).map(h=><th key={h} style={{ padding:"6px 8px",textAlign:"left",fontWeight:700,color:"#475569",borderBottom:"1.5px solid #e2e8f0" }}>{h}</th>)}
+</tr></thead>
+<tbody>{[0.40,0.50,0.60,0.70,0.80].map(p2=>{
+const karv2=fcRes2?Math.round(fcRes2*p2+parseFloat(p.fcRest)):null;
+const pctFc2=Math.round(fcMax2*p2);
+const borg2=p2<=0.50?"2–3":p2<=0.60?"4–5":p2<=0.70?"5–6":"6–7";
+const zona2=p2<=0.50?"Leve":p2<=0.60?"Moderada":p2<=0.70?"Mod-Vig.":"Vigorosa";
+return(<tr key={p2} style={{ borderBottom:"1px solid #f1f5f9" }}>
+<td style={{ padding:"6px 8px",fontWeight:800,color:"#16a34a" }}>{Math.round(p2*100)}%</td>
+{fcRes2&&<td style={{ padding:"6px 8px",fontWeight:800,color:"#16a34a" }}>{karv2} bpm</td>}
+<td style={{ padding:"6px 8px",color:"#475569" }}>{pctFc2} bpm</td>
+<td style={{ padding:"6px 8px",color:"#64748b" }}>{borg2}</td>
+<td style={{ padding:"6px 8px" }}><span style={{ background:"#16a34a18",color:"#16a34a",padding:"2px 7px",borderRadius:99,fontSize:11,fontWeight:700 }}>{zona2}</span></td>
+</tr>);
+})}</tbody>
+</table>
+</div>);
+})()}
 </div>
 : <div style={{ color:"#94a3b8",fontSize:13 }}>Avaliação cardiorrespiratória não realizada.</div>}
 </Card>}
