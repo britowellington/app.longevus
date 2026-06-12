@@ -1418,38 +1418,38 @@ return (
 const classifyMMSE = (score) => {
 const n = parseInt(score);
 if (isNaN(n)) return null;
-if (n >= 27) return { label:"Normal", desc:"Sem indicativo de comprometimento cognitivo.", color:"#16a34a", bg:"#dcfce7" };
-if (n >= 24) return { label:"Comprometimento Leve", desc:"Possível comprometimento cognitivo leve. Recomendar avaliação neurológica.", color:"#d97706", bg:"#fef9c3" };
-if (n >= 18) return { label:"Comprometimento Moderado", desc:"Comprometimento cognitivo moderado. Encaminhamento médico recomendado. Priorizar treino neurofuncional supervisionado.", color:"#ea580c", bg:"#ffedd5" };
-return { label:"Comprometimento Grave", desc:"Comprometimento cognitivo grave. Avaliação médica urgente. Exercício supervisionado com baixíssima complexidade.", color:"#dc2626", bg:"#fee2e2" };
+if (n >= 27) return { label:"Normal", desc:"Sem indicativo de comprometimento cognitivo.", impact:"Cognição preservada para as exigências do dia a dia: gerenciar compromissos, medicamentos, finanças e seguir conversas e instruções sem dificuldade.", color:"#16a34a", bg:"#dcfce7" };
+if (n >= 24) return { label:"Comprometimento Leve", desc:"Possível comprometimento cognitivo leve. Recomendar avaliação neurológica.", impact:"Pode começar a apresentar pequenos esquecimentos do dia a dia, como esquecer onde guardou objetos, repetir perguntas ou ter mais dificuldade para aprender coisas novas. Ainda mantém independência, mas exige atenção a sinais de progressão.", color:"#d97706", bg:"#fef9c3" };
+if (n >= 18) return { label:"Comprometimento Moderado", desc:"Comprometimento cognitivo moderado. Encaminhamento médico recomendado. Priorizar treino neurofuncional supervisionado.", impact:"Pode afetar a capacidade de seguir sequências de exercícios, memorizar orientações e manter atenção. No cotidiano, pode dificultar o controle de medicamentos, lembrar compromissos, seguir receitas ou instruções com várias etapas, e aumenta o risco de se perder em ambientes pouco familiares. Exige comandos simples, supervisão constante e comunicação com médico.", color:"#ea580c", bg:"#ffedd5" };
+return { label:"Comprometimento Grave", desc:"Comprometimento cognitivo grave. Avaliação médica urgente. Exercício supervisionado com baixíssima complexidade.", impact:"Indica perda significativa de autonomia: dificuldade para reconhecer pessoas e lugares familiares, lembrar informações recentes, tomar decisões simples e realizar atividades básicas sem auxílio. Necessita supervisão próxima e contínua em praticamente todas as atividades.", color:"#dc2626", bg:"#fee2e2" };
 };
 const classifyDualTask = (single, dual) => {
 const s = parseFloat(single), d = parseFloat(dual);
 if (!s || !d) return null;
 const cost = Math.round(((s - d) / s) * 100);
-if (cost < 0) return { cost: Math.abs(cost), label:"Sem custo (melhora)", desc:"Desempenho igual ou superior com dupla tarefa. Excelente controle cognitivo-motor.", color:"#16a34a", bg:"#dcfce7" };
-if (cost < 10) return { cost, label:"Baixo Custo (<10%)", desc:"Boa capacidade de divisão atencional. Pode progredir para dual tasks moderadas.", color:"#16a34a", bg:"#dcfce7" };
-if (cost < 20) return { cost, label:"Custo Moderado (10–20%)", desc:"Atenção dividida comprometida. Incluir dual task progressiva na prescrição.", color:"#d97706", bg:"#fef9c3" };
-if (cost < 35) return { cost, label:"Custo Elevado (20–35%)", desc:"Dificuldade significativa de divisão atencional. Risco de queda em ambientes complexos. Treino neurofuncional prioritário.", color:"#ea580c", bg:"#ffedd5" };
-return { cost, label:"Custo Muito Elevado (>35%)", desc:"Comprometimento grave da atenção dividida. Alto risco de queda. Iniciar dual task apenas no nível básico com supervisão constante.", color:"#dc2626", bg:"#fee2e2" };
+if (cost < 0) return { cost: Math.abs(cost), label:"Sem custo (melhora)", desc:"Desempenho igual ou superior com dupla tarefa. Excelente controle cognitivo-motor.", impact:"Consegue realizar tarefas simultâneas no dia a dia (como caminhar e conversar, ou andar carregando objetos) sem perda de equilíbrio ou atenção. Baixo risco de quedas em ambientes com distrações.", color:"#16a34a", bg:"#dcfce7" };
+if (cost < 10) return { cost, label:"Baixo Custo (<10%)", desc:"Boa capacidade de divisão atencional. Pode progredir para dual tasks moderadas.", impact:"Boa capacidade de fazer mais de uma coisa ao mesmo tempo, como andar e conversar, ou atravessar a rua observando o trânsito. Baixo risco de quedas em situações do cotidiano que exigem atenção dividida.", color:"#16a34a", bg:"#dcfce7" };
+if (cost < 20) return { cost, label:"Custo Moderado (10–20%)", desc:"Atenção dividida comprometida. Incluir dual task progressiva na prescrição.", impact:"Pode ter dificuldade em situações que exigem atenção dividida, como caminhar enquanto conversa, carrega objetos ou observa o ambiente. Aumenta um pouco o risco de tropeços em ambientes movimentados ou com obstáculos.", color:"#d97706", bg:"#fef9c3" };
+if (cost < 35) return { cost, label:"Custo Elevado (20–35%)", desc:"Dificuldade significativa de divisão atencional. Risco de queda em ambientes complexos. Treino neurofuncional prioritário.", impact:"Dificuldade significativa em realizar duas tarefas ao mesmo tempo — por exemplo, andar e conversar, ou caminhar enquanto procura algo na bolsa. Aumenta o risco de quedas em ambientes movimentados, como supermercados, ruas com trânsito ou ao atender o celular enquanto caminha.", color:"#ea580c", bg:"#ffedd5" };
+return { cost, label:"Custo Muito Elevado (>35%)", desc:"Comprometimento grave da atenção dividida. Alto risco de queda. Iniciar dual task apenas no nível básico com supervisão constante.", impact:"Comprometimento importante: tarefas simultâneas como caminhar e conversar, ou andar enquanto carrega algo, tornam-se perigosas. Alto risco de quedas em qualquer ambiente com distrações, mesmo dentro de casa (ex: andar e atender alguém, desviar de um móvel enquanto fala).", color:"#dc2626", bg:"#fee2e2" };
 };
 const classifyVerbalFluency = (score) => {
 const n = parseInt(score);
 if (isNaN(n)) return null;
-if (n >= 18) return { label:"Excelente", desc:"Fluência verbal e memória semântica muito preservadas.", color:"#16a34a", bg:"#dcfce7" };
-if (n >= 13) return { label:"Normal", desc:"Fluência verbal dentro do esperado para a faixa etária.", color:"#65a30d", bg:"#ecfccb" };
-if (n >= 9)  return { label:"Limítrofe", desc:"Fluência verbal abaixo do esperado. Atenção a possível declínio de memória semântica.", color:"#d97706", bg:"#fef9c3" };
-return { label:"Reduzida", desc:"Fluência verbal significativamente reduzida. Indicativo de comprometimento de memória e função executiva. Avaliar com especialista.", color:"#dc2626", bg:"#fee2e2" };
+if (n >= 18) return { label:"Excelente", desc:"Fluência verbal e memória semântica muito preservadas.", impact:"Facilidade para se comunicar, encontrar as palavras certas em conversas e participar ativamente de discussões e atividades sociais.", color:"#16a34a", bg:"#dcfce7" };
+if (n >= 13) return { label:"Normal", desc:"Fluência verbal dentro do esperado para a faixa etária.", impact:"Boa capacidade de se comunicar no dia a dia, participar de conversas, contar histórias e se expressar sem dificuldades relevantes.", color:"#65a30d", bg:"#ecfccb" };
+if (n >= 9)  return { label:"Limítrofe", desc:"Fluência verbal abaixo do esperado. Atenção a possível declínio de memória semântica.", impact:"Pode começar a sentir mais dificuldade para encontrar palavras durante conversas, o que às vezes leva a pausas, repetições ou frases incompletas. No cotidiano, pode gerar certa frustração em conversas mais longas ou em grupo.", color:"#d97706", bg:"#fef9c3" };
+return { label:"Reduzida", desc:"Fluência verbal significativamente reduzida. Indicativo de comprometimento de memória e função executiva. Avaliar com especialista.", impact:"Dificuldade significativa para manter conversas, expressar necessidades e participar de grupos sociais. Pode levar a isolamento social, já que a comunicação se torna mais cansativa tanto para a pessoa quanto para quem conversa com ela. Também pode dificultar seguir instruções verbais durante o treino.", color:"#dc2626", bg:"#fee2e2" };
 };
 const classifyDigitSpan = (direct, inverse) => {
 const d = parseInt(direct), i = parseInt(inverse);
 if (isNaN(d)) return null;
-let label, desc, color, bg;
-if (d >= 7 && (!i || i >= 5)) { label="Excelente"; desc="Memória de trabalho e curto prazo muito preservadas."; color="#16a34a"; bg="#dcfce7"; }
-else if (d >= 5 && (!i || i >= 3)) { label="Normal"; desc="Memória de trabalho adequada para a faixa etária."; color="#65a30d"; bg="#ecfccb"; }
-else if (d >= 4 && (!i || i >= 2)) { label="Limítrofe"; desc="Memória de trabalho ligeiramente reduzida. Incluir exercícios de memória sequencial."; color="#d97706"; bg="#fef9c3"; }
-else { label="Reduzida"; desc="Memória de trabalho comprometida. Treino cognitivo e neurofuncional prioritário."; color="#dc2626"; bg="#fee2e2"; }
-return { label, desc, color, bg };
+let label, desc, impact, color, bg;
+if (d >= 7 && (!i || i >= 5)) { label="Excelente"; desc="Memória de trabalho e curto prazo muito preservadas."; impact="Excelente capacidade de reter e manipular informações no dia a dia, como lembrar listas de compras, números de telefone, sequências de instruções e gerenciar várias informações ao mesmo tempo."; color="#16a34a"; bg="#dcfce7"; }
+else if (d >= 5 && (!i || i >= 3)) { label="Normal"; desc="Memória de trabalho adequada para a faixa etária."; impact="Boa capacidade de reter informações de curto prazo no cotidiano, como lembrar uma lista de tarefas, seguir instruções com poucos passos e acompanhar conversas sem perder o fio."; color="#65a30d"; bg="#ecfccb"; }
+else if (d >= 4 && (!i || i >= 2)) { label="Limítrofe"; desc="Memória de trabalho ligeiramente reduzida. Incluir exercícios de memória sequencial."; impact="Pode ter mais dificuldade em lembrar sequências de informações, como uma lista de compras maior, números de telefone ou instruções com várias etapas. No cotidiano, pode esquecer parte do que precisa fazer ao realizar tarefas com múltiplos passos."; color="#d97706"; bg="#fef9c3"; }
+else { label="Reduzida"; desc="Memória de trabalho comprometida. Treino cognitivo e neurofuncional prioritário."; impact="Dificuldade significativa para reter e manipular informações temporariamente. Afeta a capacidade de memorizar sequências de exercícios, lembrar instruções recentes, gerenciar a tomada correta de medicamentos e realizar tarefas com múltiplos passos, como seguir uma receita ou usar transporte público."; color="#dc2626"; bg="#fee2e2"; }
+return { label, desc, impact, color, bg };
 };
 const calcCognitiveScore = (mmse, dtSingle, dtDual, verbal, digitD, digitI) => {
 let total = 0, count = 0;
@@ -1715,6 +1715,7 @@ return(<tr key={p2} style={{ borderBottom:"1px solid #f1f5f9" }}>
 </div>
 <div style={{ fontSize:11,color:cl.color,fontWeight:700,marginBottom:4 }}>{cl.label}</div>
 <div style={{ fontSize:12,color:"#475569",lineHeight:1.4,marginBottom:8 }}>{cl.desc}</div>
+{cl.impact&&<div style={{ fontSize:12,color:"#334155",lineHeight:1.4,marginBottom:8,paddingTop:6,borderTop:"1px solid "+cl.color+"22" }}><strong>Impacto no cotidiano:</strong> {cl.impact}</div>}
 <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
 {[
 {k:"q1",l:"Orientação temporal",max:5},
@@ -1742,7 +1743,8 @@ return(<tr key={p2} style={{ borderBottom:"1px solid #f1f5f9" }}>
 </div>
 <div style={{ fontSize:11,color:"#64748b",marginBottom:4 }}>Simples: {a.cognitiveData.dualTask.single} passos · Dupla: {a.cognitiveData.dualTask.dual} passos</div>
 <div style={{ fontSize:11,color:cl.color,fontWeight:700,marginBottom:4 }}>{cl.label}</div>
-<div style={{ fontSize:12,color:"#475569",lineHeight:1.4 }}>{cl.desc}</div>
+<div style={{ fontSize:12,color:"#475569",lineHeight:1.4,marginBottom:8 }}>{cl.desc}</div>
+{cl.impact&&<div style={{ fontSize:12,color:"#334155",lineHeight:1.4,paddingTop:6,borderTop:"1px solid "+cl.color+"22" }}><strong>Impacto no cotidiano:</strong> {cl.impact}</div>}
 </div>):null;})()}
 {a.cognitiveData.verbalFluency?.score&&(()=>{const cl=classifyVerbalFluency(a.cognitiveData.verbalFluency.score);return cl?(<div style={{ background:cl.bg,borderRadius:9,padding:"10px 12px" }}>
 <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4 }}>
@@ -1750,7 +1752,8 @@ return(<tr key={p2} style={{ borderBottom:"1px solid #f1f5f9" }}>
 <span style={{ fontSize:18,fontWeight:900,color:cl.color }}>{a.cognitiveData.verbalFluency.score} palavras/min</span>
 </div>
 <div style={{ fontSize:11,color:cl.color,fontWeight:700,marginBottom:4 }}>{cl.label}</div>
-<div style={{ fontSize:12,color:"#475569",lineHeight:1.4 }}>{cl.desc}</div>
+<div style={{ fontSize:12,color:"#475569",lineHeight:1.4,marginBottom:8 }}>{cl.desc}</div>
+{cl.impact&&<div style={{ fontSize:12,color:"#334155",lineHeight:1.4,paddingTop:6,borderTop:"1px solid "+cl.color+"22" }}><strong>Impacto no cotidiano:</strong> {cl.impact}</div>}
 {a.cognitiveData.verbalFluency.words&&<div style={{ fontSize:11,color:"#64748b",marginTop:6,fontStyle:"italic" }}>Palavras ditas: {a.cognitiveData.verbalFluency.words}</div>}
 </div>):null;})()}
 {a.cognitiveData.digitSpan?.direct&&(()=>{const cl=classifyDigitSpan(a.cognitiveData.digitSpan.direct,a.cognitiveData.digitSpan.inverse);return cl?(<div style={{ background:cl.bg,borderRadius:9,padding:"10px 12px" }}>
@@ -1760,7 +1763,8 @@ return(<tr key={p2} style={{ borderBottom:"1px solid #f1f5f9" }}>
 </div>
 <div style={{ fontSize:11,color:"#64748b",marginBottom:4 }}>Direto: {a.cognitiveData.digitSpan.direct} dígitos{a.cognitiveData.digitSpan.inverse?" · Inverso: "+a.cognitiveData.digitSpan.inverse+" dígitos":""}</div>
 <div style={{ fontSize:11,color:cl.color,fontWeight:700,marginBottom:4 }}>{cl.label}</div>
-<div style={{ fontSize:12,color:"#475569",lineHeight:1.4 }}>{cl.desc}</div>
+<div style={{ fontSize:12,color:"#475569",lineHeight:1.4,marginBottom:8 }}>{cl.desc}</div>
+{cl.impact&&<div style={{ fontSize:12,color:"#334155",lineHeight:1.4,paddingTop:6,borderTop:"1px solid "+cl.color+"22" }}><strong>Impacto no cotidiano:</strong> {cl.impact}</div>}
 </div>):null;})()}
 </div>
 {a.cognitiveData.notes&&<div style={{ marginTop:12,padding:"10px 12px",background:"#f8fafc",borderRadius:8 }}>
@@ -1898,10 +1902,10 @@ return <Badge color={cl.color} bg={cl.bg}>Score {cs} — {cl.label}</Badge>;
 })()}
 </div>
 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
-{a.cognitiveData.mmse?.total&&(()=>{const cl=classifyMMSE(a.cognitiveData.mmse.total);return cl?(<div style={{ background:cl.bg,borderRadius:9,padding:"10px 12px" }}><div style={{ fontSize:10,color:cl.color,fontWeight:700,textTransform:"uppercase" }}>MMSE</div><div style={{ fontSize:18,fontWeight:900,color:cl.color }}>{a.cognitiveData.mmse.total}/30</div><div style={{ fontSize:11,color:cl.color,fontWeight:700,marginBottom:4 }}>{cl.label}</div><div style={{ fontSize:11,color:"#475569",lineHeight:1.4 }}>{cl.desc}</div></div>):null;})()}
-{a.cognitiveData.dualTask?.single&&a.cognitiveData.dualTask?.dual&&(()=>{const cl=classifyDualTask(a.cognitiveData.dualTask.single,a.cognitiveData.dualTask.dual);return cl?(<div style={{ background:cl.bg,borderRadius:9,padding:"10px 12px" }}><div style={{ fontSize:10,color:cl.color,fontWeight:700,textTransform:"uppercase" }}>DUAL TASK COST</div><div style={{ fontSize:18,fontWeight:900,color:cl.color }}>{cl.cost}%</div><div style={{ fontSize:11,color:cl.color,fontWeight:700,marginBottom:4 }}>{cl.label}</div><div style={{ fontSize:11,color:"#475569",lineHeight:1.4 }}>{cl.desc}</div></div>):null;})()}
-{a.cognitiveData.verbalFluency?.score&&(()=>{const cl=classifyVerbalFluency(a.cognitiveData.verbalFluency.score);return cl?(<div style={{ background:cl.bg,borderRadius:9,padding:"10px 12px" }}><div style={{ fontSize:10,color:cl.color,fontWeight:700,textTransform:"uppercase" }}>FLUÊNCIA VERBAL</div><div style={{ fontSize:18,fontWeight:900,color:cl.color }}>{a.cognitiveData.verbalFluency.score} palavras</div><div style={{ fontSize:11,color:cl.color,fontWeight:700,marginBottom:4 }}>{cl.label}</div><div style={{ fontSize:11,color:"#475569",lineHeight:1.4 }}>{cl.desc}</div></div>):null;})()}
-{a.cognitiveData.digitSpan?.direct&&(()=>{const cl=classifyDigitSpan(a.cognitiveData.digitSpan.direct,a.cognitiveData.digitSpan.inverse);return cl?(<div style={{ background:cl.bg,borderRadius:9,padding:"10px 12px" }}><div style={{ fontSize:10,color:cl.color,fontWeight:700,textTransform:"uppercase" }}>SPAN DÍGITOS</div><div style={{ fontSize:18,fontWeight:900,color:cl.color }}>{a.cognitiveData.digitSpan.direct}↑ {a.cognitiveData.digitSpan.inverse?a.cognitiveData.digitSpan.inverse+"↓":""}</div><div style={{ fontSize:11,color:cl.color,fontWeight:700,marginBottom:4 }}>{cl.label}</div><div style={{ fontSize:11,color:"#475569",lineHeight:1.4 }}>{cl.desc}</div></div>):null;})()}
+{a.cognitiveData.mmse?.total&&(()=>{const cl=classifyMMSE(a.cognitiveData.mmse.total);return cl?(<div style={{ background:cl.bg,borderRadius:9,padding:"10px 12px" }}><div style={{ fontSize:10,color:cl.color,fontWeight:700,textTransform:"uppercase" }}>MMSE</div><div style={{ fontSize:18,fontWeight:900,color:cl.color }}>{a.cognitiveData.mmse.total}/30</div><div style={{ fontSize:11,color:cl.color,fontWeight:700,marginBottom:4 }}>{cl.label}</div><div style={{ fontSize:11,color:"#475569",lineHeight:1.4,marginBottom:6 }}>{cl.desc}</div>{cl.impact&&<div style={{ fontSize:11,color:"#334155",lineHeight:1.4,paddingTop:5,borderTop:"1px solid "+cl.color+"22" }}><strong>Impacto no cotidiano:</strong> {cl.impact}</div>}</div>):null;})()}
+{a.cognitiveData.dualTask?.single&&a.cognitiveData.dualTask?.dual&&(()=>{const cl=classifyDualTask(a.cognitiveData.dualTask.single,a.cognitiveData.dualTask.dual);return cl?(<div style={{ background:cl.bg,borderRadius:9,padding:"10px 12px" }}><div style={{ fontSize:10,color:cl.color,fontWeight:700,textTransform:"uppercase" }}>DUAL TASK COST</div><div style={{ fontSize:18,fontWeight:900,color:cl.color }}>{cl.cost}%</div><div style={{ fontSize:11,color:cl.color,fontWeight:700,marginBottom:4 }}>{cl.label}</div><div style={{ fontSize:11,color:"#475569",lineHeight:1.4,marginBottom:6 }}>{cl.desc}</div>{cl.impact&&<div style={{ fontSize:11,color:"#334155",lineHeight:1.4,paddingTop:5,borderTop:"1px solid "+cl.color+"22" }}><strong>Impacto no cotidiano:</strong> {cl.impact}</div>}</div>):null;})()}
+{a.cognitiveData.verbalFluency?.score&&(()=>{const cl=classifyVerbalFluency(a.cognitiveData.verbalFluency.score);return cl?(<div style={{ background:cl.bg,borderRadius:9,padding:"10px 12px" }}><div style={{ fontSize:10,color:cl.color,fontWeight:700,textTransform:"uppercase" }}>FLUÊNCIA VERBAL</div><div style={{ fontSize:18,fontWeight:900,color:cl.color }}>{a.cognitiveData.verbalFluency.score} palavras</div><div style={{ fontSize:11,color:cl.color,fontWeight:700,marginBottom:4 }}>{cl.label}</div><div style={{ fontSize:11,color:"#475569",lineHeight:1.4,marginBottom:6 }}>{cl.desc}</div>{cl.impact&&<div style={{ fontSize:11,color:"#334155",lineHeight:1.4,paddingTop:5,borderTop:"1px solid "+cl.color+"22" }}><strong>Impacto no cotidiano:</strong> {cl.impact}</div>}</div>):null;})()}
+{a.cognitiveData.digitSpan?.direct&&(()=>{const cl=classifyDigitSpan(a.cognitiveData.digitSpan.direct,a.cognitiveData.digitSpan.inverse);return cl?(<div style={{ background:cl.bg,borderRadius:9,padding:"10px 12px" }}><div style={{ fontSize:10,color:cl.color,fontWeight:700,textTransform:"uppercase" }}>SPAN DÍGITOS</div><div style={{ fontSize:18,fontWeight:900,color:cl.color }}>{a.cognitiveData.digitSpan.direct}↑ {a.cognitiveData.digitSpan.inverse?a.cognitiveData.digitSpan.inverse+"↓":""}</div><div style={{ fontSize:11,color:cl.color,fontWeight:700,marginBottom:4 }}>{cl.label}</div><div style={{ fontSize:11,color:"#475569",lineHeight:1.4,marginBottom:6 }}>{cl.desc}</div>{cl.impact&&<div style={{ fontSize:11,color:"#334155",lineHeight:1.4,paddingTop:5,borderTop:"1px solid "+cl.color+"22" }}><strong>Impacto no cotidiano:</strong> {cl.impact}</div>}</div>):null;})()}
 </div>
 {a.cognitiveData.notes&&<div style={{ fontSize:12,color:"#64748b",marginTop:10 }}>📝 {a.cognitiveData.notes}</div>}
 {/* Gráfico radar cognitivo */}
@@ -3961,29 +3965,6 @@ if (marchCl?.label==="Fraco"||marchCl?.label==="Regular") {
 impacts.push("Resistência de marcha reduzida ("+a.physical.march+" passos — "+marchCl.label+"): capacidade aeróbica limitada para atividades de média duração. Pode causar cansaço excessivo em caminhadas, escadas e tarefas domésticas.");
 }
 }
-if (a.cognitiveData?.mmse?.total&&parseInt(a.cognitiveData.mmse.total)<24) {
-const mmseCl = classifyMMSE(a.cognitiveData.mmse.total);
-const mmseVal = parseInt(a.cognitiveData.mmse.total);
-impacts.push("Comprometimento cognitivo (MMSE "+a.cognitiveData.mmse.total+"/30 — "+mmseCl?.label+"): pode afetar a capacidade de seguir sequências de exercícios, memorizar orientações e manter atenção. Exige comandos simples, supervisão constante e comunicação com médico."+( mmseVal<18?" Encaminhamento neurológico/geriátrico recomendado.":""));
-}
-if (a.cognitiveData?.dualTask?.single&&a.cognitiveData?.dualTask?.dual) {
-const dtCl = classifyDualTask(a.cognitiveData.dualTask.single, a.cognitiveData.dualTask.dual);
-if (dtCl?.cost>20) {
-impacts.push("Dual Task Cost elevado ("+dtCl.cost+"%): dificuldade em realizar duas tarefas simultâneas como caminhar e falar, ou andar e desviar de obstáculos. Aumenta o risco de quedas em ambientes com distrações.");
-}
-}
-if (a.cognitiveData?.verbalFluency?.score) {
-const vfCl = classifyVerbalFluency(a.cognitiveData.verbalFluency.score);
-if (vfCl?.label==="Comprometido"||vfCl?.label==="Regular"||vfCl?.label==="Fraco") {
-impacts.push("Fluência verbal reduzida ("+a.cognitiveData.verbalFluency.score+" palavras/min — "+vfCl.label+"): indica dificuldade de acesso ao vocabulário e organização do pensamento. No cotidiano, pode se manifestar como dificuldade para manter conversas, expressar necessidades, participar de grupos sociais e seguir orientações verbais durante o treino. Está associada a declínio cognitivo e isolamento social.");
-}
-}
-if (a.cognitiveData?.digitSpan?.direct) {
-const dsCl = classifyDigitSpan(a.cognitiveData.digitSpan.direct, a.cognitiveData.digitSpan.inverse);
-if (dsCl?.label==="Comprometido"||dsCl?.label==="Regular"||dsCl?.label==="Fraco") {
-impacts.push("Memória de trabalho reduzida (Span de Dígitos — "+dsCl.label+"): dificuldade em reter e manipular informações temporariamente. No dia a dia, afeta a capacidade de memorizar sequências de exercícios, lembrar instruções recentes, gerenciar medicamentos e realizar tarefas que exigem múltiplos passos como cozinhar e usar transporte público.");
-}
-}
 if ((a.functional?.score||0)<40) {
 impacts.push("Capacidade funcional muito comprometida (score "+a.functional?.score+"/100): nível de dependência significativo nas atividades do dia a dia. O programa deve priorizar segurança, aprendizagem motora e exercícios assistidos antes de qualquer progressão.");
 }
@@ -4022,10 +4003,29 @@ if (a?.cognitiveData?.score > 0) {
 const cd = a.cognitiveData;
 lines.push("AVALIAÇÃO COGNITIVA");
 lines.push("Score: "+cd.score+"/100 — "+(cd.score>=80?"Excelente":cd.score>=65?"Bom":cd.score>=50?"Regular":"Comprometido"));
-if (cd.mmse?.total) lines.push("MMSE: "+cd.mmse.total+"/30 — "+(classifyMMSE(cd.mmse.total)?.label||"—"));
-if (cd.dualTask?.single&&cd.dualTask?.dual) { const cl=classifyDualTask(cd.dualTask.single,cd.dualTask.dual); if(cl) lines.push("Dual Task: "+cl.cost+"% — "+cl.label); }
-if (cd.verbalFluency?.score) lines.push("Fluência Verbal: "+cd.verbalFluency.score+" palavras — "+(classifyVerbalFluency(cd.verbalFluency.score)?.label||"—"));
-if (cd.digitSpan?.direct) lines.push("Span Dígitos: Direto "+cd.digitSpan.direct+(cd.digitSpan.inverse?" / Inv. "+cd.digitSpan.inverse:"")+" — "+(classifyDigitSpan(cd.digitSpan.direct,cd.digitSpan.inverse)?.label||"—"));
+if (cd.mmse?.total) {
+const mmseCl = classifyMMSE(cd.mmse.total);
+const mmseVal = parseInt(cd.mmse.total);
+lines.push("MMSE: "+cd.mmse.total+"/30 — "+(mmseCl?.label||"—"));
+lines.push("  → "+mmseCl.impact+(mmseVal<18?" Encaminhamento neurológico/geriátrico recomendado.":""));
+}
+if (cd.dualTask?.single&&cd.dualTask?.dual) {
+const cl=classifyDualTask(cd.dualTask.single,cd.dualTask.dual);
+if(cl){
+lines.push("Dual Task: "+cl.cost+"% — "+cl.label);
+lines.push("  → "+cl.impact);
+}
+}
+if (cd.verbalFluency?.score) {
+const vfCl = classifyVerbalFluency(cd.verbalFluency.score);
+lines.push("Fluência Verbal: "+cd.verbalFluency.score+" palavras — "+(vfCl?.label||"—"));
+lines.push("  → "+vfCl.impact);
+}
+if (cd.digitSpan?.direct) {
+const dsCl = classifyDigitSpan(cd.digitSpan.direct,cd.digitSpan.inverse);
+lines.push("Span Dígitos: Direto "+cd.digitSpan.direct+(cd.digitSpan.inverse?" / Inv. "+cd.digitSpan.inverse:"")+" — "+(dsCl?.label||"—"));
+lines.push("  → "+dsCl.impact);
+}
 lines.push("");
 }
 lines.push("RECOMENDAÇÕES");
