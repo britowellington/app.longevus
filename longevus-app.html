@@ -4076,7 +4076,15 @@ lines.push("• Socialização: pelo menos 2x/semana — grupos de caminhada, da
 lines.push("• Autonomia: incentivar atividades domésticas leves e seguras.");
 lines.push("• Cognição: leitura, conversas, jogos de raciocínio, música e memória.");
 lines.push("• Quedas: evitar tapetes soltos, manter iluminação adequada, usar calçados estáveis.");
-lines.push("• Hidratação adequada antes, durante e após o exercício.");
+if (a.aha?.weight) {
+const weight = parseFloat(a.aha.weight);
+const mlPerDay = Math.round(weight*30);
+const liters = (mlPerDay/1000).toFixed(1);
+const glasses = Math.round(mlPerDay/250);
+lines.push("• Hidratação: cerca de "+liters+"L de água por dia (aprox. "+glasses+" copos de 250ml), considerando peso de "+weight+"kg (~30ml/kg/dia). Distribuir ao longo do dia, com atenção redobrada antes, durante e após o exercício. Em caso de insuficiência cardíaca, renal ou uso de diuréticos, ajustar conforme orientação médica.");
+} else {
+lines.push("• Hidratação adequada antes, durante e após o exercício (recomenda-se registrar o peso na próxima avaliação para cálculo personalizado).");
+}
 lines.push("• Sono de qualidade (7-9h/noite) com horários regulares.");
 lines.push("• Seguir orientações médicas e uso correto dos medicamentos.");
 return lines.join(NL);
