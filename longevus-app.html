@@ -42,8 +42,10 @@ await fetch(SUPA_URL+"/rest/v1/"+table, { method: "POST", headers: this.headers,
 },
 async remove(table, id) {
 try {
-await fetch(SUPA_URL+"/rest/v1/"+table+"?id=eq."+id, { method: "DELETE", headers: this.headers });
-} catch(e) {}
+const r = await fetch(SUPA_URL+"/rest/v1/"+table+"?id=eq."+id, { method: "DELETE", headers: this.headers });
+if (!r.ok) console.error("DB.remove failed", table, id, r.status);
+return r.ok;
+} catch(e) { console.error("DB.remove error", table, id, e); return false; }
 }
 };
 const LS = {
@@ -404,7 +406,7 @@ const [form,setForm]=useState({name:"",dob:"",sex:"",phone:"",email:"",whatsapp:
 const [search,setSearch]=useState("");
 const open=(s=null)=>{setForm(s?{name:s.name,dob:s.dob||"",sex:s.sex||"",phone:s.phone||"",notes:s.notes||""}:{name:"",dob:"",sex:"",phone:"",notes:""});setEditId(s?.id||null);setModal(true);};
 const save=()=>{if(!form.name.trim())return;if(editId)setStudents(p=>p.map(s=>s.id===editId?{...s,...form}:s));else setStudents(p=>[...p,{id:uid(),...form,createdAt:todayStr()}]);setModal(false);};
-const del=id=>{if(window.confirm("Remover aluno?")){DB.remove("students",id);setStudents(p=>p.filter(s=>s.id!==id));}};
+const del=async id=>{if(window.confirm("Remover aluno?")){await DB.remove("students",id);setStudents(p=>p.filter(s=>s.id!==id));}};
 const filtered=students.filter(s=>s.name?.toLowerCase().includes(search.toLowerCase()));
 return (
 <div>
@@ -2092,7 +2094,7 @@ return(<tr key={p2} style={{ borderBottom:"1px solid #f1f5f9" }}>
 
 const AssessmentsList = ({ assessments, students, setAssessments, nav }) => {
 const [filter,setFilter]=useState("");
-const del=id=>{if(window.confirm("Remover?")){DB.remove("assessments",id);setAssessments(p=>p.filter(a=>a.id!==id));}};
+const del=async id=>{if(window.confirm("Remover?")){await DB.remove("assessments",id);setAssessments(p=>p.filter(a=>a.id!==id));}};
 const sorted=[...assessments].filter(a=>{const st=students.find(s=>s.id===a.studentId);return !filter||st?.name?.toLowerCase().includes(filter.toLowerCase());}).sort((a,b)=>b.date?.localeCompare(a.date));
 return (
 <div>
@@ -3176,19 +3178,13 @@ nav, .bottom-nav { display: none !important; }
 .print-page { padding: 16px !important; max-width: 100% !important; }
 .print-break { page-break-before: always; }
 @page { margin: 12mm 15mm; size: A4; }
-/* Evitar quebra dentro de blocos */
-div, section, table, p { page-break-inside: avoid; }
 /* Títulos ficam com seu bloco */
 h1, h2, h3, h4 { page-break-after: avoid; }
-/* Cards não quebram */
-[style*="border-radius"][style*="border"] { page-break-inside: avoid; }
 /* Tabelas não quebram no meio */
 table { page-break-inside: avoid; border-collapse: collapse; width: 100%; }
 thead { display: table-header-group; }
 tr { page-break-inside: avoid; page-break-after: auto; }
 td, th { padding: 6px 8px !important; font-size: 11px !important; }
-/* Grid de índices não quebra */
-[style*="display:"grid""], [style*="display: grid"] { page-break-inside: avoid; }
 /* Seções do relatório */
 .report-section { page-break-inside: avoid; margin-bottom: 12px; }
 /* Assinatura sempre no final da página atual */
@@ -3969,7 +3965,7 @@ if ((a.functional?.score||0)<40) {
 impacts.push("Capacidade funcional muito comprometida (score "+a.functional?.score+"/100): nível de dependência significativo nas atividades do dia a dia. O programa deve priorizar segurança, aprendizagem motora e exercícios assistidos antes de qualquer progressão.");
 }
 if (impacts.length>0) {
-lines.push("IMPACTO CLÍNICO — O QUE OS RESULTADOS SIGNIFICAM");
+lines.push("O QUE OS RESULTADOS SIGNIFICAM");
 impacts.forEach(imp=>lines.push("• "+imp));
 lines.push("");
 }
@@ -4028,7 +4024,7 @@ lines.push("  → "+dsCl.impact);
 }
 lines.push("");
 }
-lines.push("RECOMENDAÇÕES");
+lines.push("RECOMENDAÇÕES GERAIS");
 lines.push("");
 lines.push("Prescrição de Exercício:");
 lines.push("• Intensidade: "+intens+" (ACSM/AHA).");
@@ -4050,7 +4046,7 @@ if (a.aha?.smoker) lines.push("• Tabagismo: monitorar SpO₂ e tolerância aer
 if (a.anamnese?.medications?.toLowerCase().includes("beta")||a.anamnese?.medications?.toLowerCase().includes("propranolol")||a.anamnese?.medications?.toLowerCase().includes("atenolol")) lines.push("• Beta-bloqueador: priorizar PSE/Borg (0-10), não apenas FC.");
 if (funcRisks.includes("quedas nos últimos 12 meses")||(a.physical?.tug&&parseFloat(a.physical.tug)>13.5)) lines.push("• Risco de quedas: supervisão constante. Nunca deixar sem apoio próximo.");
 lines.push("");
-lines.push("Sinais de Alerta — Interromper Imediatamente se:");
+lines.push("SINAIS DE ALERTA — Interromper Imediatamente se:");
 lines.push("• Dor torácica, pressão no peito ou irradiação para braço/mandíbula.");
 lines.push("• Dispneia desproporcional ou fala fragmentada.");
 lines.push("• Tontura, náusea, palidez ou sudorese fria.");
@@ -4063,7 +4059,7 @@ const hasDT = cd.dualTask?.single&&cd.dualTask?.dual&&classifyDualTask(cd.dualTa
 const hasMMSE = cd.mmse?.total&&parseInt(cd.mmse.total)<24;
 if (hasDT||hasMMSE) {
 lines.push("");
-lines.push("Recomendações Cognitivas:");
+lines.push("RECOMENDAÇÕES COGNITIVAS:");
 if (hasMMSE) lines.push("• MMSE < 24: comandos simples, supervisão constante, comunicar ao médico.");
 if (hasDT) lines.push("• Dual Task elevado: iniciar neurofuncional no nível básico, progredir gradualmente.");
 lines.push("• Incluir dual task: caminhada + contagem, step + decisão, marcha + comando.");
@@ -4071,7 +4067,7 @@ lines.push("• Reavaliar bateria cognitiva a cada 24 semanas.");
 }
 }
 lines.push("");
-lines.push("Recomendações de Estilo de Vida:");
+lines.push("RECOMENDAÇÕES DE ESTILO DE VIDA:");
 lines.push("• Socialização: pelo menos 2x/semana — grupos de caminhada, dança, atividades religiosas, encontros familiares.");
 lines.push("• Autonomia: incentivar atividades domésticas leves e seguras.");
 lines.push("• Cognição: leitura, conversas, jogos de raciocínio, música e memória.");
