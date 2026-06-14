@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -28,6 +29,78 @@ const IcoRefresh = ({size=16,color="currentColor"}) => <svg width={size} height=
 const IcoTrophy = ({size=48,color="#d97706"}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5"><path d="M6 9H3V4h18v5h-3"/><path d="M12 15c-3.314 0-6-2.686-6-6V4h12v5c0 3.314-2.686 6-6 6z"/><path d="M8 21h8M12 15v6"/></svg>;
 
 const { useState, useEffect, useRef, useCallback } = React;
+
+const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
+const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
+const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+
+const Login = ({ onLogin }) => {
+const [nome,setNome]=useState("");
+const [email,setEmail]=useState("");
+const [password,setPassword]=useState("");
+const [mode,setMode]=useState("signin");
+const [error,setError]=useState("");
+const [loading,setLoading]=useState(false);
+const submit = async (e) => {
+e.preventDefault();
+setError(""); setLoading(true);
+try {
+if (mode==="signin") {
+const { error } = await supa.auth.signInWithPassword({ email, password });
+if (error) throw error;
+} else {
+const { error } = await supa.auth.signUp({ email, password, options: { data: { nome } } });
+if (error) throw error;
+setError("Conta criada! Faça login.");
+setMode("signin");
+setLoading(false);
+return;
+}
+onLogin();
+} catch(err) {
+setError(err.message || "Erro ao autenticar.");
+} finally {
+setLoading(false);
+}
+};
+return (
+<div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f8fafc",padding:20 }}>
+<form onSubmit={submit} style={{ background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:380,boxShadow:"0 4px 24px rgba(0,0,0,0.06)" }}>
+<div style={{ textAlign:"center",marginBottom:18 }}>
+<img src={LONGEVUS_LOGO} alt="Longevus" style={{ width:56,height:56,margin:"0 auto 8px",display:"block" }}/>
+<div style={{ fontWeight:900,fontSize:20 }}>Longevus</div>
+<div style={{ fontSize:12,color:"#94a3b8" }}>Treinamento Neurofuncional</div>
+</div>
+{mode==="signup" && (
+<div style={{ marginBottom:12 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Nome</label>
+<input type="text" required value={nome} onChange={e=>setNome(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
+</div>
+)}
+<div style={{ marginBottom:12 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>E-mail</label>
+<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
+</div>
+<div style={{ marginBottom:16 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Senha</label>
+<input type="password" required value={password} onChange={e=>setPassword(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
+</div>
+{error && <div style={{ fontSize:12,color:"#dc2626",marginBottom:12,textAlign:"center" }}>{error}</div>}
+<button type="submit" disabled={loading} style={{ width:"100%",padding:"11px",borderRadius:8,border:"none",background:"#FF5603",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",opacity:loading?0.7:1 }}>
+{loading ? "Aguarde..." : (mode==="signin" ? "Entrar" : "Criar conta")}
+</button>
+<div style={{ textAlign:"center",marginTop:14,fontSize:13 }}>
+{mode==="signin" ? (
+<span>Não tem conta? <a href="#" onClick={e=>{e.preventDefault();setMode("signup");setError("");}} style={{ color:"#FF5603",fontWeight:600 }}>Criar conta</a></span>
+) : (
+<span>Já tem conta? <a href="#" onClick={e=>{e.preventDefault();setMode("signin");setError("");}} style={{ color:"#FF5603",fontWeight:600 }}>Entrar</a></span>
+)}
+</div>
+</form>
+</div>
+);
+};
+
 
 
 const C={bg:"#F0F4F8",surface:"#FFFFFF",border:"#DDE3EC",text:"#1A2340",muted:"#6B7A99",orange:"#FF5603",green:"#10B981",red:"#EF4444",blue:"#3B82F6",yellow:"#F59E0B"};
@@ -3523,7 +3596,7 @@ function NavBar({active}){
     </div>
   );
 }
-function App(){
+function AppInner(){
   const [mod,setMod]=useState(null);
   const back=()=>setMod(null);
   const content = (()=>{
@@ -3542,6 +3615,24 @@ function App(){
   return <><div style={{paddingBottom:80}}>{content}</div><NavBar active="hub"/></>;
 }
 
+
+
+function App(){
+const [session,setSession]=useState(null);
+const [authLoading,setAuthLoading]=useState(true);
+useEffect(()=>{
+supa.auth.getSession().then(({data})=>{ setSession(data?.session||null); setAuthLoading(false); });
+const { data: listener } = supa.auth.onAuthStateChange((_event, sess)=>{ setSession(sess); });
+return ()=>{ listener?.subscription?.unsubscribe(); };
+},[]);
+if (authLoading) {
+return <div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14 }}>Carregando...</div>;
+}
+if (!session) {
+return <Login onLogin={()=>{}}/>;
+}
+return <AppInner/>;
+}
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App/>);

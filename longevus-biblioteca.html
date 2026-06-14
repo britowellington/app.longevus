@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <title>Longevus — Biblioteca</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 <div id="root"></div>
@@ -200,6 +201,78 @@ window.EXERCICIOS_DB=[
 <script type="text/babel">const __LOGO__ = "data:image/png;base64,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";
 
 const { useState, useEffect, useRef } = React;
+
+const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
+const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
+const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+
+const Login = ({ onLogin }) => {
+const [nome,setNome]=useState("");
+const [email,setEmail]=useState("");
+const [password,setPassword]=useState("");
+const [mode,setMode]=useState("signin");
+const [error,setError]=useState("");
+const [loading,setLoading]=useState(false);
+const submit = async (e) => {
+e.preventDefault();
+setError(""); setLoading(true);
+try {
+if (mode==="signin") {
+const { error } = await supa.auth.signInWithPassword({ email, password });
+if (error) throw error;
+} else {
+const { error } = await supa.auth.signUp({ email, password, options: { data: { nome } } });
+if (error) throw error;
+setError("Conta criada! Faça login.");
+setMode("signin");
+setLoading(false);
+return;
+}
+onLogin();
+} catch(err) {
+setError(err.message || "Erro ao autenticar.");
+} finally {
+setLoading(false);
+}
+};
+return (
+<div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f8fafc",padding:20 }}>
+<form onSubmit={submit} style={{ background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:380,boxShadow:"0 4px 24px rgba(0,0,0,0.06)" }}>
+<div style={{ textAlign:"center",marginBottom:18 }}>
+<img src={__LOGO__} alt="Longevus" style={{ width:56,height:56,margin:"0 auto 8px",display:"block" }}/>
+<div style={{ fontWeight:900,fontSize:20 }}>Longevus</div>
+<div style={{ fontSize:12,color:"#94a3b8" }}>Treinamento Neurofuncional</div>
+</div>
+{mode==="signup" && (
+<div style={{ marginBottom:12 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Nome</label>
+<input type="text" required value={nome} onChange={e=>setNome(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
+</div>
+)}
+<div style={{ marginBottom:12 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>E-mail</label>
+<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
+</div>
+<div style={{ marginBottom:16 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Senha</label>
+<input type="password" required value={password} onChange={e=>setPassword(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
+</div>
+{error && <div style={{ fontSize:12,color:"#dc2626",marginBottom:12,textAlign:"center" }}>{error}</div>}
+<button type="submit" disabled={loading} style={{ width:"100%",padding:"11px",borderRadius:8,border:"none",background:"#FF5603",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",opacity:loading?0.7:1 }}>
+{loading ? "Aguarde..." : (mode==="signin" ? "Entrar" : "Criar conta")}
+</button>
+<div style={{ textAlign:"center",marginTop:14,fontSize:13 }}>
+{mode==="signin" ? (
+<span>Não tem conta? <a href="#" onClick={e=>{e.preventDefault();setMode("signup");setError("");}} style={{ color:"#FF5603",fontWeight:600 }}>Criar conta</a></span>
+) : (
+<span>Já tem conta? <a href="#" onClick={e=>{e.preventDefault();setMode("signin");setError("");}} style={{ color:"#FF5603",fontWeight:600 }}>Entrar</a></span>
+)}
+</div>
+</form>
+</div>
+);
+};
+
 const O = "#FF5603";
 const LS={get:(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}}};
 const uid=()=>Math.random().toString(36).slice(2)+Date.now().toString(36);
@@ -344,7 +417,7 @@ function NavBar({active}){
     </div>
   );
 }
-function App(){
+function AppInner(){
   const [biblioteca,setBiblioteca]=useState(()=>{
     const db=window.EXERCICIOS_DB||[];
     const salvo=LS.get("longevus_biblioteca",[]);
@@ -411,6 +484,24 @@ function App(){
     <NavBar active="biblioteca"/>
   </>);
 }
+
+function App(){
+const [session,setSession]=useState(null);
+const [authLoading,setAuthLoading]=useState(true);
+useEffect(()=>{
+supa.auth.getSession().then(({data})=>{ setSession(data?.session||null); setAuthLoading(false); });
+const { data: listener } = supa.auth.onAuthStateChange((_event, sess)=>{ setSession(sess); });
+return ()=>{ listener?.subscription?.unsubscribe(); };
+},[]);
+if (authLoading) {
+return <div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14 }}>Carregando...</div>;
+}
+if (!session) {
+return <Login onLogin={()=>{}}/>;
+}
+return <AppInner/>;
+}
+
 const root=ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App/>);
 </script>
