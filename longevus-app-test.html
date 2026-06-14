@@ -5224,6 +5224,7 @@ Visualizar e Imprimir
 );
 };
 const Login = ({ onLogin }) => {
+const [nome,setNome]=useState("");
 const [email,setEmail]=useState("");
 const [password,setPassword]=useState("");
 const [mode,setMode]=useState("signin"); // signin | signup
@@ -5237,7 +5238,7 @@ if (mode==="signin") {
 const { error } = await supa.auth.signInWithPassword({ email, password });
 if (error) throw error;
 } else {
-const { error } = await supa.auth.signUp({ email, password });
+const { error } = await supa.auth.signUp({ email, password, options: { data: { nome } } });
 if (error) throw error;
 setError("Conta criada! Faça login.");
 setMode("signin");
@@ -5259,6 +5260,12 @@ return (
 <div style={{ fontWeight:900,fontSize:20 }}>Longevus</div>
 <div style={{ fontSize:12,color:"#94a3b8" }}>Treinamento Neurofuncional</div>
 </div>
+{mode==="signup" && (
+<div style={{ marginBottom:12 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Nome</label>
+<input type="text" required value={nome} onChange={e=>setNome(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14 }}/>
+</div>
+)}
 <div style={{ marginBottom:12 }}>
 <label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>E-mail</label>
 <input type="email" required value={email} onChange={e=>setEmail(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14 }}/>
@@ -5285,11 +5292,22 @@ return (
 function App() {
 const [session,setSession]=useState(null);
 const [authLoading,setAuthLoading]=useState(true);
+const [profName,setProfName]=useState("");
 useEffect(()=>{
 supa.auth.getSession().then(({data})=>{ setSession(data?.session||null); setAuthLoading(false); });
 const { data: listener } = supa.auth.onAuthStateChange((_event, sess)=>{ setSession(sess); });
 return ()=>{ listener?.subscription?.unsubscribe(); };
 },[]);
+useEffect(()=>{
+if (!session) { setProfName(""); return; }
+(async () => {
+try {
+const r = await fetch(SUPA_URL+"/rest/v1/professionals?select=nome&id=eq."+session.user.id, { headers: await DB.authHeaders() });
+const rows = await r.json();
+setProfName(rows?.[0]?.nome || session.user.email || "");
+} catch(e) { setProfName(session.user.email || ""); }
+})();
+},[session]);
 
 const [students,setStudents]=useState(()=>LS.get("longevus_students",[]));
 const [assessments,setAssessments]=useState(()=>LS.get("longevus_assessments",[]));
@@ -5373,6 +5391,7 @@ return (
 <div className="no-print" style={{ background:"#fff",borderBottom:"1.5px solid #e2e8f0",padding:"12px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100 }}>
 <div style={{ display:"flex",alignItems:"center",gap:10 }}>
 <img src={__LOGO_2__} alt="Longevus" style={{ height:38,width:"auto" }}/>
+{profName && <span style={{ fontSize:13,fontWeight:700,color:"#0f172a" }}>{profName}</span>}
 </div>
 <div style={{ fontSize:12,color:"#94a3b8",display:"flex",alignItems:"center",gap:10 }}>
 <span>{syncing?"☁️ Sincronizando...":students.length+" aluno(s)"}</span>
