@@ -5375,8 +5375,7 @@ return (
 <div style={{ display:"flex",alignItems:"center",gap:10 }}>
 <img src={__LOGO_2__} alt="Longevus" style={{ height:38,width:"auto" }}/>
 </div>
-<div style={{ fontSize:12,color:"#94a3b8",display:"flex",alignItems:"center",gap:10 }}>
-<span>{syncing?"☁️ Sincronizando...":students.length+" aluno(s)"}</span>
+  <span>{syncing?"☁️ Sincronizando...":students.length+" aluno(s)"} | {session?.user?.email} | owner:{students[0]?.owner_id||students[0]?.id}</span>
 <button onClick={()=>supa.auth.signOut()} style={{ border:"none",background:"transparent",color:"#94a3b8",fontSize:12,cursor:"pointer",textDecoration:"underline" }}>Sair</button>
 </div>
 </div>
