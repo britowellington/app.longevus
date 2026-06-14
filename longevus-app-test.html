@@ -5302,9 +5302,15 @@ useEffect(()=>{
 if (!session) { setProfName(""); return; }
 (async () => {
 try {
-const r = await fetch(SUPA_URL+"/rest/v1/professionals?select=nome&id=eq."+session.user.id, { headers: await DB.authHeaders() });
+const headers = await DB.authHeaders();
+const r = await fetch(SUPA_URL+"/rest/v1/professionals?select=nome&id=eq."+session.user.id, { headers });
 const rows = await r.json();
 setProfName(rows?.[0]?.nome || session.user.email || "");
+// Registra última atividade
+fetch(SUPA_URL+"/rest/v1/professionals?id=eq."+session.user.id, {
+method:"PATCH", headers: { ...headers, "Prefer":"return=minimal" },
+body: JSON.stringify({ last_active: new Date().toISOString() })
+}).catch(()=>{});
 } catch(e) { setProfName(session.user.email || ""); }
 })();
 },[session]);
@@ -5320,8 +5326,10 @@ const [dbReady,setDbReady]=useState(false);
 const [hubResults,setHubResults]=useState(()=>LS.get("longevus_hub_results",[]));
 useEffect(()=>{LS.set("longevus_hub_results",hubResults);},[hubResults]);
 const [syncing,setSyncing]=useState(false);
-// Carregar dados do Supabase ao iniciar
+// Carregar dados do Supabase ao iniciar / ao trocar de sessão
 useEffect(()=>{
+if (!session) return;
+setDbReady(false);
 (async()=>{
 setSyncing(true);
 try {
@@ -5329,18 +5337,18 @@ const [s,a,d,docs,c,p,sess] = await Promise.all([
 DB.load("students"), DB.load("assessments"), DB.load("daily_logs"),
 DB.load("documents"), DB.load("cardio_records"), DB.load("programs"), DB.load("sessions")
 ]);
-if(s&&s.length>0){ setStudents(s); LS.set("longevus_students",s); }
-if(a&&a.length>0){ setAssessments(a); LS.set("longevus_assessments",a); }
-if(d&&d.length>0){ setDailyLogs(d); LS.set("longevus_daily",d); }
-if(docs&&docs.length>0){ setDocuments(docs); LS.set("longevus_docs",docs); }
-if(c&&c.length>0){ setCardioRecords(c); LS.set("longevus_cardio",c); }
-if(p&&p.length>0){ setPrograms(p); LS.set("longevus_programs",p); }
-if(sess&&sess.length>0){ setSessions(sess); LS.set("longevus_sessions",sess); }
+if(s!==null){ setStudents(s); LS.set("longevus_students",s); }
+if(a!==null){ setAssessments(a); LS.set("longevus_assessments",a); }
+if(d!==null){ setDailyLogs(d); LS.set("longevus_daily",d); }
+if(docs!==null){ setDocuments(docs); LS.set("longevus_docs",docs); }
+if(c!==null){ setCardioRecords(c); LS.set("longevus_cardio",c); }
+if(p!==null){ setPrograms(p); LS.set("longevus_programs",p); }
+if(sess!==null){ setSessions(sess); LS.set("longevus_sessions",sess); }
 setDbReady(true);
 } catch(e){ setDbReady(true); }
 setSyncing(false);
 })();
-},[]);
+},[session?.user?.id]);
 const [page,setPage]=useState("dashboard");
 const [pageProps,setPageProps]=useState({});
 // Sync local
