@@ -71,14 +71,14 @@ const Login = ({ onLogin }) => {
   );
 };
 
-const BarChart = ({ data, color="#FF5603" }) => {
+const BarChart = ({ data, color="#FF5603", onBarClick, selected }) => {
   const max = Math.max(1, ...data.map(d=>d.value));
   return (
     <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
       {data.map(d=>(
-        <div key={d.label}>
+        <div key={d.label} onClick={()=>onBarClick && onBarClick(d.label)} style={{ cursor:onBarClick?"pointer":"default",opacity: (selected && selected!==d.label) ? 0.45 : 1 }}>
           <div style={{ display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3 }}>
-            <span style={{ color:"#475569",fontWeight:600 }}>{d.label}</span>
+            <span style={{ color: selected===d.label ? "#FF5603" : "#475569",fontWeight:600 }}>{d.label}</span>
             <span style={{ color:"#94a3b8" }}>{d.value}</span>
           </div>
           <div style={{ background:"#f1f5f9",borderRadius:6,height:8,overflow:"hidden" }}>
@@ -89,6 +89,22 @@ const BarChart = ({ data, color="#FF5603" }) => {
     </div>
   );
 };
+
+const ProfList = ({ items, onSelect, counts }) => (
+  <div style={{ display:"flex",flexDirection:"column",gap:6,marginTop:12,borderTop:"1px solid #f1f5f9",paddingTop:12 }}>
+    {items.length===0 ? (
+      <div style={{ fontSize:12,color:"#94a3b8" }}>Nenhum profissional nesse grupo.</div>
+    ) : items.map(p=>(
+      <div key={p.id} onClick={()=>onSelect(p)} style={{ cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 10px",background:"#f8fafc",borderRadius:8 }}>
+        <div style={{ minWidth:0 }}>
+          <div style={{ fontSize:13,fontWeight:700 }}>{p.nome || p.email}</div>
+          <div style={{ fontSize:11,color:"#94a3b8" }}>{p.email}</div>
+        </div>
+        {counts && <div style={{ fontSize:12,color:"#94a3b8",flexShrink:0 }}>{counts[p.id]||0} aluno(s)</div>}
+      </div>
+    ))}
+  </div>
+);
 
 function App() {
   const [session,setSession]=useState(null);
@@ -103,6 +119,11 @@ function App() {
   const [savingProf,setSavingProf]=useState(false);
   const [planPrices,setPlanPrices]=useState({});
   const [savingPrices,setSavingPrices]=useState(false);
+  const [drill,setDrill]=useState(null); // { section, label }
+
+  const toggleDrill = (section, label) => {
+    setDrill(d => (d && d.section===section && d.label===label) ? null : { section, label });
+  };
 
   useEffect(()=>{
     supa.auth.getSession().then(({data})=>{ setSession(data?.session||null); setAuthLoading(false); });
@@ -133,14 +154,14 @@ function App() {
           fetch(SUPA_URL+"/rest/v1/rpc/admin_student_counts", { method:"POST", headers, body: JSON.stringify({}) }),
           fetch(SUPA_URL+"/rest/v1/plan_prices?select=*", { headers })
         ]);
-        const profsData = await profsRes.json();
-        const countsData = await countsRes.json();
-        const pricesData = await pricesRes.json();
+        const profsData = await profsRes.json().catch(()=>[]);
+        const countsData = await countsRes.json().catch(()=>[]);
+        const pricesData = await pricesRes.json().catch(()=>[]);
         const map = {};
-        (countsData||[]).forEach(c=>{ map[c.owner_id] = c.total; });
+        (Array.isArray(countsData)?countsData:[]).forEach(c=>{ map[c.owner_id] = c.total; });
         const priceMap = {};
-        (pricesData||[]).forEach(p=>{ priceMap[p.plano] = p.valor; });
-        setProfs(profsData||[]);
+        (Array.isArray(pricesData)?pricesData:[]).forEach(p=>{ priceMap[p.plano] = p.valor; });
+        setProfs(Array.isArray(profsData)?profsData:[]);
         setCounts(map);
         setPlanPrices(priceMap);
       } catch(e) {}
@@ -283,6 +304,26 @@ function App() {
     { label:"Inativos", value: inativos7d, color:"#94a3b8" },
   ];
 
+  // --- Lista filtrada para drill-down ---
+  const drillList = (() => {
+    if (!drill) return null;
+    const { section, label } = drill;
+    if (section==="growth") return profs.filter(p=>p.created_at && monthLabel(p.created_at)===label);
+    if (section==="plano") return profs.filter(p=>(p.plano||"trial")===label);
+    if (section==="status") return profs.filter(p=>(p.status_assinatura||"ativo")===label);
+    if (section==="engajamento") return label==="Com alunos cadastrados"
+      ? profs.filter(p=>(counts[p.id]||0)>0)
+      : profs.filter(p=>(counts[p.id]||0)===0);
+    if (section==="ativ7d") return label==="Ativos (últimos 7 dias)"
+      ? profs.filter(p=>p.last_active && (Date.now()-new Date(p.last_active).getTime())<7*86400000)
+      : profs.filter(p=>!(p.last_active && (Date.now()-new Date(p.last_active).getTime())<7*86400000));
+    if (section==="financeiro") {
+      if (label==="churn") return profs.filter(p=>p.status_assinatura==="cancelado");
+      if (label==="paying") return activePaying;
+    }
+    return [];
+  })();
+
   if (selected) {
     const p = selected;
     return (
@@ -371,44 +412,49 @@ function App() {
           <div style={{ display:"flex",flexDirection:"column",gap:12,marginBottom:24 }}>
             <div style={{ background:"#fff",borderRadius:12,padding:"16px",border:"1px solid #e2e8f0" }}>
               <div style={{ fontWeight:800,fontSize:14,marginBottom:12 }}>Crescimento (cadastros por mês)</div>
-              {growthData.length>0 ? <BarChart data={growthData} color="#FF5603"/> : <div style={{ fontSize:12,color:"#94a3b8" }}>Sem dados.</div>}
+              {growthData.length>0 ? <BarChart data={growthData} color="#FF5603" onBarClick={l=>toggleDrill("growth",l)} selected={drill?.section==="growth"?drill.label:null}/> : <div style={{ fontSize:12,color:"#94a3b8" }}>Sem dados.</div>}
+              {drill?.section==="growth" && <ProfList items={drillList} onSelect={setSelected} counts={counts}/>}
             </div>
             <div style={{ display:"flex",gap:12,flexWrap:"wrap" }}>
               <div style={{ flex:"1 1 220px",background:"#fff",borderRadius:12,padding:"16px",border:"1px solid #e2e8f0" }}>
                 <div style={{ fontWeight:800,fontSize:14,marginBottom:12 }}>Por plano</div>
-                <BarChart data={planoData} color="#6366f1"/>
+                <BarChart data={planoData} color="#6366f1" onBarClick={l=>toggleDrill("plano",l)} selected={drill?.section==="plano"?drill.label:null}/>
+                {drill?.section==="plano" && <ProfList items={drillList} onSelect={setSelected} counts={counts}/>}
               </div>
               <div style={{ flex:"1 1 220px",background:"#fff",borderRadius:12,padding:"16px",border:"1px solid #e2e8f0" }}>
                 <div style={{ fontWeight:800,fontSize:14,marginBottom:12 }}>Por status</div>
-                <BarChart data={statusData}/>
+                <BarChart data={statusData} onBarClick={l=>toggleDrill("status",l)} selected={drill?.section==="status"?drill.label:null}/>
+                {drill?.section==="status" && <ProfList items={drillList} onSelect={setSelected} counts={counts}/>}
               </div>
             </div>
             <div style={{ background:"#fff",borderRadius:12,padding:"16px",border:"1px solid #e2e8f0" }}>
               <div style={{ fontWeight:800,fontSize:14,marginBottom:12 }}>Engajamento (alunos cadastrados)</div>
-              <BarChart data={engajamentoData}/>
+              <BarChart data={engajamentoData} onBarClick={l=>toggleDrill("engajamento",l)} selected={drill?.section==="engajamento"?drill.label:null}/>
+              {drill?.section==="engajamento" && <ProfList items={drillList} onSelect={setSelected} counts={counts}/>}
             </div>
             <div style={{ background:"#fff",borderRadius:12,padding:"16px",border:"1px solid #e2e8f0" }}>
               <div style={{ fontWeight:800,fontSize:14,marginBottom:12 }}>Engajamento real (acessou nos últimos 7 dias)</div>
-              <BarChart data={ativ7dData}/>
+              <BarChart data={ativ7dData} onBarClick={l=>toggleDrill("ativ7d",l)} selected={drill?.section==="ativ7d"?drill.label:null}/>
+              {drill?.section==="ativ7d" && <ProfList items={drillList} onSelect={setSelected} counts={counts}/>}
             </div>
 
             <div style={{ background:"#fff",borderRadius:12,padding:"16px",border:"1px solid #e2e8f0" }}>
               <div style={{ fontWeight:800,fontSize:14,marginBottom:4 }}>Visão financeira</div>
               <div style={{ fontSize:11,color:"#94a3b8",marginBottom:12 }}>Estimativas com base nos preços configurados abaixo</div>
               <div style={{ display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:16 }}>
-                <div>
+                <div onClick={()=>toggleDrill("financeiro","paying")} style={{ cursor:"pointer" }}>
                   <div style={{ fontSize:20,fontWeight:900,color:"#FF5603" }}>{fmtBRL(mrr)}</div>
                   <div style={{ fontSize:11,color:"#94a3b8" }}>MRR (receita mensal recorrente)</div>
                 </div>
-                <div>
+                <div onClick={()=>toggleDrill("financeiro","paying")} style={{ cursor:"pointer" }}>
                   <div style={{ fontSize:20,fontWeight:900,color:"#FF5603" }}>{fmtBRL(arr)}</div>
                   <div style={{ fontSize:11,color:"#94a3b8" }}>ARR (projeção anual)</div>
                 </div>
-                <div>
+                <div onClick={()=>toggleDrill("financeiro","paying")} style={{ cursor:"pointer" }}>
                   <div style={{ fontSize:20,fontWeight:900,color:"#FF5603" }}>{fmtBRL(ticketMedio)}</div>
                   <div style={{ fontSize:11,color:"#94a3b8" }}>Ticket médio / mês</div>
                 </div>
-                <div>
+                <div onClick={()=>toggleDrill("financeiro","churn")} style={{ cursor:"pointer" }}>
                   <div style={{ fontSize:20,fontWeight:900,color: churn>10?"#dc2626":"#0f172a" }}>{churn.toFixed(1)}%</div>
                   <div style={{ fontSize:11,color:"#94a3b8" }}>Churn ({cancelados}/{everPaid} clientes pagantes)</div>
                 </div>
@@ -417,6 +463,9 @@ function App() {
                   <div style={{ fontSize:11,color:"#94a3b8" }}>LTV estimado</div>
                 </div>
               </div>
+              {drill?.section==="financeiro" && (
+                <ProfList items={drillList} onSelect={setSelected} counts={counts}/>
+              )}
               {vitaliciosRevenue>0 && (
                 <div style={{ fontSize:12,color:"#94a3b8",marginBottom:12 }}>+ {fmtBRL(vitaliciosRevenue)} em receita vitalícia (pagamento único, fora do MRR)</div>
               )}
