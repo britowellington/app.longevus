@@ -217,7 +217,7 @@ function App() {
   const sendPasswordReset = async (email) => {
     setResetMsg("Enviando...");
     try {
-      const { error } = await supa.auth.resetPasswordForEmail(email);
+      const { error } = await supa.auth.resetPasswordForEmail(email, { redirectTo: "https://britowellington.github.io/app.longevus/longevus-app-test.html" });
       if (error) throw error;
       setResetMsg("Email de redefinição enviado para "+email);
     } catch(err) {

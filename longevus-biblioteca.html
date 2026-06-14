@@ -223,7 +223,7 @@ if (mode==="signin") {
 const { error } = await supa.auth.signInWithPassword({ email, password });
 if (error) throw error;
 } else if (mode==="forgot") {
-const { error } = await supa.auth.resetPasswordForEmail(email);
+const { error } = await supa.auth.resetPasswordForEmail(email, { redirectTo: window.location.href.split("?")[0].split("#")[0] });
 if (error) throw error;
 setInfo("Enviamos um link de redefinição para "+email+". Verifique sua caixa de entrada.");
 setLoading(false);
