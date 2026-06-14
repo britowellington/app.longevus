@@ -121,12 +121,40 @@ function App() {
   const [savingPrices,setSavingPrices]=useState(false);
   const [resetMsg,setResetMsg]=useState("");
   const [drill,setDrill]=useState(null); // { section, label }
+  const [planoEdit,setPlanoEdit]=useState(null);
+  const [statusEdit,setStatusEdit]=useState(null);
+  const [priceEdits,setPriceEdits]=useState({});
 
   const toggleDrill = (section, label) => {
     setDrill(d => (d && d.section===section && d.label===label) ? null : { section, label });
   };
 
-  const openProfessional = (p) => { setResetMsg(""); setSelected(p); };
+  const openProfessional = (p) => {
+    setResetMsg("");
+    setSelected(p);
+    setPlanoEdit(p.plano||"trial");
+    setStatusEdit(p.status_assinatura||"ativo");
+  };
+
+  const savePlanStatus = async () => {
+    await updateProfFields({ plano: planoEdit, status_assinatura: statusEdit });
+  };
+
+  const savePrices = async () => {
+    setSavingPrices(true);
+    try {
+      const headers = await authHeaders();
+      for (const [plano, valor] of Object.entries(priceEdits)) {
+        await fetch(SUPA_URL+"/rest/v1/plan_prices", {
+          method:"POST", headers: { ...headers, "Prefer":"resolution=merge-duplicates,return=representation" },
+          body: JSON.stringify({ plano, valor })
+        });
+      }
+      setPlanPrices(m=>({ ...m, ...priceEdits }));
+      setPriceEdits({});
+    } catch(e) {}
+    setSavingPrices(false);
+  };
 
   useEffect(()=>{
     supa.auth.getSession().then(({data})=>{ setSession(data?.session||null); setAuthLoading(false); });
@@ -197,6 +225,21 @@ function App() {
       });
       setSelected(p=>({ ...p, [field]: value }));
       setProfs(list=>list.map(p=>p.id===selected.id?{ ...p,[field]:value }:p));
+    } catch(e) {}
+    setSavingProf(false);
+  };
+
+  const updateProfFields = async (fields) => {
+    if (!selected) return;
+    setSavingProf(true);
+    try {
+      const headers = await authHeaders();
+      await fetch(SUPA_URL+"/rest/v1/professionals?id=eq."+selected.id, {
+        method:"PATCH", headers: { ...headers, "Prefer":"return=representation" },
+        body: JSON.stringify(fields)
+      });
+      setSelected(p=>({ ...p, ...fields }));
+      setProfs(list=>list.map(p=>p.id===selected.id?{ ...p, ...fields }:p));
     } catch(e) {}
     setSavingProf(false);
   };
@@ -389,7 +432,7 @@ function App() {
             <div style={{ display:"flex",gap:12,marginTop:16,flexWrap:"wrap" }}>
               <div style={{ flex:"1 1 140px" }}>
                 <label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Plano</label>
-                <select value={p.plano||"trial"} disabled={savingProf} onChange={e=>updateProf("plano", e.target.value)} style={{ width:"100%",padding:"8px 10px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13 }}>
+                <select value={planoEdit} disabled={savingProf} onChange={e=>setPlanoEdit(e.target.value)} style={{ width:"100%",padding:"8px 10px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13 }}>
                   <option value="trial">trial</option>
                   <option value="mensal">mensal</option>
                   <option value="anual">anual</option>
@@ -398,14 +441,18 @@ function App() {
               </div>
               <div style={{ flex:"1 1 140px" }}>
                 <label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Status</label>
-                <select value={p.status_assinatura||"ativo"} disabled={savingProf} onChange={e=>updateProf("status_assinatura", e.target.value)} style={{ width:"100%",padding:"8px 10px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13 }}>
+                <select value={statusEdit} disabled={savingProf} onChange={e=>setStatusEdit(e.target.value)} style={{ width:"100%",padding:"8px 10px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13 }}>
                   <option value="ativo">ativo</option>
                   <option value="inadimplente">inadimplente</option>
                   <option value="cancelado">cancelado</option>
                 </select>
               </div>
             </div>
-            {savingProf && <div style={{ fontSize:11,color:"#94a3b8",marginTop:8 }}>Salvando...</div>}
+            {(planoEdit!==(p.plano||"trial") || statusEdit!==(p.status_assinatura||"ativo")) && (
+              <button onClick={savePlanStatus} disabled={savingProf} style={{ marginTop:10,border:"none",background:"#FF5603",color:"#fff",borderRadius:8,padding:"9px 16px",fontSize:13,fontWeight:700,cursor:"pointer" }}>
+                {savingProf?"Salvando...":"Salvar alterações"}
+              </button>
+            )}
 
             {p.plano==="trial" && (
               <div style={{ borderTop:"1px solid #f1f5f9",marginTop:16,paddingTop:12 }}>
@@ -539,13 +586,17 @@ function App() {
                   {["mensal","anual","vitalicio"].map(plano=>(
                     <div key={plano} style={{ flex:"1 1 100px" }}>
                       <label style={{ fontSize:11,color:"#94a3b8",display:"block",marginBottom:3,textTransform:"capitalize" }}>{plano}</label>
-                      <input type="number" step="0.01" defaultValue={planPrices[plano]||0} disabled={savingPrices}
-                        onBlur={e=>updatePlanPrice(plano, parseFloat(e.target.value)||0)}
+                      <input type="number" step="0.01" value={priceEdits[plano]!==undefined?priceEdits[plano]:(planPrices[plano]||0)} disabled={savingPrices}
+                        onChange={e=>setPriceEdits(m=>({ ...m, [plano]: parseFloat(e.target.value)||0 }))}
                         style={{ width:"100%",padding:"6px 8px",borderRadius:6,border:"1.5px solid #e2e8f0",fontSize:13 }}/>
                     </div>
                   ))}
                 </div>
-                {savingPrices && <div style={{ fontSize:11,color:"#94a3b8",marginTop:6 }}>Salvando...</div>}
+                {Object.keys(priceEdits).length>0 && (
+                  <button onClick={savePrices} disabled={savingPrices} style={{ marginTop:10,border:"none",background:"#FF5603",color:"#fff",borderRadius:8,padding:"8px 14px",fontSize:13,fontWeight:700,cursor:"pointer" }}>
+                    {savingPrices?"Salvando...":"Salvar preços"}
+                  </button>
+                )}
               </div>
             </div>
           </div>
