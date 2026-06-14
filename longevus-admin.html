@@ -124,6 +124,7 @@ function App() {
   const [planoEdit,setPlanoEdit]=useState(null);
   const [statusEdit,setStatusEdit]=useState(null);
   const [priceEdits,setPriceEdits]=useState({});
+  const [trialDateEdit,setTrialDateEdit]=useState("");
 
   const toggleDrill = (section, label) => {
     setDrill(d => (d && d.section===section && d.label===label) ? null : { section, label });
@@ -134,7 +135,19 @@ function App() {
     setSelected(p);
     setPlanoEdit(p.plano||"trial");
     setStatusEdit(p.status_assinatura||"ativo");
+    setTrialDateEdit(p.trial_ends_at ? new Date(p.trial_ends_at).toISOString().slice(0,10) : "");
   };
+
+  const saveTrialDate = async () => {
+    if (!trialDateEdit) return;
+    // Mantém o horário 23:59 do dia escolhido
+    const iso = new Date(trialDateEdit+"T23:59:59").toISOString();
+    await updateProf("trial_ends_at", iso);
+  };
+
+  useEffect(()=>{
+    if (selected?.trial_ends_at) setTrialDateEdit(new Date(selected.trial_ends_at).toISOString().slice(0,10));
+  },[selected?.trial_ends_at]);
 
   const savePlanStatus = async () => {
     await updateProfFields({ plano: planoEdit, status_assinatura: statusEdit });
@@ -465,6 +478,17 @@ function App() {
                   <button onClick={()=>extendTrial(7)} disabled={savingProf} style={{ border:"1.5px solid #e2e8f0",background:"#fff",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",color:"#475569" }}>+7 dias</button>
                   <button onClick={()=>extendTrial(14)} disabled={savingProf} style={{ border:"1.5px solid #e2e8f0",background:"#fff",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",color:"#475569" }}>+14 dias</button>
                   <button onClick={()=>extendTrial(30)} disabled={savingProf} style={{ border:"1.5px solid #e2e8f0",background:"#fff",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",color:"#475569" }}>+30 dias</button>
+                </div>
+                <div style={{ display:"flex",gap:8,marginTop:10,alignItems:"flex-end",flexWrap:"wrap" }}>
+                  <div style={{ flex:"1 1 160px" }}>
+                    <label style={{ fontSize:11,color:"#94a3b8",display:"block",marginBottom:3 }}>Ou escolha a data de expiração</label>
+                    <input type="date" value={trialDateEdit} disabled={savingProf} onChange={e=>setTrialDateEdit(e.target.value)} style={{ width:"100%",padding:"6px 8px",borderRadius:6,border:"1.5px solid #e2e8f0",fontSize:13 }}/>
+                  </div>
+                  {trialDateEdit !== (p.trial_ends_at ? new Date(p.trial_ends_at).toISOString().slice(0,10) : "") && (
+                    <button onClick={saveTrialDate} disabled={savingProf} style={{ border:"none",background:"#FF5603",color:"#fff",borderRadius:8,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer" }}>
+                      {savingProf?"Salvando...":"Definir data"}
+                    </button>
+                  )}
                 </div>
               </div>
             )}
