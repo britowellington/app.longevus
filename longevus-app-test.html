@@ -5229,20 +5229,27 @@ const [nome,setNome]=useState("");
 const [whatsapp,setWhatsapp]=useState("");
 const [email,setEmail]=useState("");
 const [password,setPassword]=useState("");
-const [mode,setMode]=useState("signin"); // signin | signup
+const [mode,setMode]=useState("signin"); // signin | signup | forgot
 const [error,setError]=useState("");
+const [info,setInfo]=useState("");
 const [loading,setLoading]=useState(false);
 const submit = async (e) => {
 e.preventDefault();
-setError(""); setLoading(true);
+setError(""); setInfo(""); setLoading(true);
 try {
 if (mode==="signin") {
 const { error } = await supa.auth.signInWithPassword({ email, password });
 if (error) throw error;
+} else if (mode==="forgot") {
+const { error } = await supa.auth.resetPasswordForEmail(email);
+if (error) throw error;
+setInfo("Enviamos um link de redefinição para "+email+". Verifique sua caixa de entrada.");
+setLoading(false);
+return;
 } else {
 const { error } = await supa.auth.signUp({ email, password, options: { data: { nome, whatsapp } } });
 if (error) throw error;
-setError("Conta criada! Faça login.");
+setInfo("Conta criada! Faça login.");
 setMode("signin");
 setLoading(false);
 return;
@@ -5278,21 +5285,73 @@ return (
 <label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>E-mail</label>
 <input type="email" required value={email} onChange={e=>setEmail(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14 }}/>
 </div>
+{mode!=="forgot" && (
 <div style={{ marginBottom:16 }}>
 <label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Senha</label>
 <input type="password" required value={password} onChange={e=>setPassword(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14 }}/>
 </div>
+)}
+{mode==="signin" && (
+<div style={{ textAlign:"right",marginTop:-8,marginBottom:16 }}>
+<a href="#" onClick={e=>{e.preventDefault();setMode("forgot");setError("");setInfo("");}} style={{ fontSize:12,color:"#94a3b8" }}>Esqueci minha senha</a>
+</div>
+)}
 {error && <div style={{ fontSize:12,color:"#dc2626",marginBottom:12,textAlign:"center" }}>{error}</div>}
+{info && <div style={{ fontSize:12,color:"#16a34a",marginBottom:12,textAlign:"center" }}>{info}</div>}
 <button type="submit" disabled={loading} style={{ width:"100%",padding:"11px",borderRadius:8,border:"none",background:"#FF5603",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",opacity:loading?0.7:1 }}>
-{loading ? "Aguarde..." : (mode==="signin" ? "Entrar" : "Criar conta")}
+{loading ? "Aguarde..." : (mode==="signin" ? "Entrar" : mode==="forgot" ? "Enviar link de redefinição" : "Criar conta")}
 </button>
 <div style={{ textAlign:"center",marginTop:14,fontSize:13 }}>
 {mode==="signin" ? (
-<span>Não tem conta? <a href="#" onClick={e=>{e.preventDefault();setMode("signup");setError("");}} style={{ color:"#FF5603",fontWeight:600 }}>Criar conta</a></span>
+<span>Não tem conta? <a href="#" onClick={e=>{e.preventDefault();setMode("signup");setError("");setInfo("");}} style={{ color:"#FF5603",fontWeight:600 }}>Criar conta</a></span>
 ) : (
-<span>Já tem conta? <a href="#" onClick={e=>{e.preventDefault();setMode("signin");setError("");}} style={{ color:"#FF5603",fontWeight:600 }}>Entrar</a></span>
+<span>{mode==="forgot"?"Lembrou a senha?":"Já tem conta?"} <a href="#" onClick={e=>{e.preventDefault();setMode("signin");setError("");setInfo("");}} style={{ color:"#FF5603",fontWeight:600 }}>Entrar</a></span>
 )}
 </div>
+</form>
+</div>
+);
+};
+const ResetPassword = ({ onDone }) => {
+const [password,setPassword]=useState("");
+const [confirm,setConfirm]=useState("");
+const [error,setError]=useState("");
+const [loading,setLoading]=useState(false);
+const submit = async (e) => {
+e.preventDefault();
+setError("");
+if (password.length<6) { setError("A senha deve ter pelo menos 6 caracteres."); return; }
+if (password!==confirm) { setError("As senhas não coincidem."); return; }
+setLoading(true);
+try {
+const { error } = await supa.auth.updateUser({ password });
+if (error) throw error;
+onDone();
+} catch(err) {
+setError(err.message || "Erro ao redefinir senha.");
+} finally {
+setLoading(false);
+}
+};
+return (
+<div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f8fafc",padding:20 }}>
+<form onSubmit={submit} style={{ background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:380,boxShadow:"0 4px 24px rgba(0,0,0,0.06)" }}>
+<div style={{ textAlign:"center",marginBottom:18 }}>
+<img src={__LOGO_1__} alt="Longevus" style={{ width:56,height:56,margin:"0 auto 8px",display:"block" }}/>
+<div style={{ fontWeight:900,fontSize:20 }}>Definir nova senha</div>
+</div>
+<div style={{ marginBottom:12 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Nova senha</label>
+<input type="password" required value={password} onChange={e=>setPassword(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
+</div>
+<div style={{ marginBottom:16 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Confirmar senha</label>
+<input type="password" required value={confirm} onChange={e=>setConfirm(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
+</div>
+{error && <div style={{ fontSize:12,color:"#dc2626",marginBottom:12,textAlign:"center" }}>{error}</div>}
+<button type="submit" disabled={loading} style={{ width:"100%",padding:"11px",borderRadius:8,border:"none",background:"#FF5603",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",opacity:loading?0.7:1 }}>
+{loading ? "Salvando..." : "Salvar nova senha"}
+</button>
 </form>
 </div>
 );
@@ -5303,6 +5362,22 @@ const [loading,setLoading]=useState(true);
 const [saving,setSaving]=useState(false);
 const [uploading,setUploading]=useState(false);
 const [msg,setMsg]=useState("");
+const [pwd,setPwd]=useState({ nova:"", confirmar:"" });
+const [pwdMsg,setPwdMsg]=useState("");
+const [pwdSaving,setPwdSaving]=useState(false);
+const changePassword = async () => {
+setPwdMsg("");
+if (pwd.nova.length<6) { setPwdMsg("Erro: a senha deve ter pelo menos 6 caracteres."); return; }
+if (pwd.nova!==pwd.confirmar) { setPwdMsg("Erro: as senhas não coincidem."); return; }
+setPwdSaving(true);
+try {
+const { error } = await supa.auth.updateUser({ password: pwd.nova });
+if (error) throw error;
+setPwdMsg("Senha alterada com sucesso!");
+setPwd({ nova:"", confirmar:"" });
+} catch(err) { setPwdMsg("Erro: "+(err.message||"não foi possível alterar")); }
+setPwdSaving(false);
+};
 useEffect(()=>{
 (async()=>{
 try {
@@ -5382,6 +5457,19 @@ return (
 {msg && <div style={{ fontSize:12,color: msg.includes("Erro")?"#dc2626":"#16a34a",marginBottom:10 }}>{msg}</div>}
 <Btn full onClick={save} disabled={saving}>{saving?"Salvando...":"Salvar alterações"}</Btn>
 </Card>
+<Card style={{ marginTop:16 }}>
+<div style={{ fontWeight:800,fontSize:16,marginBottom:14 }}>Alterar senha</div>
+<div style={{ marginBottom:14 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Nova senha</label>
+<input type="password" value={pwd.nova} onChange={e=>setPwd(p=>({...p,nova:e.target.value}))} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
+</div>
+<div style={{ marginBottom:14 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Confirmar nova senha</label>
+<input type="password" value={pwd.confirmar} onChange={e=>setPwd(p=>({...p,confirmar:e.target.value}))} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
+</div>
+{pwdMsg && <div style={{ fontSize:12,color: pwdMsg.includes("Erro")?"#dc2626":"#16a34a",marginBottom:10 }}>{pwdMsg}</div>}
+<Btn full onClick={changePassword} disabled={pwdSaving}>{pwdSaving?"Salvando...":"Alterar senha"}</Btn>
+</Card>
 </div>
 );
 };
@@ -5390,9 +5478,13 @@ const [session,setSession]=useState(null);
 const [authLoading,setAuthLoading]=useState(true);
 const [profName,setProfName]=useState("");
 const [logoUrl,setLogoUrl]=useState("");
+const [recoveryMode,setRecoveryMode]=useState(false);
 useEffect(()=>{
 supa.auth.getSession().then(({data})=>{ setSession(data?.session||null); setAuthLoading(false); });
-const { data: listener } = supa.auth.onAuthStateChange((_event, sess)=>{ setSession(sess); });
+const { data: listener } = supa.auth.onAuthStateChange((event, sess)=>{
+setSession(sess);
+if (event==="PASSWORD_RECOVERY") setRecoveryMode(true);
+});
 return ()=>{ listener?.subscription?.unsubscribe(); };
 },[]);
 useEffect(()=>{
@@ -5487,6 +5579,9 @@ const [menuOpen, setMenuOpen] = useState(false);
 const activePage=["dashboard","students","assessments","daily","reports","documents","program","cognitivehub","profile"].includes(page)?page:null;
 if (authLoading) {
 return <div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14 }}>Carregando...</div>;
+}
+if (recoveryMode) {
+return <ResetPassword onDone={()=>{setRecoveryMode(false);}}/>;
 }
 if (!session) {
 return <Login onLogin={()=>{}}/>;
