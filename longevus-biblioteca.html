@@ -205,6 +205,8 @@ const { useState, useEffect, useRef } = React;
 const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
 const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
 const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+const SUPPORT_WHATSAPP = "5511977431011";
+async function authHeadersFn(){ const { data } = await supa.auth.getSession(); const token = data?.session?.access_token || SUPA_KEY; return { "apikey": SUPA_KEY, "Authorization": "Bearer "+token, "Content-Type": "application/json" }; }
 
 const Login = ({ onLogin }) => {
 const [nome,setNome]=useState("");
@@ -551,10 +553,30 @@ function AppInner(){
   </>);
 }
 
+
+const TrialExpired = () => {
+const waMsg = encodeURIComponent("Olá! Meu período de teste do Longevus expirou e gostaria de assinar o plano.");
+return (
+<div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f8fafc",padding:20 }}>
+<div style={{ background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:380,boxShadow:"0 4px 24px rgba(0,0,0,0.06)",textAlign:"center" }}>
+<img src={__LOGO__} alt="Longevus" style={{ width:56,height:56,margin:"0 auto 12px",display:"block" }}/>
+<div style={{ fontWeight:900,fontSize:18,marginBottom:8 }}>Seu período de teste terminou</div>
+<div style={{ fontSize:13,color:"#64748b",marginBottom:20,lineHeight:1.5 }}>
+Para continuar usando o Longevus e acessar os dados dos seus alunos, fale com a gente para ativar seu plano.
+</div>
+<a href={"https://wa.me/"+SUPPORT_WHATSAPP+"?text="+waMsg} target="_blank" style={{ display:"block",padding:"12px",borderRadius:8,background:"#16a34a",color:"#fff",fontWeight:700,fontSize:14,textDecoration:"none",marginBottom:10 }}>
+Falar no WhatsApp
+</a>
+<button onClick={()=>supa.auth.signOut()} style={{ border:"none",background:"transparent",color:"#94a3b8",fontSize:13,cursor:"pointer",textDecoration:"underline" }}>Sair</button>
+</div>
+</div>
+);
+};
 function App(){
 const [session,setSession]=useState(null);
 const [authLoading,setAuthLoading]=useState(true);
 const [recoveryMode,setRecoveryMode]=useState(false);
+const [billing,setBilling]=useState(null);
 useEffect(()=>{
 supa.auth.getSession().then(({data})=>{ setSession(data?.session||null); setAuthLoading(false); });
 const { data: listener } = supa.auth.onAuthStateChange((event, sess)=>{
@@ -563,6 +585,18 @@ if (event==="PASSWORD_RECOVERY") setRecoveryMode(true);
 });
 return ()=>{ listener?.subscription?.unsubscribe(); };
 },[]);
+useEffect(()=>{
+if (!session) { setBilling(null); return; }
+(async()=>{
+try {
+const headers = await authHeadersFn();
+const r = await fetch(SUPA_URL+"/rest/v1/professionals?select=plano,status_assinatura,trial_ends_at&id=eq."+session.user.id, { headers });
+const rows = await r.json();
+const p = rows?.[0]||{};
+setBilling({ plano:p.plano||"trial", status_assinatura:p.status_assinatura||"ativo", trial_ends_at:p.trial_ends_at });
+} catch(e) { setBilling({ plano:"trial", status_assinatura:"ativo", trial_ends_at:null }); }
+})();
+},[session]);
 if (authLoading) {
 return <div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14 }}>Carregando...</div>;
 }
@@ -571,6 +605,15 @@ return <ResetPassword onDone={()=>{setRecoveryMode(false);}}/>;
 }
 if (!session) {
 return <Login onLogin={()=>{}}/>;
+}
+if (!billing) {
+return <div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14 }}>Carregando...</div>;
+}
+const trialEnd = billing.trial_ends_at ? new Date(billing.trial_ends_at) : null;
+const trialExpired = billing.plano==="trial" && trialEnd && trialEnd.getTime() < Date.now();
+const accountBlocked = billing.status_assinatura==="cancelado" || trialExpired;
+if (accountBlocked) {
+return <TrialExpired/>;
 }
 return <AppInner/>;
 }
