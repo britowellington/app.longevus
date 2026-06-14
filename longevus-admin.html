@@ -355,6 +355,11 @@ function App() {
               {p.is_admin && <span style={{ fontSize:10,background:"#FF560318",color:"#FF5603",borderRadius:999,padding:"2px 8px",fontWeight:700 }}>ADMIN</span>}
             </div>
             <div style={{ fontSize:13,color:"#94a3b8",marginTop:2 }}>{p.email}</div>
+            {p.whatsapp && (
+              <a href={"https://wa.me/"+String(p.whatsapp).replace(/\D/g,"")} target="_blank" style={{ fontSize:13,color:"#16a34a",fontWeight:700,marginTop:4,display:"inline-flex",alignItems:"center",gap:4,textDecoration:"none" }}>
+                📱 {p.whatsapp}
+              </a>
+            )}
             <div style={{ fontSize:12,color:"#cbd5e1",marginTop:4 }}>Cadastrado em {fmtDate(p.created_at)} · Última atividade: {fmtRelative(p.last_active)}</div>
             <div style={{ fontSize:12,color:"#cbd5e1",marginTop:2 }}>ID: {p.id}</div>
 
@@ -523,7 +528,7 @@ function App() {
                     {p.nome || p.email}
                     {p.is_admin && <span style={{ fontSize:10,background:"#FF560318",color:"#FF5603",borderRadius:999,padding:"2px 8px",fontWeight:700 }}>ADMIN</span>}
                   </div>
-                  <div style={{ fontSize:12,color:"#94a3b8",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>{p.email}</div>
+                  <div style={{ fontSize:12,color:"#94a3b8",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>{p.email}{p.whatsapp ? " · "+p.whatsapp : ""}</div>
                   <div style={{ fontSize:11,color:"#cbd5e1",marginTop:2 }}>Cadastrado em {fmtDate(p.created_at)} · {fmtRelative(p.last_active)}</div>
                 </div>
                 <div style={{ textAlign:"right",flexShrink:0 }}>
