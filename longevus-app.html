@@ -14,6 +14,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   
 <script>
 var __LOGO_1__ = "data:image/png;base64,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";
@@ -24,11 +25,18 @@ const { useState, useEffect, useCallback, useRef } = React;
 // ── Supabase ─────────────────────────────────────────────────────────────────
 const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
 const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
+const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+const SUPPORT_WHATSAPP = "5511977431011";
 const DB = {
-headers: { "apikey": SUPA_KEY, "Authorization": "Bearer "+SUPA_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates" },
+async authHeaders() {
+const { data } = await supa.auth.getSession();
+const token = data?.session?.access_token || SUPA_KEY;
+return { "apikey": SUPA_KEY, "Authorization": "Bearer "+token, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates" };
+},
 async load(table) {
 try {
-const r = await fetch(SUPA_URL+"/rest/v1/"+table+"?select=*&order=created_at.asc", { headers: this.headers });
+const headers = await this.authHeaders();
+const r = await fetch(SUPA_URL+"/rest/v1/"+table+"?select=*&order=created_at.asc", { headers });
 if (!r.ok) return null;
 const rows = await r.json();
 return rows.map(row => row.data);
@@ -36,13 +44,17 @@ return rows.map(row => row.data);
 },
 async save(table, id, data, studentId) {
 try {
-const body = { id, data, updated_at: new Date().toISOString(), ...(studentId ? { student_id: studentId } : {}) };
-await fetch(SUPA_URL+"/rest/v1/"+table, { method: "POST", headers: this.headers, body: JSON.stringify(body) });
+const headers = await this.authHeaders();
+const { data: sess } = await supa.auth.getSession();
+const ownerId = sess?.session?.user?.id;
+const body = { id, data, owner_id: ownerId, updated_at: new Date().toISOString(), ...(studentId ? { student_id: studentId } : {}) };
+await fetch(SUPA_URL+"/rest/v1/"+table, { method: "POST", headers, body: JSON.stringify(body) });
 } catch(e) {}
 },
 async remove(table, id) {
 try {
-const r = await fetch(SUPA_URL+"/rest/v1/"+table+"?id=eq."+id, { method: "DELETE", headers: this.headers });
+const headers = await this.authHeaders();
+const r = await fetch(SUPA_URL+"/rest/v1/"+table+"?id=eq."+id, { method: "DELETE", headers });
 if (!r.ok) console.error("DB.remove failed", table, id, r.status);
 return r.ok;
 } catch(e) { console.error("DB.remove error", table, id, e); return false; }
@@ -274,6 +286,7 @@ edit:  ["M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7","M18.5 2.5a
 eye:   ["M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z","M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"],
 x:     ["M18 6L6 18","M6 6l12 12"],
 zap:   ["M13 2L3 14h9l-1 8 10-12h-9z"],
+user:  ["M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2","M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"],
 };
 return (
 <svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
@@ -5212,7 +5225,308 @@ Visualizar e Imprimir
 </div>
 );
 };
+const Login = ({ onLogin }) => {
+const [nome,setNome]=useState("");
+const [whatsapp,setWhatsapp]=useState("");
+const [email,setEmail]=useState("");
+const [password,setPassword]=useState("");
+const [mode,setMode]=useState("signin"); // signin | signup | forgot
+const [error,setError]=useState("");
+const [info,setInfo]=useState("");
+const [loading,setLoading]=useState(false);
+const submit = async (e) => {
+e.preventDefault();
+setError(""); setInfo(""); setLoading(true);
+try {
+if (mode==="signin") {
+const { error } = await supa.auth.signInWithPassword({ email, password });
+if (error) throw error;
+} else if (mode==="forgot") {
+const { error } = await supa.auth.resetPasswordForEmail(email, { redirectTo: window.location.href.split("?")[0].split("#")[0] });
+if (error) throw error;
+setInfo("Enviamos um link de redefinição para "+email+". Verifique sua caixa de entrada.");
+setLoading(false);
+return;
+} else {
+const { error } = await supa.auth.signUp({ email, password, options: { data: { nome, whatsapp } } });
+if (error) throw error;
+setInfo("Conta criada! Faça login.");
+setMode("signin");
+setLoading(false);
+return;
+}
+onLogin();
+} catch(err) {
+setError(err.message || "Erro ao autenticar.");
+} finally {
+setLoading(false);
+}
+};
+return (
+<div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f8fafc",padding:20 }}>
+<form onSubmit={submit} style={{ background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:380,boxShadow:"0 4px 24px rgba(0,0,0,0.06)" }}>
+<div style={{ textAlign:"center",marginBottom:18 }}>
+<img src={__LOGO_1__} alt="Longevus" style={{ width:56,height:56,margin:"0 auto 8px",display:"block" }}/>
+<div style={{ fontWeight:900,fontSize:20 }}>Longevus</div>
+<div style={{ fontSize:12,color:"#94a3b8" }}>Treinamento Neurofuncional</div>
+</div>
+{mode==="signup" && (
+<div style={{ marginBottom:12 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Nome</label>
+<input type="text" required value={nome} onChange={e=>setNome(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14 }}/>
+</div>
+)}
+{mode==="signup" && (
+<div style={{ marginBottom:12 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>WhatsApp</label>
+<input type="tel" required placeholder="(11) 91234-5678" value={whatsapp} onChange={e=>setWhatsapp(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14 }}/>
+</div>
+)}
+<div style={{ marginBottom:12 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>E-mail</label>
+<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14 }}/>
+</div>
+{mode!=="forgot" && (
+<div style={{ marginBottom:16 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Senha</label>
+<input type="password" required value={password} onChange={e=>setPassword(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14 }}/>
+</div>
+)}
+{mode==="signin" && (
+<div style={{ textAlign:"right",marginTop:-8,marginBottom:16 }}>
+<a href="#" onClick={e=>{e.preventDefault();setMode("forgot");setError("");setInfo("");}} style={{ fontSize:12,color:"#94a3b8" }}>Esqueci minha senha</a>
+</div>
+)}
+{error && <div style={{ fontSize:12,color:"#dc2626",marginBottom:12,textAlign:"center" }}>{error}</div>}
+{info && <div style={{ fontSize:12,color:"#16a34a",marginBottom:12,textAlign:"center" }}>{info}</div>}
+<button type="submit" disabled={loading} style={{ width:"100%",padding:"11px",borderRadius:8,border:"none",background:"#FF5603",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",opacity:loading?0.7:1 }}>
+{loading ? "Aguarde..." : (mode==="signin" ? "Entrar" : mode==="forgot" ? "Enviar link de redefinição" : "Criar conta")}
+</button>
+<div style={{ textAlign:"center",marginTop:14,fontSize:13 }}>
+{mode==="signin" ? (
+<span>Não tem conta? <a href="#" onClick={e=>{e.preventDefault();setMode("signup");setError("");setInfo("");}} style={{ color:"#FF5603",fontWeight:600 }}>Criar conta</a></span>
+) : (
+<span>{mode==="forgot"?"Lembrou a senha?":"Já tem conta?"} <a href="#" onClick={e=>{e.preventDefault();setMode("signin");setError("");setInfo("");}} style={{ color:"#FF5603",fontWeight:600 }}>Entrar</a></span>
+)}
+</div>
+</form>
+</div>
+);
+};
+const ResetPassword = ({ onDone }) => {
+const [password,setPassword]=useState("");
+const [confirm,setConfirm]=useState("");
+const [error,setError]=useState("");
+const [loading,setLoading]=useState(false);
+const submit = async (e) => {
+e.preventDefault();
+setError("");
+if (password.length<6) { setError("A senha deve ter pelo menos 6 caracteres."); return; }
+if (password!==confirm) { setError("As senhas não coincidem."); return; }
+setLoading(true);
+try {
+const { error } = await supa.auth.updateUser({ password });
+if (error) throw error;
+onDone();
+} catch(err) {
+setError(err.message || "Erro ao redefinir senha.");
+} finally {
+setLoading(false);
+}
+};
+return (
+<div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f8fafc",padding:20 }}>
+<form onSubmit={submit} style={{ background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:380,boxShadow:"0 4px 24px rgba(0,0,0,0.06)" }}>
+<div style={{ textAlign:"center",marginBottom:18 }}>
+<img src={__LOGO_1__} alt="Longevus" style={{ width:56,height:56,margin:"0 auto 8px",display:"block" }}/>
+<div style={{ fontWeight:900,fontSize:20 }}>Definir nova senha</div>
+</div>
+<div style={{ marginBottom:12 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Nova senha</label>
+<input type="password" required value={password} onChange={e=>setPassword(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
+</div>
+<div style={{ marginBottom:16 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Confirmar senha</label>
+<input type="password" required value={confirm} onChange={e=>setConfirm(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
+</div>
+{error && <div style={{ fontSize:12,color:"#dc2626",marginBottom:12,textAlign:"center" }}>{error}</div>}
+<button type="submit" disabled={loading} style={{ width:"100%",padding:"11px",borderRadius:8,border:"none",background:"#FF5603",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",opacity:loading?0.7:1 }}>
+{loading ? "Salvando..." : "Salvar nova senha"}
+</button>
+</form>
+</div>
+);
+};
+const Profile = ({ session, onLogoChange }) => {
+const [form,setForm]=useState({ nome:"", whatsapp:"", cref:"", especializacao:"", logo_url:"" });
+const [loading,setLoading]=useState(true);
+const [saving,setSaving]=useState(false);
+const [uploading,setUploading]=useState(false);
+const [msg,setMsg]=useState("");
+const [pwd,setPwd]=useState({ nova:"", confirmar:"" });
+const [pwdMsg,setPwdMsg]=useState("");
+const [pwdSaving,setPwdSaving]=useState(false);
+const changePassword = async () => {
+setPwdMsg("");
+if (pwd.nova.length<6) { setPwdMsg("Erro: a senha deve ter pelo menos 6 caracteres."); return; }
+if (pwd.nova!==pwd.confirmar) { setPwdMsg("Erro: as senhas não coincidem."); return; }
+setPwdSaving(true);
+try {
+const { error } = await supa.auth.updateUser({ password: pwd.nova });
+if (error) throw error;
+setPwdMsg("Senha alterada com sucesso!");
+setPwd({ nova:"", confirmar:"" });
+} catch(err) { setPwdMsg("Erro: "+(err.message||"não foi possível alterar")); }
+setPwdSaving(false);
+};
+useEffect(()=>{
+(async()=>{
+try {
+const headers = await DB.authHeaders();
+const r = await fetch(SUPA_URL+"/rest/v1/professionals?select=nome,whatsapp,cref,especializacao,email,logo_url&id=eq."+session.user.id, { headers });
+const rows = await r.json();
+const p = rows?.[0]||{};
+setForm({ nome:p.nome||"", whatsapp:p.whatsapp||"", cref:p.cref||"", especializacao:p.especializacao||"", email:p.email||session.user.email, logo_url:p.logo_url||"" });
+} catch(e) {}
+setLoading(false);
+})();
+},[session]);
+const save = async () => {
+setSaving(true); setMsg("");
+try {
+const headers = await DB.authHeaders();
+await fetch(SUPA_URL+"/rest/v1/professionals?id=eq."+session.user.id, {
+method:"PATCH", headers: { ...headers, "Prefer":"return=minimal" },
+body: JSON.stringify({ nome:form.nome, whatsapp:form.whatsapp, cref:form.cref, especializacao:form.especializacao })
+});
+setMsg("Dados salvos com sucesso!");
+} catch(e) { setMsg("Erro ao salvar."); }
+setSaving(false);
+};
+const uploadLogo = async (file) => {
+if (!file) return;
+setUploading(true); setMsg("");
+try {
+const ext = file.name.split(".").pop();
+const path = session.user.id+"/logo."+ext;
+const { error: upErr } = await supa.storage.from("avatars").upload(path, file, { upsert:true, contentType:file.type });
+if (upErr) throw upErr;
+const { data } = supa.storage.from("avatars").getPublicUrl(path);
+const url = data.publicUrl + "?t=" + Date.now();
+const headers = await DB.authHeaders();
+await fetch(SUPA_URL+"/rest/v1/professionals?id=eq."+session.user.id, {
+method:"PATCH", headers: { ...headers, "Prefer":"return=minimal" },
+body: JSON.stringify({ logo_url: url })
+});
+setForm(f=>({ ...f, logo_url:url }));
+onLogoChange && onLogoChange(url);
+setMsg("Foto/logo atualizada!");
+} catch(err) { setMsg("Erro ao enviar imagem: "+(err.message||"")); }
+setUploading(false);
+};
+const fld = (label, key, type="text", placeholder="") => (
+<div style={{ marginBottom:14 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>{label}</label>
+<input type={type} placeholder={placeholder} value={form[key]} onChange={e=>setForm(f=>({...f,[key]:e.target.value}))} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
+</div>
+);
+if (loading) return <div style={{ padding:20,color:"#94a3b8",fontSize:13 }}>Carregando...</div>;
+return (
+<div style={{ padding:"16px" }}>
+<Card>
+<div style={{ fontWeight:800,fontSize:16,marginBottom:14 }}>Meu Perfil</div>
+<div style={{ display:"flex",alignItems:"center",gap:14,marginBottom:18 }}>
+{form.logo_url
+? <img src={form.logo_url} alt="Logo" style={{ width:64,height:64,borderRadius:"50%",objectFit:"cover",border:"1.5px solid #e2e8f0" }}/>
+: <div style={{ width:64,height:64,borderRadius:"50%",background:"#f1f5f9",display:"flex",alignItems:"center",justifyContent:"center" }}><I n="user" s={28} c="#94a3b8"/></div>
+}
+<div>
+<label style={{ display:"inline-block",padding:"8px 14px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13,fontWeight:600,color:"#475569",cursor:"pointer" }}>
+{uploading?"Enviando...":"Alterar foto/logo"}
+<input type="file" accept="image/*" onChange={e=>uploadLogo(e.target.files[0])} disabled={uploading} style={{ display:"none" }}/>
+</label>
+</div>
+</div>
+{fld("Nome","nome")}
+<div style={{ marginBottom:14 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>E-mail</label>
+<input type="email" disabled value={form.email} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box",background:"#f8fafc",color:"#94a3b8" }}/>
+</div>
+{fld("WhatsApp","whatsapp","tel","(11) 91234-5678")}
+{fld("CREF","cref","text","Ex: 089836-G/SP")}
+{fld("Especialização","especializacao","text","Ex: Gerontologia")}
+{msg && <div style={{ fontSize:12,color: msg.includes("Erro")?"#dc2626":"#16a34a",marginBottom:10 }}>{msg}</div>}
+<Btn full onClick={save} disabled={saving}>{saving?"Salvando...":"Salvar alterações"}</Btn>
+</Card>
+<Card style={{ marginTop:16 }}>
+<div style={{ fontWeight:800,fontSize:16,marginBottom:14 }}>Alterar senha</div>
+<div style={{ marginBottom:14 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Nova senha</label>
+<input type="password" value={pwd.nova} onChange={e=>setPwd(p=>({...p,nova:e.target.value}))} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
+</div>
+<div style={{ marginBottom:14 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Confirmar nova senha</label>
+<input type="password" value={pwd.confirmar} onChange={e=>setPwd(p=>({...p,confirmar:e.target.value}))} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
+</div>
+{pwdMsg && <div style={{ fontSize:12,color: pwdMsg.includes("Erro")?"#dc2626":"#16a34a",marginBottom:10 }}>{pwdMsg}</div>}
+<Btn full onClick={changePassword} disabled={pwdSaving}>{pwdSaving?"Salvando...":"Alterar senha"}</Btn>
+</Card>
+</div>
+);
+};
+const TrialExpired = ({ }) => {
+const waMsg = encodeURIComponent("Olá! Meu período de teste do Longevus expirou e gostaria de assinar o plano.");
+return (
+<div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f8fafc",padding:20 }}>
+<div style={{ background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:380,boxShadow:"0 4px 24px rgba(0,0,0,0.06)",textAlign:"center" }}>
+<img src={__LOGO_1__} alt="Longevus" style={{ width:56,height:56,margin:"0 auto 12px",display:"block" }}/>
+<div style={{ fontWeight:900,fontSize:18,marginBottom:8 }}>Seu período de teste terminou</div>
+<div style={{ fontSize:13,color:"#64748b",marginBottom:20,lineHeight:1.5 }}>
+Para continuar usando o Longevus e acessar os dados dos seus alunos, fale com a gente para ativar seu plano.
+</div>
+<a href={"https://wa.me/"+SUPPORT_WHATSAPP+"?text="+waMsg} target="_blank" style={{ display:"block",padding:"12px",borderRadius:8,background:"#16a34a",color:"#fff",fontWeight:700,fontSize:14,textDecoration:"none",marginBottom:10 }}>
+Falar no WhatsApp
+</a>
+<button onClick={()=>supa.auth.signOut()} style={{ border:"none",background:"transparent",color:"#94a3b8",fontSize:13,cursor:"pointer",textDecoration:"underline" }}>Sair</button>
+</div>
+</div>
+);
+};
 function App() {
+const [session,setSession]=useState(null);
+const [authLoading,setAuthLoading]=useState(true);
+const [profName,setProfName]=useState("");
+const [logoUrl,setLogoUrl]=useState("");
+const [recoveryMode,setRecoveryMode]=useState(false);
+const [billing,setBilling]=useState(null); // { plano, status_assinatura, trial_ends_at }
+useEffect(()=>{
+supa.auth.getSession().then(({data})=>{ setSession(data?.session||null); setAuthLoading(false); });
+const { data: listener } = supa.auth.onAuthStateChange((event, sess)=>{
+setSession(sess);
+if (event==="PASSWORD_RECOVERY") setRecoveryMode(true);
+});
+return ()=>{ listener?.subscription?.unsubscribe(); };
+},[]);
+useEffect(()=>{
+if (!session) { setProfName(""); setLogoUrl(""); setBilling(null); return; }
+(async () => {
+try {
+const headers = await DB.authHeaders();
+const r = await fetch(SUPA_URL+"/rest/v1/professionals?select=nome,logo_url,plano,status_assinatura,trial_ends_at&id=eq."+session.user.id, { headers });
+const rows = await r.json();
+const p = rows?.[0]||{};
+setProfName(p.nome || session.user.email || "");
+setLogoUrl(p.logo_url || "");
+setBilling({ plano:p.plano||"trial", status_assinatura:p.status_assinatura||"ativo", trial_ends_at:p.trial_ends_at });
+// Registra última atividade
+fetch(SUPA_URL+"/rest/v1/professionals?id=eq."+session.user.id, {
+method:"PATCH", headers: { ...headers, "Prefer":"return=minimal" },
+body: JSON.stringify({ last_active: new Date().toISOString() })
+}).catch(()=>{});
+} catch(e) { setProfName(session.user.email || ""); }
+})();
+},[session]);
+
 const [students,setStudents]=useState(()=>LS.get("longevus_students",[]));
 const [assessments,setAssessments]=useState(()=>LS.get("longevus_assessments",[]));
 const [dailyLogs,setDailyLogs]=useState(()=>LS.get("longevus_daily",[]));
@@ -5224,8 +5538,10 @@ const [dbReady,setDbReady]=useState(false);
 const [hubResults,setHubResults]=useState(()=>LS.get("longevus_hub_results",[]));
 useEffect(()=>{LS.set("longevus_hub_results",hubResults);},[hubResults]);
 const [syncing,setSyncing]=useState(false);
-// Carregar dados do Supabase ao iniciar
+// Carregar dados do Supabase ao iniciar / ao trocar de sessão
 useEffect(()=>{
+if (!session) return;
+setDbReady(false);
 (async()=>{
 setSyncing(true);
 try {
@@ -5233,18 +5549,18 @@ const [s,a,d,docs,c,p,sess] = await Promise.all([
 DB.load("students"), DB.load("assessments"), DB.load("daily_logs"),
 DB.load("documents"), DB.load("cardio_records"), DB.load("programs"), DB.load("sessions")
 ]);
-if(s&&s.length>0){ setStudents(s); LS.set("longevus_students",s); }
-if(a&&a.length>0){ setAssessments(a); LS.set("longevus_assessments",a); }
-if(d&&d.length>0){ setDailyLogs(d); LS.set("longevus_daily",d); }
-if(docs&&docs.length>0){ setDocuments(docs); LS.set("longevus_docs",docs); }
-if(c&&c.length>0){ setCardioRecords(c); LS.set("longevus_cardio",c); }
-if(p&&p.length>0){ setPrograms(p); LS.set("longevus_programs",p); }
-if(sess&&sess.length>0){ setSessions(sess); LS.set("longevus_sessions",sess); }
+if(s!==null){ setStudents(s); LS.set("longevus_students",s); }
+if(a!==null){ setAssessments(a); LS.set("longevus_assessments",a); }
+if(d!==null){ setDailyLogs(d); LS.set("longevus_daily",d); }
+if(docs!==null){ setDocuments(docs); LS.set("longevus_docs",docs); }
+if(c!==null){ setCardioRecords(c); LS.set("longevus_cardio",c); }
+if(p!==null){ setPrograms(p); LS.set("longevus_programs",p); }
+if(sess!==null){ setSessions(sess); LS.set("longevus_sessions",sess); }
 setDbReady(true);
 } catch(e){ setDbReady(true); }
 setSyncing(false);
 })();
-},[]);
+},[session?.user?.id]);
 const [page,setPage]=useState("dashboard");
 const [pageProps,setPageProps]=useState({});
 // Sync local
@@ -5279,9 +5595,29 @@ const menuItems=[
 {id:"extbiblioteca",label:"Biblioteca",icon:"clip"},
 
 {id:"extprograma",label:"Gerador de Programa",icon:"zap"},
+{id:"profile",label:"Meu Perfil",icon:"user"},
 ];
 const [menuOpen, setMenuOpen] = useState(false);
-const activePage=["dashboard","students","assessments","daily","reports","documents","program","cognitivehub"].includes(page)?page:null;
+const activePage=["dashboard","students","assessments","daily","reports","documents","program","cognitivehub","profile"].includes(page)?page:null;
+if (authLoading) {
+return <div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14 }}>Carregando...</div>;
+}
+if (recoveryMode) {
+return <ResetPassword onDone={()=>{setRecoveryMode(false);}}/>;
+}
+if (!session) {
+return <Login onLogin={()=>{}}/>;
+}
+if (!billing) {
+return <div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14 }}>Carregando...</div>;
+}
+const trialEnd = billing.trial_ends_at ? new Date(billing.trial_ends_at) : null;
+const trialExpired = billing.plano==="trial" && trialEnd && trialEnd.getTime() < Date.now();
+const accountBlocked = billing.status_assinatura==="cancelado" || trialExpired;
+const trialDaysLeft = (!trialExpired && billing.plano==="trial" && trialEnd) ? Math.ceil((trialEnd.getTime()-Date.now())/86400000) : null;
+if (accountBlocked) {
+return <TrialExpired/>;
+}
 return (
 <>
 <style>{`*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;color:#0f172a;}input,select,textarea{font-family:inherit;}input:focus,select:focus{outline:none;border-color:#FF5603!important;box-shadow:0 0 0 3px #FF560318;}::-webkit-scrollbar{width:4px;height:4px;}::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:99px;}details>summary{list-style:none;}details>summary::-webkit-details-marker{display:none;}@media print{.no-print{display:none!important;}body{background:white!important;}nav{display:none!important;}}`}</style>
@@ -5289,9 +5625,20 @@ return (
 <div className="no-print" style={{ background:"#fff",borderBottom:"1.5px solid #e2e8f0",padding:"12px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100 }}>
 <div style={{ display:"flex",alignItems:"center",gap:10 }}>
 <img src={__LOGO_2__} alt="Longevus" style={{ height:38,width:"auto" }}/>
+{logoUrl && <img src={logoUrl} alt="" style={{ width:30,height:30,borderRadius:"50%",objectFit:"cover",border:"1.5px solid #e2e8f0" }}/>}
+{profName && <span style={{ fontSize:13,fontWeight:700,color:"#0f172a" }}>{profName}</span>}
 </div>
-<div style={{ fontSize:12,color:"#94a3b8" }}>{syncing?"☁️ Sincronizando...":students.length+" aluno(s)"}</div>
+<div style={{ fontSize:12,color:"#94a3b8",display:"flex",alignItems:"center",gap:10 }}>
+<span>{syncing?"☁️ Sincronizando...":students.length+" aluno(s)"}</span>
+<button onClick={()=>supa.auth.signOut()} style={{ border:"none",background:"transparent",color:"#94a3b8",fontSize:12,cursor:"pointer",textDecoration:"underline" }}>Sair</button>
 </div>
+</div>
+{trialDaysLeft!==null && trialDaysLeft<=3 && (
+<div className="no-print" style={{ background:"#fff7ed",borderBottom:"1.5px solid #fed7aa",padding:"8px 18px",textAlign:"center",fontSize:12,color:"#c2410c",fontWeight:600 }}>
+{trialDaysLeft<=0 ? "Seu teste expira hoje." : "Seu teste expira em "+trialDaysLeft+" dia"+(trialDaysLeft>1?"s":"")+"."}
+{" "}<a href={"https://wa.me/"+SUPPORT_WHATSAPP+"?text="+encodeURIComponent("Olá! Quero ativar meu plano no Longevus.")} target="_blank" style={{ color:"#c2410c",textDecoration:"underline" }}>Ativar plano</a>
+</div>
+)}
 <div style={{ padding:"20px 16px",maxWidth:640,margin:"0 auto" }}>
 {page==="dashboard"&&<Dashboard students={students} assessments={assessments} dailyLogs={dailyLogs} nav={nav}/>}
 {page==="students"&&<Students students={students} setStudents={setStudents} nav={nav}/>}
@@ -5301,7 +5648,7 @@ return (
 {page==="daily"&&<Daily students={students} assessments={assessments} dailyLogs={dailyLogs} setDailyLogs={setDailyLogs} cardioRecords={cardioRecords} setCardioRecords={setCardioRecords}/>}
 {page==="reports"&&<Reports students={students} assessments={assessments} setAssessments={setAssessments} dailyLogs={dailyLogs} sessions={sessions} nav={nav}/>
 }{page==="documents"&&<Documents students={students} documents={documents} setDocuments={setDocuments}/>
-}{page==="extprograma"&&(()=>{window.open("longevus-programa.html","_self");return null;})()}{page==="cognitivehub"&&<CognitiveHub students={students} hubResults={hubResults} setHubResults={setHubResults}/>}{page==="sessions"&&<SessionTracker students={students} programs={programs} sessions={sessions} setSessions={setSessions} nav={nav}/>}
+}{page==="extprograma"&&(()=>{window.open("longevus-programa.html","_self");return null;})()}{page==="cognitivehub"&&<CognitiveHub students={students} hubResults={hubResults} setHubResults={setHubResults}/>}{page==="sessions"&&<SessionTracker students={students} programs={programs} sessions={sessions} setSessions={setSessions} nav={nav}/>}{page==="profile"&&<Profile session={session} onLogoChange={setLogoUrl}/>}
 </div>
 </div>
 <div className="no-print" style={{ position:"fixed",bottom:0,left:0,right:0,background:"#fff",borderTop:"1.5px solid #e2e8f0",display:"flex",zIndex:100,paddingBottom:"env(safe-area-inset-bottom)" }}>
