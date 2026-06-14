@@ -26,6 +26,7 @@ const { useState, useEffect, useCallback, useRef } = React;
 const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
 const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
 const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+const SUPPORT_WHATSAPP = "5511977431011";
 const DB = {
 async authHeaders() {
 const { data } = await supa.auth.getSession();
@@ -5473,12 +5474,31 @@ return (
 </div>
 );
 };
+const TrialExpired = ({ }) => {
+const waMsg = encodeURIComponent("Olá! Meu período de teste do Longevus expirou e gostaria de assinar o plano.");
+return (
+<div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f8fafc",padding:20 }}>
+<div style={{ background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:380,boxShadow:"0 4px 24px rgba(0,0,0,0.06)",textAlign:"center" }}>
+<img src={__LOGO_1__} alt="Longevus" style={{ width:56,height:56,margin:"0 auto 12px",display:"block" }}/>
+<div style={{ fontWeight:900,fontSize:18,marginBottom:8 }}>Seu período de teste terminou</div>
+<div style={{ fontSize:13,color:"#64748b",marginBottom:20,lineHeight:1.5 }}>
+Para continuar usando o Longevus e acessar os dados dos seus alunos, fale com a gente para ativar seu plano.
+</div>
+<a href={"https://wa.me/"+SUPPORT_WHATSAPP+"?text="+waMsg} target="_blank" style={{ display:"block",padding:"12px",borderRadius:8,background:"#16a34a",color:"#fff",fontWeight:700,fontSize:14,textDecoration:"none",marginBottom:10 }}>
+Falar no WhatsApp
+</a>
+<button onClick={()=>supa.auth.signOut()} style={{ border:"none",background:"transparent",color:"#94a3b8",fontSize:13,cursor:"pointer",textDecoration:"underline" }}>Sair</button>
+</div>
+</div>
+);
+};
 function App() {
 const [session,setSession]=useState(null);
 const [authLoading,setAuthLoading]=useState(true);
 const [profName,setProfName]=useState("");
 const [logoUrl,setLogoUrl]=useState("");
 const [recoveryMode,setRecoveryMode]=useState(false);
+const [billing,setBilling]=useState(null); // { plano, status_assinatura, trial_ends_at }
 useEffect(()=>{
 supa.auth.getSession().then(({data})=>{ setSession(data?.session||null); setAuthLoading(false); });
 const { data: listener } = supa.auth.onAuthStateChange((event, sess)=>{
@@ -5488,14 +5508,16 @@ if (event==="PASSWORD_RECOVERY") setRecoveryMode(true);
 return ()=>{ listener?.subscription?.unsubscribe(); };
 },[]);
 useEffect(()=>{
-if (!session) { setProfName(""); setLogoUrl(""); return; }
+if (!session) { setProfName(""); setLogoUrl(""); setBilling(null); return; }
 (async () => {
 try {
 const headers = await DB.authHeaders();
-const r = await fetch(SUPA_URL+"/rest/v1/professionals?select=nome,logo_url&id=eq."+session.user.id, { headers });
+const r = await fetch(SUPA_URL+"/rest/v1/professionals?select=nome,logo_url,plano,status_assinatura,trial_ends_at&id=eq."+session.user.id, { headers });
 const rows = await r.json();
-setProfName(rows?.[0]?.nome || session.user.email || "");
-setLogoUrl(rows?.[0]?.logo_url || "");
+const p = rows?.[0]||{};
+setProfName(p.nome || session.user.email || "");
+setLogoUrl(p.logo_url || "");
+setBilling({ plano:p.plano||"trial", status_assinatura:p.status_assinatura||"ativo", trial_ends_at:p.trial_ends_at });
 // Registra última atividade
 fetch(SUPA_URL+"/rest/v1/professionals?id=eq."+session.user.id, {
 method:"PATCH", headers: { ...headers, "Prefer":"return=minimal" },
@@ -5586,6 +5608,16 @@ return <ResetPassword onDone={()=>{setRecoveryMode(false);}}/>;
 if (!session) {
 return <Login onLogin={()=>{}}/>;
 }
+if (!billing) {
+return <div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14 }}>Carregando...</div>;
+}
+const trialEnd = billing.trial_ends_at ? new Date(billing.trial_ends_at) : null;
+const trialExpired = billing.plano==="trial" && trialEnd && trialEnd.getTime() < Date.now();
+const accountBlocked = billing.status_assinatura==="cancelado" || trialExpired;
+const trialDaysLeft = (!trialExpired && billing.plano==="trial" && trialEnd) ? Math.ceil((trialEnd.getTime()-Date.now())/86400000) : null;
+if (accountBlocked) {
+return <TrialExpired/>;
+}
 return (
 <>
 <style>{`*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;color:#0f172a;}input,select,textarea{font-family:inherit;}input:focus,select:focus{outline:none;border-color:#FF5603!important;box-shadow:0 0 0 3px #FF560318;}::-webkit-scrollbar{width:4px;height:4px;}::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:99px;}details>summary{list-style:none;}details>summary::-webkit-details-marker{display:none;}@media print{.no-print{display:none!important;}body{background:white!important;}nav{display:none!important;}}`}</style>
@@ -5601,6 +5633,12 @@ return (
 <button onClick={()=>supa.auth.signOut()} style={{ border:"none",background:"transparent",color:"#94a3b8",fontSize:12,cursor:"pointer",textDecoration:"underline" }}>Sair</button>
 </div>
 </div>
+{trialDaysLeft!==null && trialDaysLeft<=3 && (
+<div className="no-print" style={{ background:"#fff7ed",borderBottom:"1.5px solid #fed7aa",padding:"8px 18px",textAlign:"center",fontSize:12,color:"#c2410c",fontWeight:600 }}>
+{trialDaysLeft<=0 ? "Seu teste expira hoje." : "Seu teste expira em "+trialDaysLeft+" dia"+(trialDaysLeft>1?"s":"")+"."}
+{" "}<a href={"https://wa.me/"+SUPPORT_WHATSAPP+"?text="+encodeURIComponent("Olá! Quero ativar meu plano no Longevus.")} target="_blank" style={{ color:"#c2410c",textDecoration:"underline" }}>Ativar plano</a>
+</div>
+)}
 <div style={{ padding:"20px 16px",maxWidth:640,margin:"0 auto" }}>
 {page==="dashboard"&&<Dashboard students={students} assessments={assessments} dailyLogs={dailyLogs} nav={nav}/>}
 {page==="students"&&<Students students={students} setStudents={setStudents} nav={nav}/>}

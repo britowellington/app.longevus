@@ -201,6 +201,17 @@ function App() {
     setSavingProf(false);
   };
 
+  const extendTrial = async (days) => {
+    if (!selected) return;
+    const base = (selected.trial_ends_at && new Date(selected.trial_ends_at).getTime() > Date.now())
+      ? new Date(selected.trial_ends_at)
+      : new Date();
+    const newDate = new Date(base.getTime() + days*86400000).toISOString();
+    await updateProf("trial_ends_at", newDate);
+  };
+
+  const trialExpired = (p) => p.trial_ends_at && new Date(p.trial_ends_at).getTime() < Date.now();
+
   const updatePlanPrice = async (plano, valor) => {
     setSavingPrices(true);
     try {
@@ -396,6 +407,21 @@ function App() {
             </div>
             {savingProf && <div style={{ fontSize:11,color:"#94a3b8",marginTop:8 }}>Salvando...</div>}
 
+            {p.plano==="trial" && (
+              <div style={{ borderTop:"1px solid #f1f5f9",marginTop:16,paddingTop:12 }}>
+                <div style={{ fontSize:12,color: trialExpired(p)?"#dc2626":"#475569",fontWeight:600,marginBottom:8 }}>
+                  {p.trial_ends_at
+                    ? (trialExpired(p) ? "Trial expirado em "+fmtDate(p.trial_ends_at) : "Trial expira em "+fmtDate(p.trial_ends_at))
+                    : "Sem data de expiração de trial definida"}
+                </div>
+                <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
+                  <button onClick={()=>extendTrial(7)} disabled={savingProf} style={{ border:"1.5px solid #e2e8f0",background:"#fff",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",color:"#475569" }}>+7 dias</button>
+                  <button onClick={()=>extendTrial(14)} disabled={savingProf} style={{ border:"1.5px solid #e2e8f0",background:"#fff",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",color:"#475569" }}>+14 dias</button>
+                  <button onClick={()=>extendTrial(30)} disabled={savingProf} style={{ border:"1.5px solid #e2e8f0",background:"#fff",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",color:"#475569" }}>+30 dias</button>
+                </div>
+              </div>
+            )}
+
             <div style={{ borderTop:"1px solid #f1f5f9",marginTop:16,paddingTop:12 }}>
               <button onClick={()=>sendPasswordReset(p.email)} style={{ border:"1.5px solid #e2e8f0",background:"#fff",borderRadius:8,padding:"8px 14px",fontSize:13,fontWeight:600,cursor:"pointer",color:"#475569" }}>
                 Enviar redefinição de senha
@@ -553,6 +579,9 @@ function App() {
                   <div style={{ fontSize:11,marginTop:4,fontWeight:700,color: p.status_assinatura==="ativo" ? "#16a34a" : "#dc2626" }}>
                     {p.plano || "trial"} · {p.status_assinatura || "ativo"}
                   </div>
+                  {p.plano==="trial" && trialExpired(p) && (
+                    <div style={{ fontSize:10,marginTop:2,fontWeight:700,color:"#dc2626" }}>TRIAL EXPIRADO</div>
+                  )}
                 </div>
               </div>
             ))}
