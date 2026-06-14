@@ -119,11 +119,14 @@ function App() {
   const [savingProf,setSavingProf]=useState(false);
   const [planPrices,setPlanPrices]=useState({});
   const [savingPrices,setSavingPrices]=useState(false);
+  const [resetMsg,setResetMsg]=useState("");
   const [drill,setDrill]=useState(null); // { section, label }
 
   const toggleDrill = (section, label) => {
     setDrill(d => (d && d.section===section && d.label===label) ? null : { section, label });
   };
+
+  const openProfessional = (p) => { setResetMsg(""); setSelected(p); };
 
   useEffect(()=>{
     supa.auth.getSession().then(({data})=>{ setSession(data?.session||null); setAuthLoading(false); });
@@ -209,6 +212,17 @@ function App() {
       setPlanPrices(m=>({ ...m, [plano]: valor }));
     } catch(e) {}
     setSavingPrices(false);
+  };
+
+  const sendPasswordReset = async (email) => {
+    setResetMsg("Enviando...");
+    try {
+      const { error } = await supa.auth.resetPasswordForEmail(email);
+      if (error) throw error;
+      setResetMsg("Email de redefinição enviado para "+email);
+    } catch(err) {
+      setResetMsg("Erro: "+(err.message||"não foi possível enviar"));
+    }
   };
 
   if (authLoading || (session && isAdmin===null)) {
@@ -364,6 +378,13 @@ function App() {
               </div>
             </div>
             {savingProf && <div style={{ fontSize:11,color:"#94a3b8",marginTop:8 }}>Salvando...</div>}
+
+            <div style={{ borderTop:"1px solid #f1f5f9",marginTop:16,paddingTop:12 }}>
+              <button onClick={()=>sendPasswordReset(p.email)} style={{ border:"1.5px solid #e2e8f0",background:"#fff",borderRadius:8,padding:"8px 14px",fontSize:13,fontWeight:600,cursor:"pointer",color:"#475569" }}>
+                Enviar redefinição de senha
+              </button>
+              {resetMsg && <div style={{ fontSize:12,color:"#64748b",marginTop:8 }}>{resetMsg}</div>}
+            </div>
           </div>
 
           <div style={{ fontWeight:800,fontSize:16,marginBottom:10 }}>Alunos ({selStudents.length})</div>
@@ -413,29 +434,29 @@ function App() {
             <div style={{ background:"#fff",borderRadius:12,padding:"16px",border:"1px solid #e2e8f0" }}>
               <div style={{ fontWeight:800,fontSize:14,marginBottom:12 }}>Crescimento (cadastros por mês)</div>
               {growthData.length>0 ? <BarChart data={growthData} color="#FF5603" onBarClick={l=>toggleDrill("growth",l)} selected={drill?.section==="growth"?drill.label:null}/> : <div style={{ fontSize:12,color:"#94a3b8" }}>Sem dados.</div>}
-              {drill?.section==="growth" && <ProfList items={drillList} onSelect={setSelected} counts={counts}/>}
+              {drill?.section==="growth" && <ProfList items={drillList} onSelect={openProfessional} counts={counts}/>}
             </div>
             <div style={{ display:"flex",gap:12,flexWrap:"wrap" }}>
               <div style={{ flex:"1 1 220px",background:"#fff",borderRadius:12,padding:"16px",border:"1px solid #e2e8f0" }}>
                 <div style={{ fontWeight:800,fontSize:14,marginBottom:12 }}>Por plano</div>
                 <BarChart data={planoData} color="#6366f1" onBarClick={l=>toggleDrill("plano",l)} selected={drill?.section==="plano"?drill.label:null}/>
-                {drill?.section==="plano" && <ProfList items={drillList} onSelect={setSelected} counts={counts}/>}
+                {drill?.section==="plano" && <ProfList items={drillList} onSelect={openProfessional} counts={counts}/>}
               </div>
               <div style={{ flex:"1 1 220px",background:"#fff",borderRadius:12,padding:"16px",border:"1px solid #e2e8f0" }}>
                 <div style={{ fontWeight:800,fontSize:14,marginBottom:12 }}>Por status</div>
                 <BarChart data={statusData} onBarClick={l=>toggleDrill("status",l)} selected={drill?.section==="status"?drill.label:null}/>
-                {drill?.section==="status" && <ProfList items={drillList} onSelect={setSelected} counts={counts}/>}
+                {drill?.section==="status" && <ProfList items={drillList} onSelect={openProfessional} counts={counts}/>}
               </div>
             </div>
             <div style={{ background:"#fff",borderRadius:12,padding:"16px",border:"1px solid #e2e8f0" }}>
               <div style={{ fontWeight:800,fontSize:14,marginBottom:12 }}>Engajamento (alunos cadastrados)</div>
               <BarChart data={engajamentoData} onBarClick={l=>toggleDrill("engajamento",l)} selected={drill?.section==="engajamento"?drill.label:null}/>
-              {drill?.section==="engajamento" && <ProfList items={drillList} onSelect={setSelected} counts={counts}/>}
+              {drill?.section==="engajamento" && <ProfList items={drillList} onSelect={openProfessional} counts={counts}/>}
             </div>
             <div style={{ background:"#fff",borderRadius:12,padding:"16px",border:"1px solid #e2e8f0" }}>
               <div style={{ fontWeight:800,fontSize:14,marginBottom:12 }}>Engajamento real (acessou nos últimos 7 dias)</div>
               <BarChart data={ativ7dData} onBarClick={l=>toggleDrill("ativ7d",l)} selected={drill?.section==="ativ7d"?drill.label:null}/>
-              {drill?.section==="ativ7d" && <ProfList items={drillList} onSelect={setSelected} counts={counts}/>}
+              {drill?.section==="ativ7d" && <ProfList items={drillList} onSelect={openProfessional} counts={counts}/>}
             </div>
 
             <div style={{ background:"#fff",borderRadius:12,padding:"16px",border:"1px solid #e2e8f0" }}>
@@ -464,7 +485,7 @@ function App() {
                 </div>
               </div>
               {drill?.section==="financeiro" && (
-                <ProfList items={drillList} onSelect={setSelected} counts={counts}/>
+                <ProfList items={drillList} onSelect={openProfessional} counts={counts}/>
               )}
               {vitaliciosRevenue>0 && (
                 <div style={{ fontSize:12,color:"#94a3b8",marginBottom:12 }}>+ {fmtBRL(vitaliciosRevenue)} em receita vitalícia (pagamento único, fora do MRR)</div>
@@ -496,7 +517,7 @@ function App() {
         ) : (
           <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
             {profs.map(p=>(
-              <div key={p.id} onClick={()=>setSelected(p)} style={{ cursor:"pointer",background:"#fff",borderRadius:12,padding:"14px 16px",border:"1px solid #e2e8f0",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12 }}>
+              <div key={p.id} onClick={()=>openProfessional(p)} style={{ cursor:"pointer",background:"#fff",borderRadius:12,padding:"14px 16px",border:"1px solid #e2e8f0",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12 }}>
                 <div style={{ minWidth:0 }}>
                   <div style={{ fontWeight:700,fontSize:14,display:"flex",alignItems:"center",gap:6 }}>
                     {p.nome || p.email}
