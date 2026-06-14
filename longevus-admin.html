@@ -78,6 +78,10 @@ function App() {
   const [profs,setProfs]=useState([]);
   const [counts,setCounts]=useState({});
   const [loadingData,setLoadingData]=useState(false);
+  const [selected,setSelected]=useState(null); // professional object being viewed
+  const [selStudents,setSelStudents]=useState([]);
+  const [selLoading,setSelLoading]=useState(false);
+  const [savingProf,setSavingProf]=useState(false);
 
   useEffect(()=>{
     supa.auth.getSession().then(({data})=>{ setSession(data?.session||null); setAuthLoading(false); });
@@ -118,6 +122,35 @@ function App() {
     })();
   },[isAdmin]);
 
+  useEffect(()=>{
+    if (!selected) { setSelStudents([]); return; }
+    (async()=>{
+      setSelLoading(true);
+      try {
+        const headers = await authHeaders();
+        const r = await fetch(SUPA_URL+"/rest/v1/rpc/admin_students_by_owner", { method:"POST", headers, body: JSON.stringify({ target_owner: selected.id }) });
+        const rows = await r.json();
+        setSelStudents(rows||[]);
+      } catch(e) { setSelStudents([]); }
+      setSelLoading(false);
+    })();
+  },[selected]);
+
+  const updateProf = async (field, value) => {
+    if (!selected) return;
+    setSavingProf(true);
+    try {
+      const headers = await authHeaders();
+      await fetch(SUPA_URL+"/rest/v1/professionals?id=eq."+selected.id, {
+        method:"PATCH", headers: { ...headers, "Prefer":"return=representation" },
+        body: JSON.stringify({ [field]: value })
+      });
+      setSelected(p=>({ ...p, [field]: value }));
+      setProfs(list=>list.map(p=>p.id===selected.id?{ ...p,[field]:value }:p));
+    } catch(e) {}
+    setSavingProf(false);
+  };
+
   if (authLoading || (session && isAdmin===null)) {
     return <div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontFamily:"-apple-system,sans-serif" }}>Carregando...</div>;
   }
@@ -137,6 +170,69 @@ function App() {
   const totalProfs = profs.length;
   const totalAlunos = Object.values(counts).reduce((a,b)=>a+Number(b||0),0);
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString("pt-BR") : "—";
+  const fmtDateTime = (d) => d ? new Date(d).toLocaleString("pt-BR") : "—";
+
+  if (selected) {
+    const p = selected;
+    return (
+      <div style={{ minHeight:"100vh",background:"#f8fafc",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",paddingBottom:40 }}>
+        <div style={{ background:"#fff",borderBottom:"1.5px solid #e2e8f0",padding:"12px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:10 }}>
+          <div style={{ display:"flex",alignItems:"center",gap:10 }}>
+            <button onClick={()=>setSelected(null)} style={{ border:"none",background:"transparent",fontSize:14,color:"#FF5603",fontWeight:700,cursor:"pointer" }}>← Voltar</button>
+          </div>
+          <button onClick={()=>supa.auth.signOut()} style={{ border:"none",background:"transparent",color:"#94a3b8",fontSize:12,cursor:"pointer",textDecoration:"underline" }}>Sair</button>
+        </div>
+        <div style={{ padding:"20px 16px",maxWidth:800,margin:"0 auto" }}>
+          <div style={{ background:"#fff",borderRadius:12,padding:"16px",border:"1px solid #e2e8f0",marginBottom:16 }}>
+            <div style={{ fontWeight:800,fontSize:18,display:"flex",alignItems:"center",gap:8 }}>
+              {p.nome || p.email}
+              {p.is_admin && <span style={{ fontSize:10,background:"#FF560318",color:"#FF5603",borderRadius:999,padding:"2px 8px",fontWeight:700 }}>ADMIN</span>}
+            </div>
+            <div style={{ fontSize:13,color:"#94a3b8",marginTop:2 }}>{p.email}</div>
+            <div style={{ fontSize:12,color:"#cbd5e1",marginTop:4 }}>Cadastrado em {fmtDate(p.created_at)}</div>
+            <div style={{ fontSize:12,color:"#cbd5e1",marginTop:2 }}>ID: {p.id}</div>
+
+            <div style={{ display:"flex",gap:12,marginTop:16,flexWrap:"wrap" }}>
+              <div style={{ flex:"1 1 140px" }}>
+                <label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Plano</label>
+                <select value={p.plano||"trial"} disabled={savingProf} onChange={e=>updateProf("plano", e.target.value)} style={{ width:"100%",padding:"8px 10px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13 }}>
+                  <option value="trial">trial</option>
+                  <option value="mensal">mensal</option>
+                  <option value="anual">anual</option>
+                  <option value="vitalicio">vitalício</option>
+                </select>
+              </div>
+              <div style={{ flex:"1 1 140px" }}>
+                <label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Status</label>
+                <select value={p.status_assinatura||"ativo"} disabled={savingProf} onChange={e=>updateProf("status_assinatura", e.target.value)} style={{ width:"100%",padding:"8px 10px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13 }}>
+                  <option value="ativo">ativo</option>
+                  <option value="inadimplente">inadimplente</option>
+                  <option value="cancelado">cancelado</option>
+                </select>
+              </div>
+            </div>
+            {savingProf && <div style={{ fontSize:11,color:"#94a3b8",marginTop:8 }}>Salvando...</div>}
+          </div>
+
+          <div style={{ fontWeight:800,fontSize:16,marginBottom:10 }}>Alunos ({selStudents.length})</div>
+          {selLoading ? (
+            <div style={{ color:"#94a3b8",fontSize:13 }}>Carregando...</div>
+          ) : selStudents.length===0 ? (
+            <div style={{ color:"#94a3b8",fontSize:13 }}>Nenhum aluno cadastrado.</div>
+          ) : (
+            <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+              {selStudents.map(s=>(
+                <div key={s.id} style={{ background:"#fff",borderRadius:12,padding:"12px 16px",border:"1px solid #e2e8f0" }}>
+                  <div style={{ fontWeight:700,fontSize:14 }}>{s.data?.name || s.data?.nome || "Sem nome"}</div>
+                  <div style={{ fontSize:11,color:"#cbd5e1",marginTop:2 }}>Criado em {fmtDateTime(s.created_at)} · Atualizado em {fmtDateTime(s.updated_at)}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight:"100vh",background:"#f8fafc",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",paddingBottom:40 }}>
@@ -169,7 +265,7 @@ function App() {
         ) : (
           <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
             {profs.map(p=>(
-              <div key={p.id} style={{ background:"#fff",borderRadius:12,padding:"14px 16px",border:"1px solid #e2e8f0",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12 }}>
+              <div key={p.id} onClick={()=>setSelected(p)} style={{ cursor:"pointer",background:"#fff",borderRadius:12,padding:"14px 16px",border:"1px solid #e2e8f0",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12 }}>
                 <div style={{ minWidth:0 }}>
                   <div style={{ fontWeight:700,fontSize:14,display:"flex",alignItems:"center",gap:6 }}>
                     {p.nome || p.email}
