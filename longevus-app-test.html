@@ -285,6 +285,7 @@ edit:  ["M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7","M18.5 2.5a
 eye:   ["M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z","M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"],
 x:     ["M18 6L6 18","M6 6l12 12"],
 zap:   ["M13 2L3 14h9l-1 8 10-12h-9z"],
+user:  ["M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2","M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"],
 };
 return (
 <svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
@@ -5296,23 +5297,113 @@ return (
 </div>
 );
 };
+const Profile = ({ session, onLogoChange }) => {
+const [form,setForm]=useState({ nome:"", whatsapp:"", cref:"", especializacao:"", logo_url:"" });
+const [loading,setLoading]=useState(true);
+const [saving,setSaving]=useState(false);
+const [uploading,setUploading]=useState(false);
+const [msg,setMsg]=useState("");
+useEffect(()=>{
+(async()=>{
+try {
+const headers = await DB.authHeaders();
+const r = await fetch(SUPA_URL+"/rest/v1/professionals?select=nome,whatsapp,cref,especializacao,email,logo_url&id=eq."+session.user.id, { headers });
+const rows = await r.json();
+const p = rows?.[0]||{};
+setForm({ nome:p.nome||"", whatsapp:p.whatsapp||"", cref:p.cref||"", especializacao:p.especializacao||"", email:p.email||session.user.email, logo_url:p.logo_url||"" });
+} catch(e) {}
+setLoading(false);
+})();
+},[session]);
+const save = async () => {
+setSaving(true); setMsg("");
+try {
+const headers = await DB.authHeaders();
+await fetch(SUPA_URL+"/rest/v1/professionals?id=eq."+session.user.id, {
+method:"PATCH", headers: { ...headers, "Prefer":"return=minimal" },
+body: JSON.stringify({ nome:form.nome, whatsapp:form.whatsapp, cref:form.cref, especializacao:form.especializacao })
+});
+setMsg("Dados salvos com sucesso!");
+} catch(e) { setMsg("Erro ao salvar."); }
+setSaving(false);
+};
+const uploadLogo = async (file) => {
+if (!file) return;
+setUploading(true); setMsg("");
+try {
+const ext = file.name.split(".").pop();
+const path = session.user.id+"/logo."+ext;
+const { error: upErr } = await supa.storage.from("avatars").upload(path, file, { upsert:true, contentType:file.type });
+if (upErr) throw upErr;
+const { data } = supa.storage.from("avatars").getPublicUrl(path);
+const url = data.publicUrl + "?t=" + Date.now();
+const headers = await DB.authHeaders();
+await fetch(SUPA_URL+"/rest/v1/professionals?id=eq."+session.user.id, {
+method:"PATCH", headers: { ...headers, "Prefer":"return=minimal" },
+body: JSON.stringify({ logo_url: url })
+});
+setForm(f=>({ ...f, logo_url:url }));
+onLogoChange && onLogoChange(url);
+setMsg("Foto/logo atualizada!");
+} catch(err) { setMsg("Erro ao enviar imagem: "+(err.message||"")); }
+setUploading(false);
+};
+const fld = (label, key, type="text", placeholder="") => (
+<div style={{ marginBottom:14 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>{label}</label>
+<input type={type} placeholder={placeholder} value={form[key]} onChange={e=>setForm(f=>({...f,[key]:e.target.value}))} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
+</div>
+);
+if (loading) return <div style={{ padding:20,color:"#94a3b8",fontSize:13 }}>Carregando...</div>;
+return (
+<div style={{ padding:"16px" }}>
+<Card>
+<div style={{ fontWeight:800,fontSize:16,marginBottom:14 }}>Meu Perfil</div>
+<div style={{ display:"flex",alignItems:"center",gap:14,marginBottom:18 }}>
+{form.logo_url
+? <img src={form.logo_url} alt="Logo" style={{ width:64,height:64,borderRadius:"50%",objectFit:"cover",border:"1.5px solid #e2e8f0" }}/>
+: <div style={{ width:64,height:64,borderRadius:"50%",background:"#f1f5f9",display:"flex",alignItems:"center",justifyContent:"center" }}><I n="user" s={28} c="#94a3b8"/></div>
+}
+<div>
+<label style={{ display:"inline-block",padding:"8px 14px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13,fontWeight:600,color:"#475569",cursor:"pointer" }}>
+{uploading?"Enviando...":"Alterar foto/logo"}
+<input type="file" accept="image/*" onChange={e=>uploadLogo(e.target.files[0])} disabled={uploading} style={{ display:"none" }}/>
+</label>
+</div>
+</div>
+{fld("Nome","nome")}
+<div style={{ marginBottom:14 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>E-mail</label>
+<input type="email" disabled value={form.email} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box",background:"#f8fafc",color:"#94a3b8" }}/>
+</div>
+{fld("WhatsApp","whatsapp","tel","(11) 91234-5678")}
+{fld("CREF","cref","text","Ex: 089836-G/SP")}
+{fld("Especialização","especializacao","text","Ex: Gerontologia")}
+{msg && <div style={{ fontSize:12,color: msg.includes("Erro")?"#dc2626":"#16a34a",marginBottom:10 }}>{msg}</div>}
+<Btn full onClick={save} disabled={saving}>{saving?"Salvando...":"Salvar alterações"}</Btn>
+</Card>
+</div>
+);
+};
 function App() {
 const [session,setSession]=useState(null);
 const [authLoading,setAuthLoading]=useState(true);
 const [profName,setProfName]=useState("");
+const [logoUrl,setLogoUrl]=useState("");
 useEffect(()=>{
 supa.auth.getSession().then(({data})=>{ setSession(data?.session||null); setAuthLoading(false); });
 const { data: listener } = supa.auth.onAuthStateChange((_event, sess)=>{ setSession(sess); });
 return ()=>{ listener?.subscription?.unsubscribe(); };
 },[]);
 useEffect(()=>{
-if (!session) { setProfName(""); return; }
+if (!session) { setProfName(""); setLogoUrl(""); return; }
 (async () => {
 try {
 const headers = await DB.authHeaders();
-const r = await fetch(SUPA_URL+"/rest/v1/professionals?select=nome&id=eq."+session.user.id, { headers });
+const r = await fetch(SUPA_URL+"/rest/v1/professionals?select=nome,logo_url&id=eq."+session.user.id, { headers });
 const rows = await r.json();
 setProfName(rows?.[0]?.nome || session.user.email || "");
+setLogoUrl(rows?.[0]?.logo_url || "");
 // Registra última atividade
 fetch(SUPA_URL+"/rest/v1/professionals?id=eq."+session.user.id, {
 method:"PATCH", headers: { ...headers, "Prefer":"return=minimal" },
@@ -5390,9 +5481,10 @@ const menuItems=[
 {id:"extbiblioteca",label:"Biblioteca",icon:"clip"},
 
 {id:"extprograma",label:"Gerador de Programa",icon:"zap"},
+{id:"profile",label:"Meu Perfil",icon:"user"},
 ];
 const [menuOpen, setMenuOpen] = useState(false);
-const activePage=["dashboard","students","assessments","daily","reports","documents","program","cognitivehub"].includes(page)?page:null;
+const activePage=["dashboard","students","assessments","daily","reports","documents","program","cognitivehub","profile"].includes(page)?page:null;
 if (authLoading) {
 return <div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14 }}>Carregando...</div>;
 }
@@ -5406,6 +5498,7 @@ return (
 <div className="no-print" style={{ background:"#fff",borderBottom:"1.5px solid #e2e8f0",padding:"12px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100 }}>
 <div style={{ display:"flex",alignItems:"center",gap:10 }}>
 <img src={__LOGO_2__} alt="Longevus" style={{ height:38,width:"auto" }}/>
+{logoUrl && <img src={logoUrl} alt="" style={{ width:30,height:30,borderRadius:"50%",objectFit:"cover",border:"1.5px solid #e2e8f0" }}/>}
 {profName && <span style={{ fontSize:13,fontWeight:700,color:"#0f172a" }}>{profName}</span>}
 </div>
 <div style={{ fontSize:12,color:"#94a3b8",display:"flex",alignItems:"center",gap:10 }}>
@@ -5422,7 +5515,7 @@ return (
 {page==="daily"&&<Daily students={students} assessments={assessments} dailyLogs={dailyLogs} setDailyLogs={setDailyLogs} cardioRecords={cardioRecords} setCardioRecords={setCardioRecords}/>}
 {page==="reports"&&<Reports students={students} assessments={assessments} setAssessments={setAssessments} dailyLogs={dailyLogs} sessions={sessions} nav={nav}/>
 }{page==="documents"&&<Documents students={students} documents={documents} setDocuments={setDocuments}/>
-}{page==="extprograma"&&(()=>{window.open("longevus-programa.html","_self");return null;})()}{page==="cognitivehub"&&<CognitiveHub students={students} hubResults={hubResults} setHubResults={setHubResults}/>}{page==="sessions"&&<SessionTracker students={students} programs={programs} sessions={sessions} setSessions={setSessions} nav={nav}/>}
+}{page==="extprograma"&&(()=>{window.open("longevus-programa.html","_self");return null;})()}{page==="cognitivehub"&&<CognitiveHub students={students} hubResults={hubResults} setHubResults={setHubResults}/>}{page==="sessions"&&<SessionTracker students={students} programs={programs} sessions={sessions} setSessions={setSessions} nav={nav}/>}{page==="profile"&&<Profile session={session} onLogoChange={setLogoUrl}/>}
 </div>
 </div>
 <div className="no-print" style={{ position:"fixed",bottom:0,left:0,right:0,background:"#fff",borderTop:"1.5px solid #e2e8f0",display:"flex",zIndex:100,paddingBottom:"env(safe-area-inset-bottom)" }}>
