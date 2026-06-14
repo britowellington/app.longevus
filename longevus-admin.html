@@ -115,6 +115,7 @@ function App() {
   const [loadingData,setLoadingData]=useState(false);
   const [selected,setSelected]=useState(null); // professional object being viewed
   const [selStudents,setSelStudents]=useState([]);
+  const [selAssessments,setSelAssessments]=useState([]);
   const [selLoading,setSelLoading]=useState(false);
   const [savingProf,setSavingProf]=useState(false);
   const [planPrices,setPlanPrices]=useState({});
@@ -214,15 +215,20 @@ function App() {
   },[isAdmin]);
 
   useEffect(()=>{
-    if (!selected) { setSelStudents([]); return; }
+    if (!selected) { setSelStudents([]); setSelAssessments([]); return; }
     (async()=>{
       setSelLoading(true);
       try {
         const headers = await authHeaders();
-        const r = await fetch(SUPA_URL+"/rest/v1/rpc/admin_students_by_owner", { method:"POST", headers, body: JSON.stringify({ target_owner: selected.id }) });
-        const rows = await r.json();
-        setSelStudents(rows||[]);
-      } catch(e) { setSelStudents([]); }
+        const [sRes, aRes] = await Promise.all([
+          fetch(SUPA_URL+"/rest/v1/rpc/admin_students_by_owner", { method:"POST", headers, body: JSON.stringify({ target_owner: selected.id }) }),
+          fetch(SUPA_URL+"/rest/v1/rpc/admin_assessments_by_owner", { method:"POST", headers, body: JSON.stringify({ target_owner: selected.id }) })
+        ]);
+        const sRows = await sRes.json().catch(()=>[]);
+        const aRows = await aRes.json().catch(()=>[]);
+        setSelStudents(Array.isArray(sRows)?sRows:[]);
+        setSelAssessments(Array.isArray(aRows)?aRows:[]);
+      } catch(e) { setSelStudents([]); setSelAssessments([]); }
       setSelLoading(false);
     })();
   },[selected]);
@@ -508,12 +514,26 @@ function App() {
             <div style={{ color:"#94a3b8",fontSize:13 }}>Nenhum aluno cadastrado.</div>
           ) : (
             <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-              {selStudents.map(s=>(
-                <div key={s.id} style={{ background:"#fff",borderRadius:12,padding:"12px 16px",border:"1px solid #e2e8f0" }}>
-                  <div style={{ fontWeight:700,fontSize:14 }}>{s.data?.name || s.data?.nome || "Sem nome"}</div>
-                  <div style={{ fontSize:11,color:"#cbd5e1",marginTop:2 }}>Criado em {fmtDateTime(s.created_at)} · Atualizado em {fmtDateTime(s.updated_at)}</div>
+              {selStudents.map(s=>{
+                const sAssess = selAssessments.filter(a=>a.student_id===s.id);
+                const lastAssess = sAssess.reduce((max,a)=>{
+                  const d = a.updated_at || a.created_at;
+                  return (!max || new Date(d)>new Date(max)) ? d : max;
+                }, null);
+                return (
+                <div key={s.id} style={{ background:"#fff",borderRadius:12,padding:"12px 16px",border:"1px solid #e2e8f0",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12 }}>
+                  <div style={{ minWidth:0 }}>
+                    <div style={{ fontWeight:700,fontSize:14 }}>{s.data?.name || s.data?.nome || "Sem nome"}</div>
+                    <div style={{ fontSize:11,color:"#cbd5e1",marginTop:2 }}>Criado em {fmtDateTime(s.created_at)} · Atualizado em {fmtDateTime(s.updated_at)}</div>
+                  </div>
+                  <div style={{ textAlign:"right",flexShrink:0 }}>
+                    <div style={{ fontSize:18,fontWeight:900 }}>{sAssess.length}</div>
+                    <div style={{ fontSize:11,color:"#94a3b8" }}>avaliação(ões)</div>
+                    <div style={{ fontSize:11,color:"#cbd5e1",marginTop:2 }}>{lastAssess ? "Última: "+fmtDateTime(lastAssess) : "Nenhuma ainda"}</div>
+                  </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
