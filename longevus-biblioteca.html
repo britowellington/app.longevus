@@ -367,7 +367,7 @@ const ExForm=({initial,onSave,onCancel})=>{
     <div style={{display:"flex",gap:7,marginTop:5}}><Btn variant="secondary" full onClick={onCancel}>Cancelar</Btn><Btn full disabled={!form.nome.trim()} onClick={()=>onSave(form)}>Salvar</Btn></div>
   </div>);
 };
-const ExCard=({ex,onEdit,onDelete,onView})=>{
+const ExCard=({ex,onEdit,onDelete,onView,isAdmin})=>{
   const gc=GC[ex.grupo]||GC.Outro;
   const nc=ex.nivel==="Básico"?"#16a34a":ex.nivel==="Intermediário"?O:"#7e22ce";
   return(<Card style={{padding:0,overflow:"hidden",marginBottom:9}}>
@@ -386,11 +386,11 @@ const ExCard=({ex,onEdit,onDelete,onView})=>{
         {[["S",ex.defaultSeries],["R",ex.defaultReps],["D",ex.defaultDescanso]].map(([l,v])=>v?(<div key={l} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:5,padding:"2px 6px",textAlign:"center",minWidth:48}}><div style={{fontSize:8,fontWeight:700,color:"#94a3b8",textTransform:"uppercase"}}>{l}</div><div style={{fontSize:10,fontWeight:800,color:"#0f172a"}}>{v}</div></div>):null)}
       </div>
       {ex.obs&&<div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:6,padding:"4px 7px",marginBottom:7,fontSize:10,color:"#92400e"}}>📋 {ex.obs}</div>}
-      <div style={{display:"flex",gap:5}}><Btn sm variant="ghost" full onClick={()=>onView(ex)}>Ver</Btn><Btn sm variant="secondary" onClick={()=>onEdit(ex)}>✏️</Btn><Btn sm variant="danger" onClick={()=>onDelete(ex.id)}>🗑</Btn></div>
+      <div style={{display:"flex",gap:5}}><Btn sm variant="ghost" full onClick={()=>onView(ex)}>Ver</Btn>{isAdmin&&<Btn sm variant="secondary" onClick={()=>onEdit(ex)}>✏️</Btn>}{isAdmin&&<Btn sm variant="danger" onClick={()=>onDelete(ex.id)}>🗑</Btn>}</div>
     </div>
   </Card>);
 };
-const ExDetalhe=({ex,onClose,onEdit})=>(<Modal title={ex.nome} onClose={onClose}>
+const ExDetalhe=({ex,onClose,onEdit,isAdmin})=>(<Modal title={ex.nome} onClose={onClose}>
   {ex.foto&&<img src={ex.foto} alt={ex.nome} style={{width:"100%",borderRadius:9,marginBottom:11,maxHeight:180,objectFit:"cover"}}/>}
     {ex.video&&<div style={{marginBottom:11,borderRadius:9,overflow:"hidden",position:"relative",paddingBottom:"56.25%",height:0}}><iframe src={"https://www.youtube.com/embed/"+ex.video.replace(/.*(?:youtu\.be\/|v\/|v=)([\w-]{11}).*/,"$1")} style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",border:"none",borderRadius:9}} allowFullScreen/></div>}
   <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:11}}>
@@ -405,7 +405,7 @@ const ExDetalhe=({ex,onClose,onEdit})=>(<Modal title={ex.nome} onClose={onClose}
     <div style={{display:"flex",gap:6}}>{[["Séries",ex.defaultSeries],["Reps",ex.defaultReps],["Descanso",ex.defaultDescanso]].map(([l,v])=>v?(<div key={l} style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 9px",textAlign:"center",flex:1}}><div style={{fontSize:9,fontWeight:700,color:"#94a3b8",textTransform:"uppercase"}}>{l}</div><div style={{fontSize:13,fontWeight:800,color:"#0f172a"}}>{v}</div></div>):null)}</div>
   </div>
   {ex.tags&&<div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:11}}>{ex.tags.split(",").map(t=>t.trim()).filter(Boolean).map(t=>(<span key={t} style={{background:"#f1f5f9",color:"#475569",borderRadius:99,padding:"2px 7px",fontSize:10}}>{t}</span>))}</div>}
-  <div style={{display:"flex",gap:7}}><Btn variant="secondary" full onClick={onClose}>Fechar</Btn><Btn full onClick={()=>{onClose();onEdit(ex);}}>✏️ Editar</Btn></div>
+  <div style={{display:"flex",gap:7}}><Btn variant="secondary" full onClick={onClose}>Fechar</Btn>{isAdmin&&<Btn full onClick={()=>{onClose();onEdit(ex);}}>✏️ Editar</Btn>}</div>
 </Modal>);
 
 const NAV_ITEMS=[
@@ -578,7 +578,7 @@ function AppInner(){
           <a href="longevus-programa.html" style={{display:"flex",alignItems:"center",justifyContent:"center",width:32,height:32,borderRadius:8,background:"#f8fafc",border:"1px solid #e2e8f0",textDecoration:"none",color:"#0f172a",fontSize:18,fontWeight:700}}>&#8592;</a><img src={__LOGO__} alt="Longevus" style={{height:34,width:"auto",objectFit:"contain"}}/>
           <div><div style={{fontWeight:800,fontSize:14}}>Longevus</div><div style={{fontSize:10,color:"#94a3b8"}}>Biblioteca · {biblioteca.length} exercícios</div></div>
         </div>
-        <div style={{display:"flex",gap:6}}><Btn sm variant="ghost" onClick={()=>{if(window.confirm("Resetar biblioteca? Isso carregará todos os 175 exercícios. Exercícios personalizados serão perdidos.")){localStorage.removeItem("longevus_biblioteca");window.location.reload();}}}>🔄</Btn><Btn sm onClick={()=>{setEditEx(null);setModal("form");}}>+ Novo</Btn></div>
+        <div style={{display:"flex",gap:6}}><Btn sm variant="ghost" onClick={()=>{if(window.confirm("Resetar biblioteca? Isso carregará todos os 175 exercícios. Exercícios personalizados serão perdidos.")){localStorage.removeItem("longevus_biblioteca");window.location.reload();}}}>🔄</Btn>{billing?.is_admin&&<Btn sm onClick={()=>{setEditEx(null);setModal("form");}}>+ Novo</Btn>}</div>
       </div>
       <div style={{padding:"14px 13px",maxWidth:640,margin:"0 auto",paddingBottom:90}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginBottom:12}}>
@@ -599,11 +599,11 @@ function AppInner(){
           </div>
         </div>
         <div style={{fontSize:10,color:"#94a3b8",marginBottom:9}}>{filtered.length} exercício{filtered.length!==1?"s":""} encontrado{filtered.length!==1?"s":""}</div>
-        {filtered.length===0?(<Card style={{textAlign:"center",padding:36}}><div style={{fontSize:32,marginBottom:8}}>📚</div><div style={{fontWeight:700,fontSize:14,marginBottom:4}}>{biblioteca.length===0?"Biblioteca vazia":"Nenhum encontrado"}</div><div style={{color:"#94a3b8",fontSize:11,marginBottom:14}}>{biblioteca.length===0?"Cadastre exercícios.":"Tente outra busca."}</div>{biblioteca.length===0&&<Btn onClick={()=>{setEditEx(null);setModal("form");}}>Cadastrar primeiro</Btn>}</Card>):filtered.map(ex=>(<ExCard key={ex.id} ex={ex} onEdit={ex=>{setEditEx(ex);setModal("form");}} onDelete={delEx} onView={ex=>{setVerEx(ex);setModal("ver");}}/>))}
+        {filtered.length===0?(<Card style={{textAlign:"center",padding:36}}><div style={{fontSize:32,marginBottom:8}}>📚</div><div style={{fontWeight:700,fontSize:14,marginBottom:4}}>{biblioteca.length===0?"Biblioteca vazia":"Nenhum encontrado"}</div><div style={{color:"#94a3b8",fontSize:11,marginBottom:14}}>{biblioteca.length===0?"Cadastre exercícios.":"Tente outra busca."}</div>{biblioteca.length===0&&<Btn onClick={()=>{setEditEx(null);setModal("form");}}>Cadastrar primeiro</Btn>}</Card>):filtered.map(ex=>(<ExCard key={ex.id} ex={ex} isAdmin={billing?.is_admin} onEdit={ex=>{setEditEx(ex);setModal("form");}} onDelete={delEx} onView={ex=>{setVerEx(ex);setModal("ver");}}/>))}
       </div>
     </div>
     {modal==="form"&&(<Modal title={editEx?"Editar Exercício":"Novo Exercício"} onClose={()=>{setModal(null);setEditEx(null);}}><ExForm initial={editEx} onSave={saveEx} onCancel={()=>{setModal(null);setEditEx(null);}}/></Modal>)}
-    {modal==="ver"&&verEx&&(<ExDetalhe ex={verEx} onClose={()=>{setModal(null);setVerEx(null);}} onEdit={ex=>{setModal(null);setVerEx(null);setEditEx(ex);setModal("form");}}/>)}
+    {modal==="ver"&&verEx&&(<ExDetalhe ex={verEx} onClose={()=>{setModal(null);setVerEx(null);}} isAdmin={billing?.is_admin} onEdit={ex=>{setModal(null);setVerEx(null);setEditEx(ex);setModal("form");}}/>)}
     <NavBar active="biblioteca"/>
   </>);
 }
@@ -645,11 +645,11 @@ if (!session) { setBilling(null); return; }
 (async()=>{
 try {
 const headers = await authHeadersFn();
-const r = await fetch(SUPA_URL+"/rest/v1/professionals?select=plano,status_assinatura,trial_ends_at&id=eq."+session.user.id, { headers });
+const r = await fetch(SUPA_URL+"/rest/v1/professionals?select=plano,status_assinatura,trial_ends_at,is_admin&id=eq."+session.user.id, { headers });
 const rows = await r.json();
 const p = rows?.[0]||{};
-setBilling({ plano:p.plano||"trial", status_assinatura:p.status_assinatura||"ativo", trial_ends_at:p.trial_ends_at });
-} catch(e) { setBilling({ plano:"trial", status_assinatura:"ativo", trial_ends_at:null }); }
+setBilling({ plano:p.plano||"trial", status_assinatura:p.status_assinatura||"ativo", trial_ends_at:p.trial_ends_at, is_admin:!!p.is_admin });
+} catch(e) { setBilling({ plano:"trial", status_assinatura:"ativo", trial_ends_at:null, is_admin:false }); }
 })();
 },[session]);
 if (authLoading) {
