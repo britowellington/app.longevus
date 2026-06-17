@@ -427,7 +427,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom})=>{
   const [addModal,setAddModal]=useState(false);
   const [addTab,setAddTab]=useState("todos");
   const [searchEx,setSearchEx]=useState("");
-  const allEx=[...EXERCISES,...bibCustom.filter(b=>!EXERCISES.find(e=>e.id===b.id))];
+  const allEx=[...bibCustom,...EXERCISES.filter(b=>!bibCustom.find(e=>e.id===b.id))];
   const blocoNivel=BLOCOS.find(b=>b.key===blocoKey)?.nivel||["Basico"];
   const m=momentoMeta;
 
@@ -630,7 +630,7 @@ const TreinoMomentos=({treinoKey,blocoKey,sessao,onChange,bibCustom,editMode})=>
         {(sessao[m.key]||[]).map((item,idx)=>{
           const isCog=item.isCognitivo||item.exId==="cognitivo";
           const cogEx=isCog?COGNITIVOS.find(c=>c.id===item.cogId):null;
-          const ex=!isCog?[...EXERCISES,...bibCustom].find(e=>e.id===item.exId):null;
+          const ex=!isCog?(bibCustom.find(e=>e.id===item.exId)||EXERCISES.find(e=>e.id===item.exId)):null;
           return(
             <Card key={idx} style={{padding:"11px 13px",marginBottom:7}}>
               {verEx&&verEx.id===ex?.id&&<ExDetalheModal ex={verEx} onClose={()=>setVerEx(null)}/>}
