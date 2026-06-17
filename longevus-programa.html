@@ -582,10 +582,35 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom})=>{
   );
 };
 
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+const getYtId = url => {
+  if (!url) return null;
+  const m = url.match(/(?:youtu\.be\/|v\/|v=|embed\/)([\w-]{11})/);
+  return m ? m[1] : null;
+};
+
+const ExDetalheModal = ({ ex, onClose }) => (
+  <Modal title={ex.nome} onClose={onClose}>
+    {ex.video && getYtId(ex.video) && (
+      <div style={{marginBottom:14,borderRadius:10,overflow:"hidden",position:"relative",paddingBottom:"56.25%",height:0}}>
+        <iframe src={"https://www.youtube.com/embed/"+getYtId(ex.video)} style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",border:"none"}} allowFullScreen/>
+      </div>
+    )}
+    {ex.foco&&<div style={{fontSize:13,color:"#64748b",marginBottom:10}}>🎯 <strong>Foco:</strong> {ex.foco}</div>}
+    {ex.descricao&&<div style={{fontSize:13,marginBottom:10}}><strong>📋 Descrição</strong><br/>{ex.descricao}</div>}
+    {ex.execucao&&<div style={{fontSize:13,marginBottom:10}}><strong>▶ Como executar</strong><br/><div style={{whiteSpace:"pre-line",color:"#374151"}}>{ex.execucao}</div></div>}
+    {ex.beneficios&&<div style={{fontSize:13,marginBottom:10}}><strong>✅ Benefícios</strong><br/>{ex.beneficios}</div>}
+    {ex.cuidados&&<div style={{fontSize:13,marginBottom:10,padding:"8px 10px",background:"#fff7ed",borderRadius:8,border:"1px solid #fed7aa"}}><strong>⚠️ Cuidados</strong><br/>{ex.cuidados}</div>}
+    {ex.material&&<div style={{fontSize:13,color:"#64748b"}}>🔧 <strong>Material:</strong> {ex.material}</div>}
+    <div style={{marginTop:16}}><Btn variant="secondary" full onClick={onClose}>Fechar</Btn></div>
+  </Modal>
+);
+
 // ─── TREINO COM 3 MOMENTOS ────────────────────────────────────────────────────
 const TreinoMomentos=({treinoKey,blocoKey,sessao,onChange,bibCustom,editMode})=>{
   const tDef=TREINO_DEFS[treinoKey];
   const [momentoIdx,setMomentoIdx]=useState(0);
+  const [verEx,setVerEx]=useState(null);
   const m=MOMENTOS[momentoIdx];
 
   if(!editMode){
@@ -608,24 +633,38 @@ const TreinoMomentos=({treinoKey,blocoKey,sessao,onChange,bibCustom,editMode})=>
           const ex=!isCog?[...EXERCISES,...bibCustom].find(e=>e.id===item.exId):null;
           return(
             <Card key={idx} style={{padding:"11px 13px",marginBottom:7}}>
+              {verEx&&verEx.id===ex?.id&&<ExDetalheModal ex={verEx} onClose={()=>setVerEx(null)}/>}
               <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
-                <span style={{fontSize:20,flexShrink:0,marginTop:2}}>{isCog?"🧠":ex?.icone||"📌"}</span>
+                {isCog?(
+                  <span style={{fontSize:20,flexShrink:0,marginTop:2}}>🧠</span>
+                ):ex&&getYtId(ex.video)?(
+                  <img src={"https://img.youtube.com/vi/"+getYtId(ex.video)+"/mqdefault.jpg"} alt="" style={{width:64,height:48,borderRadius:8,objectFit:"cover",flexShrink:0}}/>
+                ):ex?.foto?(
+                  <img src={ex.foto} alt="" style={{width:64,height:48,borderRadius:8,objectFit:"cover",flexShrink:0}}/>
+                ):(
+                  <span style={{fontSize:20,flexShrink:0,marginTop:2}}>{ex?.icone||"📌"}</span>
+                )}
                 <div style={{flex:1}}>
                   <div style={{fontWeight:700,fontSize:13,color:isCog?(cogEx?.cor||"#FF5603"):"#0f172a"}}>{isCog?(cogEx?.nome||"Exercício Cognitivo"):ex?.nome||"Exercício"}</div>
-                  <div style={{fontSize:11,color:"#94a3b8",marginBottom:5}}>{isCog?`🧩 Hub Cognitivo · ${cogEx?.duracao||"5 min"}`:`${ex?.cat||"—"} · ${ex?.foco||"—"}`}</div>
+                  <div style={{fontSize:11,color:"#94a3b8",marginBottom:5}}>{isCog?`🧩 Hub Cognitivo · ${cogEx?.duracao||"5 min"}`:`${ex?.grupo||ex?.cat||"—"} · ${ex?.foco||"—"}`}</div>
                   {isCog?(
                     <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
                       <div style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"4px 10px",fontSize:11,color:"#475569",fontWeight:700}}>⏱ {item.reps}</div>
                       <a href={HUB_URL} style={{background:cogEx?.cor||"#FF5603",color:"#fff",borderRadius:7,padding:"4px 12px",fontSize:11,fontWeight:700,textDecoration:"none"}}>▶ Abrir Hub</a>
                     </div>
                   ):(
-                    <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-                      {[["Séries",item.series],["Reps",item.reps],["Descanso",item.descanso]].map(([l,v])=>(
-                        <div key={l} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"3px 8px",textAlign:"center",minWidth:60}}>
-                          <div style={{fontSize:9,fontWeight:700,color:"#94a3b8",textTransform:"uppercase"}}>{l}</div>
-                          <div style={{fontSize:12,fontWeight:800,color:"#0f172a"}}>{v}</div>
-                        </div>
-                      ))}
+                    <div>
+                      <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:6}}>
+                        {[["Séries",item.series],["Reps",item.reps],["Descanso",item.descanso]].map(([l,v])=>(
+                          <div key={l} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"3px 8px",textAlign:"center",minWidth:60}}>
+                            <div style={{fontSize:9,fontWeight:700,color:"#94a3b8",textTransform:"uppercase"}}>{l}</div>
+                            <div style={{fontSize:12,fontWeight:800,color:"#0f172a"}}>{v}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {ex&&(ex.descricao||ex.execucao||ex.video)&&(
+                        <button onClick={()=>setVerEx(ex)} style={{fontSize:11,fontWeight:700,color:"#FF5603",background:"transparent",border:"1.5px solid #FF5603",borderRadius:7,padding:"3px 10px",cursor:"pointer"}}>Ver detalhes</button>
+                      )}
                     </div>
                   )}
                   {item.obs&&<div style={{marginTop:5,fontSize:11,color:"#64748b",fontStyle:"italic",padding:"4px 8px",background:"#f8fafc",borderRadius:6}}>📝 {item.obs}</div>}
