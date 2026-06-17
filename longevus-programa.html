@@ -424,6 +424,7 @@ const Modal=({title,onClose,children})=>(
 // ─── MOMENTO EDITÁVEL ─────────────────────────────────────────────────────────
 const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom})=>{
   const [editIdx,setEditIdx]=useState(null);
+  const [verExEdit,setVerExEdit]=useState(null);
   const [addModal,setAddModal]=useState(false);
   const [addTab,setAddTab]=useState("todos");
   const [searchEx,setSearchEx]=useState("");
@@ -465,8 +466,17 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom})=>{
 
         return(
           <div key={idx} style={{background:"#fff",border:`1.5px solid ${isEdit?m.cor:"#e2e8f0"}`,borderRadius:11,padding:"11px 13px",marginBottom:7}}>
+            {verExEdit&&verExEdit.id===ex?.id&&<ExDetalheModal ex={verExEdit} onClose={()=>setVerExEdit(null)}/>}
             <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
-              <span style={{fontSize:20,flexShrink:0,marginTop:2}}>{isCog?"🧠":ex?.icone||"📌"}</span>
+              {isCog?(
+                <span style={{fontSize:20,flexShrink:0,marginTop:2}}>🧠</span>
+              ):ex&&getYtId(ex.video)?(
+                <img src={"https://img.youtube.com/vi/"+getYtId(ex.video)+"/mqdefault.jpg"} alt="" style={{width:64,height:48,borderRadius:8,objectFit:"cover",flexShrink:0}}/>
+              ):ex?.foto?(
+                <img src={ex.foto} alt="" style={{width:64,height:48,borderRadius:8,objectFit:"cover",flexShrink:0}}/>
+              ):(
+                <span style={{fontSize:20,flexShrink:0,marginTop:2}}>{ex?.icone||"📌"}</span>
+              )}
               <div style={{flex:1}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:2}}>
                   <div style={{fontWeight:700,fontSize:13,flex:1,marginRight:6,color:isCog?"#065f46":"#0f172a"}}>
@@ -478,9 +488,9 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom})=>{
                   </div>
                 </div>
                 <div style={{fontSize:11,color:"#94a3b8",marginBottom:6}}>
-                  {isCog?`🧩 Hub Cognitivo · ${cogEx?.duracao||"5 min"}`:`${ex?.cat||"—"} · ${ex?.foco||"—"}`}
+                  {isCog?`🧩 Hub Cognitivo · ${cogEx?.duracao||"5 min"}`:`${ex?.grupo||ex?.cat||"—"} · ${ex?.foco||"—"}`}
                 </div>
-                <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:4}}>
                   {isCog?(
                     <div style={{background:"#ecfdf5",border:"1.5px solid #a7f3d0",borderRadius:7,padding:"3px 9px",fontSize:11,color:"#065f46",fontWeight:700}}>
                       ⏱ {item.reps}
@@ -492,6 +502,9 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom})=>{
                     </div>
                   ))}
                 </div>
+                {!isCog&&ex&&(ex.descricao||ex.execucao||ex.video)&&(
+                  <button onClick={()=>setVerExEdit(ex)} style={{fontSize:11,fontWeight:700,color:"#FF5603",background:"transparent",border:"1.5px solid #FF5603",borderRadius:7,padding:"3px 10px",cursor:"pointer",marginBottom:4}}>Ver detalhes</button>
+                )}
                 {item.obs&&<div style={{marginTop:5,fontSize:11,color:"#64748b",fontStyle:"italic",padding:"4px 8px",background:"#f8fafc",borderRadius:6}}>📝 {item.obs}</div>}
               </div>
             </div>
@@ -566,13 +579,26 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom})=>{
           <div style={{fontSize:10,color:"#94a3b8",marginBottom:8}}>{[...EXERCISES,...bibCustom.filter(b=>!EXERCISES.find(e=>e.id===b.id))].filter(e=>e.nome.toLowerCase().includes(searchEx.toLowerCase())||(e.grupo||e.cat||"").toLowerCase().includes(searchEx.toLowerCase())||(e.foco||"").toLowerCase().includes(searchEx.toLowerCase())).length} exercícios</div>
           <div style={{display:"flex",flexDirection:"column",gap:7,maxHeight:"52vh",overflowY:"auto"}}>
             {[...EXERCISES,...bibCustom.filter(b=>!EXERCISES.find(e=>e.id===b.id))].filter(e=>e.nome.toLowerCase().includes(searchEx.toLowerCase())||(e.grupo||e.cat||"").toLowerCase().includes(searchEx.toLowerCase())||(e.foco||"").toLowerCase().includes(searchEx.toLowerCase())).map(ex=>(
-              <div key={ex.id} onClick={()=>addExItem(ex.id)} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",border:"1.5px solid #e2e8f0",borderRadius:10,cursor:"pointer",background:"#fafafa"}}>
-                {ex.foto?<img src={ex.foto} alt="" style={{width:40,height:40,borderRadius:8,objectFit:"cover",flexShrink:0}}/>:<span style={{fontSize:20}}>{ex.icone||"📌"}</span>}
-                <div style={{flex:1}}>
-                  <div style={{fontWeight:700,fontSize:13}}>{ex.nome}</div>
-                  <div style={{fontSize:11,color:"#94a3b8"}}>{ex.grupo||ex.cat||"—"} · {ex.foco||"—"}</div>
-                  <div style={{fontSize:10,color:ex.nivel==="Basico"||ex.nivel==="Básico"?"#16a34a":ex.nivel==="Intermediario"||ex.nivel==="Intermediário"?O:"#7e22ce",fontWeight:600}}>{ex.nivel}</div>
+              <div key={ex.id} style={{border:"1.5px solid #e2e8f0",borderRadius:10,overflow:"hidden",marginBottom:0,background:"#fafafa"}}>
+                <div onClick={()=>addExItem(ex.id)} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",cursor:"pointer"}}>
+                  {getYtId(ex.video)?(
+                    <img src={"https://img.youtube.com/vi/"+getYtId(ex.video)+"/mqdefault.jpg"} alt="" style={{width:56,height:42,borderRadius:7,objectFit:"cover",flexShrink:0}}/>
+                  ):ex.foto?(
+                    <img src={ex.foto} alt="" style={{width:56,height:42,borderRadius:7,objectFit:"cover",flexShrink:0}}/>
+                  ):(
+                    <span style={{fontSize:20}}>{ex.icone||"📌"}</span>
+                  )}
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:700,fontSize:13}}>{ex.nome}</div>
+                    <div style={{fontSize:11,color:"#94a3b8"}}>{ex.grupo||ex.cat||"—"} · {ex.foco||"—"}</div>
+                    <div style={{fontSize:10,color:ex.nivel==="Basico"||ex.nivel==="Básico"?"#16a34a":ex.nivel==="Intermediario"||ex.nivel==="Intermediário"?"#d97706":"#7e22ce",fontWeight:600}}>{ex.nivel}</div>
+                  </div>
                 </div>
+                {(ex.descricao||ex.execucao||ex.video)&&(
+                  <div style={{borderTop:"1px solid #f1f5f9",padding:"6px 12px"}}>
+                    <button onClick={e=>{e.stopPropagation();setVerExEdit(ex);}} style={{fontSize:11,fontWeight:700,color:"#FF5603",background:"transparent",border:"none",cursor:"pointer",padding:0}}>▶ Ver detalhes do exercício</button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
