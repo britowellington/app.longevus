@@ -126,9 +126,64 @@ function App() {
   const [statusEdit,setStatusEdit]=useState(null);
   const [priceEdits,setPriceEdits]=useState({});
   const [trialDateEdit,setTrialDateEdit]=useState("");
+  const [adminTab,setAdminTab]=useState("dashboard"); // dashboard | exercicios
+  const [exercises,setExercises]=useState([]);
+  const [exLoading,setExLoading]=useState(false);
+  const [exModal,setExModal]=useState(null); // null | "new" | exercise object
+  const [exSearch,setExSearch]=useState("");
+  const [exSaving,setExSaving]=useState(false);
+  const [exForm,setExForm]=useState({nome:"",grupo:"MMII",nivel:"Básico",momento:"Parte Principal",foco:"",descricao:"",execucao:"",beneficios:"",cuidados:"",material:"",obs:"",foto:"",video:"",default_series:"3",default_reps:"10-12",default_descanso:"60s",tags:""});
 
   const toggleDrill = (section, label) => {
     setDrill(d => (d && d.section===section && d.label===label) ? null : { section, label });
+  };
+
+  const loadExercises = async () => {
+    setExLoading(true);
+    try {
+      const { data:sess } = await supa.auth.getSession();
+      const token = sess?.session?.access_token || SUPA_KEY;
+      const h = { "apikey":SUPA_KEY,"Authorization":"Bearer "+token,"Content-Type":"application/json" };
+      const r = await fetch(SUPA_URL+"/rest/v1/exercises?select=*&order=nome.asc", { headers:h });
+      if (r.ok) { const rows = await r.json(); setExercises(rows||[]); }
+    } catch(e) { console.warn("Erro ao carregar exercícios"); }
+    setExLoading(false);
+  };
+
+  const saveExercise = async () => {
+    if (!exForm.nome.trim()) return;
+    setExSaving(true);
+    try {
+      const { data:sess } = await supa.auth.getSession();
+      const token = sess?.session?.access_token || SUPA_KEY;
+      const h = { "apikey":SUPA_KEY,"Authorization":"Bearer "+token,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates" };
+      const payload = { ...exForm, id: exModal?.id || ("ex_"+Date.now()), updated_at: new Date().toISOString() };
+      await fetch(SUPA_URL+"/rest/v1/exercises", { method:"POST", headers:h, body:JSON.stringify(payload) });
+      await loadExercises();
+      setExModal(null);
+    } catch(e) { alert("Erro ao salvar. Tente novamente."); }
+    setExSaving(false);
+  };
+
+  const deleteExercise = async (id) => {
+    if (!window.confirm("Remover este exercício?")) return;
+    try {
+      const { data:sess } = await supa.auth.getSession();
+      const token = sess?.session?.access_token || SUPA_KEY;
+      const h = { "apikey":SUPA_KEY,"Authorization":"Bearer "+token,"Content-Type":"application/json" };
+      await fetch(SUPA_URL+"/rest/v1/exercises?id=eq."+id, { method:"DELETE", headers:h });
+      await loadExercises();
+    } catch(e) { alert("Erro ao remover."); }
+  };
+
+  const openExModal = (ex) => {
+    if (ex === "new") {
+      setExForm({nome:"",grupo:"MMII",nivel:"Básico",momento:"Parte Principal",foco:"",descricao:"",execucao:"",beneficios:"",cuidados:"",material:"",obs:"",foto:"",video:"",default_series:"3",default_reps:"10-12",default_descanso:"60s",tags:""});
+      setExModal({id:null});
+    } else {
+      setExForm({nome:ex.nome||"",grupo:ex.grupo||"MMII",nivel:ex.nivel||"Básico",momento:ex.momento||"Parte Principal",foco:ex.foco||"",descricao:ex.descricao||"",execucao:ex.execucao||"",beneficios:ex.beneficios||"",cuidados:ex.cuidados||"",material:ex.material||"",obs:ex.obs||"",foto:ex.foto||"",video:ex.video||"",default_series:ex.default_series||"3",default_reps:ex.default_reps||"10-12",default_descanso:ex.default_descanso||"60s",tags:ex.tags||""});
+      setExModal(ex);
+    }
   };
 
   const openProfessional = (p) => {
@@ -552,6 +607,79 @@ function App() {
       </div>
 
       <div style={{ padding:"20px 16px",maxWidth:800,margin:"0 auto" }}>
+
+        {/* Tab navigation */}
+        <div style={{ display:"flex",gap:8,marginBottom:20,borderBottom:"2px solid #e2e8f0",paddingBottom:0 }}>
+          {[["dashboard","📊 Dashboard"],["exercicios","🏋️ Exercícios"]].map(([t,l])=>(
+            <button key={t} onClick={()=>{setAdminTab(t);if(t==="exercicios")loadExercises();}} style={{ padding:"8px 16px",border:"none",background:"transparent",fontWeight:700,fontSize:13,cursor:"pointer",borderBottom:"3px solid "+(adminTab===t?"#FF5603":"transparent"),color:adminTab===t?"#FF5603":"#64748b",marginBottom:-2 }}>{l}</button>
+          ))}
+        </div>
+
+        {/* Exercises Tab */}
+        {adminTab==="exercicios" && (
+          <div>
+            {exModal && (
+              <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:999,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:16,overflowY:"auto" }}>
+                <div style={{ background:"#fff",borderRadius:16,padding:20,width:"100%",maxWidth:480,marginTop:20 }}>
+                  <div style={{ fontWeight:800,fontSize:16,marginBottom:16 }}>{exModal.id?"Editar Exercício":"Novo Exercício"}</div>
+                  {[["nome","Nome *","text"],["foco","Foco / Músculo","text"],["descricao","Descrição","textarea"],["execucao","Como executar","textarea"],["beneficios","Benefícios","textarea"],["cuidados","Cuidados","textarea"],["material","Material","text"],["obs","Obs. clínicas","text"],["video","Vídeo (link YouTube)","text"],["tags","Tags","text"]].map(([k,l,t])=>(
+                    <div key={k} style={{ marginBottom:10 }}>
+                      <div style={{ fontSize:10,fontWeight:700,color:"#64748b",marginBottom:3,textTransform:"uppercase" }}>{l}</div>
+                      {t==="textarea"
+                        ? <textarea value={exForm[k]||""} onChange={e=>setExForm(f=>({...f,[k]:e.target.value}))} rows={3} style={{ width:"100%",padding:"8px 10px",border:"1.5px solid #e2e8f0",borderRadius:7,fontSize:13,resize:"vertical" }}/>
+                        : <input value={exForm[k]||""} onChange={e=>setExForm(f=>({...f,[k]:e.target.value}))} style={{ width:"100%",padding:"8px 10px",border:"1.5px solid #e2e8f0",borderRadius:7,fontSize:13 }}/>
+                      }
+                    </div>
+                  ))}
+                  <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10 }}>
+                    {[["grupo","Grupo",["MMII","MMSS","Core","Equilíbrio","Mobilidade","Alongamento","Cardio","Funcional","Coordenação","Respiração"]],["nivel","Nível",["Básico","Intermediário","Avançado"]],["momento","Momento",["Parte Inicial","Parte Principal","Parte Final"]]].map(([k,l,opts])=>(
+                      <div key={k}>
+                        <div style={{ fontSize:10,fontWeight:700,color:"#64748b",marginBottom:3,textTransform:"uppercase" }}>{l}</div>
+                        <select value={exForm[k]||""} onChange={e=>setExForm(f=>({...f,[k]:e.target.value}))} style={{ width:"100%",padding:"8px 6px",border:"1.5px solid #e2e8f0",borderRadius:7,fontSize:12 }}>
+                          {opts.map(o=><option key={o} value={o}>{o}</option>)}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16 }}>
+                    {[["default_series","Séries"],["default_reps","Reps"],["default_descanso","Descanso"]].map(([k,l])=>(
+                      <div key={k}>
+                        <div style={{ fontSize:10,fontWeight:700,color:"#64748b",marginBottom:3,textTransform:"uppercase" }}>{l}</div>
+                        <input value={exForm[k]||""} onChange={e=>setExForm(f=>({...f,[k]:e.target.value}))} style={{ width:"100%",padding:"8px 6px",border:"1.5px solid #e2e8f0",borderRadius:7,fontSize:13 }}/>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display:"flex",gap:8 }}>
+                    <button onClick={()=>setExModal(null)} style={{ flex:1,padding:"11px",border:"1.5px solid #e2e8f0",borderRadius:8,background:"#fff",fontWeight:700,fontSize:13,cursor:"pointer" }}>Cancelar</button>
+                    <button onClick={saveExercise} disabled={exSaving||!exForm.nome.trim()} style={{ flex:1,padding:"11px",border:"none",borderRadius:8,background:"#FF5603",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer" }}>{exSaving?"Salvando...":"Salvar"}</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
+              <div style={{ fontWeight:800,fontSize:15 }}>Exercícios ({exercises.length})</div>
+              <button onClick={()=>openExModal("new")} style={{ padding:"8px 16px",border:"none",borderRadius:8,background:"#FF5603",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer" }}>+ Novo</button>
+            </div>
+            <input value={exSearch} onChange={e=>setExSearch(e.target.value)} placeholder="Buscar exercício..." style={{ width:"100%",padding:"10px 12px",border:"1.5px solid #e2e8f0",borderRadius:8,fontSize:13,marginBottom:12 }}/>
+            {exLoading ? <div style={{ textAlign:"center",padding:32,color:"#94a3b8" }}>Carregando...</div> : exercises.filter(e=>!exSearch||e.nome.toLowerCase().includes(exSearch.toLowerCase())||(e.tags||"").toLowerCase().includes(exSearch.toLowerCase())).map(ex=>(
+              <div key={ex.id} style={{ background:"#fff",borderRadius:10,padding:"12px 14px",marginBottom:8,border:"1.5px solid #e2e8f0",display:"flex",justifyContent:"space-between",alignItems:"flex-start" }}>
+                <div style={{ flex:1,minWidth:0 }}>
+                  <div style={{ fontWeight:700,fontSize:13,marginBottom:2 }}>{ex.nome}</div>
+                  <div style={{ fontSize:11,color:"#64748b" }}>{ex.grupo} · {ex.nivel} · {ex.momento}</div>
+                  {ex.video && <div style={{ fontSize:11,color:"#FF5603",marginTop:2 }}>▶ Vídeo</div>}
+                </div>
+                <div style={{ display:"flex",gap:6,flexShrink:0,marginLeft:8 }}>
+                  <button onClick={()=>openExModal(ex)} style={{ padding:"5px 10px",border:"1.5px solid #e2e8f0",borderRadius:6,background:"#fff",fontSize:12,cursor:"pointer" }}>Editar</button>
+                  <button onClick={()=>deleteExercise(ex.id)} style={{ padding:"5px 10px",border:"none",borderRadius:6,background:"#fee2e2",color:"#dc2626",fontSize:12,cursor:"pointer" }}>✕</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Dashboard Tab */}
+        {adminTab==="dashboard" && <div>
         <div style={{ display:"flex",gap:12,marginBottom:20,flexWrap:"wrap" }}>
           <div style={{ flex:"1 1 140px",background:"#fff",borderRadius:12,padding:"16px",border:"1px solid #e2e8f0" }}>
             <div style={{ fontSize:24,fontWeight:900,color:"#FF5603" }}>{totalProfs}</div>
@@ -682,6 +810,7 @@ function App() {
             ))}
           </div>
         )}
+        </div>}
       </div>
     </div>
   );

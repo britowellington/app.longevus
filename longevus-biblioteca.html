@@ -502,6 +502,7 @@ function AppInner(){
     const novos=db.filter(e=>!savedIds.has(e.id));
     return novos.length>0?[...salvo,...novos]:salvo;
   });
+  const [loadingEx,setLoadingEx]=useState(true);
   const [search,setSearch]=useState("");
   const [fg,setFg]=useState("Todos");
   const [fm,setFm]=useState("Todos");
@@ -509,13 +510,59 @@ function AppInner(){
   const [modal,setModal]=useState(null);
   const [editEx,setEditEx]=useState(null);
   const [verEx,setVerEx]=useState(null);
-  useEffect(()=>{LS.set("longevus_biblioteca",biblioteca);},[biblioteca]);
-  const saveEx=form=>{
-    if(editEx){setBiblioteca(b=>b.map(e=>e.id===editEx.id?{...e,...form}:e));}
-    else{setBiblioteca(b=>[...b,{...form,id:uid(),criadoEm:new Date().toISOString().slice(0,10)}]);}
+
+  useEffect(()=>{
+    (async()=>{
+      try{
+        const h=await authHeadersFn();
+        const r=await fetch(SUPA_URL+"/rest/v1/exercises?select=*&order=nome.asc",{headers:h});
+        if(r.ok){
+          const rows=await r.json();
+          if(rows&&rows.length>0){
+            const mapped=rows.map(e=>({
+              id:e.id,nome:e.nome,grupo:e.grupo,nivel:e.nivel,momento:e.momento,
+              foco:e.foco,descricao:e.descricao,execucao:e.execucao,beneficios:e.beneficios,
+              cuidados:e.cuidados,material:e.material,obs:e.obs,foto:e.foto||"",video:e.video||"",
+              defaultSeries:e.default_series,defaultReps:e.default_reps,defaultDescanso:e.default_descanso,tags:e.tags
+            }));
+            setBiblioteca(mapped);
+          }
+        }
+      }catch(e){console.warn("Supabase offline, usando cache local");}
+      finally{setLoadingEx(false);}
+    })();
+  },[]);
+
+  const saveEx=async form=>{
+    const isNew=!editEx;
+    const exId=isNew?(form.id||uid()):editEx.id;
+    const payload={
+      id:exId,nome:form.nome,grupo:form.grupo,nivel:form.nivel,momento:form.momento,
+      foco:form.foco,descricao:form.descricao,execucao:form.execucao,beneficios:form.beneficios,
+      cuidados:form.cuidados,material:form.material,obs:form.obs,foto:form.foto||"",video:form.video||"",
+      default_series:form.defaultSeries,default_reps:form.defaultReps,default_descanso:form.defaultDescanso,
+      tags:form.tags,updated_at:new Date().toISOString()
+    };
+    try{
+      const h=await authHeadersFn();
+      await fetch(SUPA_URL+"/rest/v1/exercises",{
+        method:"POST",headers:{...h,"Prefer":"resolution=merge-duplicates"},
+        body:JSON.stringify(payload)
+      });
+    }catch(e){console.warn("Erro ao salvar no Supabase");}
+    if(isNew){setBiblioteca(b=>[...b,{...form,id:exId}]);}
+    else{setBiblioteca(b=>b.map(e=>e.id===editEx.id?{...e,...form}:e));}
     setModal(null);setEditEx(null);
   };
-  const delEx=id=>{if(!window.confirm("Remover?"))return;setBiblioteca(b=>b.filter(e=>e.id!==id));};
+
+  const delEx=async id=>{
+    if(!window.confirm("Remover?"))return;
+    try{
+      const h=await authHeadersFn();
+      await fetch(SUPA_URL+"/rest/v1/exercises?id=eq."+id,{method:"DELETE",headers:h});
+    }catch(e){console.warn("Erro ao deletar no Supabase");}
+    setBiblioteca(b=>b.filter(e=>e.id!==id));
+  };
   const filtered=biblioteca.filter(e=>{
     const ms=e.nome.toLowerCase().includes(search.toLowerCase())||(e.foco||"").toLowerCase().includes(search.toLowerCase())||(e.tags||"").toLowerCase().includes(search.toLowerCase());
     return ms&&(fg==="Todos"||e.grupo===fg)&&(fm==="Todos"||e.momento===fm)&&(fn==="Todos"||e.nivel===fn);
