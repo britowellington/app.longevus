@@ -421,6 +421,31 @@ const Modal=({title,onClose,children})=>(
   </div>
 );
 
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+const getYtId = url => {
+  if (!url) return null;
+  const m = url.match(/(?:youtu\.be\/|v\/|v=|embed\/)([\w-]{11})/);
+  return m ? m[1] : null;
+};
+
+const ExDetalheModal = ({ ex, onClose }) => (
+  <Modal title={ex.nome} onClose={onClose}>
+    {ex.video && getYtId(ex.video) && (
+      <div style={{marginBottom:14,borderRadius:10,overflow:"hidden",position:"relative",paddingBottom:"56.25%",height:0}}>
+        <iframe src={"https://www.youtube.com/embed/"+getYtId(ex.video)} style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",border:"none"}} allowFullScreen/>
+      </div>
+    )}
+    {ex.foco&&<div style={{fontSize:13,color:"#64748b",marginBottom:10}}>🎯 <strong>Foco:</strong> {ex.foco}</div>}
+    {ex.descricao&&<div style={{fontSize:13,marginBottom:10}}><strong>📋 Descrição</strong><br/>{ex.descricao}</div>}
+    {ex.execucao&&<div style={{fontSize:13,marginBottom:10}}><strong>▶ Como executar</strong><br/><div style={{whiteSpace:"pre-line",color:"#374151"}}>{ex.execucao}</div></div>}
+    {ex.beneficios&&<div style={{fontSize:13,marginBottom:10}}><strong>✅ Benefícios</strong><br/>{ex.beneficios}</div>}
+    {ex.cuidados&&<div style={{fontSize:13,marginBottom:10,padding:"8px 10px",background:"#fff7ed",borderRadius:8,border:"1px solid #fed7aa"}}><strong>⚠️ Cuidados</strong><br/>{ex.cuidados}</div>}
+    {ex.material&&<div style={{fontSize:13,color:"#64748b"}}>🔧 <strong>Material:</strong> {ex.material}</div>}
+    <div style={{marginTop:16}}><Btn variant="secondary" full onClick={onClose}>Fechar</Btn></div>
+  </Modal>
+);
+
+
 // ─── MOMENTO EDITÁVEL ─────────────────────────────────────────────────────────
 const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom})=>{
   const [editIdx,setEditIdx]=useState(null);
@@ -590,31 +615,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom})=>{
   );
 };
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
-const getYtId = url => {
-  if (!url) return null;
-  const m = url.match(/(?:youtu\.be\/|v\/|v=|embed\/)([\w-]{11})/);
-  return m ? m[1] : null;
-};
 
-const ExDetalheModal = ({ ex, onClose }) => (
-  <Modal title={ex.nome} onClose={onClose}>
-    {ex.video && getYtId(ex.video) && (
-      <div style={{marginBottom:14,borderRadius:10,overflow:"hidden",position:"relative",paddingBottom:"56.25%",height:0}}>
-        <iframe src={"https://www.youtube.com/embed/"+getYtId(ex.video)} style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",border:"none"}} allowFullScreen/>
-      </div>
-    )}
-    {ex.foco&&<div style={{fontSize:13,color:"#64748b",marginBottom:10}}>🎯 <strong>Foco:</strong> {ex.foco}</div>}
-    {ex.descricao&&<div style={{fontSize:13,marginBottom:10}}><strong>📋 Descrição</strong><br/>{ex.descricao}</div>}
-    {ex.execucao&&<div style={{fontSize:13,marginBottom:10}}><strong>▶ Como executar</strong><br/><div style={{whiteSpace:"pre-line",color:"#374151"}}>{ex.execucao}</div></div>}
-    {ex.beneficios&&<div style={{fontSize:13,marginBottom:10}}><strong>✅ Benefícios</strong><br/>{ex.beneficios}</div>}
-    {ex.cuidados&&<div style={{fontSize:13,marginBottom:10,padding:"8px 10px",background:"#fff7ed",borderRadius:8,border:"1px solid #fed7aa"}}><strong>⚠️ Cuidados</strong><br/>{ex.cuidados}</div>}
-    {ex.material&&<div style={{fontSize:13,color:"#64748b"}}>🔧 <strong>Material:</strong> {ex.material}</div>}
-    <div style={{marginTop:16}}><Btn variant="secondary" full onClick={onClose}>Fechar</Btn></div>
-  </Modal>
-);
-
-// ─── TREINO COM 3 MOMENTOS ────────────────────────────────────────────────────
 const TreinoMomentos=({treinoKey,blocoKey,sessao,onChange,bibCustom,editMode})=>{
   const tDef=TREINO_DEFS[treinoKey];
   const [momentoIdx,setMomentoIdx]=useState(0);
@@ -1195,28 +1196,5 @@ root.render(<App/>);
 </script>
 </body>
 </html>
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
-const getYtId = url => {
-  if (!url) return null;
-  const m = String(url).match(/(?:youtu\.be\/|[?&]v=|embed\/)([\w-]{11})/);
-  return m ? m[1] : null;
-};
 
-const ExDetalheModal = ({ ex, onClose }) => (
-  <Modal title={ex.nome} onClose={onClose}>
-    {ex.video && getYtId(ex.video) && (
-      <div style={{marginBottom:14,borderRadius:10,overflow:"hidden",position:"relative",paddingBottom:"56.25%",height:0}}>
-        <iframe src={"https://www.youtube.com/embed/"+getYtId(ex.video)} style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",border:"none"}} allowFullScreen/>
-      </div>
-    )}
-    {ex.foco&&<div style={{fontSize:13,color:"#64748b",marginBottom:10}}>🎯 <strong>Foco:</strong> {ex.foco}</div>}
-    {ex.descricao&&<div style={{fontSize:13,marginBottom:10}}><strong>📋 Descrição</strong><br/>{ex.descricao}</div>}
-    {ex.execucao&&<div style={{fontSize:13,marginBottom:10}}><strong>▶ Como executar</strong><br/><div style={{whiteSpace:"pre-line",color:"#374151"}}>{ex.execucao}</div></div>}
-    {ex.beneficios&&<div style={{fontSize:13,marginBottom:10}}><strong>✅ Benefícios</strong><br/>{ex.beneficios}</div>}
-    {ex.cuidados&&<div style={{fontSize:13,marginBottom:10,padding:"8px 10px",background:"#fff7ed",borderRadius:8,border:"1px solid #fed7aa"}}><strong>⚠️ Cuidados</strong><br/>{ex.cuidados}</div>}
-    {ex.material&&<div style={{fontSize:13,color:"#64748b"}}>🔧 <strong>Material:</strong> {ex.material}</div>}
-    <div style={{marginTop:16}}><Btn variant="secondary" full onClick={onClose}>Fechar</Btn></div>
-  </Modal>
-);
-
-
+// ─── TREINO COM 3 MOMENTOS ────────────────────────────────────────────────────
