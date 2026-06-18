@@ -570,7 +570,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom})=>{
       </button>
 
       {addModal&&(
-        <Modal title={`Adicionar — ${m.label}`} onClose={()=>{setAddModal(false);setSearchEx("");}}>
+        <Modal title={"Adicionar — "+m.label} onClose={()=>{setAddModal(false);setSearchEx("");}}>
           {momentoMeta.key==="inicial"&&(
             <div style={{marginBottom:12}}>
               <div style={{fontSize:10,fontWeight:700,color:"#64748b",marginBottom:6,textTransform:"uppercase",letterSpacing:"0.4px"}}>🧠 Módulos do Hub Cognitivo</div>
@@ -696,7 +696,7 @@ const TreinoMomentos=({treinoKey,blocoKey,sessao,onChange,bibCustom,editMode})=>
         ))}
       </div>
       <MomentoEditavel
-        key={`${blocoKey}-${treinoKey}-${m.key}`}
+        key={blocoKey+"-"+treinoKey+"-"+m.key}
         momentoMeta={m}
         items={sessao[m.key]||[]}
         onChange={arr=>onChange({...sessao,[m.key]:arr})}
@@ -785,7 +785,7 @@ const StepExercicios=({prescricao,setPrescricao,divisao,bibCustom,onNext,onBack}
         {treinosUnicos.map((t,i)=>{const td=TREINO_DEFS[t];return(<button key={t} onClick={()=>setTreinoIdx(i)} style={{flex:1,minWidth:60,border:`1.5px solid ${treinoIdx===i?td.cor:td.border}`,borderRadius:9,padding:"7px 6px",fontSize:11,fontWeight:700,cursor:"pointer",background:treinoIdx===i?td.bg:"#fff",color:treinoIdx===i?td.cor:"#64748b",textAlign:"center"}}>{td.label}</button>);})}
       </div>
       <TreinoMomentos
-        key={`${blocoAtivo.key}-${treinoAtivo}`}
+        key={blocoAtivo.key+"-"+treinoAtivo}
         treinoKey={treinoAtivo}
         blocoKey={blocoAtivo.key}
         sessao={(prescricao[blocoAtivo.key]||{})[treinoAtivo]||{inicial:[],principal:[],final:[]}}
@@ -906,7 +906,7 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav})=>{
         {treinosUnicos.map((t,i)=>{const td=TREINO_DEFS[t];return(<button key={t} onClick={()=>setTreinoIdx(i)} style={{flex:1,minWidth:60,border:`1.5px solid ${treinoIdx===i?td.cor:td.border}`,borderRadius:9,padding:"7px 6px",fontSize:11,fontWeight:700,cursor:"pointer",background:treinoIdx===i?td.bg:"#fff",color:treinoIdx===i?td.cor:"#64748b",textAlign:"center"}}>{td.label}</button>);})}
       </div>
       <TreinoMomentos
-        key={`${blocoAtivo.key}-${treinoAtivo}-${editMode}`}
+        key={blocoAtivo.key+"-"+treinoAtivo+"-"+editMode}
         treinoKey={treinoAtivo}
         blocoKey={blocoAtivo.key}
         sessao={(prescricao[blocoAtivo.key]||{})[treinoAtivo]||{inicial:[],principal:[],final:[]}}
