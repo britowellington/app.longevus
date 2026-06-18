@@ -491,7 +491,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom})=>{
         return(
           <div key={idx} style={{background:"#fff",border:`1.5px solid ${isEdit?m.cor:"#e2e8f0"}`,borderRadius:11,padding:"11px 13px",marginBottom:7}}>
             <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
-              (isCog?<span style={{fontSize:20,flexShrink:0,marginTop:2}}>🧠</span>:ex&&getYtId(ex.video)?<img src={"https://img.youtube.com/vi/"+getYtId(ex.video)+"/mqdefault.jpg"} alt="" style={{width:56,height:42,borderRadius:7,objectFit:"cover",flexShrink:0}}/>:ex?.foto?<img src={ex.foto} alt="" style={{width:56,height:42,borderRadius:7,objectFit:"cover",flexShrink:0}}/>:<div style={{width:36,height:36,borderRadius:7,background:"#f1f5f9",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:18}}>{ex?.icone||"📌"}</div>)
+              {isCog?<span style={{fontSize:20,flexShrink:0,marginTop:2}}>🧠</span>:ex&&getYtId(ex.video)?<img src={"https://img.youtube.com/vi/"+getYtId(ex.video)+"/mqdefault.jpg"} alt="" style={{width:56,height:42,borderRadius:7,objectFit:"cover",flexShrink:0}}/>:ex?.foto?<img src={ex.foto} alt="" style={{width:56,height:42,borderRadius:7,objectFit:"cover",flexShrink:0}}/>:<div style={{width:36,height:36,borderRadius:7,background:"#f1f5f9",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:18}}>{ex?.icone||"📌"}</div>}
               <div style={{flex:1}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:2}}>
                   <div style={{fontWeight:700,fontSize:13,flex:1,marginRight:6,color:isCog?"#065f46":"#0f172a"}}>
