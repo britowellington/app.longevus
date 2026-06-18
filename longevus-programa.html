@@ -445,7 +445,6 @@ const ExDetalheModal = ({ ex, onClose }) => (
   </Modal>
 );
 
-
 // ─── MOMENTO EDITÁVEL ─────────────────────────────────────────────────────────
 const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom})=>{
   const [editIdx,setEditIdx]=useState(null);
@@ -615,7 +614,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom})=>{
   );
 };
 
-
+// ─── TREINO COM 3 MOMENTOS ────────────────────────────────────────────────────
 const TreinoMomentos=({treinoKey,blocoKey,sessao,onChange,bibCustom,editMode})=>{
   const tDef=TREINO_DEFS[treinoKey];
   const [momentoIdx,setMomentoIdx]=useState(0);
@@ -1196,5 +1195,3 @@ root.render(<App/>);
 </script>
 </body>
 </html>
-
-// ─── TREINO COM 3 MOMENTOS ────────────────────────────────────────────────────
