@@ -124,7 +124,7 @@ const calcAge=dob=>{if(!dob)return"?";const b=new Date(dob+"T12:00:00"),n=new Da
 // ─── MOMENTOS DA SESSÃO ───────────────────────────────────────────────────────
 const MOMENTOS = [
   { key:"inicial", label:"Parte Inicial", icon:"🌅", cor:"#6366f1", bg:"#eef2ff", border:"#c7d2fe", desc:"Aquecimento + Exercícios Cognitivos" },
-  { key:"principal", label:"Parte Principal", icon:"⚡", cor:O, bg:"#fff4ee", border:"#fed7aa", desc:"Foco da sessão — Força, Equilíbrio ou Funcional" },
+  { key:"principal", label:"Parte Principal", icon:"⚡", cor:"#FF5603", bg:"#fff4ee", border:"#fed7aa", desc:"Foco da sessão — Força, Equilíbrio ou Funcional" },
   { key:"final", label:"Parte Final", icon:"🌙", cor:"#15803d", bg:"#f0fdf4", border:"#bbf7d0", desc:"Desaquecimento — Alongamentos e Volta à Calma" },
 ];
 
@@ -194,7 +194,7 @@ const EXERCISES = [
 // ─── BLOCOS 24 SEMANAS ────────────────────────────────────────────────────────
 const BLOCOS = [
   {key:"b1",label:"Bloco 1 — Adaptação",semanas:"1–6",cor:{bg:"#eff6ff",border:"#bfdbfe",texto:"#1d4ed8",dot:"#3b82f6"},desc:"Aprendizado motor, tolerância ao esforço, volume baixo",nivel:["Basico"]},
-  {key:"b2",label:"Bloco 2 — Desenvolvimento",semanas:"7–12",cor:{bg:"#fff7ed",border:"#fed7aa",texto:"#c2410c",dot:O},desc:"Progressão de volume e complexidade",nivel:["Basico","Intermediario"]},
+  {key:"b2",label:"Bloco 2 — Desenvolvimento",semanas:"7–12",cor:{bg:"#fff7ed",border:"#fed7aa",texto:"#c2410c",dot:"#FF5603"},desc:"Progressão de volume e complexidade",nivel:["Basico","Intermediario"]},
   {key:"b3",label:"Bloco 3 — Intensificação",semanas:"13–18",cor:{bg:"#fdf4ff",border:"#e9d5ff",texto:"#7e22ce",dot:"#a855f7"},desc:"Desafio funcional elevado, integração de capacidades",nivel:["Basico","Intermediario","Avancado"]},
   {key:"b4",label:"Bloco 4 — Consolidação",semanas:"19–24",cor:{bg:"#f0fdf4",border:"#bbf7d0",texto:"#15803d",dot:"#22c55e"},desc:"Autonomia, exercícios integrados, manutenção de ganhos",nivel:["Basico","Intermediario","Avancado"]},
 ];
@@ -400,7 +400,7 @@ const buildPrescricao=(assessment,sequencia)=>{
 const Card=({children,style,onClick})=>(<div onClick={onClick} style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:16,marginBottom:12,...style,cursor:onClick?"pointer":undefined}}>{children}</div>);
 const Btn=({children,onClick,variant="primary",full,sm,disabled,style})=>{
   const base={border:"none",borderRadius:10,fontWeight:700,cursor:disabled?"not-allowed":"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,fontFamily:"inherit",opacity:disabled?0.5:1};
-  const v={primary:{background:O,color:"#fff",padding:sm?"8px 14px":"12px 18px",fontSize:sm?13:14},secondary:{background:"#f1f5f9",color:"#475569",padding:sm?"8px 14px":"12px 18px",fontSize:sm?13:14},ghost:{background:"transparent",color:"#64748b",padding:sm?"6px 10px":"10px 14px",fontSize:sm?12:13,border:"1.5px solid #e2e8f0"},danger:{background:"#fee2e2",color:"#dc2626",padding:sm?"8px 14px":"12px 18px",fontSize:sm?13:14}};
+  const v={primary:{background:"#FF5603",color:"#fff",padding:sm?"8px 14px":"12px 18px",fontSize:sm?13:14},secondary:{background:"#f1f5f9",color:"#475569",padding:sm?"8px 14px":"12px 18px",fontSize:sm?13:14},ghost:{background:"transparent",color:"#64748b",padding:sm?"6px 10px":"10px 14px",fontSize:sm?12:13,border:"1.5px solid #e2e8f0"},danger:{background:"#fee2e2",color:"#dc2626",padding:sm?"8px 14px":"12px 18px",fontSize:sm?13:14}};
   return <button onClick={disabled?undefined:onClick} style={{...base,...v[variant],width:full?"100%":undefined,...style}}>{children}</button>;
 };
 const Inp=({label,value,onChange,type="text",placeholder,opts,rows})=>(
@@ -744,10 +744,10 @@ const StepFrequencia=({freq,setFreq,divisao,setDivisao,assessment,onNext,onBack}
       <div style={{fontSize:11,fontWeight:700,color:"#64748b",marginBottom:8,textTransform:"uppercase"}}>Modelo de divisão</div>
       <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
         {opcoes.map(op=>(
-          <div key={op.modelo} onClick={()=>setDivisao(op)} style={{border:`2px solid ${divisao?.modelo===op.modelo?O:"#e2e8f0"}`,borderRadius:11,padding:"12px 14px",cursor:"pointer",background:divisao?.modelo===op.modelo?"#fff4ee":"#fff"}}>
+          <div key={op.modelo} onClick={()=>setDivisao(op)} style={{border:`2px solid ${divisao?.modelo===op.modelo?"#FF5603":"#e2e8f0"}`,borderRadius:11,padding:"12px 14px",cursor:"pointer",background:divisao?.modelo===op.modelo?"#fff4ee":"#fff"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <div><div style={{fontWeight:700,fontSize:14,color:divisao?.modelo===op.modelo?O:"#0f172a"}}>{op.label}</div><div style={{fontSize:12,color:"#64748b",marginTop:1}}>{op.desc}</div></div>
-              <div style={{width:20,height:20,borderRadius:99,border:`2px solid ${divisao?.modelo===op.modelo?O:"#cbd5e1"}`,background:divisao?.modelo===op.modelo?O:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{divisao?.modelo===op.modelo&&<div style={{width:8,height:8,borderRadius:99,background:"#fff"}}/>}</div>
+              <div><div style={{fontWeight:700,fontSize:14,color:divisao?.modelo===op.modelo?"#FF5603":"#0f172a"}}>{op.label}</div><div style={{fontSize:12,color:"#64748b",marginTop:1}}>{op.desc}</div></div>
+              <div style={{width:20,height:20,borderRadius:99,border:`2px solid ${divisao?.modelo===op.modelo?"#FF5603":"#cbd5e1"}`,background:divisao?.modelo===op.modelo?"#FF5603":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{divisao?.modelo===op.modelo&&<div style={{width:8,height:8,borderRadius:99,background:"#fff"}}/>}</div>
             </div>
             <div style={{display:"flex",gap:5,marginTop:10,flexWrap:"wrap"}}>
               {op.sequencia.map((t,i)=>{const td=TREINO_DEFS[t];return(<div key={i} style={{textAlign:"center",minWidth:40}}><div style={{fontSize:10,color:"#94a3b8",marginBottom:2}}>{dias[i]||"D"+(i+1)}</div><div style={{background:td?.bg||"#f1f5f9",border:`1.5px solid ${td?.border||"#e2e8f0"}`,borderRadius:7,padding:"4px 5px",fontWeight:800,fontSize:11,color:td?.cor||"#64748b"}}>{t}</div></div>);})}
@@ -826,7 +826,7 @@ const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,n
       </div>
       <div style={{display:"flex",gap:5,marginBottom:20}}>
         {[["1","Configuração"],["2","Divisão"],["3","Exercícios"],["4","Salvar"]].map(([n,l],i)=>(
-          <div key={n} style={{flex:1,textAlign:"center",padding:"7px 3px",borderRadius:8,background:step===i+1?O:step>i+1?"#dcfce7":"#f1f5f9",border:`1.5px solid ${step===i+1?O:step>i+1?"#86efac":"#e2e8f0"}`}}>
+          <div key={n} style={{flex:1,textAlign:"center",padding:"7px 3px",borderRadius:8,background:step===i+1?"#FF5603":step>i+1?"#dcfce7":"#f1f5f9",border:`1.5px solid ${step===i+1?"#FF5603":step>i+1?"#86efac":"#e2e8f0"}`}}>
             <div style={{fontSize:10,fontWeight:700,color:step===i+1?"#fff":step>i+1?"#16a34a":"#94a3b8"}}>{step>i+1?"✓":n}</div>
             <div style={{fontSize:9,color:step===i+1?"#fff":step>i+1?"#16a34a":"#94a3b8",marginTop:1}}>{l}</div>
           </div>
@@ -887,7 +887,7 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav})=>{
         {editMode?(<div style={{display:"flex",gap:6}}><Btn sm variant="secondary" onClick={cancelEdit}>Cancelar</Btn><Btn sm onClick={saveEdits}>💾 Salvar</Btn></div>):(<Btn sm variant="ghost" onClick={()=>setEditMode(true)}>✏️ Editar</Btn>)}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:7,marginBottom:12}}>
-        {[["24","sem."],["4","blocos"],[String(prog.freq)+"×","sem."],[String(totalEx),"exerc."]].map(([v,l])=>(<div key={l} style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"9px 5px",textAlign:"center"}}><div style={{fontSize:16,fontWeight:800,color:O}}>{v}</div><div style={{fontSize:10,color:"#94a3b8",marginTop:1}}>{l}</div></div>))}
+        {[["24","sem."],["4","blocos"],[String(prog.freq)+"×","sem."],[String(totalEx),"exerc."]].map(([v,l])=>(<div key={l} style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"9px 5px",textAlign:"center"}}><div style={{fontSize:16,fontWeight:800,color:"#FF5603"}}>{v}</div><div style={{fontSize:10,color:"#94a3b8",marginTop:1}}>{l}</div></div>))}
       </div>
       <Card style={{marginBottom:10,padding:"10px 14px"}}>
         <div style={{fontSize:11,fontWeight:700,color:"#64748b",marginBottom:6,textTransform:"uppercase"}}>Semana tipo · {prog.divisao?.label}</div>
@@ -948,7 +948,7 @@ const Lista=({programs,students,nav})=>{
             const total=Object.values(p.prescricao||{}).reduce((a,b)=>a+Object.values(b||{}).reduce((c,s)=>c+Object.values(s||{}).reduce((d,arr)=>d+(arr?.length||0),0),0),0);
             return(<Card key={p.id} onClick={()=>nav("ver",{id:p.id})} style={{padding:"14px 16px"}}>
               <div style={{display:"flex",alignItems:"center",gap:12}}>
-                <div style={{width:44,height:44,borderRadius:12,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:800,color:O,flexShrink:0}}>{st?.name?.[0]?.toUpperCase()||"?"}</div>
+                <div style={{width:44,height:44,borderRadius:12,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:800,color:"#FF5603",flexShrink:0}}>{st?.name?.[0]?.toUpperCase()||"?"}</div>
                 <div style={{flex:1}}>
                   <div style={{fontWeight:700,fontSize:15}}>{st?.name||"Aluno"}</div>
                   <div style={{fontSize:12,color:"#94a3b8",marginTop:1}}>{p.titulo||"Programa"} · 24 sem · {p.divisao?.label||"—"}</div>
