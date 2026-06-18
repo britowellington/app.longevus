@@ -930,7 +930,7 @@ const Lista=({programs,students,nav})=>{
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
         <div style={{fontWeight:800,fontSize:20}}>📋 Programas</div>
         <div style={{display:"flex",gap:8}}>
-          <Btn sm variant="ghost" onClick={()=>window.open("longevus-biblioteca.html","_blank")}>📚 Biblioteca</Btn>
+          <Btn sm variant="ghost" onClick={()=>{window.open("longevus-biblioteca.html","_blank");}}>📚 Biblioteca</Btn>
           <Btn sm onClick={()=>nav("novo")}>+ Novo</Btn>
         </div>
       </div>
@@ -1083,17 +1083,7 @@ function AppInner(){
       }catch(e){console.warn("Supabase offline, usando cache local");}
     })();
   },[]);
-  useEffect(()=>{
-    (async()=>{
-      try{
-        const {data:sess}=await supa.auth.getSession();
-        const token=sess?.session?.access_token||SUPA_KEY;
-        const h={"apikey":SUPA_KEY,"Authorization":"Bearer "+token,"Content-Type":"application/json"};
-        const r=await fetch(SUPA_URL+"/rest/v1/exercises?select=*&order=nome.asc",{headers:h});
-        if(r.ok){const rows=await r.json();if(rows&&rows.length>0){setBibCustom(rows.map(e=>({id:e.id,nome:e.nome,grupo:e.grupo,nivel:e.nivel,momento:e.momento,foco:e.foco,descricao:e.descricao,execucao:e.execucao,beneficios:e.beneficios,cuidados:e.cuidados,material:e.material,obs:e.obs,foto:e.foto||"",video:e.video||"",defaultSeries:e.default_series,defaultReps:e.default_reps,defaultDescanso:e.default_descanso,tags:e.tags})));}}
-      }catch(e){console.warn("Supabase offline");}
-    })();
-  },[]);
+
   const [page,setPage]=useState("lista");
   const [pageProps,setPageProps]=useState({});
   const nav=useCallback((p,props={})=>{setPage(p);setPageProps(props);window.scrollTo(0,0);},[]);
