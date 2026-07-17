@@ -287,6 +287,7 @@ eye:   ["M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z","M12 9a3 3 0 1 0 0 6 3 3 
 x:     ["M18 6L6 18","M6 6l12 12"],
 zap:   ["M13 2L3 14h9l-1 8 10-12h-9z"],
 user:  ["M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2","M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"],
+link:  ["M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71","M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"],
 };
 return (
 <svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
@@ -417,9 +418,36 @@ const [selCardioSt,setSelCardioSt]=useState("");
 const [editId,setEditId]=useState(null);
 const [form,setForm]=useState({name:"",dob:"",sex:"",phone:"",email:"",whatsapp:"",responsibleName:"",responsiblePhone:"",doctorName:"",doctorPhone:""});
 const [search,setSearch]=useState("");
+const [linkModal,setLinkModal]=useState(null);
+const [linkLoadingId,setLinkLoadingId]=useState(null);
 const open=(s=null)=>{setForm(s?{name:s.name,dob:s.dob||"",sex:s.sex||"",phone:s.phone||"",notes:s.notes||""}:{name:"",dob:"",sex:"",phone:"",notes:""});setEditId(s?.id||null);setModal(true);};
 const save=()=>{if(!form.name.trim())return;if(editId)setStudents(p=>p.map(s=>s.id===editId?{...s,...form}:s));else setStudents(p=>[...p,{id:uid(),...form,createdAt:todayStr()}]);setModal(false);};
 const del=async id=>{if(window.confirm("Remover aluno?")){await DB.remove("students",id);setStudents(p=>p.filter(s=>s.id!==id));}};
+const genLink=async(s)=>{
+setLinkLoadingId(s.id);
+try{
+const headers=await DB.authHeaders();
+const { data: sess } = await supa.auth.getSession();
+const ownerId=sess?.session?.user?.id;
+const r=await fetch(SUPA_URL+"/rest/v1/questionarios_pendentes",{
+method:"POST",
+headers:{...headers,"Prefer":"return=representation"},
+body:JSON.stringify({ aluno_id:s.id, owner_id:ownerId })
+});
+if(!r.ok){window.alert("Erro ao gerar o link. Tente novamente.");return;}
+const rows=await r.json();
+const token=rows?.[0]?.token;
+if(!token){window.alert("Erro ao gerar o link.");return;}
+const base=window.location.origin+window.location.pathname.replace(/[^/]+$/,"");
+const url=base+"longevus-questionario.html?token="+token;
+setLinkModal({ name:s.name, url });
+}catch(e){window.alert("Erro ao gerar o link.");}
+finally{setLinkLoadingId(null);}
+};
+const copyLink=()=>{
+if(!linkModal)return;
+navigator.clipboard?.writeText(linkModal.url).then(()=>window.alert("Link copiado!")).catch(()=>{});
+};
 const filtered=students.filter(s=>s.name?.toLowerCase().includes(search.toLowerCase()));
 return (
 <div>
@@ -440,6 +468,7 @@ return (
 </div>
 <div style={{ display:"flex",gap:6 }}>
 <Btn sm variant="primary" icon="clip" onClick={()=>nav("newAssessment",{studentId:s.id})}>Avaliar</Btn>
+<Btn sm variant="ghost" icon="link" disabled={linkLoadingId===s.id} onClick={()=>genLink(s)}/>
 <Btn sm variant="ghost" icon="edit" onClick={()=>open(s)}/>
 <Btn sm variant="ghost" icon="trash" onClick={()=>del(s.id)} style={{color:"#dc2626"}}/>
 </div>
@@ -477,6 +506,14 @@ return (
 <div style={{ display:"flex",gap:10,marginTop:8 }}>
 <Btn variant="secondary" full onClick={()=>setModal(false)}>Cancelar</Btn>
 <Btn full onClick={save}>Salvar</Btn>
+</div>
+</Modal>}
+{linkModal&&<Modal title="Link do Questionário" onClose={()=>setLinkModal(null)}>
+<div style={{ fontSize:13,color:"#475569",marginBottom:12 }}>Envie este link para <b>{linkModal.name}</b> pelo WhatsApp. Ele poderá preencher a anamnese, o PAR-Q e as AVDs/AIVDs antes da avaliação presencial.</div>
+<div style={{ background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 12px",fontSize:12,wordBreak:"break-all",color:"#334155",marginBottom:14 }}>{linkModal.url}</div>
+<div style={{ display:"flex",gap:10 }}>
+<Btn variant="secondary" full onClick={()=>setLinkModal(null)}>Fechar</Btn>
+<Btn full icon="link" onClick={copyLink}>Copiar Link</Btn>
 </div>
 </Modal>}
 </div>
