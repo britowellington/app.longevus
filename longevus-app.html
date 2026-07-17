@@ -288,6 +288,7 @@ x:     ["M18 6L6 18","M6 6l12 12"],
 zap:   ["M13 2L3 14h9l-1 8 10-12h-9z"],
 user:  ["M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2","M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"],
 link:  ["M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71","M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"],
+inbox: ["M22 12h-6l-2 3h-4l-2-3H2","M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"],
 };
 return (
 <svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
@@ -547,6 +548,17 @@ notes:""
 const [cardioAssessment,setCardioAssessment]=useState({ergo:{fcRest:"",fcMax:"",pasSit:"",padSit:"",pasPeak:"",padPeak:"",mets:"",vo2max:"",vo2measured:false,fcSymptom:"",symptomType:"",fcIschemic:"",ecgObs:"",arrythmias:[],arrObs:"",medications:[]},pred:{age:"",sex:"",fcRest:"",pasSit:"",padSit:"",diabetes:false,hypertension:false,obesity:false,cardioDisease:false,sedentary:false,symptoms:false,formula:"tanaka",medications:[],functionalTest:"",ftValue:""}});
 const student=students.find(s=>s.id===sid);
 const sex=student?.sex||"";
+useEffect(()=>{
+if(!sid)return;
+const prefill=LS.get("longevus_prefill_"+sid,null);
+if(!prefill)return;
+if(prefill.anamnese)setAnamnese(a=>({...a,...prefill.anamnese}));
+if(prefill.parq){setParq(p=>({...p,...prefill.parq}));setParqEnabled(true);}
+if(prefill.avd)setAvd(a=>({...a,...prefill.avd}));
+if(prefill.aivd)setAivd(a=>({...a,...prefill.aivd}));
+if(prefill.funcRisk)setFuncRisk(f=>({...f,...prefill.funcRisk}));
+window.localStorage.removeItem("longevus_prefill_"+sid);
+},[sid]);
 const parqQs=["Médico disse que tem problema cardíaco?","Sente dor no peito durante atividade física?","Sentiu dor no peito no último mês (sem atividade)?","Perde equilíbrio por tontura ou já desmaiou?","Tem problema ósseo/articular que piora com exercício?","Toma medicamento para pressão ou coração?","Existe outro motivo pelo qual não deveria se exercitar?"];
 const calcAHA=()=>{
 let s=0;const bmi=parseFloat(aha.bmi);
@@ -5688,6 +5700,17 @@ useEffect(()=>{ if(dbReady) cardioRecords.forEach(r=>DB.save("cardio_records",r.
 useEffect(()=>{ if(dbReady) programs.forEach(p=>DB.save("programs",p.id,p,p.studentId)); },[programs,dbReady]);
 useEffect(()=>{ if(dbReady) sessions.forEach(s=>DB.save("sessions",s.id,s,s.studentId)); },[sessions,dbReady]);
 const nav=useCallback((p,props={})=>{setPage(p);setPageProps(props);window.scrollTo(0,0);},[]);
+const [pendingQCount,setPendingQCount]=useState(0);
+const refreshPendingCount=useCallback(async()=>{
+if(!session)return;
+try{
+const headers=await DB.authHeaders();
+const r=await fetch(SUPA_URL+"/rest/v1/questionarios_pendentes?select=id&status=eq.preenchido",{ headers:{...headers,"Prefer":"count=exact"} });
+const range=r.headers.get("content-range");
+setPendingQCount(range?parseInt(range.split("/")[1]||"0"):0);
+}catch(e){}
+},[session]);
+useEffect(()=>{refreshPendingCount();},[session,refreshPendingCount]);
 const navItems=[
 {id:"dashboard",label:"Início",icon:"home"},
 {id:"students",label:"Alunos",icon:"users"},
@@ -5695,6 +5718,7 @@ const navItems=[
 {id:"extprograma",label:"Programa",icon:"zap"},
 ];
 const menuItems=[
+{id:"questionarios",label:"Questionários",icon:"inbox"},
 {id:"cognitivehub",label:"Hub Cognitivo",icon:"zap"},
 {id:"daily",label:"Monitoramento",icon:"act"},
 {id:"reports",label:"Relatórios",icon:"bar"},
@@ -5707,7 +5731,7 @@ const menuItems=[
 ];
 const [menuOpen, setMenuOpen] = useState(false);
 const [showSubscribe, setShowSubscribe] = useState(false);
-const activePage=["dashboard","students","assessments","daily","reports","documents","program","cognitivehub","profile"].includes(page)?page:null;
+const activePage=["dashboard","students","assessments","daily","reports","documents","program","cognitivehub","profile","questionarios"].includes(page)?page:null;
 if (authLoading) {
 return <div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14 }}>Carregando...</div>;
 }
@@ -5758,6 +5782,7 @@ return (
 {page==="daily"&&<Daily students={students} assessments={assessments} dailyLogs={dailyLogs} setDailyLogs={setDailyLogs} cardioRecords={cardioRecords} setCardioRecords={setCardioRecords}/>}
 {page==="reports"&&<Reports students={students} assessments={assessments} setAssessments={setAssessments} dailyLogs={dailyLogs} sessions={sessions} nav={nav}/>
 }{page==="documents"&&<Documents students={students} documents={documents} setDocuments={setDocuments}/>
+}{page==="questionarios"&&<Questionarios students={students} nav={nav} onRefreshCount={refreshPendingCount}/>
 }{page==="extprograma"&&(()=>{window.open("longevus-programa.html","_self");return null;})()}{page==="cognitivehub"&&<CognitiveHub students={students} hubResults={hubResults} setHubResults={setHubResults}/>}{page==="sessions"&&<SessionTracker students={students} programs={programs} sessions={sessions} setSessions={setSessions} nav={nav}/>}{page==="profile"&&<Profile session={session} onLogoChange={setLogoUrl}/>}
 </div>
 </div>
@@ -5794,7 +5819,8 @@ return(
 }} style={{ width:"100%",display:"flex",alignItems:"center",gap:12,padding:"14px 18px",border:"none",background:isActive?"#fff4ee":"#fff",cursor:"pointer",borderBottom:"1px solid #f8fafc" }}>
 <I n={m.icon} s={18} c={isActive?"#FF5603":"#64748b"}/>
 <span style={{ fontSize:14,fontWeight:isActive?700:500,color:isActive?"#FF5603":"#0f172a" }}>{m.label}</span>
-{isActive&&<div style={{ width:6,height:6,borderRadius:99,background:"#FF5603",marginLeft:"auto" }}/>}
+{m.id==="questionarios"&&pendingQCount>0&&<span style={{ marginLeft:"auto",background:"#dc2626",color:"#fff",fontSize:10,fontWeight:800,borderRadius:99,padding:"2px 7px" }}>{pendingQCount}</span>}
+{isActive&&<div style={{ width:6,height:6,borderRadius:99,background:"#FF5603",marginLeft:m.id==="questionarios"&&pendingQCount>0?8:"auto" }}/>}
 </button>
 );
 })}
@@ -5858,6 +5884,156 @@ const CognitiveHub = ({ students, hubResults, setHubResults }) => {
       </Card>
     </div>
   );
+};
+
+const qAnamneseFields=[["pathologies","Doenças diagnosticadas"],["medications","Medicamentos em uso"],["allergies","Alergias"],["surgeries","Cirurgias anteriores"],["physActivityHistory","Histórico de atividade física"],["physActivityType","Modalidade(s)"],["physActivityFreq","Frequência semanal"],["sleepHours","Horas de sono"],["sleepQuality","Qualidade do sono"],["dietQuality","Qualidade da alimentação"],["stressLevel","Nível de estresse"],["smoking","Tabagismo"],["alcohol","Consumo de álcool"],["mainComplaints","Queixas principais"],["painLocation","Localização de dores"],["goals","Objetivos"],["observations","Observações"]];
+const qParqLabels=["Médico já disse que tem problema cardíaco?","Sente dor no peito durante esforço físico?","Sentiu dor no peito no último mês (sem esforço)?","Perde equilíbrio por tontura ou já desmaiou?","Tem problema ósseo/articular que piora com exercício?","Toma medicamento para pressão ou coração?","Existe outro motivo para não se exercitar?"];
+const qAvdLabels={eating:"Alimentação",bathing:"Banho",dressing:"Vestuário",toileting:"Higiene pessoal",transferring:"Transferência"};
+const qAivdLabels={shopping:"Compras",finance:"Finanças",transport:"Transporte",medication:"Medicação",housework:"Tarefas domésticas",telephone:"Telefone/celular"};
+const qScaleLabel=v=>v===2?"Independente":v===1?"Com ajuda":"Dependente";
+const fmtDT=(ts)=>{ if(!ts)return "—"; const d=new Date(ts); return isNaN(d)?"—":d.toLocaleDateString("pt-BR")+" "+d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}); };
+
+const Questionarios = ({ students, nav, onRefreshCount }) => {
+const [items,setItems]=useState(null);
+const [detail,setDetail]=useState(null);
+const [busyId,setBusyId]=useState(null);
+
+const load=async()=>{
+try{
+const headers=await DB.authHeaders();
+const r=await fetch(SUPA_URL+"/rest/v1/questionarios_pendentes?select=*&status=in.(preenchido,revisado)&order=created_at.desc&limit=50",{ headers });
+const rows=r.ok?await r.json():[];
+setItems(rows);
+}catch(e){setItems([]);}
+};
+useEffect(()=>{load();},[]);
+
+const studentFor=id=>students.find(s=>s.id===id);
+
+const approve=async(item)=>{
+setBusyId(item.id);
+try{
+LS.set("longevus_prefill_"+item.aluno_id, item.respostas);
+const headers=await DB.authHeaders();
+await fetch(SUPA_URL+"/rest/v1/questionarios_pendentes?id=eq."+item.id,{
+method:"PATCH", headers:{...headers,"Prefer":"return=minimal"},
+body: JSON.stringify({ status:"revisado", reviewed_at:new Date().toISOString() })
+});
+await load(); onRefreshCount&&onRefreshCount();
+nav("newAssessment",{studentId:item.aluno_id});
+}catch(e){window.alert("Erro ao aprovar. Tente novamente.");}
+setBusyId(null);
+};
+
+const discard=async(item)=>{
+if(!window.confirm("Descartar este questionário? Essa ação não pode ser desfeita."))return;
+setBusyId(item.id);
+try{
+const headers=await DB.authHeaders();
+await fetch(SUPA_URL+"/rest/v1/questionarios_pendentes?id=eq."+item.id,{ method:"DELETE", headers });
+await load(); onRefreshCount&&onRefreshCount();
+}catch(e){window.alert("Erro ao descartar.");}
+setBusyId(null);
+};
+
+if(items===null){
+return <div style={{ fontWeight:800,fontSize:20,marginBottom:18 }}>Questionários</div>;
+}
+
+const pending=items.filter(i=>i.status==="preenchido");
+const reviewed=items.filter(i=>i.status==="revisado");
+
+return (
+<div>
+<div style={{ fontWeight:800,fontSize:20,marginBottom:6 }}>Questionários</div>
+<div style={{ fontSize:13,color:"#64748b",marginBottom:18 }}>Respostas enviadas pelos alunos antes da avaliação presencial.</div>
+
+{pending.length===0 && reviewed.length===0 && <Card style={{ textAlign:"center",padding:40 }}>
+<I n="inbox" c="#cbd5e1" s={36}/>
+<div style={{ color:"#94a3b8",marginTop:10 }}>Nenhum questionário recebido ainda.</div>
+</Card>}
+
+{pending.length>0 && <>
+<div style={{ fontWeight:700,fontSize:13,color:"#FF5603",marginBottom:10 }}>Pendentes de revisão ({pending.length})</div>
+<div style={{ display:"flex",flexDirection:"column",gap:10,marginBottom:24 }}>
+{pending.map(item=>{
+const st=studentFor(item.aluno_id);
+return (
+<Card key={item.id} style={{ padding:"14px 16px" }}>
+<div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:10 }}>
+<div style={{ width:40,height:40,borderRadius:11,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:800,color:O,flexShrink:0 }}>{st?.name?.[0]?.toUpperCase()||"?"}</div>
+<div style={{ flex:1,minWidth:0 }}>
+<div style={{ fontWeight:700,fontSize:14 }}>{st?.name||"Aluno não encontrado"}</div>
+<div style={{ fontSize:11,color:"#94a3b8" }}>Enviado em {fmtDT(item.filled_at||item.created_at)}</div>
+</div>
+</div>
+<div style={{ display:"flex",gap:8 }}>
+<Btn sm variant="secondary" full onClick={()=>setDetail(item)}>Ver Respostas</Btn>
+<Btn sm full disabled={busyId===item.id} onClick={()=>approve(item)}>{busyId===item.id?"...":"Aprovar e Importar"}</Btn>
+</div>
+<div style={{ marginTop:8,textAlign:"center" }}>
+<button onClick={()=>discard(item)} style={{ background:"none",border:"none",color:"#dc2626",fontSize:12,cursor:"pointer" }}>Descartar</button>
+</div>
+</Card>
+);
+})}
+</div>
+</>}
+
+{reviewed.length>0 && <>
+<div style={{ fontWeight:700,fontSize:13,color:"#94a3b8",marginBottom:10 }}>Já importados</div>
+<div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+{reviewed.map(item=>{
+const st=studentFor(item.aluno_id);
+return (
+<Card key={item.id} style={{ padding:"12px 16px",opacity:0.7 }}>
+<div style={{ display:"flex",alignItems:"center",gap:12 }}>
+<div style={{ width:36,height:36,borderRadius:10,background:"#f1f5f9",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,color:"#94a3b8",flexShrink:0 }}>{st?.name?.[0]?.toUpperCase()||"?"}</div>
+<div style={{ flex:1,minWidth:0 }}>
+<div style={{ fontWeight:600,fontSize:13 }}>{st?.name||"Aluno não encontrado"}</div>
+<div style={{ fontSize:11,color:"#94a3b8" }}>Importado em {fmtDT(item.reviewed_at)}</div>
+</div>
+<button onClick={()=>setDetail(item)} style={{ background:"none",border:"none",color:"#64748b",fontSize:12,cursor:"pointer" }}>Ver</button>
+</div>
+</Card>
+);
+})}
+</div>
+</>}
+
+{detail && <Modal title={studentFor(detail.aluno_id)?.name||"Respostas"} onClose={()=>setDetail(null)}>
+<div style={{ fontWeight:700,fontSize:13,color:"#FF5603",marginBottom:10,paddingBottom:6,borderBottom:"1.5px solid #fff4ee" }}>🏥 Saúde e Hábitos</div>
+{qAnamneseFields.map(([k,l])=>{
+const v=detail.respostas?.anamnese?.[k];
+if(!v)return null;
+return <div key={k} style={{ marginBottom:8 }}><div style={{ fontSize:11,color:"#94a3b8" }}>{l}</div><div style={{ fontSize:13,color:"#334155" }}>{v}</div></div>;
+})}
+<div style={{ fontWeight:700,fontSize:13,color:"#FF5603",marginBottom:10,marginTop:14,paddingBottom:6,borderBottom:"1.5px solid #fff4ee" }}>❓ PAR-Q</div>
+{qParqLabels.map((l,i)=>{
+const v=detail.respostas?.parq?.["q"+(i+1)];
+return <div key={i} style={{ display:"flex",justifyContent:"space-between",gap:10,marginBottom:6 }}>
+<span style={{ fontSize:12,color:"#475569",flex:1 }}>{l}</span>
+<span style={{ fontSize:12,fontWeight:700,color:v?"#dc2626":"#16a34a" }}>{v===null||v===undefined?"—":v?"SIM":"NÃO"}</span>
+</div>;
+})}
+<div style={{ fontWeight:700,fontSize:13,color:"#FF5603",marginBottom:10,marginTop:14,paddingBottom:6,borderBottom:"1.5px solid #fff4ee" }}>🏠 AVDs</div>
+{Object.entries(qAvdLabels).map(([k,l])=>(
+<div key={k} style={{ display:"flex",justifyContent:"space-between",marginBottom:6 }}>
+<span style={{ fontSize:12,color:"#475569" }}>{l}</span>
+<span style={{ fontSize:12,fontWeight:700 }}>{qScaleLabel(detail.respostas?.avd?.[k])}</span>
+</div>
+))}
+<div style={{ fontWeight:700,fontSize:13,color:"#FF5603",marginBottom:10,marginTop:14,paddingBottom:6,borderBottom:"1.5px solid #fff4ee" }}>🚌 AIVDs</div>
+{Object.entries(qAivdLabels).map(([k,l])=>(
+<div key={k} style={{ display:"flex",justifyContent:"space-between",marginBottom:6 }}>
+<span style={{ fontSize:12,color:"#475569" }}>{l}</span>
+<span style={{ fontSize:12,fontWeight:700 }}>{qScaleLabel(detail.respostas?.aivd?.[k])}</span>
+</div>
+))}
+<div style={{ marginTop:16 }}><Btn full variant="secondary" onClick={()=>setDetail(null)}>Fechar</Btn></div>
+</Modal>}
+</div>
+);
 };
 
 
