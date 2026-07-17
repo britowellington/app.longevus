@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>Longevus — Questionário Pré-Avaliação</title>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect } = React;
+const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
+const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
+const O = "#FF5603";
+
+const getToken = () => new URLSearchParams(window.location.search).get("token") || "";
+
+const rpc = async (name, body) => {
+  const r = await fetch(SUPA_URL + "/rest/v1/rpc/" + name, {
+    method: "POST",
+    headers: { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) return null;
+  return r.json();
+};
+
+const Card = ({ children, style = {} }) => (
+  <div style={{ background: "#fff", borderRadius: 14, border: "1.5px solid #e2e8f0", boxShadow: "0 1px 6px #0001", padding: 18, ...style }}>{children}</div>
+);
+
+const Btn = ({ children, onClick, variant = "primary", disabled, full }) => {
+  const styles = {
+    primary: { background: disabled ? "#fbbf9b" : O, color: "#fff", border: "none" },
+    secondary: { background: "#f1f5f9", color: "#475569", border: "1.5px solid #e2e8f0" }
+  };
+  return (
+    <button onClick={disabled ? undefined : onClick} style={{ ...styles[variant], padding: "12px 18px", borderRadius: 11, fontWeight: 700, fontSize: 14, cursor: disabled ? "default" : "pointer", width: full ? "100%" : undefined }}>
+      {children}
+    </button>
+  );
+};
+
+const Inp = ({ label, value, onChange, placeholder, opts, type = "text" }) => (
+  <div style={{ marginBottom: 14 }}>
+    {label && <label style={{ fontSize: 13, fontWeight: 600, color: "#475569", display: "block", marginBottom: 6 }}>{label}</label>}
+    {opts ? (
+      <select value={value} onChange={e => onChange(e.target.value)} style={{ width: "100%", padding: "11px 12px", borderRadius: 10, border: "1.5px solid #e2e8f0", background: "#f8fafc", fontSize: 14, boxSizing: "border-box" }}>
+        {opts.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
+      </select>
+    ) : (
+      <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+        style={{ width: "100%", padding: "11px 12px", borderRadius: 10, border: "1.5px solid #e2e8f0", background: "#f8fafc", fontSize: 14, boxSizing: "border-box" }}/>
+    )}
+  </div>
+);
+
+const ScaleQuestion = ({ label, value, onChange }) => (
+  <div style={{ paddingBottom: 14, marginBottom: 14, borderBottom: "1px solid #f1f5f9" }}>
+    <div style={{ fontSize: 14, color: "#334155", marginBottom: 10, fontWeight: 600 }}>{label}</div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {[
+        { v: 2, l: "Eu faço sozinho(a), sem ajuda" },
+        { v: 1, l: "Preciso de um pouco de ajuda" },
+        { v: 0, l: "Não consigo fazer sozinho(a)" }
+      ].map(opt => (
+        <button key={opt.v} onClick={() => onChange(opt.v)}
+          style={{ textAlign: "left", padding: "10px 14px", borderRadius: 10, border: "1.5px solid", borderColor: value === opt.v ? O : "#e2e8f0",
+            background: value === opt.v ? "#fff4ee" : "#fff", color: value === opt.v ? O : "#475569", fontWeight: value === opt.v ? 700 : 500, fontSize: 13, cursor: "pointer" }}>
+          {opt.l}
+        </button>
+      ))}
+    </div>
+  </div>
+);
+
+const YesNoQuestion = ({ index, label, value, onChange }) => (
+  <div style={{ paddingBottom: 14, marginBottom: 14, borderBottom: "1px solid #f1f5f9" }}>
+    <div style={{ fontSize: 14, color: "#334155", marginBottom: 8 }}>{index}. {label}</div>
+    <div style={{ display: "flex", gap: 8 }}>
+      {[true, false].map(v => (
+        <button key={String(v)} onClick={() => onChange(v)}
+          style={{ flex: 1, padding: "10px 0", borderRadius: 9, border: "1.5px solid", borderColor: value === v ? (v ? "#dc2626" : "#16a34a") : "#e2e8f0",
+            background: value === v ? (v ? "#fee2e2" : "#dcfce7") : "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer",
+            color: value === v ? (v ? "#dc2626" : "#16a34a") : "#94a3b8" }}>
+          {v ? "SIM" : "NÃO"}
+        </button>
+      ))}
+    </div>
+  </div>
+);
+
+const parqQs = ["Um médico já disse que você tem algum problema no coração?", "Você sente dor no peito quando faz esforço físico?", "Você sentiu dor no peito no último mês, mesmo sem se exercitar?", "Você já perdeu o equilíbrio por tontura ou já desmaiou?", "Você tem algum problema nos ossos ou articulações que piora com exercício?", "Você toma remédio para pressão ou para o coração?", "Existe algum outro motivo para você não fazer atividade física?"];
+
+const avdItems = [["eating", "🍽️ Comer"], ["bathing", "🚿 Tomar banho"], ["dressing", "👕 Vestir-se"], ["toileting", "🪥 Higiene pessoal"], ["transferring", "🪑 Sentar e levantar"]];
+const aivdItems = [["shopping", "🛒 Fazer compras"], ["finance", "💰 Cuidar do dinheiro"], ["transport", "🚌 Usar transporte (ônibus, carro, etc.)"], ["medication", "💊 Tomar seus remédios sozinho(a)"], ["housework", "🏠 Fazer tarefas de casa"], ["telephone", "📱 Usar telefone/celular"]];
+
+function App() {
+  const token = getToken();
+  const [status, setStatus] = useState("loading"); // loading | invalid | form | done
+  const [firstName, setFirstName] = useState("");
+  const [step, setStep] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [anamnese, setAnamnese] = useState({
+    pathologies: "", medications: "", allergies: "", surgeries: "",
+    physActivityHistory: "", physActivityFreq: "", physActivityType: "",
+    sleepHours: "", sleepQuality: "", dietQuality: "", stressLevel: "",
+    smoking: "nao", alcohol: "nao",
+    mainComplaints: "", painLocation: "", goals: "", observations: ""
+  });
+  const [parq, setParq] = useState({ q1: null, q2: null, q3: null, q4: null, q5: null, q6: null, q7: null });
+  const [avd, setAvd] = useState({ eating: 2, bathing: 2, dressing: 2, toileting: 2, transferring: 2 });
+  const [aivd, setAivd] = useState({ shopping: 2, finance: 2, transport: 2, medication: 2, housework: 2, telephone: 2 });
+  const [funcRisk, setFuncRisk] = useState({ falls: false, balance: false, physlim: false, selfhealth: 2 });
+
+  useEffect(() => {
+    (async () => {
+      if (!token) { setStatus("invalid"); return; }
+      const rows = await rpc("rpc_get_questionario", { p_token: token });
+      if (!rows || rows.length === 0) { setStatus("invalid"); return; }
+      const fullName = rows[0].aluno_nome || "";
+      setFirstName(fullName.trim().split(/\s+/)[0] || "");
+      setStatus("form");
+    })();
+  }, [token]);
+
+  const steps = ["Saúde", "Atividade Física", "Hábitos", "Queixas e Objetivos", "PAR-Q", "AVDs", "AIVDs"];
+
+  const submit = async () => {
+    setSubmitting(true);
+    const respostas = { anamnese, parq, avd, aivd, funcRisk };
+    const ok = await rpc("rpc_submit_questionario", { p_token: token, p_respostas: respostas });
+    setSubmitting(false);
+    if (ok) setStatus("done"); else window.alert("Não foi possível enviar. Verifique sua internet e tente novamente.");
+  };
+
+  if (status === "loading") {
+    return <Center><div style={{ color: "#94a3b8" }}>Carregando...</div></Center>;
+  }
+  if (status === "invalid") {
+    return <Center><Card style={{ textAlign: "center", maxWidth: 380 }}>
+      <div style={{ fontSize: 32, marginBottom: 10 }}>⚠️</div>
+      <div style={{ fontWeight: 700, marginBottom: 6 }}>Link inválido ou já utilizado</div>
+      <div style={{ fontSize: 13, color: "#64748b" }}>Peça ao seu professor para gerar um novo link.</div>
+    </Card></Center>;
+  }
+  if (status === "done") {
+    return <Center><Card style={{ textAlign: "center", maxWidth: 380 }}>
+      <div style={{ fontSize: 32, marginBottom: 10 }}>✅</div>
+      <div style={{ fontWeight: 700, marginBottom: 6 }}>Respostas enviadas!</div>
+      <div style={{ fontSize: 13, color: "#64748b" }}>Obrigado por preencher. Seu professor vai revisar tudo antes da avaliação presencial.</div>
+    </Card></Center>;
+  }
+
+  return (
+    <div style={{ maxWidth: 480, margin: "0 auto", padding: "18px 16px 40px" }}>
+      <div style={{ fontWeight: 800, fontSize: 20, marginBottom: 2 }}>Olá{firstName ? ", " + firstName : ""}! 👋</div>
+      <div style={{ fontSize: 13, color: "#64748b", marginBottom: 18 }}>Antes da sua avaliação, responda este questionário com calma. Não existem respostas certas ou erradas.</div>
+
+      <div style={{ display: "flex", gap: 4, marginBottom: 18 }}>
+        {steps.map((s, i) => (
+          <div key={i} style={{ flex: 1, height: 4, borderRadius: 99, background: i <= step ? O : "#e2e8f0" }}/>
+        ))}
+      </div>
+
+      {step === 0 && <Card>
+        <div style={{ fontWeight: 700, marginBottom: 4 }}>Sua saúde</div>
+        <div style={{ fontSize: 13, color: "#64748b", marginBottom: 18 }}>Essas informações ajudam seu professor a montar um treino seguro para você.</div>
+        <Inp label="Você tem alguma doença diagnosticada por um médico?" value={anamnese.pathologies} onChange={v => setAnamnese(a => ({ ...a, pathologies: v }))} placeholder="Ex: pressão alta, diabetes, artrose... (ou deixe em branco)"/>
+        <Inp label="Quais remédios você toma regularmente?" value={anamnese.medications} onChange={v => setAnamnese(a => ({ ...a, medications: v }))} placeholder="Nome dos remédios, se houver"/>
+        <Inp label="Você tem alguma alergia?" value={anamnese.allergies} onChange={v => setAnamnese(a => ({ ...a, allergies: v }))} placeholder="Remédio, alimento, outros..."/>
+        <Inp label="Você já fez alguma cirurgia?" value={anamnese.surgeries} onChange={v => setAnamnese(a => ({ ...a, surgeries: v }))} placeholder="Qual e quando, se houver"/>
+        <div style={{ marginTop: 16 }}><Btn full onClick={() => setStep(1)}>Continuar →</Btn></div>
+      </Card>}
+
+      {step === 1 && <Card>
+        <div style={{ fontWeight: 700, marginBottom: 4 }}>Atividade física</div>
+        <div style={{ fontSize: 13, color: "#64748b", marginBottom: 18 }}>Conte um pouco sobre sua rotina de exercícios.</div>
+        <Inp label="Você já praticou ou pratica atividade física?" value={anamnese.physActivityHistory} onChange={v => setAnamnese(a => ({ ...a, physActivityHistory: v }))}
+          opts={[{ v: "", l: "Selecione..." }, { v: "nunca", l: "Nunca pratiquei" }, { v: "passado", l: "Já pratiquei no passado" }, { v: "irregular", l: "Pratico de vez em quando" }, { v: "regular", l: "Pratico regularmente" }]}/>
+        {anamnese.physActivityHistory && anamnese.physActivityHistory !== "nunca" && <>
+          <Inp label="Qual(is) atividade(s)?" value={anamnese.physActivityType} onChange={v => setAnamnese(a => ({ ...a, physActivityType: v }))} placeholder="Ex: caminhada, hidroginástica..."/>
+          <Inp label="Quantas vezes por semana?" value={anamnese.physActivityFreq} onChange={v => setAnamnese(a => ({ ...a, physActivityFreq: v }))}
+            opts={[{ v: "", l: "Selecione..." }, { v: "1x", l: "1 vez por semana" }, { v: "2x", l: "2 vezes por semana" }, { v: "3x", l: "3 vezes por semana" }, { v: "4x", l: "4 vezes ou mais" }]}/>
+        </>}
+        <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
+          <Btn variant="secondary" full onClick={() => setStep(0)}>Voltar</Btn>
+          <Btn full onClick={() => setStep(2)}>Continuar →</Btn>
+        </div>
+      </Card>}
+
+      {step === 2 && <Card>
+        <div style={{ fontWeight: 700, marginBottom: 4 }}>Seus hábitos</div>
+        <div style={{ fontSize: 13, color: "#64748b", marginBottom: 18 }}>Sono, alimentação e outros hábitos do dia a dia.</div>
+        <Inp label="Quantas horas você dorme por noite?" value={anamnese.sleepHours} onChange={v => setAnamnese(a => ({ ...a, sleepHours: v }))}
+          opts={[{ v: "", l: "Selecione..." }, { v: "<5", l: "Menos de 5h" }, { v: "5-6", l: "5 a 6h" }, { v: "7-8", l: "7 a 8h" }, { v: ">8", l: "Mais de 8h" }]}/>
+        <Inp label="Como você avalia a qualidade do seu sono?" value={anamnese.sleepQuality} onChange={v => setAnamnese(a => ({ ...a, sleepQuality: v }))}
+          opts={[{ v: "", l: "Selecione..." }, { v: "ruim", l: "Ruim" }, { v: "regular", l: "Regular" }, { v: "boa", l: "Boa" }, { v: "otima", l: "Ótima" }]}/>
+        <Inp label="Como você avalia sua alimentação?" value={anamnese.dietQuality} onChange={v => setAnamnese(a => ({ ...a, dietQuality: v }))}
+          opts={[{ v: "", l: "Selecione..." }, { v: "ruim", l: "Ruim" }, { v: "regular", l: "Regular" }, { v: "boa", l: "Boa" }, { v: "otima", l: "Ótima" }]}/>
+        <Inp label="Como está seu nível de estresse?" value={anamnese.stressLevel} onChange={v => setAnamnese(a => ({ ...a, stressLevel: v }))}
+          opts={[{ v: "", l: "Selecione..." }, { v: "baixo", l: "Baixo" }, { v: "moderado", l: "Moderado" }, { v: "alto", l: "Alto" }, { v: "muito_alto", l: "Muito alto" }]}/>
+        <Inp label="Você fuma?" value={anamnese.smoking} onChange={v => setAnamnese(a => ({ ...a, smoking: v }))}
+          opts={[{ v: "nao", l: "Não fumo" }, { v: "ex", l: "Já fumei, mas parei" }, { v: "sim", l: "Fumo atualmente" }]}/>
+        <Inp label="Você consome bebida alcoólica?" value={anamnese.alcohol} onChange={v => setAnamnese(a => ({ ...a, alcohol: v }))}
+          opts={[{ v: "nao", l: "Não consumo" }, { v: "ocasional", l: "De vez em quando" }, { v: "regular", l: "Regularmente" }]}/>
+        <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
+          <Btn variant="secondary" full onClick={() => setStep(1)}>Voltar</Btn>
+          <Btn full onClick={() => setStep(3)}>Continuar →</Btn>
+        </div>
+      </Card>}
+
+      {step === 3 && <Card>
+        <div style={{ fontWeight: 700, marginBottom: 4 }}>Queixas e objetivos</div>
+        <div style={{ fontSize: 13, color: "#64748b", marginBottom: 18 }}>O que você sente hoje e o que espera alcançar.</div>
+        <Inp label="Sente alguma dor ou incômodo?" value={anamnese.mainComplaints} onChange={v => setAnamnese(a => ({ ...a, mainComplaints: v }))} placeholder="Ex: cansaço fácil, tontura, dor no joelho..."/>
+        <Inp label="Onde sente essa dor (se houver)?" value={anamnese.painLocation} onChange={v => setAnamnese(a => ({ ...a, painLocation: v }))} placeholder="Ex: lombar, joelho direito..."/>
+        <Inp label="O que você espera alcançar com os exercícios?" value={anamnese.goals} onChange={v => setAnamnese(a => ({ ...a, goals: v }))} placeholder="Ex: mais disposição, força, qualidade de vida..."/>
+        <Inp label="Quer contar mais alguma coisa?" value={anamnese.observations} onChange={v => setAnamnese(a => ({ ...a, observations: v }))} placeholder="Fique à vontade"/>
+        <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
+          <Btn variant="secondary" full onClick={() => setStep(2)}>Voltar</Btn>
+          <Btn full onClick={() => setStep(4)}>Continuar →</Btn>
+        </div>
+      </Card>}
+
+      {step === 4 && <Card>
+        <div style={{ fontWeight: 700, marginBottom: 4 }}>Prontidão para exercícios</div>
+        <div style={{ fontSize: 13, color: "#64748b", marginBottom: 18 }}>Responda com sinceridade — isso é para sua segurança.</div>
+        {parqQs.map((q, i) => {
+          const k = "q" + (i + 1);
+          return <YesNoQuestion key={i} index={i + 1} label={q} value={parq[k]} onChange={v => setParq(p => ({ ...p, [k]: v }))}/>;
+        })}
+        <div style={{ marginTop: 8, display: "flex", gap: 10 }}>
+          <Btn variant="secondary" full onClick={() => setStep(3)}>Voltar</Btn>
+          <Btn full onClick={() => setStep(5)}>Continuar →</Btn>
+        </div>
+      </Card>}
+
+      {step === 5 && <Card>
+        <div style={{ fontWeight: 700, marginBottom: 4 }}>Atividades do dia a dia</div>
+        <div style={{ fontSize: 13, color: "#64748b", marginBottom: 18 }}>Como você se sai nessas tarefas básicas, hoje em dia?</div>
+        {avdItems.map(([k, l]) => (
+          <ScaleQuestion key={k} label={l} value={avd[k]} onChange={v => setAvd(a => ({ ...a, [k]: v }))}/>
+        ))}
+        <div style={{ marginTop: 8, display: "flex", gap: 10 }}>
+          <Btn variant="secondary" full onClick={() => setStep(4)}>Voltar</Btn>
+          <Btn full onClick={() => setStep(6)}>Continuar →</Btn>
+        </div>
+      </Card>}
+
+      {step === 6 && <Card>
+        <div style={{ fontWeight: 700, marginBottom: 4 }}>Autonomia no dia a dia</div>
+        <div style={{ fontSize: 13, color: "#64748b", marginBottom: 18 }}>Últimas perguntas, quase lá!</div>
+        {aivdItems.map(([k, l]) => (
+          <ScaleQuestion key={k} label={l} value={aivd[k]} onChange={v => setAivd(a => ({ ...a, [k]: v }))}/>
+        ))}
+        <div style={{ marginTop: 4, marginBottom: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#475569", marginBottom: 10 }}>Mais algumas perguntas:</div>
+          {[["falls", "Você caiu alguma vez nos últimos 12 meses?"], ["balance", "Você sente que tem dificuldade de equilíbrio?"], ["physlim", "Você sente alguma limitação física no dia a dia?"]].map(([k, l]) => (
+            <label key={k} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 9, border: `1.5px solid ${funcRisk[k] ? O : "#e2e8f0"}`, background: funcRisk[k] ? "#fff4ee" : "#f8fafc", cursor: "pointer", marginBottom: 8 }}>
+              <input type="checkbox" checked={!!funcRisk[k]} onChange={e => setFuncRisk(f => ({ ...f, [k]: e.target.checked }))}/>
+              <span style={{ fontSize: 13, fontWeight: 600, color: funcRisk[k] ? O : "#475569" }}>{l}</span>
+            </label>
+          ))}
+          <Inp label="De modo geral, como você avalia sua saúde?" value={funcRisk.selfhealth} onChange={v => setFuncRisk(f => ({ ...f, selfhealth: parseInt(v) }))}
+            opts={[{ v: 0, l: "Ruim" }, { v: 1, l: "Regular" }, { v: 2, l: "Boa ou ótima" }]}/>
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <Btn variant="secondary" full onClick={() => setStep(5)}>Voltar</Btn>
+          <Btn full disabled={submitting} onClick={submit}>{submitting ? "Enviando..." : "Enviar respostas ✓"}</Btn>
+        </div>
+      </Card>}
+    </div>
+  );
+}
+
+const Center = ({ children }) => (
+  <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>{children}</div>
+);
+
+const style = document.createElement("style");
+style.textContent = "*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;color:#0f172a;}input,select,textarea,button{font-family:inherit;}select,input{appearance:none;}";
+document.head.appendChild(style);
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
