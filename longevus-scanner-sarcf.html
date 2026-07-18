@@ -460,13 +460,36 @@ function buildResultPdfBlob(score, result, age) {
   const marginX = 18;
   const pageWidth = 210;
   const contentWidth = pageWidth - marginX * 2;
-  let y = 22;
 
   const inkColor = [43, 38, 33];
   const softColor = [92, 85, 77];
   const accentColor = [139, 74, 59];
+  const accentSoft = [242, 227, 219];
   const alertColor = [184, 85, 46];
+  const alertSoft = [251, 240, 234];
   const safeColor = [74, 107, 77];
+  const safeSoft = [231, 239, 231];
+  const lineColor = [228, 220, 208];
+  const bgColor = [247, 243, 237];
+  const badgeColor = result.key === "alto" ? alertColor : safeColor;
+  const badgeSoft = result.key === "alto" ? alertSoft : safeSoft;
+
+  // ---- Header band ----
+  doc.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
+  doc.rect(0, 0, pageWidth, 34, "F");
+  const logoW = 32;
+  const logoH = logoW * (307 / 440);
+  doc.addImage(LOGO_LONGEVUS, "PNG", marginX, 8, logoW, logoH);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10.5);
+  doc.setTextColor(softColor[0], softColor[1], softColor[2]);
+  doc.text("Scanner de Sarcopenia", pageWidth - marginX, 15, { align: "right" });
+  doc.setFontSize(9);
+  doc.text("Resultado da Triagem (SARC-F)", pageWidth - marginX, 20.5, { align: "right" });
+  doc.setFillColor(accentColor[0], accentColor[1], accentColor[2]);
+  doc.rect(0, 34, pageWidth, 2, "F");
+
+  let y = 48;
 
   function heading(text) {
     doc.setFont("helvetica", "bold");
@@ -474,7 +497,7 @@ function buildResultPdfBlob(score, result, age) {
     doc.setTextColor(accentColor[0], accentColor[1], accentColor[2]);
     doc.text(text.toUpperCase(), marginX, y);
     y += 3;
-    doc.setDrawColor(228, 220, 208);
+    doc.setDrawColor(lineColor[0], lineColor[1], lineColor[2]);
     doc.line(marginX, y, pageWidth - marginX, y);
     y += 7;
   }
@@ -489,64 +512,105 @@ function buildResultPdfBlob(score, result, age) {
     y += lines.length * (size ? size * 0.42 : 4.6) + 3;
   }
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(20);
-  doc.setTextColor(accentColor[0], accentColor[1], accentColor[2]);
-  doc.text("Longevus", marginX, y);
-  y += 7;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(11);
-  doc.setTextColor(softColor[0], softColor[1], softColor[2]);
-  doc.text("Scanner de Sarcopenia — Resultado da Triagem (SARC-F)", marginX, y);
-  y += 10;
-
+  // ---- Score card ----
   heading("Seu Resultado");
+  const cardH = 30;
+  doc.setFillColor(accentSoft[0], accentSoft[1], accentSoft[2]);
+  doc.roundedRect(marginX, y, contentWidth, cardH, 3, 3, "F");
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(30);
+  doc.setFontSize(28);
   doc.setTextColor(inkColor[0], inkColor[1], inkColor[2]);
-  doc.text(String(score) + " / 10", marginX, y + 6);
-  const badgeColor = result.key === "alto" ? alertColor : safeColor;
-  doc.setFontSize(12);
-  doc.setTextColor(badgeColor[0], badgeColor[1], badgeColor[2]);
-  doc.text(result.label, marginX, y + 15);
-  y += 26;
+  doc.text(String(score) + " / 10", marginX + 8, y + 19);
 
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  const pillLabel = result.label;
+  const pillTextW = doc.getTextWidth(pillLabel);
+  const pillPadX = 5;
+  const pillW = pillTextW + pillPadX * 2;
+  const pillH = 9;
+  const pillX = marginX + contentWidth - pillW - 8;
+  const pillY = y + (cardH - pillH) / 2;
+  doc.setFillColor(badgeColor[0], badgeColor[1], badgeColor[2]);
+  doc.roundedRect(pillX, pillY, pillW, pillH, pillH / 2, pillH / 2, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.text(pillLabel, pillX + pillW / 2, pillY + pillH / 2 + 1.3, { align: "center" });
+  y += cardH + 10;
+
+  // ---- Comparison bars ----
   heading("Como Você Se Compara");
-  paragraph("Você: " + score + "/10", 10.5);
-  paragraph("Média estimada (" + bench.bandLabel + "): " + bench.average + "/10", 10.5);
-  paragraph("Ideal: 1/10", 10.5);
-  paragraph("Valores de referência estimados a partir de padrões populacionais gerais.", 9, softColor);
-  y += 2;
+  const barMax = 10;
+  const barTrackW = contentWidth;
+  const barH = 4.5;
+  function comparisonBar(label, value, color) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.setTextColor(softColor[0], softColor[1], softColor[2]);
+    doc.text(label, marginX, y);
+    doc.setTextColor(inkColor[0], inkColor[1], inkColor[2]);
+    doc.text(String(value) + "/10", marginX + barTrackW, y, { align: "right" });
+    y += 2.5;
+    doc.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
+    doc.roundedRect(marginX, y, barTrackW, barH, 2, 2, "F");
+    const fillW = Math.max((value / barMax) * barTrackW, 3);
+    doc.setFillColor(color[0], color[1], color[2]);
+    doc.roundedRect(marginX, y, fillW, barH, 2, 2, "F");
+    y += barH + 6;
+  }
+  comparisonBar("Você", score, accentColor);
+  comparisonBar("Média estimada (" + bench.bandLabel + ")", bench.average, [201, 162, 74]);
+  comparisonBar("Ideal", 1, safeColor);
+  paragraph("Valores de referência estimados a partir de padrões populacionais gerais.", 8.5, softColor);
+  y += 1;
 
+  // ---- Meaning ----
   heading("O Que Isso Significa");
   paragraph(result.impact, 10.5);
 
   if (result.alerts) {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(alertColor[0], alertColor[1], alertColor[2]);
-    doc.text("PONTOS DE ATENÇÃO", marginX, y);
-    y += 6;
-    result.alerts.forEach(function (a) {
-      paragraph("• " + a, 10.5);
+    const boxStartY = y;
+    const lineH = 5.1;
+    const alertLines = result.alerts.map(function (a) {
+      return doc.splitTextToSize("•  " + a, contentWidth - 8);
     });
+    const totalLines = alertLines.reduce(function (s, l) { return s + l.length; }, 0);
+    const boxH = totalLines * lineH + 12;
+    doc.setFillColor(badgeSoft[0], badgeSoft[1], badgeSoft[2]);
+    doc.roundedRect(marginX, boxStartY, contentWidth, boxH, 3, 3, "F");
+    y += 7;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.setTextColor(badgeColor[0], badgeColor[1], badgeColor[2]);
+    doc.text("PONTOS DE ATENÇÃO", marginX + 6, y);
+    y += 6;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(inkColor[0], inkColor[1], inkColor[2]);
+    alertLines.forEach(function (lines) {
+      doc.text(lines, marginX + 6, y);
+      y += lines.length * lineH;
+    });
+    y = boxStartY + boxH + 8;
   }
 
-  y += 2;
   heading("Próximos Passos");
   paragraph("Esta é uma ferramenta de triagem e não substitui avaliação profissional presencial. Fale com Wellington Brito para uma avaliação funcional completa e um plano de ação personalizado.", 10.5);
 
-  const footerY = 277;
-  doc.setDrawColor(228, 220, 208);
-  doc.line(marginX, footerY - 8, pageWidth - marginX, footerY - 8);
+  // ---- Footer credential ----
+  const footerY = 271;
+  doc.setDrawColor(lineColor[0], lineColor[1], lineColor[2]);
+  doc.line(marginX, footerY - 6, pageWidth - marginX, footerY - 6);
+  const wbLogoW = 16;
+  const wbLogoH = wbLogoW * (264 / 300);
+  doc.addImage(LOGO_WB, "PNG", marginX, footerY, wbLogoW, wbLogoH);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(10.5);
+  doc.setFontSize(11);
   doc.setTextColor(inkColor[0], inkColor[1], inkColor[2]);
-  doc.text("Wellington Brito", marginX, footerY);
+  doc.text("Wellington Brito", marginX + wbLogoW + 6, footerY + 6);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(accentColor[0], accentColor[1], accentColor[2]);
-  doc.text("Personal Trainer · CREF 089836-G/SP · Especialista em Gerontologia", marginX, footerY + 5);
+  doc.text("Personal Trainer · CREF 089836-G/SP · Especialista em Gerontologia", marginX + wbLogoW + 6, footerY + 11.5);
 
   return doc.output("blob");
 }
