@@ -820,7 +820,8 @@ function App() {
       if (dbError) throw dbError;
       setScreen("thanks");
     } catch (e) {
-      setError("Não conseguimos salvar seus dados agora. Tente novamente em instantes.");
+      const detail = (e && e.message) ? e.message : (e && e.error_description) ? e.error_description : "erro desconhecido";
+      setError("Não foi possível salvar: " + detail);
     } finally {
       setSaving(false);
     }
