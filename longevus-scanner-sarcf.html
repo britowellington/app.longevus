@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
-<title>Scanner de Sarcopenia — Longevus</title>
+<title>Scanner de Sarcopenia · Longevus</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -53,7 +53,30 @@
     min-height:0;
     overflow-y:auto;
     -webkit-overflow-scrolling:touch;
+    display:flex;
+    flex-direction:column;
   }
+  .content-spacer{
+    flex:1 1 auto;
+    min-height:6px;
+  }
+  .solo-logo{
+    display:block;
+    align-self:center;
+    width:78px;
+    height:auto;
+    flex-shrink:0;
+  }
+  .wb-signature{
+    display:block;
+    align-self:center;
+    width:82px;
+    height:auto;
+    flex-shrink:0;
+    opacity:0.95;
+  }
+  .screen-content > *:first-child{margin-top:0;}
+  .screen-content > *:last-child{margin-bottom:0;}
   .screen-footer{
     flex-shrink:0;
     padding-top:10px;
@@ -126,21 +149,9 @@
     margin:4px 0 0;
     box-shadow:0 1px 2px rgba(43,38,33,0.04), 0 10px 20px -12px rgba(43,38,33,0.16);
   }
-  .credential-top{
-    display:flex;
-    align-items:center;
-    gap:11px;
-    margin-bottom:10px;
-  }
-  .credential-box .wb-logo{
-    width:34px;
-    height:auto;
-    flex-shrink:0;
-  }
-  .credential-box .cred-text{flex:1;}
-  .credential-box .name{font-weight:700;color:var(--ink);font-size:13.5px;letter-spacing:-.005em;}
-  .credential-box .role{font-weight:500;color:var(--accent);font-size:11.5px;margin-top:2px;line-height:1.35;}
-  .credential-divider{height:1px;background:var(--line);margin:0 0 9px;}
+  .credential-box .name{font-weight:700;color:var(--ink);font-size:14px;letter-spacing:-.005em;}
+  .credential-box .role{font-weight:500;color:var(--accent);font-size:11.5px;margin-top:3px;line-height:1.35;}
+  .credential-divider{height:1px;background:var(--line);margin:9px 0;}
   .credential-box .disclaimer{font-size:10.5px;color:var(--ink-soft);line-height:1.45;}
   button.primary{
     background:var(--accent);
@@ -429,7 +440,7 @@ function classify(score) {
       key: "alto",
       label: "Triagem positiva",
       badgeClass: "alert",
-      impact: "Seus resultados indicam sinais de alerta compatíveis com perda de massa e função muscular (sarcopenia). Pode aparecer como mais cansaço em tarefas simples, insegurança ao caminhar ou maior risco de quedas. É um quadro comum após os 50 anos — e tratável.",
+      impact: "Seus resultados indicam sinais de alerta compatíveis com perda de massa e função muscular (sarcopenia). Pode aparecer como mais cansaço em tarefas simples, insegurança ao caminhar ou maior risco de quedas. É um quadro comum após os 50 anos, mas é tratável.",
       alerts: [
         "Redução de força para tarefas do dia a dia",
         "Maior risco de quedas e perda de equilíbrio",
@@ -712,8 +723,8 @@ function Thermometer({ score }) {
         </div>
       </div>
       <div className="thermo-labels">
-        <span>0 — sem sinais</span>
-        <span>10 — alto risco</span>
+        <span>0 · sem sinais</span>
+        <span>10 · alto risco</span>
       </div>
     </div>
   );
@@ -850,7 +861,7 @@ function App() {
       try {
         await navigator.share({
           files: [file],
-          title: "Meu resultado — Scanner Longevus",
+          title: "Meu resultado · Scanner Longevus",
           text: "Confira meu resultado do Scanner de Sarcopenia da Longevus."
         });
       } catch (e) {
@@ -895,20 +906,21 @@ function App() {
     return (
       <div className="screen">
         <div className="screen-content">
-          <img className="brand-logo" src={LOGO_LONGEVUS} alt="Longevus" />
-          <h1 className="display">Sua força e equilíbrio estão dentro do esperado para sua idade?</h1>
-          <p className="body-text">Responda 5 perguntas rápidas (leva 1 minuto) e descubra sua triagem de risco de sarcopenia — a perda de massa e função muscular que afeta a autonomia após os 50 anos.</p>
+          <div>
+            <img className="brand-logo" src={LOGO_LONGEVUS} alt="Longevus" />
+            <h1 className="display">Sua força e equilíbrio estão dentro do esperado para sua idade?</h1>
+            <p className="body-text">Responda 5 perguntas rápidas (leva 1 minuto) e descubra sua triagem de risco de sarcopenia, a perda de massa e função muscular que afeta a autonomia após os 50 anos.</p>
+          </div>
+          <div className="content-spacer"></div>
           <div className="credential-box">
-            <div className="credential-top">
-              <img className="wb-logo" src={LOGO_WB} alt="Wellington Brito Personal Trainer" />
-              <div className="cred-text">
-                <div className="name">Wellington Brito</div>
-                <div className="role">Personal Trainer · CREF 089836-G/SP · Especialista em Gerontologia</div>
-              </div>
-            </div>
+            <div className="name">Wellington Brito</div>
+            <div className="role">Personal Trainer · CREF 089836-G/SP<br />Especialista em Gerontologia</div>
             <div className="credential-divider"></div>
             <div className="disclaimer">Ferramenta de triagem baseada em questionário validado cientificamente. Não substitui avaliação profissional presencial.</div>
           </div>
+          <div className="content-spacer"></div>
+          <img className="wb-signature" src={LOGO_WB} alt="Wellington Brito Personal Trainer" />
+          <div className="content-spacer"></div>
         </div>
         <div className="screen-footer">
           <button className="primary" onClick={startQuiz}>Começar avaliação</button>
@@ -921,18 +933,26 @@ function App() {
     return (
       <div className="screen">
         <div className="screen-content">
-          <p className="eyebrow">Antes de começar</p>
-          <h2 className="display">Qual a sua idade?</h2>
-          <p className="body-text">Assim conseguimos comparar seu resultado com a referência esperada para sua faixa etária.</p>
-          <input
-            className="field"
-            type="number"
-            inputMode="numeric"
-            placeholder="Ex: 62"
-            value={age}
-            onChange={function (e) { setAge(e.target.value); }}
-          />
-          {ageError && <div className="error-text">{ageError}</div>}
+          <div className="content-spacer"></div>
+          <img className="solo-logo" src={LOGO_LONGEVUS} alt="Longevus" />
+          <div className="content-spacer"></div>
+          <div>
+            <p className="eyebrow">Antes de começar</p>
+            <h2 className="display">Qual a sua idade?</h2>
+            <p className="body-text">Assim conseguimos comparar seu resultado com a referência esperada para sua faixa etária.</p>
+            <input
+              className="field"
+              type="number"
+              inputMode="numeric"
+              placeholder="Ex: 62"
+              value={age}
+              onChange={function (e) { setAge(e.target.value); }}
+            />
+            {ageError && <div className="error-text">{ageError}</div>}
+          </div>
+          <div className="content-spacer"></div>
+          <img className="wb-signature" src={LOGO_WB} alt="Wellington Brito Personal Trainer" />
+          <div className="content-spacer"></div>
         </div>
         <div className="screen-footer">
           <button className="primary" onClick={confirmAge}>Continuar</button>
@@ -948,6 +968,7 @@ function App() {
         <ProgressBar step={qIndex} total={totalSteps} />
         <p className="step-count">Pergunta {qIndex + 1} de {totalSteps}</p>
         <div className="screen-content">
+          <div className="content-spacer"></div>
           <div className="q-wrap" key={qIndex}>
             <div className="q-icon-badge">
               <QuestionIcon type={q.icon} />
@@ -964,6 +985,9 @@ function App() {
               );
             })}
           </div>
+          <div className="content-spacer"></div>
+          <img className="wb-signature" src={LOGO_WB} alt="Wellington Brito Personal Trainer" />
+          <div className="content-spacer"></div>
         </div>
         <div className="screen-footer">
           <button className="ghost" onClick={goBack}>Voltar</button>
@@ -1007,24 +1031,32 @@ function App() {
     return (
       <div className="screen">
         <div className="screen-content">
-          <p className="eyebrow">Último passo</p>
-          <h2 className="display">Receba a leitura completa do seu resultado</h2>
-          <p className="body-text">Deixe seu nome e WhatsApp. Wellington vai analisar sua triagem e te chamar com as próximas etapas — sem compromisso.</p>
-          <input
-            className="field"
-            type="text"
-            placeholder="Seu nome"
-            value={name}
-            onChange={function (e) { setName(e.target.value); }}
-          />
-          <input
-            className="field"
-            type="tel"
-            placeholder="WhatsApp (com DDD)"
-            value={whatsapp}
-            onChange={function (e) { setWhatsapp(e.target.value); }}
-          />
-          {error && <div className="error-text">{error}</div>}
+          <div className="content-spacer"></div>
+          <img className="solo-logo" src={LOGO_LONGEVUS} alt="Longevus" />
+          <div className="content-spacer"></div>
+          <div>
+            <p className="eyebrow">Último passo</p>
+            <h2 className="display">Receba a leitura completa do seu resultado</h2>
+            <p className="body-text">Deixe seu nome e WhatsApp. Wellington vai analisar sua triagem e te chamar com as próximas etapas, sem compromisso.</p>
+            <input
+              className="field"
+              type="text"
+              placeholder="Seu nome"
+              value={name}
+              onChange={function (e) { setName(e.target.value); }}
+            />
+            <input
+              className="field"
+              type="tel"
+              placeholder="WhatsApp (com DDD)"
+              value={whatsapp}
+              onChange={function (e) { setWhatsapp(e.target.value); }}
+            />
+            {error && <div className="error-text">{error}</div>}
+          </div>
+          <div className="content-spacer"></div>
+          <img className="wb-signature" src={LOGO_WB} alt="Wellington Brito Personal Trainer" />
+          <div className="content-spacer"></div>
         </div>
         <div className="screen-footer">
           <button className="primary" onClick={submitLead} disabled={saving}>
@@ -1039,11 +1071,18 @@ function App() {
     return (
       <div className="screen">
         <div className="screen-content">
+          <div className="content-spacer"></div>
           <img className="thanks-logo" src={LOGO_LONGEVUS} alt="Longevus" />
-          <div className="center-icon">✅</div>
-          <h2 className="display">Recebemos seus dados</h2>
-          <p className="body-text">Wellington vai analisar sua triagem (score {score}/10) e entrar em contato pelo WhatsApp em breve com os próximos passos.</p>
-          <p className="body-text">Seu resultado completo também está pronto em PDF — baixe ou compartilhe direto com quem quiser.</p>
+          <div className="content-spacer"></div>
+          <div>
+            <div className="center-icon">✅</div>
+            <h2 className="display">Recebemos seus dados</h2>
+            <p className="body-text">Wellington vai analisar sua triagem (score {score}/10) e entrar em contato pelo WhatsApp em breve com os próximos passos.</p>
+            <p className="body-text">Seu resultado completo também está pronto em PDF. Baixe ou compartilhe direto com quem quiser.</p>
+          </div>
+          <div className="content-spacer"></div>
+          <img className="wb-signature" src={LOGO_WB} alt="Wellington Brito Personal Trainer" />
+          <div className="content-spacer"></div>
         </div>
         <div className="screen-footer">
           <button className="primary" onClick={shareResult}>Compartilhar resultado</button>
