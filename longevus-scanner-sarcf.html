@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
-<title>Scanner de Sarcopenia · Longevus</title>
+<title>Scanner de Risco de Queda · Longevus</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -452,7 +452,7 @@ function classify(score) {
     key: "baixo",
     label: "Risco baixo",
     badgeClass: "safe",
-    impact: "Seus resultados sugerem que força, mobilidade e equilíbrio estão dentro do esperado para sua idade. Isso significa mais autonomia no dia a dia. Manter esse padrão exige prática regular e orientada de exercícios de força.",
+    impact: "Seus resultados sugerem que força, mobilidade e equilíbrio estão dentro do esperado para sua idade, o que significa menor risco de queda e mais autonomia no dia a dia. Manter esse padrão exige prática regular e orientada de exercícios de força.",
     alerts: null
   };
 }
@@ -494,9 +494,9 @@ function buildResultPdfBlob(score, result, age) {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10.5);
   doc.setTextColor(softColor[0], softColor[1], softColor[2]);
-  doc.text("Scanner de Sarcopenia", pageWidth - marginX, 15, { align: "right" });
+  doc.text("Scanner de Risco de Queda", pageWidth - marginX, 15, { align: "right" });
   doc.setFontSize(9);
-  doc.text("Resultado da Triagem (SARC-F)", pageWidth - marginX, 20.5, { align: "right" });
+  doc.text("Triagem de Sarcopenia (SARC-F)", pageWidth - marginX, 20.5, { align: "right" });
   doc.setFillColor(accentColor[0], accentColor[1], accentColor[2]);
   doc.rect(0, 34, pageWidth, 2, "F");
 
@@ -862,7 +862,7 @@ function App() {
         await navigator.share({
           files: [file],
           title: "Meu resultado · Scanner Longevus",
-          text: "Confira meu resultado do Scanner de Sarcopenia da Longevus."
+          text: "Confira meu resultado do Scanner de Risco de Queda da Longevus."
         });
       } catch (e) {
         // usuário cancelou o compartilhamento, não faz nada
@@ -908,8 +908,8 @@ function App() {
         <div className="screen-content">
           <div>
             <img className="brand-logo" src={LOGO_LONGEVUS} alt="Longevus" />
-            <h1 className="display">Sua força e equilíbrio estão dentro do esperado para sua idade?</h1>
-            <p className="body-text">Responda 5 perguntas rápidas (leva 1 minuto) e descubra sua triagem de risco de sarcopenia, a perda de massa e função muscular que afeta a autonomia após os 50 anos.</p>
+            <h1 className="display">Sua força e equilíbrio estão te protegendo de uma queda?</h1>
+            <p className="body-text">Responda 5 perguntas rápidas (leva 1 minuto) e descubra sua triagem de risco de queda e sarcopenia, a perda de massa e função muscular que compromete o equilíbrio após os 50 anos.</p>
           </div>
           <div className="content-spacer"></div>
           <div className="credential-box">
