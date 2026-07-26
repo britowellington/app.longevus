@@ -814,7 +814,7 @@ const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,n
   const save=()=>{
     if(!sid||!titulo||!divisao)return;
     const prog={id:uid(),studentId:sid,titulo,semanas:24,freq,divisao,obs,prescricao,criadoEm:new Date().toISOString().slice(0,10),assessmentRef:lastAssessment?.id||null};
-    const updated=[...programs,prog];setPrograms(updated);LS.set("longevus_programs",updated);nav("ver",{id:prog.id});
+    const fresh=LS.get("longevus_programs",programs);const updated=[...fresh.filter(p=>p.id!==prog.id),prog];setPrograms(updated);LS.set("longevus_programs",updated);nav("ver",{id:prog.id});
   };
   const totalEx=Object.values(prescricao).reduce((a,b)=>a+Object.values(b||{}).reduce((c,s)=>c+Object.values(s||{}).reduce((d,arr)=>d+(arr?.length||0),0),0),0);
 
@@ -873,9 +873,9 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav})=>{
   const blocoAtivo=BLOCOS[blocoIdx];
   const treinoAtivo=treinosUnicos[treinoIdx];
   const tDef=TREINO_DEFS[treinoAtivo];
-  const saveEdits=()=>{const u=programs.map(p=>p.id===prog.id?{...p,prescricao}:p);setPrograms(u);LS.set("longevus_programs",u);setEditMode(false);};
+  const saveEdits=()=>{const fresh=LS.get("longevus_programs",programs);const u=fresh.map(p=>p.id===prog.id?{...p,prescricao}:p);setPrograms(u);LS.set("longevus_programs",u);setEditMode(false);};
   const cancelEdit=()=>{setPrescricao(JSON.parse(JSON.stringify(prog.prescricao)));setEditMode(false);};
-  const deletePrograma=()=>{if(!window.confirm("Remover?"))return;const u=programs.filter(p=>p.id!==prog.id);setPrograms(u);LS.set("longevus_programs",u);nav("lista");};
+  const deletePrograma=()=>{if(!window.confirm("Remover?"))return;const fresh=LS.get("longevus_programs",programs);const u=fresh.filter(p=>p.id!==prog.id);setPrograms(u);LS.set("longevus_programs",u);nav("lista");};
   const updateSessao=(bKey,tKey,sessao)=>setPrescricao(p=>({...p,[bKey]:{...(p[bKey]||{}),[tKey]:sessao}}));
   const totalEx=Object.values(prescricao).reduce((a,b)=>a+Object.values(b||{}).reduce((c,s)=>c+Object.values(s||{}).reduce((d,arr)=>d+(arr?.length||0),0),0),0);
 
@@ -1086,7 +1086,7 @@ function AppInner(){
 
   const [page,setPage]=useState("lista");
   const [pageProps,setPageProps]=useState({});
-  const nav=useCallback((p,props={})=>{setPage(p);setPageProps(props);window.scrollTo(0,0);},[]);
+  const nav=useCallback((p,props={})=>{if(p==="lista"){setPrograms(prev=>LS.get("longevus_programs",prev));}setPage(p);setPageProps(props);window.scrollTo(0,0);},[]);
   useEffect(()=>{LS.set("longevus_programs",programs);},[programs]);
   return(
     <>
