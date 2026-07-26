@@ -528,7 +528,7 @@ return (
 </div>
 );
 };
-function AppInner(){
+function AppInner({billing}){
   const [biblioteca,setBiblioteca]=useState(()=>{
     const db=window.EXERCICIOS_DB||[];
     const salvo=LS.get("longevus_biblioteca",[]);
@@ -705,7 +705,7 @@ const accountBlocked = billing.status_assinatura==="cancelado" || trialExpired;
 if (accountBlocked) {
 return <TrialExpired/>;
 }
-return <AppInner/>;
+return <AppInner billing={billing}/>;
 }
 
 try{
