@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>Vincular Alunos ao Portal — Longevus</title>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect } = React;
+
+const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
+const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
+const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+
+const Card = ({children,style={}}) => (
+  <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:14,...style}}>{children}</div>
+);
+const Btn = ({children,variant="primary",sm,full,...p}) => {
+  const styles = {
+    primary:{background:"#FF5603",color:"#fff",border:"none"},
+    secondary:{background:"#fff",color:"#0f172a",border:"1.5px solid #e2e8f0"},
+  };
+  return <button {...p} style={{...styles[variant],borderRadius:10,padding:sm?"8px 12px":"11px 16px",fontSize:sm?12:14,fontWeight:700,cursor:"pointer",width:full?"100%":"auto",fontFamily:"inherit"}}>{children}</button>;
+};
+
+const Login = ({onLogged}) => {
+  const [email,setEmail]=useState("");
+  const [password,setPassword]=useState("");
+  const [err,setErr]=useState("");
+  const [loading,setLoading]=useState(false);
+
+  const entrar = async () => {
+    setErr(""); setLoading(true);
+    const { error } = await supa.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    if(error){ setErr("E-mail ou senha incorretos."); return; }
+    onLogged();
+  };
+
+  return (
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20,background:"#f8fafc"}}>
+      <Card style={{maxWidth:380,width:"100%",padding:"32px 26px"}}>
+        <div style={{fontSize:12,fontWeight:800,color:"#FF5603",letterSpacing:0.3,marginBottom:4,textAlign:"center"}}>LONGEVUS</div>
+        <div style={{fontSize:18,fontWeight:800,marginBottom:20,textAlign:"center"}}>Vincular Alunos ao Portal</div>
+        <div style={{marginBottom:12}}>
+          <label style={{fontSize:11,fontWeight:700,color:"#475569",display:"block",marginBottom:5}}>Seu e-mail (profissional)</label>
+          <input type="email" value={email} onChange={e=>setEmail(e.target.value)} style={{width:"100%",padding:"11px 13px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:14,fontFamily:"inherit",boxSizing:"border-box"}}/>
+        </div>
+        <div style={{marginBottom:16}}>
+          <label style={{fontSize:11,fontWeight:700,color:"#475569",display:"block",marginBottom:5}}>Senha</label>
+          <input type="password" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&entrar()} style={{width:"100%",padding:"11px 13px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:14,fontFamily:"inherit",boxSizing:"border-box"}}/>
+        </div>
+        {err && <div style={{color:"#dc2626",fontSize:12,marginBottom:12}}>{err}</div>}
+        <Btn full onClick={entrar} disabled={loading}>{loading?"Entrando...":"Entrar"}</Btn>
+      </Card>
+    </div>
+  );
+};
+
+const StudentRow = ({student, onSaved}) => {
+  const [email,setEmail]=useState(student.data?.portalEmail || "");
+  const [saving,setSaving]=useState(false);
+  const [saved,setSaved]=useState(false);
+  const originalEmail = student.data?.portalEmail || "";
+  const changed = email.trim() !== originalEmail;
+
+  const salvar = async () => {
+    setSaving(true); setSaved(false);
+    try{
+      const { data: sess } = await supa.auth.getSession();
+      const token = sess?.session?.access_token || SUPA_KEY;
+      const headers = { "apikey": SUPA_KEY, "Authorization": "Bearer "+token, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates" };
+      const newData = { ...student.data, portalEmail: email.trim().toLowerCase() };
+      const body = { id: student.id, data: newData, owner_id: student.owner_id, updated_at: new Date().toISOString() };
+      const r = await fetch(SUPA_URL+"/rest/v1/students", { method:"POST", headers, body: JSON.stringify(body) });
+      if(r.ok){
+        setSaved(true);
+        onSaved(student.id, newData);
+        setTimeout(()=>setSaved(false), 2000);
+      }
+    } catch(e){}
+    setSaving(false);
+  };
+
+  return (
+    <Card style={{padding:"14px 16px",marginBottom:10}}>
+      <div style={{fontWeight:700,fontSize:14,marginBottom:8}}>{student.data?.name || "Aluno sem nome"}</div>
+      <div style={{display:"flex",gap:8}}>
+        <input
+          type="email"
+          value={email}
+          onChange={e=>setEmail(e.target.value)}
+          placeholder="email-do-aluno@exemplo.com"
+          style={{flex:1,padding:"9px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box"}}
+        />
+        <Btn sm onClick={salvar} disabled={saving || !changed || !email.trim()}>
+          {saving ? "..." : saved ? "✓ Salvo" : "Salvar"}
+        </Btn>
+      </div>
+      {originalEmail && !changed && (
+        <div style={{fontSize:11,color:"#16a34a",marginTop:6}}>✅ Acesso liberado para {originalEmail}</div>
+      )}
+      {!originalEmail && (
+        <div style={{fontSize:11,color:"#94a3b8",marginTop:6}}>Ainda sem acesso ao portal.</div>
+      )}
+    </Card>
+  );
+};
+
+const Painel = () => {
+  const [students,setStudents]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [search,setSearch]=useState("");
+
+  const carregar = async () => {
+    setLoading(true);
+    try{
+      const { data: sess } = await supa.auth.getSession();
+      const token = sess?.session?.access_token || SUPA_KEY;
+      const headers = { "apikey": SUPA_KEY, "Authorization": "Bearer "+token };
+      const r = await fetch(SUPA_URL+"/rest/v1/students?select=id,data,owner_id&order=updated_at.desc", { headers });
+      if(r.ok){
+        const rows = await r.json();
+        setStudents(rows);
+      }
+    } catch(e){}
+    setLoading(false);
+  };
+
+  useEffect(()=>{ carregar(); },[]);
+
+  const onSaved = (id, newData) => {
+    setStudents(prev => prev.map(s => s.id===id ? {...s, data:newData} : s));
+  };
+
+  const filtered = students.filter(s => (s.data?.name||"").toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div style={{minHeight:"100vh",background:"#f8fafc",padding:"20px 16px 40px"}}>
+      <div style={{maxWidth:520,margin:"0 auto"}}>
+        <div style={{fontSize:12,fontWeight:800,color:"#FF5603",letterSpacing:0.3,marginBottom:2}}>LONGEVUS</div>
+        <div style={{fontSize:20,fontWeight:800,marginBottom:4}}>Vincular Alunos ao Portal</div>
+        <div style={{fontSize:13,color:"#64748b",marginBottom:18,lineHeight:1.5}}>
+          Digite o e-mail de cada aluno pra liberar o acesso dele ao "Meu Treino" (aluno.html). Ele entra com esse e-mail e recebe um link mágico — sem senha.
+        </div>
+        <input
+          value={search}
+          onChange={e=>setSearch(e.target.value)}
+          placeholder="Buscar aluno..."
+          style={{width:"100%",padding:"11px 14px",borderRadius:10,border:"1.5px solid #e2e8f0",fontSize:14,fontFamily:"inherit",boxSizing:"border-box",marginBottom:16}}
+        />
+        {loading ? (
+          <div style={{textAlign:"center",color:"#94a3b8",padding:30}}>Carregando alunos...</div>
+        ) : filtered.length===0 ? (
+          <div style={{textAlign:"center",color:"#94a3b8",padding:30}}>Nenhum aluno encontrado.</div>
+        ) : (
+          filtered.map(s => <StudentRow key={s.id} student={s} onSaved={onSaved}/>)
+        )}
+      </div>
+    </div>
+  );
+};
+
+function App(){
+  const [session,setSession]=useState(null);
+  const [loading,setLoading]=useState(true);
+
+  useEffect(()=>{
+    supa.auth.getSession().then(({data})=>{ setSession(data?.session||null); setLoading(false); });
+    const { data: listener } = supa.auth.onAuthStateChange((_e, sess)=>{ setSession(sess); });
+    return ()=>listener?.subscription?.unsubscribe();
+  },[]);
+
+  if(loading) return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8"}}>Carregando...</div>;
+  if(!session) return <Login onLogged={()=>{}}/>;
+  return <Painel/>;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
