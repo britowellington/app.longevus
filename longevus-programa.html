@@ -21,6 +21,34 @@ const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
 const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 const SUPPORT_WHATSAPP = "5511977431011";
 async function authHeadersFn(){ const { data } = await supa.auth.getSession(); const token = data?.session?.access_token || SUPA_KEY; return { "apikey": SUPA_KEY, "Authorization": "Bearer "+token, "Content-Type": "application/json" }; }
+const ProgDB = {
+  async load(){
+    try{
+      const headers = await authHeadersFn();
+      const r = await fetch(SUPA_URL+"/rest/v1/programs?select=*&order=updated_at.asc", { headers });
+      if(!r.ok) return null;
+      const rows = await r.json();
+      return rows.map(row=>row.data);
+    }catch(e){ return null; }
+  },
+  async save(prog){
+    try{
+      const headers = { ...(await authHeadersFn()), "Prefer": "resolution=merge-duplicates" };
+      const { data: sess } = await supa.auth.getSession();
+      const ownerId = sess?.session?.user?.id;
+      const body = { id: prog.id, data: prog, owner_id: ownerId, student_id: prog.studentId, updated_at: new Date().toISOString() };
+      await fetch(SUPA_URL+"/rest/v1/programs", { method:"POST", headers, body: JSON.stringify(body) });
+      return true;
+    }catch(e){ return false; }
+  },
+  async remove(id){
+    try{
+      const headers = await authHeadersFn();
+      await fetch(SUPA_URL+"/rest/v1/programs?id=eq."+id, { method:"DELETE", headers });
+      return true;
+    }catch(e){ return false; }
+  }
+};
 
 const Login = ({ onLogin }) => {
 const [nome,setNome]=useState("");
@@ -814,7 +842,7 @@ const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,n
   const save=()=>{
     if(!sid||!titulo||!divisao)return;
     const prog={id:uid(),studentId:sid,titulo,semanas:24,freq,divisao,obs,prescricao,criadoEm:new Date().toISOString().slice(0,10),assessmentRef:lastAssessment?.id||null};
-    const fresh=LS.get("longevus_programs",programs);const updated=[...fresh.filter(p=>p.id!==prog.id),prog];setPrograms(updated);LS.set("longevus_programs",updated);nav("ver",{id:prog.id});
+    const fresh=LS.get("longevus_programs",programs);const updated=[...fresh.filter(p=>p.id!==prog.id),prog];setPrograms(updated);LS.set("longevus_programs",updated);ProgDB.save(prog);nav("ver",{id:prog.id});
   };
   const totalEx=Object.values(prescricao).reduce((a,b)=>a+Object.values(b||{}).reduce((c,s)=>c+Object.values(s||{}).reduce((d,arr)=>d+(arr?.length||0),0),0),0);
 
@@ -873,9 +901,9 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav})=>{
   const blocoAtivo=BLOCOS[blocoIdx];
   const treinoAtivo=treinosUnicos[treinoIdx];
   const tDef=TREINO_DEFS[treinoAtivo];
-  const saveEdits=()=>{const fresh=LS.get("longevus_programs",programs);const u=fresh.map(p=>p.id===prog.id?{...p,prescricao}:p);setPrograms(u);LS.set("longevus_programs",u);setEditMode(false);};
+  const saveEdits=()=>{const fresh=LS.get("longevus_programs",programs);const editedProg={...prog,prescricao};const u=fresh.map(p=>p.id===prog.id?editedProg:p);setPrograms(u);LS.set("longevus_programs",u);ProgDB.save(editedProg);setEditMode(false);};
   const cancelEdit=()=>{setPrescricao(JSON.parse(JSON.stringify(prog.prescricao)));setEditMode(false);};
-  const deletePrograma=()=>{if(!window.confirm("Remover?"))return;const fresh=LS.get("longevus_programs",programs);const u=fresh.filter(p=>p.id!==prog.id);setPrograms(u);LS.set("longevus_programs",u);nav("lista");};
+  const deletePrograma=()=>{if(!window.confirm("Remover?"))return;const fresh=LS.get("longevus_programs",programs);const u=fresh.filter(p=>p.id!==prog.id);setPrograms(u);LS.set("longevus_programs",u);ProgDB.remove(prog.id);nav("lista");};
   const updateSessao=(bKey,tKey,sessao)=>setPrescricao(p=>({...p,[bKey]:{...(p[bKey]||{}),[tKey]:sessao}}));
   const totalEx=Object.values(prescricao).reduce((a,b)=>a+Object.values(b||{}).reduce((c,s)=>c+Object.values(s||{}).reduce((d,arr)=>d+(arr?.length||0),0),0),0);
 
@@ -1084,9 +1112,19 @@ function AppInner(){
     })();
   },[]);
 
+  useEffect(()=>{
+    (async()=>{
+      const remote = await ProgDB.load();
+      if(remote!==null){
+        setPrograms(remote);
+        LS.set("longevus_programs",remote);
+      }
+    })();
+  },[]);
+
   const [page,setPage]=useState("lista");
   const [pageProps,setPageProps]=useState({});
-  const nav=useCallback((p,props={})=>{if(p==="lista"){setPrograms(prev=>LS.get("longevus_programs",prev));}setPage(p);setPageProps(props);window.scrollTo(0,0);},[]);
+  const nav=useCallback((p,props={})=>{if(p==="lista"){setPrograms(prev=>LS.get("longevus_programs",prev));ProgDB.load().then(remote=>{if(remote!==null){setPrograms(remote);LS.set("longevus_programs",remote);}});}setPage(p);setPageProps(props);window.scrollTo(0,0);},[]);
   useEffect(()=>{LS.set("longevus_programs",programs);},[programs]);
   return(
     <>
