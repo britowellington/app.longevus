@@ -5,6 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <title>Longevus — Biblioteca</title>
+<script>
+window.addEventListener('error', function(e){
+  var el = document.getElementById('root');
+  var msg = 'ERRO JS\n\n' + (e.message||'') + '\nArquivo: ' + (e.filename||'') + '\nLinha: ' + (e.lineno||'') + ' Coluna: ' + (e.colno||'') + '\n\n' + (e.error && e.error.stack ? e.error.stack : '(sem stack trace)');
+  if (el) el.innerHTML = '<pre style="padding:16px;font-family:monospace;color:#b91c1c;white-space:pre-wrap;font-size:12px;background:#fef2f2;margin:0;min-height:100vh;">' + msg.replace(/</g,'&lt;') + '</pre>';
+  console.error('CAPTURED ERROR:', e);
+});
+window.addEventListener('unhandledrejection', function(e){
+  var el = document.getElementById('root');
+  var reason = e.reason && e.reason.message ? e.reason.message : String(e.reason);
+  var stack = e.reason && e.reason.stack ? e.reason.stack : '(sem stack trace)';
+  var msg = 'ERRO DE PROMISE\n\n' + reason + '\n\n' + stack;
+  if (el) el.innerHTML = '<pre style="padding:16px;font-family:monospace;color:#b91c1c;white-space:pre-wrap;font-size:12px;background:#fef2f2;margin:0;min-height:100vh;">' + msg.replace(/</g,'&lt;') + '</pre>';
+  console.error('CAPTURED REJECTION:', e);
+});
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
