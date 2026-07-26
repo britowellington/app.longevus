@@ -111,6 +111,43 @@ const Btn = ({children,variant="primary",sm,full,...p}) => {
   return <button {...p} style={{...styles[variant],borderRadius:10,padding:sm?"7px 12px":"11px 16px",fontSize:sm?12:14,fontWeight:700,cursor:"pointer",width:full?"100%":"auto",fontFamily:"inherit"}}>{children}</button>;
 };
 
+const Modal = ({title,onClose,children}) => (
+  <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:999,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+    <div style={{background:"#fff",borderRadius:"20px 20px 0 0",width:"100%",maxWidth:640,maxHeight:"92vh",overflowY:"auto",padding:"24px 18px 44px"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
+        <div style={{fontWeight:800,fontSize:17}}>{title}</div>
+        <button onClick={onClose} style={{border:"none",background:"#f1f5f9",borderRadius:99,width:32,height:32,cursor:"pointer",fontWeight:700,color:"#64748b",fontSize:16}}>✕</button>
+      </div>
+      {children}
+    </div>
+  </div>
+);
+
+const getYtId = (url) => {
+  if(!url) return null;
+  const m = url.match(/(?:youtu\.be\/|v\/|v=|embed\/)([\w-]{11})/);
+  return m ? m[1] : null;
+};
+
+const ExDetalheModal = ({ex, cogEx, onClose}) => (
+  <Modal title={ex ? ex.nome : (cogEx?.nome||"Exercício")} onClose={onClose}>
+    {ex && ex.video && getYtId(ex.video) && (
+      <div style={{marginBottom:14,borderRadius:10,overflow:"hidden",position:"relative",paddingBottom:"56.25%",height:0}}>
+        <iframe src={"https://www.youtube.com/embed/"+getYtId(ex.video)} style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",border:"none"}} allowFullScreen/>
+      </div>
+    )}
+    {ex?.foco && <div style={{fontSize:13,color:"#64748b",marginBottom:10}}>🎯 <strong>Foco:</strong> {ex.foco}</div>}
+    {ex?.descricao && <div style={{fontSize:13,marginBottom:10}}><strong>📋 Descrição</strong><br/>{ex.descricao}</div>}
+    {ex?.execucao && <div style={{fontSize:13,marginBottom:10}}><strong>▶ Como executar</strong><br/><div style={{whiteSpace:"pre-line",color:"#374151"}}>{ex.execucao}</div></div>}
+    {ex?.beneficios && <div style={{fontSize:13,marginBottom:10}}><strong>✅ Benefícios</strong><br/>{ex.beneficios}</div>}
+    {ex?.cuidados && <div style={{fontSize:13,marginBottom:10,padding:"8px 10px",background:"#fff7ed",borderRadius:8,border:"1px solid #fed7aa"}}><strong>⚠️ Cuidados</strong><br/>{ex.cuidados}</div>}
+    {ex?.material && <div style={{fontSize:13,color:"#64748b",marginBottom:10}}>🔧 <strong>Material:</strong> {ex.material}</div>}
+    {cogEx?.desc && <div style={{fontSize:13,marginBottom:10}}><strong>📋 Descrição</strong><br/>{cogEx.desc}</div>}
+    {!ex?.execucao && !ex?.descricao && !cogEx && <div style={{fontSize:13,color:"#94a3b8"}}>Seu personal ainda não adicionou instruções detalhadas para este exercício.</div>}
+    <div style={{marginTop:16}}><Btn variant="secondary" full onClick={onClose}>Fechar</Btn></div>
+  </Modal>
+);
+
 // ── Login ────────────────────────────────────────────────────────────────────
 const Login = () => {
   const [email,setEmail]=useState("");
@@ -159,18 +196,27 @@ const Login = () => {
 
 // ── Exercício individual (com check-off) ─────────────────────────────────────
 const ExercicioItem = ({item, bibCustom, checked, onToggle}) => {
+  const [showDetail,setShowDetail]=useState(false);
   const isCog = item.isCognitivo || item.exId==="cognitivo";
   const cogEx = isCog ? COGNITIVOS.find(c=>c.id===item.cogId) : null;
   const ex = !isCog ? (bibCustom.find(e=>e.id===item.exId) || EXERCISES.find(e=>e.id===item.exId)) : null;
   const nome = isCog ? (cogEx?.nome||"Exercício Cognitivo") : (ex?.nome||"Exercício");
   const icone = isCog ? "🧠" : (ex?.icone||"💪");
   const cor = isCog ? (cogEx?.cor||"#FF5603") : "#0f172a";
+  const ytId = ex && getYtId(ex.video);
+  const hasDetail = !isCog && ex && (ex.descricao || ex.execucao || ex.video || ex.beneficios || ex.cuidados);
 
   return (
     <Card style={{padding:"12px 14px",marginBottom:8,background:checked?"#f0fdf4":"#fff",borderColor:checked?"#bbf7d0":"#e2e8f0"}}>
       <div style={{display:"flex",alignItems:"center",gap:10}}>
         <button onClick={onToggle} style={{width:26,height:26,borderRadius:8,border:checked?"none":"1.5px solid #cbd5e1",background:checked?"#16a34a":"#fff",color:"#fff",fontSize:14,fontWeight:800,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{checked?"✓":""}</button>
-        <div style={{width:38,height:38,borderRadius:10,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{icone}</div>
+        {ytId ? (
+          <img src={"https://img.youtube.com/vi/"+ytId+"/mqdefault.jpg"} alt="" style={{width:52,height:39,borderRadius:9,objectFit:"cover",flexShrink:0}}/>
+        ) : ex?.foto ? (
+          <img src={ex.foto} alt="" style={{width:52,height:39,borderRadius:9,objectFit:"cover",flexShrink:0}}/>
+        ) : (
+          <div style={{width:38,height:38,borderRadius:10,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{icone}</div>
+        )}
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontWeight:700,fontSize:13,color:cor,textDecoration:checked?"line-through":"none",opacity:checked?0.7:1}}>{nome}</div>
           {isCog ? (
@@ -188,6 +234,12 @@ const ExercicioItem = ({item, bibCustom, checked, onToggle}) => {
         )}
       </div>
       {item.obs && <div style={{marginTop:8,fontSize:11,color:"#64748b",fontStyle:"italic",padding:"6px 8px",background:"#f8fafc",borderRadius:6}}>📝 {item.obs}</div>}
+      {hasDetail && (
+        <button onClick={()=>setShowDetail(true)} style={{marginTop:8,fontSize:11,fontWeight:700,color:"#FF5603",background:"transparent",border:"1.5px solid #FF5603",borderRadius:7,padding:"5px 12px",cursor:"pointer"}}>
+          {ytId ? "▶ Ver vídeo e detalhes" : "Ver detalhes"}
+        </button>
+      )}
+      {showDetail && <ExDetalheModal ex={ex} onClose={()=>setShowDetail(false)}/>}
     </Card>
   );
 };
