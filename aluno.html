@@ -150,46 +150,154 @@ const ExDetalheModal = ({ex, cogEx, onClose}) => (
 
 // ── Login ────────────────────────────────────────────────────────────────────
 const Login = () => {
+  const [mode,setMode]=useState("signin"); // signin | signup | forgot | magic
   const [email,setEmail]=useState("");
-  const [sent,setSent]=useState(false);
+  const [password,setPassword]=useState("");
+  const [confirm,setConfirm]=useState("");
   const [loading,setLoading]=useState(false);
   const [err,setErr]=useState("");
+  const [info,setInfo]=useState("");
 
-  const enviar = async () => {
-    setErr(""); setLoading(true);
-    const { error } = await supa.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.href.split("?")[0].split("#")[0] }
-    });
-    setLoading(false);
-    if(error){ setErr("Não foi possível enviar o link. Confira o e-mail e tente novamente."); return; }
-    setSent(true);
+  const clearMsgs = () => { setErr(""); setInfo(""); };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    clearMsgs(); setLoading(true);
+    try{
+      if(mode==="signin"){
+        const { error } = await supa.auth.signInWithPassword({ email, password });
+        if(error) throw error;
+      } else if(mode==="signup"){
+        if(password.length<6){ setErr("A senha deve ter pelo menos 6 caracteres."); setLoading(false); return; }
+        if(password!==confirm){ setErr("As senhas não coincidem."); setLoading(false); return; }
+        const { error } = await supa.auth.signUp({ email, password });
+        if(error) throw error;
+        setInfo("Conta criada! Você já pode entrar com seu e-mail e senha.");
+        setMode("signin");
+        setLoading(false);
+        return;
+      } else if(mode==="forgot"){
+        const { error } = await supa.auth.resetPasswordForEmail(email, { redirectTo: window.location.href.split("?")[0].split("#")[0] });
+        if(error) throw error;
+        setInfo("Enviamos um link de redefinição para "+email+". Confira seu e-mail.");
+        setLoading(false);
+        return;
+      } else if(mode==="magic"){
+        const { error } = await supa.auth.signInWithOtp({ email, options:{ emailRedirectTo: window.location.href.split("?")[0].split("#")[0] } });
+        if(error) throw error;
+        setInfo("Link enviado! Confira seu e-mail ("+email+") e toque no link para entrar.");
+        setLoading(false);
+        return;
+      }
+    } catch(err){
+      setErr(err.message==="Invalid login credentials" ? "E-mail ou senha incorretos." : (err.message || "Erro ao autenticar."));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const titles = { signin:"Entrar", signup:"Criar minha senha", forgot:"Esqueci minha senha", magic:"Entrar por link no e-mail" };
+  const buttonLabels = { signin:"Entrar", signup:"Criar conta", forgot:"Enviar link de redefinição", magic:"Enviar link" };
+
+  return (
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20,background:"#f8fafc"}}>
+      <form onSubmit={submit} style={{width:"100%",maxWidth:380}}>
+        <Card style={{padding:"32px 26px",textAlign:"center"}}>
+          <img src={__LOGO_ALUNO__} alt="Longevus" style={{width:64,height:64,objectFit:"contain",marginBottom:6}}/>
+          <div style={{fontSize:12,fontWeight:800,color:"#FF5603",letterSpacing:0.3,marginBottom:2}}>LONGEVUS</div>
+          <div style={{fontSize:19,fontWeight:800,marginBottom:6}}>{titles[mode]}</div>
+          <div style={{fontSize:13,color:"#64748b",marginBottom:20,lineHeight:1.5,textAlign:"left"}}>
+            {mode==="signin" && "Use o mesmo e-mail que seu personal cadastrou pra você."}
+            {mode==="signup" && "Primeira vez aqui? Crie sua senha usando o e-mail que seu personal cadastrou."}
+            {mode==="forgot" && "Digite seu e-mail e enviaremos um link pra você criar uma nova senha."}
+            {mode==="magic" && "Prefere não usar senha? Digite seu e-mail e enviaremos um link de acesso direto."}
+          </div>
+
+          <div style={{textAlign:"left",marginBottom:12}}>
+            <label style={{fontSize:11,fontWeight:700,color:"#475569",display:"block",marginBottom:5}}>E-mail</label>
+            <input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="seuemail@exemplo.com" style={{width:"100%",padding:"11px 13px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:14,fontFamily:"inherit",boxSizing:"border-box"}}/>
+          </div>
+
+          {(mode==="signin"||mode==="signup") && (
+            <div style={{textAlign:"left",marginBottom:mode==="signup"?12:6}}>
+              <label style={{fontSize:11,fontWeight:700,color:"#475569",display:"block",marginBottom:5}}>Senha</label>
+              <input type="password" required value={password} onChange={e=>setPassword(e.target.value)} style={{width:"100%",padding:"11px 13px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:14,fontFamily:"inherit",boxSizing:"border-box"}}/>
+            </div>
+          )}
+          {mode==="signup" && (
+            <div style={{textAlign:"left",marginBottom:16}}>
+              <label style={{fontSize:11,fontWeight:700,color:"#475569",display:"block",marginBottom:5}}>Confirmar senha</label>
+              <input type="password" required value={confirm} onChange={e=>setConfirm(e.target.value)} style={{width:"100%",padding:"11px 13px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:14,fontFamily:"inherit",boxSizing:"border-box"}}/>
+            </div>
+          )}
+          {mode==="signin" && (
+            <div style={{textAlign:"right",marginBottom:16}}>
+              <a href="#" onClick={e=>{e.preventDefault();setMode("forgot");clearMsgs();}} style={{fontSize:12,color:"#94a3b8"}}>Esqueci minha senha</a>
+            </div>
+          )}
+
+          {err && <div style={{color:"#dc2626",fontSize:12,marginBottom:12,textAlign:"left"}}>{err}</div>}
+          {info && <div style={{background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"10px 12px",fontSize:13,color:"#15803d",lineHeight:1.5,marginBottom:12,textAlign:"left"}}>✅ {info}</div>}
+
+          <Btn full type="submit" disabled={loading}>{loading?"Aguarde...":buttonLabels[mode]}</Btn>
+
+          <div style={{marginTop:16,fontSize:12,color:"#94a3b8",lineHeight:2}}>
+            {mode==="signin" && (<>Primeiro acesso? <a href="#" onClick={e=>{e.preventDefault();setMode("signup");clearMsgs();}} style={{color:"#FF5603",fontWeight:700}}>Criar minha senha</a></>)}
+            {mode!=="signin" && (<>Já tem senha? <a href="#" onClick={e=>{e.preventDefault();setMode("signin");clearMsgs();}} style={{color:"#FF5603",fontWeight:700}}>Entrar</a></>)}
+            <br/>
+            {mode!=="magic" ? (
+              <a href="#" onClick={e=>{e.preventDefault();setMode("magic");clearMsgs();}} style={{color:"#94a3b8",textDecoration:"underline"}}>ou entrar por link no e-mail (sem senha)</a>
+            ) : (
+              <a href="#" onClick={e=>{e.preventDefault();setMode("signin");clearMsgs();}} style={{color:"#94a3b8",textDecoration:"underline"}}>usar senha em vez disso</a>
+            )}
+          </div>
+        </Card>
+      </form>
+    </div>
+  );
+};
+
+const ResetPassword = ({onDone}) => {
+  const [password,setPassword]=useState("");
+  const [confirm,setConfirm]=useState("");
+  const [err,setErr]=useState("");
+  const [loading,setLoading]=useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setErr("");
+    if(password.length<6){ setErr("A senha deve ter pelo menos 6 caracteres."); return; }
+    if(password!==confirm){ setErr("As senhas não coincidem."); return; }
+    setLoading(true);
+    try{
+      const { error } = await supa.auth.updateUser({ password });
+      if(error) throw error;
+      onDone();
+    } catch(err){
+      setErr(err.message || "Erro ao redefinir senha.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20,background:"#f8fafc"}}>
-      <Card style={{maxWidth:380,width:"100%",padding:"32px 26px",textAlign:"center"}}>
-        <img src={__LOGO_ALUNO__} alt="Longevus" style={{width:72,height:72,objectFit:"contain",marginBottom:6}}/>
-        <div style={{fontSize:19,fontWeight:800,marginBottom:6}}>Meu Treino</div>
-        <div style={{fontSize:13,color:"#64748b",marginBottom:22,lineHeight:1.5}}>Entre com o e-mail cadastrado pelo seu personal para ver seu programa de treino.</div>
-        {sent ? (
-          <div style={{background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"14px 12px",fontSize:13,color:"#15803d",lineHeight:1.5}}>
-            ✅ Link enviado! Confira seu e-mail (<b>{email}</b>) e clique no link para entrar.
+      <form onSubmit={submit} style={{width:"100%",maxWidth:380}}>
+        <Card style={{padding:"32px 26px",textAlign:"center"}}>
+          <img src={__LOGO_ALUNO__} alt="Longevus" style={{width:56,height:56,objectFit:"contain",marginBottom:8}}/>
+          <div style={{fontSize:19,fontWeight:800,marginBottom:20}}>Definir nova senha</div>
+          <div style={{textAlign:"left",marginBottom:12}}>
+            <label style={{fontSize:11,fontWeight:700,color:"#475569",display:"block",marginBottom:5}}>Nova senha</label>
+            <input type="password" required value={password} onChange={e=>setPassword(e.target.value)} style={{width:"100%",padding:"11px 13px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:14,fontFamily:"inherit",boxSizing:"border-box"}}/>
           </div>
-        ) : (
-          <>
-            <input
-              type="email"
-              value={email}
-              onChange={e=>setEmail(e.target.value)}
-              placeholder="seuemail@exemplo.com"
-              style={{width:"100%",padding:"12px 14px",borderRadius:10,border:"1.5px solid #e2e8f0",fontSize:14,fontFamily:"inherit",boxSizing:"border-box",marginBottom:12}}
-            />
-            {err && <div style={{color:"#dc2626",fontSize:12,marginBottom:10}}>{err}</div>}
-            <Btn full onClick={enviar} disabled={loading||!email}>{loading?"Enviando...":"Entrar"}</Btn>
-          </>
-        )}
-      </Card>
+          <div style={{textAlign:"left",marginBottom:16}}>
+            <label style={{fontSize:11,fontWeight:700,color:"#475569",display:"block",marginBottom:5}}>Confirmar nova senha</label>
+            <input type="password" required value={confirm} onChange={e=>setConfirm(e.target.value)} style={{width:"100%",padding:"11px 13px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:14,fontFamily:"inherit",boxSizing:"border-box"}}/>
+          </div>
+          {err && <div style={{color:"#dc2626",fontSize:12,marginBottom:12,textAlign:"left"}}>{err}</div>}
+          <Btn full type="submit" disabled={loading}>{loading?"Salvando...":"Salvar nova senha"}</Btn>
+        </Card>
+      </form>
     </div>
   );
 };
@@ -465,6 +573,7 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
 function App(){
   const [session,setSession]=useState(null);
   const [authLoading,setAuthLoading]=useState(true);
+  const [recoveryMode,setRecoveryMode]=useState(false);
   const [studentId,setStudentId]=useState(null);
   const [ownerId,setOwnerId]=useState(null);
   const [linkChecked,setLinkChecked]=useState(false);
@@ -472,7 +581,10 @@ function App(){
 
   useEffect(()=>{
     supa.auth.getSession().then(({data})=>{ setSession(data?.session||null); setAuthLoading(false); });
-    const { data: listener } = supa.auth.onAuthStateChange((_event, sess)=>{ setSession(sess); });
+    const { data: listener } = supa.auth.onAuthStateChange((event, sess)=>{
+      setSession(sess);
+      if(event==="PASSWORD_RECOVERY") setRecoveryMode(true);
+    });
     return ()=>listener?.subscription?.unsubscribe();
   },[]);
 
@@ -519,6 +631,10 @@ function App(){
 
   if(authLoading){
     return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14}}>Carregando...</div>;
+  }
+
+  if(recoveryMode){
+    return <ResetPassword onDone={()=>{setRecoveryMode(false);}}/>;
   }
 
   if(!session){
