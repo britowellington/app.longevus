@@ -827,9 +827,9 @@ const StepExercicios=({prescricao,setPrescricao,divisao,bibCustom,onNext,onBack}
 };
 
 // ─── WIZARD NOVO PROGRAMA ─────────────────────────────────────────────────────
-const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,nav})=>{
+const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,nav,prefillStudentId})=>{
   const [step,setStep]=useState(1);
-  const [sid,setSid]=useState("");
+  const [sid,setSid]=useState(prefillStudentId||"");
   const [titulo,setTitulo]=useState("");
   const [freq,setFreq]=useState(3);
   const [divisao,setDivisao]=useState(null);
@@ -1122,8 +1122,18 @@ function AppInner(){
     })();
   },[]);
 
-  const [page,setPage]=useState("lista");
-  const [pageProps,setPageProps]=useState({});
+  const initialNav = (()=>{
+    try{
+      const qs = new URLSearchParams(window.location.search);
+      const verId = qs.get("ver");
+      const novoSid = qs.get("novo") || qs.get("studentId");
+      if(verId) return { page:"ver", pageProps:{ id: verId } };
+      if(novoSid) return { page:"novo", pageProps:{ studentId: novoSid } };
+    }catch(e){}
+    return { page:"lista", pageProps:{} };
+  })();
+  const [page,setPage]=useState(initialNav.page);
+  const [pageProps,setPageProps]=useState(initialNav.pageProps);
   const nav=useCallback((p,props={})=>{if(p==="lista"){setPrograms(prev=>LS.get("longevus_programs",prev));ProgDB.load().then(remote=>{if(remote!==null){setPrograms(remote);LS.set("longevus_programs",remote);}});}setPage(p);setPageProps(props);window.scrollTo(0,0);},[]);
   useEffect(()=>{LS.set("longevus_programs",programs);},[programs]);
   return(
@@ -1143,7 +1153,7 @@ function AppInner(){
         </div>
         <div style={{padding:"20px 16px",maxWidth:640,margin:"0 auto",paddingBottom:90}}>
           {page==="lista"&&<Lista programs={programs} students={students} nav={nav}/>}
-          {page==="novo"&&<NovoProgramaWizard students={students} assessments={assessments} programs={programs} setPrograms={setPrograms} bibCustom={bibCustom} nav={nav}/>}
+          {page==="novo"&&<NovoProgramaWizard students={students} assessments={assessments} programs={programs} setPrograms={setPrograms} bibCustom={bibCustom} nav={nav} prefillStudentId={pageProps.studentId}/>}
           {page==="ver"&&<VerPrograma programId={pageProps.id} programs={programs} setPrograms={setPrograms} students={students} bibCustom={bibCustom} nav={nav}/>}
         </div>
       </div>

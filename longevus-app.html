@@ -521,20 +521,26 @@ return (
 </div>
 );
 };
-const StudentDetail = ({ studentId, students, setStudents, assessments, setAssessments, programs, dailyLogs, documents, nav }) => {
+const StudentDetail = ({ studentId, students, setStudents, assessments, setAssessments, programs, setPrograms, dailyLogs, documents, nav }) => {
 const st = students.find(s=>s.id===studentId);
 const [tab,setTab] = useState("aval");
 const [editModal,setEditModal] = useState(false);
 const [form,setForm] = useState(null);
 if(!st) return <div style={{ textAlign:"center",padding:40,color:"#94a3b8" }}>Aluno não encontrado.</div>;
 const stAssessments = assessments.filter(a=>a.studentId===studentId).sort((a,b)=>b.date?.localeCompare(a.date));
-const stPrograms = programs.filter(p=>p.studentId===studentId).sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||""));
+const stPrograms = programs.filter(p=>p.studentId===studentId).sort((a,b)=>(b.criadoEm||"").localeCompare(a.criadoEm||""));
 const currentProgram = stPrograms[0];
 const stLogs = dailyLogs.filter(l=>l.studentId===studentId).sort((a,b)=>b.date?.localeCompare(a.date));
 const stDocs = documents.filter(d=>d.studentId===studentId).sort((a,b)=>b.date?.localeCompare(a.date));
 const delAssessment = async id=>{if(window.confirm("Remover avaliação?")){await DB.remove("assessments",id);setAssessments(p=>p.filter(a=>a.id!==id));}};
 const openEdit = ()=>{setForm({name:st.name,dob:st.dob||"",sex:st.sex||"",phone:st.phone||"",email:st.email||"",whatsapp:st.whatsapp||"",responsibleName:st.responsibleName||"",responsiblePhone:st.responsiblePhone||"",doctorName:st.doctorName||"",doctorPhone:st.doctorPhone||""});setEditModal(true);};
 const saveEdit = ()=>{if(!form.name.trim())return;setStudents(p=>p.map(s=>s.id===studentId?{...s,...form}:s));setEditModal(false);};
+const openNewProgram = () => {
+window.open("longevus-programa.html?novo="+encodeURIComponent(st.id),"_self");
+};
+const openViewProgram = (prog) => {
+window.open("longevus-programa.html?ver="+encodeURIComponent(prog.id),"_self");
+};
 const TABS=[{id:"aval",label:"Avaliações"},{id:"treino",label:"Treino"},{id:"mon",label:"Monitoramento"},{id:"doc",label:"Documentos"}];
 return (
 <div>
@@ -588,24 +594,22 @@ return (
 <Card style={{ textAlign:"center",padding:32 }}>
 <I n="zap" c="#cbd5e1" s={32}/>
 <div style={{ color:"#94a3b8",margin:"10px 0 14px" }}>Nenhum programa gerado para este aluno.</div>
-<Btn icon="zap" onClick={()=>window.open("longevus-programa.html","_self")}>Gerar Programa de Treinamento</Btn>
+<Btn icon="zap" onClick={()=>openNewProgram()}>Gerar Programa de Treinamento</Btn>
 </Card>:
 <Card style={{ padding:16 }}>
 <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,gap:8 }}>
-<div style={{ fontWeight:700,fontSize:15 }}>{currentProgram.arch||"Programa de Treino"}</div>
-<Badge color="#6366f1" bg="#eef2ff">{currentProgram.phaseLabel}</Badge>
+<div style={{ fontWeight:700,fontSize:15 }}>{currentProgram.titulo||"Programa de Treino"}</div>
+{currentProgram.divisao?.label&&<Badge color="#6366f1" bg="#eef2ff">{currentProgram.divisao.label}</Badge>}
 </div>
-<div style={{ fontSize:12,color:"#94a3b8",marginBottom:12 }}>{currentProgram.freq}x/semana · {currentProgram.env==="gym"?"Academia":currentProgram.env==="home"?"Casa":currentProgram.env||""} · Semanas {currentProgram.weekRange?.[0]}–{currentProgram.weekRange?.[1]}</div>
-<div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-{currentProgram.days?.map((d,i)=>(
-<div key={i} style={{ padding:"10px 12px",background:"#f8fafc",borderRadius:10 }}>
-<div style={{ fontWeight:700,fontSize:13,marginBottom:2 }}>{d.day}</div>
-<div style={{ fontSize:11,color:"#94a3b8" }}>{d.sessions?.reduce((n,s)=>n+(s.exercises?.filter(Boolean).length||0),0)} exercícios</div>
-</div>
+<div style={{ fontSize:12,color:"#94a3b8",marginBottom:12 }}>{currentProgram.freq}x/semana · {currentProgram.semanas||24} semanas · criado em {fmt(currentProgram.criadoEm)}</div>
+<div style={{ display:"flex",gap:6,flexWrap:"wrap",marginBottom:14 }}>
+{(currentProgram.divisao?.sequencia||[]).map((t,i)=>(
+<span key={i} style={{ fontSize:11,fontWeight:700,color:"#64748b",background:"#f1f5f9",borderRadius:7,padding:"4px 9px" }}>D{i+1}: {t}</span>
 ))}
 </div>
-<div style={{ marginTop:14 }}>
-<Btn full variant="secondary" icon="zap" onClick={()=>window.open("longevus-programa.html","_self")}>Abrir Gerador de Programa</Btn>
+<div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+<Btn full icon="eye" onClick={()=>openViewProgram(currentProgram)}>Ver Treino Atual</Btn>
+<Btn full variant="secondary" icon="zap" onClick={()=>openNewProgram()}>Gerar Novo Programa</Btn>
 </div>
 </Card>}
 {stPrograms.length>1&&<div style={{ fontSize:11,color:"#94a3b8",marginTop:10,textAlign:"center" }}>+{stPrograms.length-1} programa(s) anterior(es)</div>}
@@ -5519,23 +5523,23 @@ return (
 {mode==="signup" && (
 <div style={{ marginBottom:12 }}>
 <label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Nome</label>
-<input type="text" required value={nome} onChange={e=>setNome(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14 }}/>
+<input type="text" required value={nome} onChange={e=>setNome(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
 </div>
 )}
 {mode==="signup" && (
 <div style={{ marginBottom:12 }}>
 <label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>WhatsApp</label>
-<input type="tel" required placeholder="(11) 91234-5678" value={whatsapp} onChange={e=>setWhatsapp(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14 }}/>
+<input type="tel" required placeholder="(11) 91234-5678" value={whatsapp} onChange={e=>setWhatsapp(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
 </div>
 )}
 <div style={{ marginBottom:12 }}>
 <label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>E-mail</label>
-<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14 }}/>
+<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
 </div>
 {mode!=="forgot" && (
 <div style={{ marginBottom:16 }}>
 <label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Senha</label>
-<input type="password" required value={password} onChange={e=>setPassword(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14 }}/>
+<input type="password" required value={password} onChange={e=>setPassword(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
 </div>
 )}
 {mode==="signin" && (
@@ -5545,7 +5549,7 @@ return (
 )}
 {error && <div style={{ fontSize:12,color:"#dc2626",marginBottom:12,textAlign:"center" }}>{error}</div>}
 {info && <div style={{ fontSize:12,color:"#16a34a",marginBottom:12,textAlign:"center" }}>{info}</div>}
-<button type="submit" disabled={loading} style={{ width:"100%",padding:"11px",borderRadius:8,border:"none",background:"#FF5603",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",opacity:loading?0.7:1 }}>
+<button type="submit" disabled={loading} style={{ width:"100%",padding:"11px",borderRadius:8,border:"none",background:"#FF5603",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",opacity:loading?0.7:1,boxSizing:"border-box" }}>
 {loading ? "Aguarde..." : (mode==="signin" ? "Entrar" : mode==="forgot" ? "Enviar link de redefinição" : "Criar conta")}
 </button>
 <div style={{ textAlign:"center",marginTop:14,fontSize:13 }}>
@@ -5976,7 +5980,7 @@ return (
 <div style={{ padding:"20px 16px",maxWidth:640,margin:"0 auto" }}>
 {page==="dashboard"&&<Dashboard students={students} assessments={assessments} dailyLogs={dailyLogs} nav={nav}/>}
 {page==="students"&&<Students students={students} setStudents={setStudents} nav={nav}/>}
-{page==="studentDetail"&&<StudentDetail studentId={pageProps.studentId} students={students} setStudents={setStudents} assessments={assessments} setAssessments={setAssessments} programs={programs} dailyLogs={dailyLogs} documents={documents} nav={nav}/>}
+{page==="studentDetail"&&<StudentDetail studentId={pageProps.studentId} students={students} setStudents={setStudents} assessments={assessments} setAssessments={setAssessments} programs={programs} setPrograms={setPrograms} dailyLogs={dailyLogs} documents={documents} nav={nav}/>}
 {page==="assessments"&&<AssessmentsList assessments={assessments} students={students} setAssessments={setAssessments} nav={nav}/>}
 {page==="newAssessment"&&<NewAssessment students={students} setAssessments={setAssessments} nav={nav} prefillStudentId={pageProps.studentId}/>}
 {page==="result"&&<Result assessmentId={pageProps.id} assessments={assessments} setAssessments={setAssessments} students={students} nav={nav}/>}
