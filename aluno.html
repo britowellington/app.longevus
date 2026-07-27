@@ -506,7 +506,9 @@ function App(){
           const rows = await r.json();
           setBibCustom((rows||[]).map(e=>({
             id:e.id,nome:e.nome,grupo:e.grupo,nivel:e.nivel,momento:e.momento,
-            foco:e.foco,icone:e.icone||"💪"
+            foco:e.foco,icone:e.icone||"💪",descricao:e.descricao,execucao:e.execucao,
+            beneficios:e.beneficios,cuidados:e.cuidados,material:e.material,
+            obs:e.obs,foto:e.foto||"",video:e.video||""
           })));
         }
       } catch(e){}
