@@ -461,14 +461,14 @@ return (
 {filtered.length===0?<Card style={{ textAlign:"center",padding:40 }}><I n="users" c="#cbd5e1" s={36}/><div style={{ color:"#94a3b8",marginTop:10 }}>Nenhum aluno.</div><div style={{ marginTop:14 }}><Btn icon="plus" onClick={()=>open()}>Cadastrar</Btn></div></Card>:
 <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
 {filtered.map(s=>(
-<Card key={s.id} style={{ padding:"14px 16px" }}>
+<Card key={s.id} onClick={()=>nav("studentDetail",{studentId:s.id})} style={{ padding:"14px 16px" }}>
 <div style={{ display:"flex",alignItems:"center",gap:12 }}>
 <div style={{ width:44,height:44,borderRadius:12,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:800,color:O,flexShrink:0 }}>{s.name?.[0]?.toUpperCase()}</div>
 <div style={{ flex:1 }}>
 <div style={{ fontWeight:700,fontSize:15 }}>{s.name}</div>
 <div style={{ fontSize:12,color:"#94a3b8" }}>{calcAge(s.dob)} anos · {s.sex==="M"?"Masc":s.sex==="F"?"Fem":"—"}{s.phone?" · "+s.phone:""}</div>
 </div>
-<div style={{ display:"flex",gap:6 }}>
+<div style={{ display:"flex",gap:6 }} onClick={e=>e.stopPropagation()}>
 <Btn sm variant="primary" icon="clip" onClick={()=>nav("newAssessment",{studentId:s.id})}>Avaliar</Btn>
 <Btn sm variant="ghost" icon="link" disabled={linkLoadingId===s.id} onClick={()=>genLink(s)}/>
 <Btn sm variant="ghost" icon="edit" onClick={()=>open(s)}/>
@@ -516,6 +516,163 @@ return (
 <div style={{ display:"flex",gap:10 }}>
 <Btn variant="secondary" full onClick={()=>setLinkModal(null)}>Fechar</Btn>
 <Btn full icon="link" onClick={copyLink}>Copiar Link</Btn>
+</div>
+</Modal>}
+</div>
+);
+};
+const StudentDetail = ({ studentId, students, setStudents, assessments, setAssessments, programs, dailyLogs, documents, nav }) => {
+const st = students.find(s=>s.id===studentId);
+const [tab,setTab] = useState("aval");
+const [editModal,setEditModal] = useState(false);
+const [form,setForm] = useState(null);
+if(!st) return <div style={{ textAlign:"center",padding:40,color:"#94a3b8" }}>Aluno não encontrado.</div>;
+const stAssessments = assessments.filter(a=>a.studentId===studentId).sort((a,b)=>b.date?.localeCompare(a.date));
+const stPrograms = programs.filter(p=>p.studentId===studentId).sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||""));
+const currentProgram = stPrograms[0];
+const stLogs = dailyLogs.filter(l=>l.studentId===studentId).sort((a,b)=>b.date?.localeCompare(a.date));
+const stDocs = documents.filter(d=>d.studentId===studentId).sort((a,b)=>b.date?.localeCompare(a.date));
+const delAssessment = async id=>{if(window.confirm("Remover avaliação?")){await DB.remove("assessments",id);setAssessments(p=>p.filter(a=>a.id!==id));}};
+const openEdit = ()=>{setForm({name:st.name,dob:st.dob||"",sex:st.sex||"",phone:st.phone||"",email:st.email||"",whatsapp:st.whatsapp||"",responsibleName:st.responsibleName||"",responsiblePhone:st.responsiblePhone||"",doctorName:st.doctorName||"",doctorPhone:st.doctorPhone||""});setEditModal(true);};
+const saveEdit = ()=>{if(!form.name.trim())return;setStudents(p=>p.map(s=>s.id===studentId?{...s,...form}:s));setEditModal(false);};
+const TABS=[{id:"aval",label:"Avaliações"},{id:"treino",label:"Treino"},{id:"mon",label:"Monitoramento"},{id:"doc",label:"Documentos"}];
+return (
+<div>
+<div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:16 }}>
+<button onClick={()=>nav("students")} style={{ background:"#f1f5f9",border:"none",borderRadius:9,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0 }}><I n="back" s={17}/></button>
+<div style={{ width:44,height:44,borderRadius:12,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:800,color:O,flexShrink:0 }}>{st.name?.[0]?.toUpperCase()}</div>
+<div style={{ flex:1,minWidth:0 }}>
+<div style={{ fontWeight:800,fontSize:17 }}>{st.name}</div>
+<div style={{ fontSize:12,color:"#94a3b8" }}>{calcAge(st.dob)} anos · {st.sex==="M"?"Masc":st.sex==="F"?"Fem":"—"}{st.phone?" · "+st.phone:""}</div>
+</div>
+<Btn sm variant="ghost" icon="edit" onClick={openEdit}/>
+</div>
+{(st.email||st.whatsapp||st.responsibleName||st.doctorName)&&
+<Card style={{ padding:"12px 14px",marginBottom:16 }}>
+<div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
+{st.email&&<span style={{ fontSize:11,color:"#64748b" }}>✉️ {st.email}</span>}
+{st.whatsapp&&<span style={{ fontSize:11,color:"#64748b" }}>💬 {st.whatsapp}</span>}
+{st.responsibleName&&<span style={{ fontSize:11,color:"#64748b" }}>👤 {st.responsibleName}{st.responsiblePhone?" ("+st.responsiblePhone+")":""}</span>}
+{st.doctorName&&<span style={{ fontSize:11,color:"#64748b" }}>🩺 {st.doctorName}{st.doctorPhone?" ("+st.doctorPhone+")":""}</span>}
+</div>
+</Card>}
+<div style={{ display:"flex",gap:6,marginBottom:16,overflowX:"auto" }}>
+{TABS.map(t=>(
+<button key={t.id} onClick={()=>setTab(t.id)} style={{ flex:"1 0 auto",padding:"9px 10px",borderRadius:10,border:"1.5px solid",borderColor:tab===t.id?"#FF5603":"#e2e8f0",background:tab===t.id?"#FF5603":"#f8fafc",color:tab===t.id?"#fff":"#64748b",fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap" }}>{t.label}</button>
+))}
+</div>
+{tab==="aval"&&(
+<div>
+<div style={{ display:"flex",justifyContent:"flex-end",marginBottom:10 }}>
+<Btn sm icon="plus" onClick={()=>nav("newAssessment",{studentId})}>Nova Avaliação</Btn>
+</div>
+{stAssessments.length===0?<Card style={{ textAlign:"center",padding:32 }}><I n="clip" c="#cbd5e1" s={32}/><div style={{ color:"#94a3b8",marginTop:10 }}>Nenhuma avaliação ainda.</div></Card>:
+<div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+{stAssessments.map(a=>{const gc=classifyGlobal(a.globalScore||0);const ahaCl=classifyAHA(a.aha?.score||0);return(
+<Card key={a.id} onClick={()=>nav("result",{id:a.id})} style={{ padding:"14px 16px" }}>
+<div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:10 }}>
+<div style={{ flex:1,minWidth:0 }}>
+<div style={{ fontSize:12,color:"#94a3b8",marginBottom:5 }}>{fmt(a.date)}</div>
+<div style={{ display:"flex",gap:5,flexWrap:"wrap" }}>{a.globalScore>0&&<Badge color={gc.color} bg={gc.bg}>Global: {a.globalScore}</Badge>}<Badge color={ahaCl.color} bg={ahaCl.bg}>{ahaCl.label}</Badge></div>
+</div>
+<button onClick={e=>{e.stopPropagation();delAssessment(a.id);}} style={{ background:"none",border:"none",cursor:"pointer",color:"#e2e8f0",padding:4,flexShrink:0 }}><I n="trash" s={15}/></button>
+</div>
+</Card>
+);})}
+</div>}
+</div>
+)}
+{tab==="treino"&&(
+<div>
+{!currentProgram?
+<Card style={{ textAlign:"center",padding:32 }}>
+<I n="zap" c="#cbd5e1" s={32}/>
+<div style={{ color:"#94a3b8",margin:"10px 0 14px" }}>Nenhum programa gerado para este aluno.</div>
+<Btn icon="zap" onClick={()=>window.open("longevus-programa.html","_self")}>Gerar Programa de Treinamento</Btn>
+</Card>:
+<Card style={{ padding:16 }}>
+<div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,gap:8 }}>
+<div style={{ fontWeight:700,fontSize:15 }}>{currentProgram.arch||"Programa de Treino"}</div>
+<Badge color="#6366f1" bg="#eef2ff">{currentProgram.phaseLabel}</Badge>
+</div>
+<div style={{ fontSize:12,color:"#94a3b8",marginBottom:12 }}>{currentProgram.freq}x/semana · {currentProgram.env==="gym"?"Academia":currentProgram.env==="home"?"Casa":currentProgram.env||""} · Semanas {currentProgram.weekRange?.[0]}–{currentProgram.weekRange?.[1]}</div>
+<div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+{currentProgram.days?.map((d,i)=>(
+<div key={i} style={{ padding:"10px 12px",background:"#f8fafc",borderRadius:10 }}>
+<div style={{ fontWeight:700,fontSize:13,marginBottom:2 }}>{d.day}</div>
+<div style={{ fontSize:11,color:"#94a3b8" }}>{d.sessions?.reduce((n,s)=>n+(s.exercises?.filter(Boolean).length||0),0)} exercícios</div>
+</div>
+))}
+</div>
+<div style={{ marginTop:14 }}>
+<Btn full variant="secondary" icon="zap" onClick={()=>window.open("longevus-programa.html","_self")}>Abrir Gerador de Programa</Btn>
+</div>
+</Card>}
+{stPrograms.length>1&&<div style={{ fontSize:11,color:"#94a3b8",marginTop:10,textAlign:"center" }}>+{stPrograms.length-1} programa(s) anterior(es)</div>}
+</div>
+)}
+{tab==="mon"&&(
+<div>
+<div style={{ display:"flex",justifyContent:"flex-end",marginBottom:10 }}>
+<Btn sm icon="plus" onClick={()=>nav("daily",{studentId})}>Registrar</Btn>
+</div>
+{stLogs.length===0?<Card style={{ textAlign:"center",padding:32 }}><I n="act" c="#cbd5e1" s={32}/><div style={{ color:"#94a3b8",marginTop:10 }}>Nenhum registro ainda.</div></Card>:
+<div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+{stLogs.slice(0,10).map(l=>(
+<Card key={l.id} style={{ padding:"14px 16px" }}>
+<div style={{ fontSize:11,color:"#94a3b8",marginBottom:8 }}>{fmt(l.date)}</div>
+<MomentCard label="Pré-exercício" color="#6366f1" m={l.pre}/>
+<MomentCard label="Durante" color={O} m={l.during}/>
+<MomentCard label="Pós-exercício" color="#16a34a" m={l.post}/>
+{l.notes&&<div style={{ fontSize:12,color:"#94a3b8",marginTop:6 }}>📝 {l.notes}</div>}
+</Card>
+))}
+{stLogs.length>10&&<div style={{ textAlign:"center" }}><Btn variant="ghost" sm onClick={()=>nav("daily",{studentId})}>Ver todos ({stLogs.length})</Btn></div>}
+</div>}
+</div>
+)}
+{tab==="doc"&&(
+<div>
+<div style={{ display:"flex",justifyContent:"flex-end",marginBottom:10 }}>
+<Btn sm icon="plus" onClick={()=>nav("documents",{studentId})}>Adicionar</Btn>
+</div>
+{stDocs.length===0?<Card style={{ textAlign:"center",padding:32 }}><I n="clip" c="#cbd5e1" s={32}/><div style={{ color:"#94a3b8",marginTop:10 }}>Nenhum documento anexado.</div></Card>:
+<div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+{stDocs.map(d=>(
+<Card key={d.id} onClick={()=>nav("documents",{studentId})} style={{ padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10 }}>
+<div>
+<div style={{ fontWeight:700,fontSize:14 }}>{d.label}</div>
+<div style={{ fontSize:11,color:"#94a3b8" }}>{fmt(d.date)}</div>
+</div>
+</Card>
+))}
+</div>}
+</div>
+)}
+{editModal&&form&&<Modal title="Editar Aluno" onClose={()=>setEditModal(false)}>
+<Inp label="Nome completo *" value={form.name} onChange={v=>setForm(f=>({...f,name:v}))} placeholder="Nome do aluno"/>
+<div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
+<Inp label="Nascimento" type="date" value={form.dob} onChange={v=>setForm(f=>({...f,dob:v}))}/>
+<Inp label="Sexo" value={form.sex} onChange={v=>setForm(f=>({...f,sex:v}))} opts={[{v:"",l:"Selecione"},{v:"M",l:"Masculino"},{v:"F",l:"Feminino"}]}/>
+</div>
+<div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
+<Inp label="Telefone" value={form.phone} onChange={v=>setForm(f=>({...f,phone:v}))} placeholder="(00) 00000-0000"/>
+<Inp label="Email" type="email" value={form.email} onChange={v=>setForm(f=>({...f,email:v}))} placeholder="email@exemplo.com"/>
+</div>
+<Inp label="WhatsApp" value={form.whatsapp} onChange={v=>setForm(f=>({...f,whatsapp:v}))} placeholder="(00) 00000-0000"/>
+<div style={{ fontWeight:700,fontSize:12,color:"#FF5603",marginBottom:8,marginTop:4,paddingTop:10,borderTop:"1px solid #f1f5f9" }}>👤 Contato do Responsável (opcional)</div>
+<div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
+<Inp label="Nome do responsável" value={form.responsibleName} onChange={v=>setForm(f=>({...f,responsibleName:v}))} placeholder="Nome completo"/>
+<Inp label="WhatsApp do responsável" value={form.responsiblePhone} onChange={v=>setForm(f=>({...f,responsiblePhone:v}))} placeholder="(00) 00000-0000"/>
+</div>
+<div style={{ fontWeight:700,fontSize:12,color:"#FF5603",marginBottom:8,marginTop:4,paddingTop:10,borderTop:"1px solid #f1f5f9" }}>🩺 Médico de Confiança (opcional)</div>
+<div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
+<Inp label="Nome do médico" value={form.doctorName} onChange={v=>setForm(f=>({...f,doctorName:v}))} placeholder="Dr(a). Nome"/>
+<Inp label="Contato do médico" value={form.doctorPhone} onChange={v=>setForm(f=>({...f,doctorPhone:v}))} placeholder="(00) 00000-0000"/>
+</div>
+<div style={{ display:"flex",gap:10,marginTop:8 }}>
+<Btn variant="secondary" full onClick={()=>setEditModal(false)}>Cancelar</Btn>
+<Btn full onClick={saveEdit}>Salvar</Btn>
 </div>
 </Modal>}
 </div>
@@ -2322,8 +2479,8 @@ return (
 </div>
 );
 };
-const Documents = ({ students, documents, setDocuments }) => {
-const [selSt, setSelSt] = useState("");
+const Documents = ({ students, documents, setDocuments, prefillStudentId }) => {
+const [selSt, setSelSt] = useState(prefillStudentId||"");
 const [uploading, setUploading] = useState(false);
 const fileInputRef = React.useRef(null);
 const [analyzing, setAnalyzing] = useState(null);
@@ -2960,15 +3117,15 @@ Zona alvo: <strong style={{ color:"#FF5603" }}>{predRisk.fcr}</strong> · Borg r
 </div>
 );
 };
-const Daily = ({ students, assessments, dailyLogs, setDailyLogs, cardioRecords, setCardioRecords }) => {
+const Daily = ({ students, assessments, dailyLogs, setDailyLogs, cardioRecords, setCardioRecords, prefillStudentId }) => {
 const [modal,setModal]=useState(false);
 const [cardioModal,setCardioModal]=useState(false);
 const [detailsModal,setDetailsModal]=useState(false);
 const [selCardioSt,setSelCardioSt]=useState("");
-const [filterSt,setFilterSt]=useState("");
+const [filterSt,setFilterSt]=useState(prefillStudentId||"");
 const [activeMoments,setActiveMoments]=useState({pre:true,during:false,post:false});
-const [form,setForm]=useState({studentId:"",date:todayStr(),pre:emptyMoment(),during:emptyMoment(),post:emptyMoment(),notes:"",disposition:null,hydration:null});
-const resetForm=()=>setForm({studentId:"",date:todayStr(),pre:emptyMoment(),during:emptyMoment(),post:emptyMoment(),notes:""});
+const [form,setForm]=useState({studentId:prefillStudentId||"",date:todayStr(),pre:emptyMoment(),during:emptyMoment(),post:emptyMoment(),notes:"",disposition:null,hydration:null});
+const resetForm=()=>setForm({studentId:prefillStudentId||"",date:todayStr(),pre:emptyMoment(),during:emptyMoment(),post:emptyMoment(),notes:""});
 const save=()=>{if(!form.studentId)return;setDailyLogs(p=>[...p,{id:uid(),...form}]);setModal(false);resetForm();};
 const del=id=>setDailyLogs(p=>p.filter(l=>l.id!==id));
 const logs=[...dailyLogs].filter(l=>!filterSt||l.studentId===filterSt).sort((a,b)=>b.date?.localeCompare(a.date));
@@ -5774,7 +5931,7 @@ const menuItems=[
 ];
 const [menuOpen, setMenuOpen] = useState(false);
 const [showSubscribe, setShowSubscribe] = useState(false);
-const activePage=["dashboard","students","assessments","daily","reports","documents","program","cognitivehub","profile","questionarios","vincular"].includes(page)?page:null;
+const activePage=page==="studentDetail"?"students":(["dashboard","students","assessments","daily","reports","documents","program","cognitivehub","profile","questionarios","vincular"].includes(page)?page:null);
 if (authLoading) {
 return <div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14 }}>Carregando...</div>;
 }
@@ -5819,12 +5976,13 @@ return (
 <div style={{ padding:"20px 16px",maxWidth:640,margin:"0 auto" }}>
 {page==="dashboard"&&<Dashboard students={students} assessments={assessments} dailyLogs={dailyLogs} nav={nav}/>}
 {page==="students"&&<Students students={students} setStudents={setStudents} nav={nav}/>}
+{page==="studentDetail"&&<StudentDetail studentId={pageProps.studentId} students={students} setStudents={setStudents} assessments={assessments} setAssessments={setAssessments} programs={programs} dailyLogs={dailyLogs} documents={documents} nav={nav}/>}
 {page==="assessments"&&<AssessmentsList assessments={assessments} students={students} setAssessments={setAssessments} nav={nav}/>}
 {page==="newAssessment"&&<NewAssessment students={students} setAssessments={setAssessments} nav={nav} prefillStudentId={pageProps.studentId}/>}
 {page==="result"&&<Result assessmentId={pageProps.id} assessments={assessments} setAssessments={setAssessments} students={students} nav={nav}/>}
-{page==="daily"&&<Daily students={students} assessments={assessments} dailyLogs={dailyLogs} setDailyLogs={setDailyLogs} cardioRecords={cardioRecords} setCardioRecords={setCardioRecords}/>}
+{page==="daily"&&<Daily students={students} assessments={assessments} dailyLogs={dailyLogs} setDailyLogs={setDailyLogs} cardioRecords={cardioRecords} setCardioRecords={setCardioRecords} prefillStudentId={pageProps.studentId}/>}
 {page==="reports"&&<Reports students={students} assessments={assessments} setAssessments={setAssessments} dailyLogs={dailyLogs} sessions={sessions} nav={nav}/>
-}{page==="documents"&&<Documents students={students} documents={documents} setDocuments={setDocuments}/>
+}{page==="documents"&&<Documents students={students} documents={documents} setDocuments={setDocuments} prefillStudentId={pageProps.studentId}/>
 }{page==="questionarios"&&<Questionarios students={students} nav={nav} onRefreshCount={refreshPendingCount}/>
 }{page==="extprograma"&&(()=>{window.open("longevus-programa.html","_self");return null;})()}{page==="cognitivehub"&&<CognitiveHub students={students} hubResults={hubResults} setHubResults={setHubResults}/>}{page==="sessions"&&<SessionTracker students={students} programs={programs} sessions={sessions} setSessions={setSessions} nav={nav}/>}{page==="vincular"&&<VincularAlunos students={students} setStudents={setStudents}/>
 }{page==="profile"&&<Profile session={session} onLogoChange={setLogoUrl}/>}
