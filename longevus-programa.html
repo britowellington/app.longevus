@@ -50,6 +50,24 @@ const ProgDB = {
   }
 };
 
+// ─── PATOLOGIAS (origem alternativa de geração de programa) ──────────────────
+async function fetchPatologias(){
+  try{
+    const headers = await authHeadersFn();
+    const r = await fetch(SUPA_URL+"/rest/v1/patologias?select=id,nome,categoria,nivel_cautela&ativo=eq.true&order=nome.asc", { headers });
+    if(!r.ok) return [];
+    return await r.json();
+  }catch(e){ return []; }
+}
+async function fetchExerciciosPatologia(patologiaId){
+  try{
+    const headers = await authHeadersFn();
+    const r = await fetch(SUPA_URL+"/rest/v1/exercicios_patologia?select=*&patologia_id=eq."+patologiaId+"&order=ordem_sugerida.asc", { headers });
+    if(!r.ok) return [];
+    return await r.json();
+  }catch(e){ return []; }
+}
+
 const Login = ({ onLogin }) => {
 const [nome,setNome]=useState("");
 const [whatsapp,setWhatsapp]=useState("");
@@ -736,6 +754,62 @@ const TreinoMomentos=({treinoKey,blocoKey,sessao,onChange,bibCustom,editMode})=>
 };
 
 // ─── PERFIL DE PRESCRIÇÃO ─────────────────────────────────────────────────────
+// ─── BUILD PRESCRIÇÃO A PARTIR DE PATOLOGIA ──────────────────────────────────
+// fase avança automaticamente em programas de continuação (cicloOffset = nº de programas anteriores do aluno)
+const FASES_ORDEM = ["Inicial","Intermediaria","Avancada"];
+const buildPrescricaoPatologia = (patExercicios, bibCustom, sequencia, cicloOffset=0) => {
+  const treinosUnicos=[...new Set(sequencia)];
+
+  // Junta cada linha de exercicios_patologia ao exercício real da biblioteca (casando pelo nome)
+  const enriched = patExercicios
+    .map(pe=>({ ...pe, ex: bibCustom.find(e=>e.nome===pe.exercicio_nome_temp) || null }))
+    .filter(pe=>pe.ex && pe.papel!=="Contraindicado");
+
+  // Distribui os grupos musculares presentes pelos treinos disponíveis (round-robin)
+  const gruposPresentes=[...new Set(enriched.map(e=>e.ex.grupo))];
+  const grupoParaTreino={};
+  gruposPresentes.forEach((g,i)=>{ grupoParaTreino[g]=treinosUnicos[i % treinosUnicos.length]; });
+
+  // Bloco 1→Inicial, Bloco 2→Inicial, Bloco 3→Intermediária, Bloco 4→Avançada
+  // cicloOffset empurra a fase-alvo pra frente em periodizações seguintes
+  const MAPA_BLOCO_FASE=[0,0,1,2];
+  const faseAlvoDoBloco = (bIdx) => FASES_ORDEM[Math.min(FASES_ORDEM.length-1, MAPA_BLOCO_FASE[bIdx]+cicloOffset)];
+
+  const prescricao={};
+  BLOCOS.forEach((bloco,bIdx)=>{
+    prescricao[bloco.key]={};
+    const faseAlvo=faseAlvoDoBloco(bIdx);
+    treinosUnicos.forEach(treinoKey=>{
+      const doTreino=enriched.filter(e=>grupoParaTreino[e.ex.grupo]===treinoKey);
+      // 1ª escolha: exercícios prioritários/progressão na fase-alvo
+      let selecionados=doTreino.filter(e=>e.fase_recomendada===faseAlvo && (e.papel==="Prioritario"||e.papel==="Progressao"));
+      // completa com complementares/regressão da mesma fase
+      if(selecionados.length<3) selecionados=[...selecionados,...doTreino.filter(e=>e.fase_recomendada===faseAlvo && !selecionados.includes(e))];
+      // se ainda faltar, pega qualquer exercício do treino (evita bloco vazio)
+      if(selecionados.length<3) selecionados=[...selecionados,...doTreino.filter(e=>!selecionados.find(s=>s.id===e.id))];
+      selecionados=selecionados.filter((e,i,arr)=>arr.findIndex(x=>x.id===e.id)===i).slice(0,4);
+
+      const cogId=suggestCognitivo(bloco.key,null);
+      const cogEx=COGNITIVOS.find(c=>c.id===cogId);
+      const inicial=[
+        { exId:"cognitivo", cogId, series:"1", reps:cogEx?.duracao||"5 min", descanso:"—", obs:"Exercício cognitivo — abre o Hub para executar", isCognitivo:true },
+      ];
+      const principal=selecionados.map(e=>{
+        const p=getPresc(e.ex.id,bloco.key,bibCustom);
+        return { exId:e.ex.id, series:p.s, reps:p.r, descanso:p.d, obs:e.observacao_tecnica||"" };
+      });
+      const alongIds=ALONG_TREINO[treinoKey]||ALONG_TREINO.A;
+      const respPresc=getPresc("ex28",bloco.key);
+      const final=[
+        ...alongIds.map(id=>{ const ex=EXERCISES.find(e=>e.id===id); if(!ex)return null; const p=getPresc(id,bloco.key); return{exId:id,series:p.s,reps:p.r,descanso:p.d,obs:""}; }).filter(Boolean),
+        { exId:"ex28", series:respPresc.s, reps:respPresc.r, descanso:respPresc.d, obs:"Encerrar a sessão com respiração consciente" },
+      ];
+      prescricao[bloco.key][treinoKey]={ inicial, principal, final };
+    });
+  });
+  return prescricao;
+};
+
 const PerfilPrescricao=({assessment})=>{
   if(!assessment)return null;
   const a=assessment;const alerts=[];
@@ -835,13 +909,45 @@ const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,n
   const [divisao,setDivisao]=useState(null);
   const [obs,setObs]=useState("");
   const [prescricao,setPrescricao]=useState({});
+  const [origem,setOrigem]=useState("avaliacao"); // "avaliacao" | "patologia"
+  const [patologias,setPatologias]=useState([]);
+  const [patologiaId,setPatologiaId]=useState("");
+  const [patExercicios,setPatExercicios]=useState([]);
+  const [carregandoPat,setCarregandoPat]=useState(false);
   const student=students.find(s=>s.id===sid);
   const lastAssessment=assessments.filter(a=>a.studentId===sid).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0];
 
-  const handleFreqDivisaoNext=()=>{const p=buildPrescricao(lastAssessment||null,divisao.sequencia);setPrescricao(p);setStep(3);};
+  // Programas anteriores do aluno → define o ciclo (1ª periodização, 2ª, 3ª...) e o avanço de fase
+  const programasDoAluno=programs.filter(p=>p.studentId===sid).sort((a,b)=>(a.criadoEm||"").localeCompare(b.criadoEm||""));
+  const cicloAtual=programasDoAluno.length+1;
+  const cicloOffset=programasDoAluno.length; // 0 no 1º programa, 1 no 2º, 2 no 3º...
+  const ultimoPrograma=programasDoAluno[programasDoAluno.length-1]||null;
+
+  useEffect(()=>{
+    if(origem==="patologia" && patologias.length===0){ fetchPatologias().then(setPatologias); }
+  },[origem]);
+  // Se o aluno já tem programa anterior por patologia, sugere continuar na mesma
+  useEffect(()=>{
+    if(sid && ultimoPrograma?.origem==="patologia" && ultimoPrograma?.patologiaId){
+      setOrigem("patologia");
+      setPatologiaId(ultimoPrograma.patologiaId);
+    }
+  },[sid]);
+  useEffect(()=>{
+    if(!patologiaId){ setPatExercicios([]); return; }
+    setCarregandoPat(true);
+    fetchExerciciosPatologia(patologiaId).then(rows=>{ setPatExercicios(rows); setCarregandoPat(false); });
+  },[patologiaId]);
+
+  const handleFreqDivisaoNext=()=>{
+    const p = origem==="patologia"
+      ? buildPrescricaoPatologia(patExercicios, bibCustom, divisao.sequencia, cicloOffset)
+      : buildPrescricao(lastAssessment||null,divisao.sequencia);
+    setPrescricao(p);setStep(3);
+  };
   const save=()=>{
     if(!sid||!titulo||!divisao)return;
-    const prog={id:uid(),studentId:sid,titulo,semanas:24,freq,divisao,obs,prescricao,criadoEm:new Date().toISOString().slice(0,10),assessmentRef:lastAssessment?.id||null};
+    const prog={id:uid(),studentId:sid,titulo,semanas:24,freq,divisao,obs,prescricao,criadoEm:new Date().toISOString().slice(0,10),assessmentRef:lastAssessment?.id||null,origem,patologiaId:origem==="patologia"?patologiaId:null,ciclo:cicloAtual};
     const fresh=LS.get("longevus_programs",programs);const updated=[...fresh.filter(p=>p.id!==prog.id),prog];setPrograms(updated);LS.set("longevus_programs",updated);ProgDB.save(prog);nav("ver",{id:prog.id});
   };
   const totalEx=Object.values(prescricao).reduce((a,b)=>a+Object.values(b||{}).reduce((c,s)=>c+Object.values(s||{}).reduce((d,arr)=>d+(arr?.length||0),0),0),0);
@@ -861,11 +967,38 @@ const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,n
         ))}
       </div>
       {step===1&&(<Card><Inp label="Aluno *" value={sid} onChange={v=>{setSid(v);setDivisao(null);setPrescricao({});}} opts={[{v:"",l:"Selecione..."},...students.map(s=>({v:s.id,l:s.name+" ("+calcAge(s.dob)+" anos)"}))]}/>
-        {sid&&!lastAssessment&&<div style={{background:"#fef9c3",border:"1.5px solid #fde68a",borderRadius:9,padding:"8px 12px",marginBottom:10,fontSize:12,color:"#92400e"}}>⚠️ Nenhuma avaliação. Será usado protocolo genérico para 50+.</div>}
-        {sid&&lastAssessment&&<PerfilPrescricao assessment={lastAssessment}/>}
+        {sid&&programasDoAluno.length>0&&(
+          <div style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:9,padding:"8px 12px",marginBottom:10,fontSize:12,color:"#1d4ed8"}}>
+            🔄 {cicloAtual}ª periodização deste aluno — {programasDoAluno.length} programa(s) anterior(es). {origem==="patologia"&&"A fase inicial dos blocos avança automaticamente em relação ao ciclo anterior."}
+          </div>
+        )}
+        {sid&&(
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#64748b",marginBottom:6}}>Origem do programa</div>
+            <div style={{display:"flex",gap:8}}>
+              <button type="button" onClick={()=>setOrigem("avaliacao")} style={{flex:1,padding:"10px 8px",borderRadius:10,border:origem==="avaliacao"?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:origem==="avaliacao"?"#fff4ee":"#fff",cursor:"pointer",textAlign:"center"}}>
+                <div style={{fontSize:18}}>🩺</div>
+                <div style={{fontSize:11,fontWeight:700,color:origem==="avaliacao"?"#FF5603":"#64748b"}}>Avaliação Física</div>
+              </button>
+              <button type="button" onClick={()=>setOrigem("patologia")} style={{flex:1,padding:"10px 8px",borderRadius:10,border:origem==="patologia"?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:origem==="patologia"?"#fff4ee":"#fff",cursor:"pointer",textAlign:"center"}}>
+                <div style={{fontSize:18}}>🎯</div>
+                <div style={{fontSize:11,fontWeight:700,color:origem==="patologia"?"#FF5603":"#64748b"}}>Patologia</div>
+              </button>
+            </div>
+          </div>
+        )}
+        {sid&&origem==="avaliacao"&&!lastAssessment&&<div style={{background:"#fef9c3",border:"1.5px solid #fde68a",borderRadius:9,padding:"8px 12px",marginBottom:10,fontSize:12,color:"#92400e"}}>⚠️ Nenhuma avaliação. Será usado protocolo genérico para 50+.</div>}
+        {sid&&origem==="avaliacao"&&lastAssessment&&<PerfilPrescricao assessment={lastAssessment}/>}
+        {sid&&origem==="patologia"&&(
+          <div style={{marginBottom:14}}>
+            <Inp label="Patologia *" value={patologiaId} onChange={setPatologiaId} opts={[{v:"",l:patologias.length?"Selecione...":"Carregando..."},...patologias.map(p=>({v:p.id,l:p.nome}))]}/>
+            {patologiaId&&carregandoPat&&<div style={{fontSize:12,color:"#94a3b8"}}>Carregando exercícios da patologia...</div>}
+            {patologiaId&&!carregandoPat&&<div style={{fontSize:12,color:"#64748b"}}>{patExercicios.length} exercícios vinculados a essa patologia.</div>}
+          </div>
+        )}
         <Inp label="Título *" value={titulo} onChange={setTitulo} placeholder="ex: Programa Longevus 24 Semanas"/>
         <Inp label="Observações gerais" value={obs} onChange={setObs} placeholder="Contexto clínico, metas, restrições..." rows={3}/>
-        <Btn full disabled={!sid||!titulo} onClick={()=>setStep(2)}>Próximo →</Btn></Card>)}
+        <Btn full disabled={!sid||!titulo||(origem==="patologia"&&!patologiaId)} onClick={()=>setStep(2)}>Próximo →</Btn></Card>)}
       {step===2&&<StepFrequencia freq={freq} setFreq={setFreq} divisao={divisao} setDivisao={setDivisao} assessment={lastAssessment} onNext={handleFreqDivisaoNext} onBack={()=>setStep(1)}/>}
       {step===3&&divisao&&<StepExercicios prescricao={prescricao} setPrescricao={setPrescricao} divisao={divisao} bibCustom={bibCustom} onNext={()=>setStep(4)} onBack={()=>setStep(2)}/>}
       {step===4&&(
