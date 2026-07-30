@@ -455,6 +455,8 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
   const changeTreino = (i) => { setTreinoIdx(i); setDone(new Set()); setSavedToday(false); };
   const changeBloco = (i) => { if(i>maxUnlockedIdx) return; setBlocoIdx(i); setTreinoIdx(0); setDone(new Set()); setSavedToday(false); };
 
+  const [showCelebration,setShowCelebration]=useState(false);
+
   const concluirTreino = async () => {
     setSaving(true);
     try{
@@ -470,6 +472,7 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
       if(r.ok){
         setSavedToday(true);
         setLastSessions(prev=>[data, ...prev]);
+        setShowCelebration(true);
       }
     } catch(e){}
     setSaving(false);
@@ -501,12 +504,18 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
           })}
         </div>
 
-        <div style={{background:blocoAtivo.cor.bg,border:`1.5px solid ${blocoAtivo.cor.border}`,borderRadius:9,padding:"8px 12px",marginBottom:10}}>
+        <div style={{background:blocoAtivo.cor.bg,border:`1.5px solid ${blocoAtivo.cor.border}`,borderRadius:9,padding:"10px 12px",marginBottom:10}}>
           <div style={{fontWeight:700,fontSize:12,color:blocoAtivo.cor.texto}}>{blocoAtivo.label} · sem. {blocoAtivo.semanas}</div>
-          <div style={{fontSize:11,color:blocoAtivo.cor.texto,opacity:0.85,marginTop:2}}>{blocoAtivo.desc}</div>
+          <div style={{fontSize:11,color:blocoAtivo.cor.texto,opacity:0.85,marginTop:2,marginBottom:blocoIdx<BLOCOS.length-1?8:0}}>{blocoAtivo.desc}</div>
           {blocoIdx<BLOCOS.length-1 && (
-            <div style={{fontSize:11,color:blocoAtivo.cor.texto,marginTop:6,fontWeight:700}}>
-              🔒 Próximo bloco libera após {requiredPerBlock} sessões concluídas neste bloco ({sessionsPerBlock(blocoAtivo.key)}/{requiredPerBlock})
+            <div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:blocoAtivo.cor.texto,marginBottom:4,fontWeight:700}}>
+                <span>🔒 Progresso do bloco (libera o próximo)</span>
+                <span>{sessionsPerBlock(blocoAtivo.key)}/{requiredPerBlock}</span>
+              </div>
+              <div style={{height:8,background:"rgba(255,255,255,0.6)",borderRadius:99,overflow:"hidden"}}>
+                <div style={{height:"100%",width:Math.min(100,Math.round(sessionsPerBlock(blocoAtivo.key)/requiredPerBlock*100))+"%",background:blocoAtivo.cor.dot,borderRadius:99,transition:"width 0.3s"}}/>
+              </div>
             </div>
           )}
         </div>
@@ -572,6 +581,39 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
           </Card>
         )}
       </div>
+      {showCelebration && (()=>{
+        const proximoTreino = treinosUnicos[(treinoIdx+1)%treinosUnicos.length];
+        const proximoLabel = TREINO_DEFS[proximoTreino]?.label;
+        const feitas = sessionsPerBlock(blocoAtivo.key);
+        const desbloqueouBloco = feitas>=requiredPerBlock && blocoIdx<BLOCOS.length-1;
+        return (
+          <Modal title="" onClose={()=>setShowCelebration(false)}>
+            <div style={{textAlign:"center",padding:"10px 0 4px"}}>
+              <div style={{fontSize:52,marginBottom:6}}>🎉</div>
+              <div style={{fontWeight:800,fontSize:20,marginBottom:6}}>Parabéns!</div>
+              <div style={{fontSize:14,color:"#64748b",marginBottom:18,lineHeight:1.6}}>
+                Você concluiu o {td?.label} de hoje.{proximoLabel && <> Na próxima vez, seu <b>{proximoLabel}</b> vai abrir direto.</>}
+              </div>
+              {!desbloqueouBloco ? (
+                <div style={{marginBottom:18}}>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#64748b",marginBottom:5,fontWeight:700}}>
+                    <span>Progresso do {blocoAtivo.label}</span>
+                    <span>{feitas}/{requiredPerBlock}</span>
+                  </div>
+                  <div style={{height:10,background:"#f1f5f9",borderRadius:99,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:Math.min(100,Math.round(feitas/requiredPerBlock*100))+"%",background:blocoAtivo.cor.dot,borderRadius:99,transition:"width 0.3s"}}/>
+                  </div>
+                </div>
+              ) : (
+                <div style={{background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"10px 12px",fontSize:13,fontWeight:700,color:"#15803d",marginBottom:18}}>
+                  🔓 Você completou o {blocoAtivo.label}! O próximo bloco já está liberado.
+                </div>
+              )}
+              <Btn full onClick={()=>setShowCelebration(false)}>Continuar</Btn>
+            </div>
+          </Modal>
+        );
+      })()}
     </div>
   );
 };
