@@ -350,6 +350,7 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
   const [saving,setSaving]=useState(false);
   const [savedToday,setSavedToday]=useState(false);
   const [lastSessions,setLastSessions]=useState([]);
+  const [showCelebration,setShowCelebration]=useState(false);
 
   const authedHeaders = async () => {
     const { data: sess } = await supa.auth.getSession();
@@ -454,8 +455,6 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
   // Reseta o check-off ao trocar de bloco ou treino manualmente
   const changeTreino = (i) => { setTreinoIdx(i); setDone(new Set()); setSavedToday(false); };
   const changeBloco = (i) => { if(i>maxUnlockedIdx) return; setBlocoIdx(i); setTreinoIdx(0); setDone(new Set()); setSavedToday(false); };
-
-  const [showCelebration,setShowCelebration]=useState(false);
 
   const concluirTreino = async () => {
     setSaving(true);
