@@ -389,7 +389,7 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
 
   // Rotação automática: assim que soubermos o programa E o histórico, escolhe o próximo treino da sequência
   useEffect(()=>{
-    if(autoSet || !prog) return;
+    if(autoSet || loading || !prog) return;
     const treinosUnicos = [...new Set(prog.divisao?.sequencia || ["A"])];
     if(lastSessions.length>0){
       const ultimo = lastSessions[0];
@@ -399,7 +399,7 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
       }
     }
     setAutoSet(true);
-  },[prog, lastSessions, autoSet]);
+  },[prog, lastSessions, autoSet, loading]);
 
   // Progresso por bloco: quantas sessões concluídas em cada bloco, e quantas são necessárias pra destravar o próximo
   const requiredPerBlock = 6 * (prog?.freq || 3); // 6 semanas por bloco × frequência semanal
@@ -412,10 +412,18 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
   // Assim que soubermos o progresso, abre no bloco atual (o mais avançado já destravado)
   const [blocoAutoSet,setBlocoAutoSet]=useState(false);
   useEffect(()=>{
-    if(blocoAutoSet || !prog) return;
+    if(blocoAutoSet || loading || !prog) return;
     setBlocoIdx(maxUnlockedIdx);
     setBlocoAutoSet(true);
-  },[prog, lastSessions, blocoAutoSet]);
+  },[prog, lastSessions, blocoAutoSet, loading]);
+
+  // Qual treino é "o de hoje" segundo a rotação (independente da aba que o aluno está olhando agora)
+  const treinosSequencia = prog ? [...new Set(prog.divisao?.sequencia || ["A"])] : [];
+  let treinoDeHoje = treinosSequencia[0];
+  if(lastSessions.length>0 && treinosSequencia.length>0){
+    const idxUltimoGlobal = treinosSequencia.indexOf(lastSessions[0].treinoKey);
+    if(idxUltimoGlobal !== -1) treinoDeHoje = treinosSequencia[(idxUltimoGlobal+1)%treinosSequencia.length];
+  }
 
   if(loading){
     return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14}}>Carregando seu treino...</div>;
@@ -511,6 +519,18 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
             );
           })}
         </div>
+
+        {treinoDeHoje && TREINO_DEFS[treinoDeHoje] && (
+          <div style={{background:TREINO_DEFS[treinoDeHoje].bg,border:`2px solid ${TREINO_DEFS[treinoDeHoje].cor}`,borderRadius:10,padding:"10px 12px",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div>
+              <div style={{fontSize:10,fontWeight:700,color:TREINO_DEFS[treinoDeHoje].cor,textTransform:"uppercase",letterSpacing:0.3}}>📅 Treino de hoje</div>
+              <div style={{fontSize:15,fontWeight:800,color:TREINO_DEFS[treinoDeHoje].cor}}>{TREINO_DEFS[treinoDeHoje].label}</div>
+            </div>
+            {treinoAtivo!==treinoDeHoje && (
+              <Btn sm onClick={()=>{const idx=treinosUnicos.indexOf(treinoDeHoje);if(idx!==-1)changeTreino(idx);}}>Ir para hoje</Btn>
+            )}
+          </div>
+        )}
 
         <div style={{background:blocoAtivo.cor.bg,border:`1.5px solid ${blocoAtivo.cor.border}`,borderRadius:9,padding:"10px 12px",marginBottom:10}}>
           <div style={{fontWeight:700,fontSize:12,color:blocoAtivo.cor.texto}}>{blocoAtivo.label} · sem. {blocoAtivo.semanas}</div>
