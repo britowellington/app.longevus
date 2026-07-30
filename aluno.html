@@ -91,11 +91,11 @@ const BLOCOS = [
 
 // ── UI helpers ──────────────────────────────────────────────────────────────
 const Card = ({children,style={},...p}) => (
-  <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:14,...style}} {...p}>{children}</div>
+  <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:14,boxShadow:"0 1px 3px rgba(15,23,42,0.05)",...style}} {...p}>{children}</div>
 );
 const Btn = ({children,variant="primary",sm,full,...p}) => {
   const styles = {
-    primary:{background:"#FF5603",color:"#fff",border:"none"},
+    primary:{background:"#FF5603",color:"#fff",border:"none",boxShadow:"0 2px 8px rgba(255,86,3,0.28)"},
     secondary:{background:"#fff",color:"#0f172a",border:"1.5px solid #e2e8f0"},
     ghost:{background:"transparent",color:"#64748b",border:"none"},
   };
@@ -107,11 +107,31 @@ const Modal = ({title,onClose,children}) => (
     <div style={{background:"#fff",borderRadius:"20px 20px 0 0",width:"100%",maxWidth:640,maxHeight:"92vh",overflowY:"auto",padding:"24px 18px 44px"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
         <div style={{fontWeight:800,fontSize:17}}>{title}</div>
-        <button onClick={onClose} style={{border:"none",background:"#f1f5f9",borderRadius:99,width:32,height:32,cursor:"pointer",fontWeight:700,color:"#64748b",fontSize:16}}>✕</button>
+        <button onClick={onClose} style={{border:"none",background:"#f1f5f9",borderRadius:99,width:32,height:32,cursor:"pointer",fontWeight:700,color:"#64748b",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="x" size={16}/></button>
       </div>
       {children}
     </div>
   </div>
+);
+
+const ICON_PATHS = {
+  check: <polyline points="20 6 9 17 4 12"/>,
+  lock: <g><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></g>,
+  unlock: <g><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></g>,
+  calendar: <g><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></g>,
+  trophy: <g><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h2a2 2 0 0 1-2 4"/><path d="M7 5H5a2 2 0 0 0 2 4"/></g>,
+  alert: <g><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></g>,
+  note: <g><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></g>,
+  play: <polygon points="6 3 20 12 6 21 6 3"/>,
+  x: <g><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></g>,
+  target: <g><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></g>,
+  wrench: <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>,
+  clock: <g><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></g>,
+  dumbbell: <g><rect x="1" y="9" width="4" height="6" rx="1"/><rect x="19" y="9" width="4" height="6" rx="1"/><line x1="5" y1="12" x2="19" y2="12"/><rect x="6.5" y="7" width="2" height="10" rx="1"/><rect x="15.5" y="7" width="2" height="10" rx="1"/></g>,
+  bulb: <g><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2.3h6c0-1.1.4-1.8 1-2.3A7 7 0 0 0 12 2z"/></g>,
+};
+const Icon = ({name, size=16, color="currentColor", style={}}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"-0.15em",flexShrink:0,...style}}>{ICON_PATHS[name]}</svg>
 );
 
 const getYtId = (url) => {
@@ -127,13 +147,13 @@ const ExDetalheModal = ({ex, cogEx, onClose}) => (
         <iframe src={"https://www.youtube.com/embed/"+getYtId(ex.video)} style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",border:"none"}} allowFullScreen/>
       </div>
     )}
-    {ex?.foco && <div style={{fontSize:13,color:"#64748b",marginBottom:10}}>🎯 <strong>Foco:</strong> {ex.foco}</div>}
-    {ex?.descricao && <div style={{fontSize:13,marginBottom:10}}><strong>📋 Descrição</strong><br/>{ex.descricao}</div>}
-    {ex?.execucao && <div style={{fontSize:13,marginBottom:10}}><strong>▶ Como executar</strong><br/><div style={{whiteSpace:"pre-line",color:"#374151"}}>{ex.execucao}</div></div>}
-    {ex?.beneficios && <div style={{fontSize:13,marginBottom:10}}><strong>✅ Benefícios</strong><br/>{ex.beneficios}</div>}
-    {ex?.cuidados && <div style={{fontSize:13,marginBottom:10,padding:"8px 10px",background:"#fff7ed",borderRadius:8,border:"1px solid #fed7aa"}}><strong>⚠️ Cuidados</strong><br/>{ex.cuidados}</div>}
-    {ex?.material && <div style={{fontSize:13,color:"#64748b",marginBottom:10}}>🔧 <strong>Material:</strong> {ex.material}</div>}
-    {cogEx?.desc && <div style={{fontSize:13,marginBottom:10}}><strong>📋 Descrição</strong><br/>{cogEx.desc}</div>}
+    {ex?.foco && <div style={{fontSize:13,color:"#64748b",marginBottom:10,display:"flex",alignItems:"center",gap:6}}><Icon name="target" size={14}/> <strong>Foco:</strong> {ex.foco}</div>}
+    {ex?.descricao && <div style={{fontSize:13,marginBottom:10}}><strong>Descrição</strong><br/>{ex.descricao}</div>}
+    {ex?.execucao && <div style={{fontSize:13,marginBottom:10}}><strong style={{display:"flex",alignItems:"center",gap:6}}><Icon name="play" size={14}/> Como executar</strong><br/><div style={{whiteSpace:"pre-line",color:"#374151"}}>{ex.execucao}</div></div>}
+    {ex?.beneficios && <div style={{fontSize:13,marginBottom:10}}><strong style={{display:"flex",alignItems:"center",gap:6}}><Icon name="check" size={14}/> Benefícios</strong><br/>{ex.beneficios}</div>}
+    {ex?.cuidados && <div style={{fontSize:13,marginBottom:10,padding:"8px 10px",background:"#fff7ed",borderRadius:8,border:"1px solid #fed7aa"}}><strong style={{display:"flex",alignItems:"center",gap:6,color:"#c2410c"}}><Icon name="alert" size={14}/> Cuidados</strong><br/>{ex.cuidados}</div>}
+    {ex?.material && <div style={{fontSize:13,color:"#64748b",marginBottom:10,display:"flex",alignItems:"center",gap:6}}><Icon name="wrench" size={14}/> <strong>Material:</strong> {ex.material}</div>}
+    {cogEx?.desc && <div style={{fontSize:13,marginBottom:10}}><strong>Descrição</strong><br/>{cogEx.desc}</div>}
     {!ex?.execucao && !ex?.descricao && !cogEx && <div style={{fontSize:13,color:"#94a3b8"}}>Seu personal ainda não adicionou instruções detalhadas para este exercício.</div>}
     <div style={{marginTop:16}}><Btn variant="secondary" full onClick={onClose}>Fechar</Btn></div>
   </Modal>
@@ -227,7 +247,7 @@ const Login = () => {
           )}
 
           {err && <div style={{color:"#dc2626",fontSize:12,marginBottom:12,textAlign:"left"}}>{err}</div>}
-          {info && <div style={{background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"10px 12px",fontSize:13,color:"#15803d",lineHeight:1.5,marginBottom:12,textAlign:"left"}}>✅ {info}</div>}
+          {info && <div style={{background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"10px 12px",fontSize:13,color:"#15803d",lineHeight:1.5,marginBottom:12,textAlign:"left",display:"flex",alignItems:"flex-start",gap:8}}><Icon name="check" size={16} style={{marginTop:2,flexShrink:0}}/><span>{info}</span></div>}
 
           <Btn full type="submit" disabled={loading}>{loading?"Aguarde...":buttonLabels[mode]}</Btn>
 
@@ -293,26 +313,28 @@ const ExercicioItem = ({item, bibCustom, checked, onToggle}) => {
   const cogEx = isCog ? COGNITIVOS.find(c=>c.id===item.cogId) : null;
   const ex = !isCog ? (bibCustom.find(e=>e.id===item.exId) || EXERCISES.find(e=>e.id===item.exId)) : null;
   const nome = isCog ? (cogEx?.nome||"Exercício Cognitivo") : (ex?.nome||"Exercício");
-  const icone = isCog ? "🧠" : (ex?.icone||"💪");
+  const iconeCustom = !isCog ? ex?.icone : null; // ícone específico cadastrado na biblioteca (mantido)
   const cor = isCog ? (cogEx?.cor||"#FF5603") : "#0f172a";
   const ytId = ex && getYtId(ex.video);
   const hasDetail = !isCog && ex && (ex.descricao || ex.execucao || ex.video || ex.beneficios || ex.cuidados);
 
   return (
-    <Card style={{padding:"12px 14px",marginBottom:8,background:checked?"#f0fdf4":"#fff",borderColor:checked?"#bbf7d0":"#e2e8f0"}}>
+    <Card style={{padding:"12px 14px",marginBottom:8,background:checked?"#f0fdf4":"#fff",borderColor:checked?"#bbf7d0":"#e2e8f0",boxShadow:"0 1px 2px rgba(15,23,42,0.04)"}}>
       <div style={{display:"flex",alignItems:"center",gap:10}}>
-        <button onClick={onToggle} style={{width:26,height:26,borderRadius:8,border:checked?"none":"1.5px solid #cbd5e1",background:checked?"#16a34a":"#fff",color:"#fff",fontSize:14,fontWeight:800,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{checked?"✓":""}</button>
+        <button onClick={onToggle} style={{width:26,height:26,borderRadius:8,border:checked?"none":"1.5px solid #cbd5e1",background:checked?"#16a34a":"#fff",color:"#fff",cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{checked && <Icon name="check" size={15}/>}</button>
         {ytId ? (
           <img src={"https://img.youtube.com/vi/"+ytId+"/mqdefault.jpg"} alt="" style={{width:52,height:39,borderRadius:9,objectFit:"cover",flexShrink:0}}/>
         ) : ex?.foto ? (
           <img src={ex.foto} alt="" style={{width:52,height:39,borderRadius:9,objectFit:"cover",flexShrink:0}}/>
         ) : (
-          <div style={{width:38,height:38,borderRadius:10,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{icone}</div>
+          <div style={{width:38,height:38,borderRadius:10,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>
+            {isCog ? <Icon name="bulb" size={19} color="#FF5603"/> : (iconeCustom || <Icon name="dumbbell" size={18} color="#FF5603"/>)}
+          </div>
         )}
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontWeight:700,fontSize:13,color:cor,textDecoration:checked?"line-through":"none",opacity:checked?0.7:1}}>{nome}</div>
           {isCog ? (
-            <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>⏱ {item.reps}</div>
+            <div style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:"#94a3b8",marginTop:2}}><Icon name="clock" size={11}/> {item.reps}</div>
           ) : (
             <div style={{display:"flex",gap:10,marginTop:2,fontSize:11,color:"#94a3b8"}}>
               <span>Séries: <b style={{color:"#475569"}}>{item.series}</b></span>
@@ -325,10 +347,10 @@ const ExercicioItem = ({item, bibCustom, checked, onToggle}) => {
           <a href={HUB_URL} target="_blank" rel="noreferrer" style={{fontSize:11,fontWeight:700,color:"#FF5603",textDecoration:"none",whiteSpace:"nowrap"}}>Abrir ›</a>
         )}
       </div>
-      {item.obs && <div style={{marginTop:8,fontSize:11,color:"#64748b",fontStyle:"italic",padding:"6px 8px",background:"#f8fafc",borderRadius:6}}>📝 {item.obs}</div>}
+      {item.obs && <div style={{marginTop:8,fontSize:11,color:"#64748b",fontStyle:"italic",padding:"6px 8px",background:"#f8fafc",borderRadius:6,display:"flex",alignItems:"flex-start",gap:6}}><Icon name="note" size={12} style={{marginTop:1,flexShrink:0}}/><span>{item.obs}</span></div>}
       {hasDetail && (
-        <button onClick={()=>setShowDetail(true)} style={{marginTop:8,fontSize:11,fontWeight:700,color:"#FF5603",background:"transparent",border:"1.5px solid #FF5603",borderRadius:7,padding:"5px 12px",cursor:"pointer"}}>
-          {ytId ? "▶ Ver vídeo e detalhes" : "Ver detalhes"}
+        <button onClick={()=>setShowDetail(true)} style={{marginTop:8,fontSize:11,fontWeight:700,color:"#FF5603",background:"transparent",border:"1.5px solid #FF5603",borderRadius:7,padding:"5px 12px",cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5}}>
+          {ytId && <Icon name="play" size={12}/>} {ytId ? "Ver vídeo e detalhes" : "Ver detalhes"}
         </button>
       )}
       {showDetail && <ExDetalheModal ex={ex} onClose={()=>setShowDetail(false)}/>}
@@ -336,10 +358,10 @@ const ExercicioItem = ({item, bibCustom, checked, onToggle}) => {
   );
 };
 
-const MOMENTOS = [["inicial","🟢 Aquecimento"],["principal","🔵 Principal"],["final","🟣 Volta à calma"]];
+const MOMENTOS = [["inicial","Aquecimento","#22c55e"],["principal","Principal","#3b82f6"],["final","Volta à calma","#a855f7"]];
 
 // ── Meu Treino ───────────────────────────────────────────────────────────────
-const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
+const MeuTreino = ({studentId, ownerId, studentName, bibCustom, onLogout}) => {
   const [loading,setLoading]=useState(true);
   const [prog,setProg]=useState(null);
   const [notFound,setNotFound]=useState(false);
@@ -433,7 +455,7 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
     return (
       <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20,background:"#f8fafc"}}>
         <Card style={{maxWidth:380,width:"100%",padding:"32px 26px",textAlign:"center"}}>
-          <div style={{fontSize:36,marginBottom:12}}>📋</div>
+          <div style={{width:56,height:56,borderRadius:16,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px"}}><Icon name="note" size={26} color="#FF5603"/></div>
           <div style={{fontWeight:700,fontSize:15,marginBottom:8}}>Nenhum treino disponível ainda</div>
           <div style={{fontSize:13,color:"#64748b",marginBottom:20,lineHeight:1.5}}>Seu personal ainda não montou seu programa, ou ele ainda não foi sincronizado. Fale com ele se achar que isso é um engano.</div>
           <Btn variant="secondary" full onClick={onLogout}>Sair</Btn>
@@ -494,14 +516,16 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
     setSaving(false);
   };
 
+  const firstName = (studentName||"").trim().split(" ")[0] || "";
+
   return (
     <div style={{minHeight:"100vh",background:"#f8fafc",paddingBottom:40}}>
-      <div style={{background:"#fff",borderBottom:"1.5px solid #e2e8f0",padding:"14px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100}}>
+      <div style={{background:"#fff",borderBottom:"1.5px solid #e2e8f0",padding:"14px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100,boxShadow:"0 2px 8px rgba(15,23,42,0.04)"}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <img src={__LOGO_ALUNO__} alt="Longevus" style={{width:34,height:34,objectFit:"contain",flexShrink:0}}/>
           <div>
             <div style={{fontSize:10,fontWeight:800,color:"#FF5603",letterSpacing:0.3}}>LONGEVUS</div>
-            <div style={{fontWeight:800,fontSize:16}}>{prog.titulo || "Meu Treino"}</div>
+            <div style={{fontWeight:800,fontSize:17}}>{firstName ? `Olá, ${firstName}` : (prog.titulo || "Meu Treino")}</div>
           </div>
         </div>
         <button onClick={onLogout} style={{border:"none",background:"transparent",color:"#94a3b8",fontSize:12,cursor:"pointer",textDecoration:"underline"}}>Sair</button>
@@ -513,7 +537,7 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
             const locked = i>maxUnlockedIdx;
             return (
               <button key={b.key} onClick={()=>changeBloco(i)} disabled={locked} style={{flex:1,border:"none",borderRadius:8,padding:"6px 3px",fontSize:10,fontWeight:700,cursor:locked?"default":"pointer",background:blocoIdx===i?b.cor.bg:"transparent",color:locked?"#cbd5e1":(blocoIdx===i?b.cor.texto:"#94a3b8"),lineHeight:1.3}}>
-                <div>{locked?"🔒":"B"+(i+1)}</div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"center"}}>{locked?<Icon name="lock" size={12}/>:"B"+(i+1)}</div>
                 <div style={{fontSize:8,marginTop:1}}>{b.semanas}</div>
               </button>
             );
@@ -523,7 +547,7 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
         {treinoDeHoje && TREINO_DEFS[treinoDeHoje] && (
           <div style={{background:TREINO_DEFS[treinoDeHoje].bg,border:`2px solid ${TREINO_DEFS[treinoDeHoje].cor}`,borderRadius:10,padding:"10px 12px",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <div>
-              <div style={{fontSize:10,fontWeight:700,color:TREINO_DEFS[treinoDeHoje].cor,textTransform:"uppercase",letterSpacing:0.3}}>📅 Treino de hoje</div>
+              <div style={{display:"flex",alignItems:"center",gap:5,fontSize:10,fontWeight:700,color:TREINO_DEFS[treinoDeHoje].cor,textTransform:"uppercase",letterSpacing:0.3}}><Icon name="calendar" size={12}/> Treino de hoje</div>
               <div style={{fontSize:15,fontWeight:800,color:TREINO_DEFS[treinoDeHoje].cor}}>{TREINO_DEFS[treinoDeHoje].label}</div>
             </div>
             {treinoAtivo!==treinoDeHoje && (
@@ -538,7 +562,7 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
           {blocoIdx<BLOCOS.length-1 && (
             <div>
               <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:blocoAtivo.cor.texto,marginBottom:4,fontWeight:700}}>
-                <span>🔒 Progresso do bloco (libera o próximo)</span>
+                <span style={{display:"flex",alignItems:"center",gap:5}}><Icon name="lock" size={11}/> Progresso do bloco (libera o próximo)</span>
                 <span>{sessionsPerBlock(blocoAtivo.key)}/{requiredPerBlock}</span>
               </div>
               <div style={{height:8,background:"rgba(255,255,255,0.6)",borderRadius:99,overflow:"hidden"}}>
@@ -552,7 +576,7 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
           {treinosUnicos.map((t,i)=>{
             const d = TREINO_DEFS[t];
             return (
-              <button key={t+i} onClick={()=>changeTreino(i)} style={{flex:1,minWidth:70,border:`1.5px solid ${treinoIdx===i?d.cor:d.border}`,borderRadius:9,padding:"8px 6px",fontSize:11,fontWeight:700,cursor:"pointer",background:treinoIdx===i?d.bg:"#fff",color:treinoIdx===i?d.cor:"#64748b",textAlign:"center"}}>
+              <button key={t+i} onClick={()=>changeTreino(i)} style={{flex:1,minWidth:70,border:`1.5px solid ${treinoIdx===i?d.cor:d.border}`,borderRadius:9,padding:"8px 6px",fontSize:11,fontWeight:700,cursor:"pointer",background:treinoIdx===i?d.bg:"#fff",color:treinoIdx===i?d.cor:"#64748b",textAlign:"center",boxShadow:treinoIdx===i?"0 2px 6px rgba(15,23,42,0.08)":"none",transition:"box-shadow 0.15s"}}>
                 {d.label}
               </button>
             );
@@ -575,12 +599,14 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
           </div>
         )}
 
-        {MOMENTOS.map(([key,label])=>{
+        {MOMENTOS.map(([key,label,color])=>{
           const items = sessao[key] || [];
           if(items.length===0) return null;
           return (
             <div key={key} style={{marginBottom:18}}>
-              <div style={{fontSize:12,fontWeight:800,color:"#64748b",marginBottom:8,textTransform:"uppercase",letterSpacing:0.3}}>{label}</div>
+              <div style={{display:"flex",alignItems:"center",gap:7,fontSize:12,fontWeight:800,color:"#64748b",marginBottom:8,textTransform:"uppercase",letterSpacing:0.3}}>
+                <span style={{width:8,height:8,borderRadius:99,background:color,flexShrink:0}}/>{label}
+              </div>
               {items.map((item,idx)=>{
                 const k = key+"-"+idx;
                 return <ExercicioItem key={k} item={item} bibCustom={bibCustom} checked={done.has(k)} onToggle={()=>toggle(k)}/>;
@@ -592,17 +618,18 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
         {totalCount>0 && (
           <div style={{marginTop:8,marginBottom:20}}>
             {savedToday ? (
-              <div style={{background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"12px 14px",textAlign:"center",fontSize:13,fontWeight:700,color:"#15803d"}}>
-                ✅ Treino concluído! Na próxima vez, seu treino {(()=>{const nx=treinosUnicos[(treinoIdx+1)%treinosUnicos.length];return TREINO_DEFS[nx]?.label;})()} vai abrir direto.
+              <div style={{background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"12px 14px",textAlign:"center",fontSize:13,fontWeight:700,color:"#15803d",display:"flex",alignItems:"flex-start",gap:8}}>
+                <Icon name="check" size={16} style={{marginTop:2,flexShrink:0}}/>
+                <span>Treino concluído! Na próxima vez, seu treino {(()=>{const nx=treinosUnicos[(treinoIdx+1)%treinosUnicos.length];return TREINO_DEFS[nx]?.label;})()} vai abrir direto.</span>
               </div>
             ) : (
               <>
                 <Btn full onClick={concluirTreino} disabled={saving || doneCount===0}>
-                  {saving ? "Salvando..." : allDone ? "✅ Concluir treino" : `Concluir treino (${doneCount}/${totalCount} marcados)`}
+                  {saving ? "Salvando..." : allDone ? (<span style={{display:"inline-flex",alignItems:"center",gap:6}}><Icon name="check" size={15}/> Concluir treino</span>) : `Concluir treino (${doneCount}/${totalCount} marcados)`}
                 </Btn>
                 {saveError && (
-                  <div style={{marginTop:8,background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"10px 12px",fontSize:12,color:"#dc2626",lineHeight:1.5}}>
-                    ⚠️ {saveError}
+                  <div style={{marginTop:8,background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"10px 12px",fontSize:12,color:"#dc2626",lineHeight:1.5,display:"flex",alignItems:"flex-start",gap:6}}>
+                    <Icon name="alert" size={14} style={{marginTop:1,flexShrink:0}}/><span>{saveError}</span>
                   </div>
                 )}
               </>
@@ -612,7 +639,7 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
 
         {prog.obs && (
           <Card style={{background:"#f8fafc",padding:"10px 14px",marginTop:6}}>
-            <div style={{fontSize:12,color:"#64748b",fontStyle:"italic"}}>📝 {prog.obs}</div>
+            <div style={{fontSize:12,color:"#64748b",fontStyle:"italic",display:"flex",alignItems:"flex-start",gap:6}}><Icon name="note" size={13} style={{marginTop:1,flexShrink:0}}/><span>{prog.obs}</span></div>
           </Card>
         )}
       </div>
@@ -624,7 +651,9 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
         return (
           <Modal title="" onClose={()=>setShowCelebration(false)}>
             <div style={{textAlign:"center",padding:"10px 0 4px"}}>
-              <div style={{fontSize:52,marginBottom:6}}>🎉</div>
+              <div style={{width:76,height:76,borderRadius:"50%",background:"linear-gradient(135deg,#FF5603,#ff8c42)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px",boxShadow:"0 8px 20px rgba(255,86,3,0.3)"}}>
+                <Icon name="trophy" size={36} color="#fff"/>
+              </div>
               <div style={{fontWeight:800,fontSize:20,marginBottom:6}}>Parabéns!</div>
               <div style={{fontSize:14,color:"#64748b",marginBottom:18,lineHeight:1.6}}>
                 Você concluiu o {td?.label} de hoje.{proximoLabel && <> Na próxima vez, seu <b>{proximoLabel}</b> vai abrir direto.</>}
@@ -640,8 +669,8 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
                   </div>
                 </div>
               ) : (
-                <div style={{background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"10px 12px",fontSize:13,fontWeight:700,color:"#15803d",marginBottom:18}}>
-                  🔓 Você completou o {blocoAtivo.label}! O próximo bloco já está liberado.
+                <div style={{background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"10px 12px",fontSize:13,fontWeight:700,color:"#15803d",marginBottom:18,display:"flex",alignItems:"center",gap:8,textAlign:"left"}}>
+                  <Icon name="unlock" size={16} style={{flexShrink:0}}/><span>Você completou o {blocoAtivo.label}! O próximo bloco já está liberado.</span>
                 </div>
               )}
               <Btn full onClick={()=>setShowCelebration(false)}>Continuar</Btn>
@@ -660,6 +689,7 @@ function App(){
   const [recoveryMode,setRecoveryMode]=useState(false);
   const [studentId,setStudentId]=useState(null);
   const [ownerId,setOwnerId]=useState(null);
+  const [studentName,setStudentName]=useState("");
   const [linkChecked,setLinkChecked]=useState(false);
   const [bibCustom,setBibCustom]=useState([]);
 
@@ -678,11 +708,12 @@ function App(){
       try{
         const token = session.access_token || SUPA_KEY;
         const headers = { "apikey": SUPA_KEY, "Authorization": "Bearer "+token };
-        const r = await fetch(SUPA_URL+"/rest/v1/students?select=id,owner_id&limit=1", { headers });
+        const r = await fetch(SUPA_URL+"/rest/v1/students?select=id,owner_id,data&limit=1", { headers });
         if(r.ok){
           const rows = await r.json();
           setStudentId(rows && rows.length>0 ? rows[0].id : null);
           setOwnerId(rows && rows.length>0 ? rows[0].owner_id : null);
+          setStudentName(rows && rows.length>0 ? (rows[0].data?.name||"") : "");
         } else {
           setStudentId(null);
         }
@@ -702,7 +733,7 @@ function App(){
           const rows = await r.json();
           setBibCustom((rows||[]).map(e=>({
             id:e.id,nome:e.nome,grupo:e.grupo,nivel:e.nivel,momento:e.momento,
-            foco:e.foco,icone:e.icone||"💪",descricao:e.descricao,execucao:e.execucao,
+            foco:e.foco,icone:e.icone||null,descricao:e.descricao,execucao:e.execucao,
             beneficios:e.beneficios,cuidados:e.cuidados,material:e.material,
             obs:e.obs,foto:e.foto||"",video:e.video||""
           })));
@@ -733,7 +764,7 @@ function App(){
     return (
       <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20,background:"#f8fafc"}}>
         <Card style={{maxWidth:380,width:"100%",padding:"32px 26px",textAlign:"center"}}>
-          <div style={{fontSize:36,marginBottom:12}}>🔒</div>
+          <div style={{width:56,height:56,borderRadius:16,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px"}}><Icon name="lock" size={26} color="#FF5603"/></div>
           <div style={{fontWeight:700,fontSize:15,marginBottom:8}}>Acesso ainda não liberado</div>
           <div style={{fontSize:13,color:"#64748b",marginBottom:20,lineHeight:1.5}}>Seu e-mail entrou, mas seu personal ainda não vinculou sua conta ao seu cadastro. Fale com ele para liberar o acesso.</div>
           <Btn variant="secondary" full onClick={onLogout}>Sair</Btn>
@@ -742,7 +773,7 @@ function App(){
     );
   }
 
-  return <MeuTreino studentId={studentId} ownerId={ownerId} bibCustom={bibCustom} onLogout={onLogout}/>;
+  return <MeuTreino studentId={studentId} ownerId={ownerId} studentName={studentName} bibCustom={bibCustom} onLogout={onLogout}/>;
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
