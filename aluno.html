@@ -351,6 +351,7 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
   const [savedToday,setSavedToday]=useState(false);
   const [lastSessions,setLastSessions]=useState([]);
   const [showCelebration,setShowCelebration]=useState(false);
+  const [saveError,setSaveError]=useState("");
 
   const authedHeaders = async () => {
     const { data: sess } = await supa.auth.getSession();
@@ -458,6 +459,7 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
 
   const concluirTreino = async () => {
     setSaving(true);
+    setSaveError("");
     try{
       const headers = await authedHeaders();
       const today = new Date().toISOString().slice(0,10);
@@ -472,8 +474,13 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
         setSavedToday(true);
         setLastSessions(prev=>[data, ...prev]);
         setShowCelebration(true);
+      } else {
+        const errText = await r.text();
+        setSaveError("Erro ao salvar (HTTP "+r.status+"): "+errText.slice(0,300));
       }
-    } catch(e){}
+    } catch(e){
+      setSaveError("Erro de conexão: "+(e?.message||String(e)));
+    }
     setSaving(false);
   };
 
@@ -567,9 +574,16 @@ const MeuTreino = ({studentId, ownerId, bibCustom, onLogout}) => {
                 ✅ Treino concluído! Na próxima vez, seu treino {(()=>{const nx=treinosUnicos[(treinoIdx+1)%treinosUnicos.length];return TREINO_DEFS[nx]?.label;})()} vai abrir direto.
               </div>
             ) : (
-              <Btn full onClick={concluirTreino} disabled={saving || doneCount===0}>
-                {saving ? "Salvando..." : allDone ? "✅ Concluir treino" : `Concluir treino (${doneCount}/${totalCount} marcados)`}
-              </Btn>
+              <>
+                <Btn full onClick={concluirTreino} disabled={saving || doneCount===0}>
+                  {saving ? "Salvando..." : allDone ? "✅ Concluir treino" : `Concluir treino (${doneCount}/${totalCount} marcados)`}
+                </Btn>
+                {saveError && (
+                  <div style={{marginTop:8,background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"10px 12px",fontSize:12,color:"#dc2626",lineHeight:1.5}}>
+                    ⚠️ {saveError}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
