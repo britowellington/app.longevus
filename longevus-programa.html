@@ -333,8 +333,59 @@ const ALONG_TREINO = {
   D: ["ex25","ex27","ex23"],  // Mix full body
 };
 
+// ─── ALTERNATIVAS NA BIBLIOTECA (COM FOTO/VÍDEO) PARA CADA EXERCÍCIO FIXO ────
+// Para cada exId "clássico" (ex01-ex33), lista de equivalentes na biblioteca
+// (mesmo padrão de movimento/grupo) que devem ser preferidos quando já têm mídia.
+// Isso não substitui a lógica clínica — só troca o exercício por um "irmão"
+// igualmente adequado que já tem foto/vídeo cadastrado.
+const ALTERNATIVAS_MIDIA = {
+  ex01:["bi01","pr01","fc01","fc02"],
+  ex02:["ep12","nc20","nc27"],
+  ex03:["hd18"],
+  ex04:["ep02","nc01"],
+  ex05:["bi07","fc07"],
+  ex06:["aq03","aq04","aq05"],
+  ex07:[],
+  ex08:["bi10","el11","el16"],
+  ex09:["bi12","el15","pr48","pr49"],
+  ex10:["el01","el02","el03","el14","fu03"],
+  ex11:["bi13"],
+  ex12:[],
+  ex13:[],
+  ex14:["bi16"],
+  ex15:["bi17","eq01"],
+  ex16:["bi19"],
+  ex17:["bi18","eq04"],
+  ex18:["pr75"],
+  ex19:["bi20"],
+  ex20:["bi21"],
+  ex21:["bi22"],
+  ex22:["bi23"],
+  ex23:["bi24"],
+  ex24:["bi25"],
+  ex25:["bi26"],
+  ex26:["bi27"],
+  ex27:["bi28"],
+  ex28:["bi33"],
+  ex29:["ca02","ca11"],
+  ex30:["bi29","ca01","ca06"],
+  ex31:["bi30","pr12","pr13","ep11"],
+  ex32:["bi31"],
+  ex33:["bi32","co02"],
+};
+// Escolhe, entre o exId original e suas alternativas, a primeira que já tem foto/vídeo na biblioteca.
+// Se nenhuma tiver mídia, mantém o exId original (clinicamente já validado).
+const pickComMidia = (exId, bibCustom=[]) => {
+  const alts = ALTERNATIVAS_MIDIA[exId] || [];
+  for (const altId of alts) {
+    const alt = bibCustom.find(e=>e.id===altId);
+    if (alt && (alt.foto || alt.video)) return altId;
+  }
+  return exId;
+};
+
 // ─── BUILD PRESCRIÇÃO COM 3 MOMENTOS + PROGRESSÃO REAL ───────────────────────
-const buildPrescricao=(assessment,sequencia)=>{
+const buildPrescricao=(assessment,sequencia,bibCustom=[])=>{
   const treinosUnicos=[...new Set(sequencia)];
   const priorities=[];
   if(assessment){
@@ -402,10 +453,11 @@ const buildPrescricao=(assessment,sequencia)=>{
       const mobilIds=MOBIL_TREINO[treinoKey]||MOBIL_TREINO.A;
       const inicial=[
         { exId:"cognitivo", cogId, series:"1", reps:cogEx?.duracao||"5 min", descanso:"—", obs:"Exercício cognitivo — abre o Hub para executar", isCognitivo:true },
-        ...mobilIds.map(id=>{
-          const ex=EXERCISES.find(e=>e.id===id);
+        ...mobilIds.map(idOriginal=>{
+          const id=pickComMidia(idOriginal,bibCustom);
+          const ex=EXERCISES.find(e=>e.id===id)||bibCustom.find(e=>e.id===id);
           if(!ex)return null;
-          const p=getPresc(id,bIdx);
+          const p=getPresc(id,bIdx,bibCustom);
           return{exId:id,series:p.s,reps:p.r,descanso:p.d,obs:""};
         }).filter(Boolean),
       ];
@@ -416,24 +468,27 @@ const buildPrescricao=(assessment,sequencia)=>{
       const seenIds=new Set();
       const principal=exIds
         .filter(id=>{if(seenIds.has(id))return false;seenIds.add(id);return true;})
-        .map(id=>{
-          const ex=EXERCISES.find(e=>e.id===id);
+        .map(idOriginal=>{
+          const id=pickComMidia(idOriginal,bibCustom);
+          const ex=EXERCISES.find(e=>e.id===id)||bibCustom.find(e=>e.id===id);
           if(!ex)return null;
-          const p=getPresc(id,bIdx);
+          const p=getPresc(id,bIdx,bibCustom);
           return{exId:id,series:p.s,reps:p.r,descanso:p.d,obs:""};
         }).filter(Boolean);
 
       // ── PARTE FINAL: alongamentos focados no treino ──
       const alongIds=ALONG_TREINO[treinoKey]||ALONG_TREINO.A;
-      const respPresc=getPresc("ex28",bIdx);
+      const respId=pickComMidia("ex28",bibCustom);
+      const respPresc=getPresc(respId,bIdx,bibCustom);
       const final=[
-        ...alongIds.map(id=>{
-          const ex=EXERCISES.find(e=>e.id===id);
+        ...alongIds.map(idOriginal=>{
+          const id=pickComMidia(idOriginal,bibCustom);
+          const ex=EXERCISES.find(e=>e.id===id)||bibCustom.find(e=>e.id===id);
           if(!ex)return null;
-          const p=getPresc(id,bIdx);
+          const p=getPresc(id,bIdx,bibCustom);
           return{exId:id,series:p.s,reps:p.r,descanso:p.d,obs:""};
         }).filter(Boolean),
-        {exId:"ex28",series:respPresc.s,reps:respPresc.r,descanso:respPresc.d,obs:"Encerrar a sessão com respiração consciente"},
+        {exId:respId,series:respPresc.s,reps:respPresc.r,descanso:respPresc.d,obs:"Encerrar a sessão com respiração consciente"},
       ];
 
       prescricao[bloco.key][treinoKey]={inicial,principal,final};
@@ -780,7 +835,12 @@ const buildPrescricaoPatologia = (patExercicios, bibCustom, sequencia, cicloOffs
     prescricao[bloco.key]={};
     const faseAlvo=faseAlvoDoBloco(bIdx);
     treinosUnicos.forEach(treinoKey=>{
-      const doTreino=enriched.filter(e=>grupoParaTreino[e.ex.grupo]===treinoKey);
+      // Exercícios com foto ou vídeo já cadastrados entram primeiro — o restante mantém a ordem original.
+      // Isso não muda QUAIS exercícios são elegíveis (fase/papel continuam mandando), só desempata a favor de quem já tem mídia.
+      const temMidia=e=>!!(e.ex.foto||e.ex.video);
+      const doTreino=enriched
+        .filter(e=>grupoParaTreino[e.ex.grupo]===treinoKey)
+        .sort((a,b)=>(temMidia(b)?1:0)-(temMidia(a)?1:0));
       // 1ª escolha: exercícios prioritários/progressão na fase-alvo
       let selecionados=doTreino.filter(e=>e.fase_recomendada===faseAlvo && (e.papel==="Prioritario"||e.papel==="Progressao"));
       // completa com complementares/regressão da mesma fase
@@ -942,7 +1002,7 @@ const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,n
   const handleFreqDivisaoNext=()=>{
     const p = origem==="patologia"
       ? buildPrescricaoPatologia(patExercicios, bibCustom, divisao.sequencia, cicloOffset)
-      : buildPrescricao(lastAssessment||null,divisao.sequencia);
+      : buildPrescricao(lastAssessment||null,divisao.sequencia,bibCustom);
     setPrescricao(p);setStep(3);
   };
   const save=()=>{
