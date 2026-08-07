@@ -683,7 +683,7 @@ return (
 );
 };
 const NewAssessment = ({ students, setAssessments, nav, prefillStudentId }) => {
-const [step,setStep]=useState(prefillStudentId?1:0);
+const [step,setStep]=useState(0); // sempre começa no Passo 0 — é lá que ficam os interruptores de módulo. Se vier de prefillStudentId, o aluno já chega selecionado (só falta confirmar/ajustar os módulos e avançar).
 const [sid,setSid]=useState(prefillStudentId||"");
 // ── Módulos ativos nesta avaliação ──────────────────────────────────────────
 // Questionários = liga/desliga tudo (Anamnese, PAR-Q, Cardiovascular/AHA, AVDs, AIVDs)
