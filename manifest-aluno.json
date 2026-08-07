@@ -1,0 +1,16 @@
+{
+  "name": "Wellington Brito - Meu Treino",
+  "short_name": "Meu Treino",
+  "description": "Acompanhe seu treino, veja os exercícios e registre suas sessões.",
+  "start_url": "./aluno.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f8fafc",
+  "theme_color": "#FF5603",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
