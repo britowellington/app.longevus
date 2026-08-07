@@ -685,6 +685,11 @@ return (
 const NewAssessment = ({ students, setAssessments, nav, prefillStudentId }) => {
 const [step,setStep]=useState(prefillStudentId?1:0);
 const [sid,setSid]=useState(prefillStudentId||"");
+// ── Módulos ativos nesta avaliação ──────────────────────────────────────────
+// Questionários = liga/desliga tudo (Anamnese, PAR-Q, Cardiovascular/AHA, AVDs, AIVDs)
+// Testes Físicos = liga/desliga o bloco inteiro; dentro dele, cada teste já tem checkbox próprio (phys.selected)
+// Testes Cognitivos = liga/desliga o bloco inteiro; dentro dele, cada teste tem checkbox próprio (cognitiveData.selected)
+const [modAtivos,setModAtivos]=useState({questionarios:true,fisico:true,cognitivo:true});
 const [anamnese,setAnamnese]=useState({
 pathologies:"", medications:"", allergies:"", surgeries:"",
 physActivityHistory:"", physActivityFreq:"", physActivityType:"",
@@ -705,6 +710,7 @@ mmse:{q1:"",q2:"",q3:"",q4:"",q5:"",q6:"",q7:"",q8:"",q9:"",q10:"",total:""},
 dualTask:{single:"",dual:""},
 verbalFluency:{score:"",words:""},
 digitSpan:{direct:"",inverse:""},
+selected:{mmse:true,dualTask:true,verbalFluency:true,digitSpan:true},
 notes:""
 });
 const [cardioAssessment,setCardioAssessment]=useState({ergo:{fcRest:"",fcMax:"",pasSit:"",padSit:"",pasPeak:"",padPeak:"",mets:"",vo2max:"",vo2measured:false,fcSymptom:"",symptomType:"",fcIschemic:"",ecgObs:"",arrythmias:[],arrObs:"",medications:[]},pred:{age:"",sex:"",fcRest:"",pasSit:"",padSit:"",diabetes:false,hypertension:false,obesity:false,cardioDisease:false,sedentary:false,symptoms:false,formula:"tanaka",medications:[],functionalTest:"",ftValue:""}});
@@ -750,33 +756,70 @@ return tot>0?Math.round((pts/tot)*100):0;
 const finish=()=>{
 const ahaScore=calcAHA(),funcScore=calcFunc(),physScore=calcPhys();
 const cvScore=Math.max(0,Math.round(100-(ahaScore/13)*100));
-const global=Math.round(cvScore*0.35+funcScore*0.35+physScore*0.30);
-const cogScore=calcCognitiveScore(cognitiveData.mmse.total,cognitiveData.dualTask.single,cognitiveData.dualTask.dual,cognitiveData.verbalFluency.score,cognitiveData.digitSpan.direct,cognitiveData.digitSpan.inverse);
-const a={id:uid(),studentId:sid,date:todayStr(),anamnese,parqFailed:parqEnabled&&Object.values(parq).some(v=>v===true),parqApplied:parqEnabled,parq,aha:{...aha,score:ahaScore},avd,aivd,functional:{...funcRisk,score:funcScore},physical:{...phys,score:physScore,sppbBalanceScore:(phys.sppbSide==="0"?0:(parseInt(phys.sppbSemi)||0)+(parseInt(phys.sppbTandem)||0)),sppbChairScore:(classifySPPBChairStand(phys.sppbChairUnable?"unable":phys.sppbChair)?.score||0)},globalScore:global,cardioMode,cardioAssessment,cognitiveData:{...cognitiveData,score:cogScore}};
+// Score global recalculado proporcionalmente só com os módulos ativos.
+// Pesos originais: Cardiovascular 35% + Funcional 35% (ambos de "Questionários") + Físico 30%.
+let globalWeighted=0, globalWeightSum=0;
+if(modAtivos.questionarios){ globalWeighted+=cvScore*0.35+funcScore*0.35; globalWeightSum+=0.70; }
+if(modAtivos.fisico){ globalWeighted+=physScore*0.30; globalWeightSum+=0.30; }
+const global=globalWeightSum>0?Math.round(globalWeighted/globalWeightSum):0;
+const cogScore=modAtivos.cognitivo?calcCognitiveScore(
+  cognitiveData.selected?.mmse!==false?cognitiveData.mmse.total:"",
+  cognitiveData.selected?.dualTask!==false?cognitiveData.dualTask.single:"",
+  cognitiveData.selected?.dualTask!==false?cognitiveData.dualTask.dual:"",
+  cognitiveData.selected?.verbalFluency!==false?cognitiveData.verbalFluency.score:"",
+  cognitiveData.selected?.digitSpan!==false?cognitiveData.digitSpan.direct:"",
+  cognitiveData.selected?.digitSpan!==false?cognitiveData.digitSpan.inverse:""
+):null;
+const a={id:uid(),studentId:sid,date:todayStr(),modAtivos,anamnese,parqFailed:parqEnabled&&Object.values(parq).some(v=>v===true),parqApplied:parqEnabled,parq,aha:{...aha,score:ahaScore},avd,aivd,functional:{...funcRisk,score:funcScore},physical:{...phys,score:physScore,sppbBalanceScore:(phys.sppbSide==="0"?0:(parseInt(phys.sppbSemi)||0)+(parseInt(phys.sppbTandem)||0)),sppbChairScore:(classifySPPBChairStand(phys.sppbChairUnable?"unable":phys.sppbChair)?.score||0)},globalScore:global,cardioMode,cardioAssessment,cognitiveData:{...cognitiveData,score:cogScore}};
 setAssessments(p=>[...p,a]);nav("result",{id:a.id});
 };
 const steps=["Aluno","Anamnese","PAR-Q","Cardiovascular","AVDs","AIVDs","Testes Físicos","Teste Ergométrico","Avaliação Cognitiva"];
+// Mapa de passos "de verdade" (números originais) que devem aparecer, dado os módulos ativos.
+// "step" (estado) passa a ser um ÍNDICE dentro desse mapa — não mais o número literal do passo.
+const STEP_MAP=[0,
+  ...(modAtivos.questionarios?[1,2,3,4,5]:[]),
+  ...(modAtivos.fisico?[6,7]:[]),
+  ...(modAtivos.cognitivo?[8]:[]),
+];
+const realStep=STEP_MAP[Math.min(step,STEP_MAP.length-1)];
 return (
 <div>
 <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:18 }}>
-<button onClick={()=>step>0?setStep(step-1):nav("assessments")} style={{ background:"#f1f5f9",border:"none",borderRadius:9,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}><I n="back" s={17}/></button>
+<button onClick={()=>step>0?setStep(s=>s-1):nav("assessments")} style={{ background:"#f1f5f9",border:"none",borderRadius:9,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}><I n="back" s={17}/></button>
 <div style={{ flex:1 }}>
 <div style={{ fontWeight:800,fontSize:17 }}>Nova Avaliação</div>
-<div style={{ fontSize:12,color:"#64748b" }}>Etapa {step+1}/{steps.length}: {steps[step]}</div>
+<div style={{ fontSize:12,color:"#64748b" }}>Etapa {step+1}/{STEP_MAP.length}: {steps[realStep]}</div>
 </div>
 </div>
 <div style={{ height:6,background:"#e2e8f0",borderRadius:99,marginBottom:22 }}>
-<div style={{ height:6,background:O,borderRadius:99,width:`${((step+1)/steps.length)*100}%`,transition:"width .3s" }}/>
+<div style={{ height:6,background:O,borderRadius:99,width:`${((step+1)/STEP_MAP.length)*100}%`,transition:"width .3s" }}/>
 </div>
 {/* STEP 0 */}
-{step===0&&<Card>
+{realStep===0&&<Card>
 <div style={{ fontWeight:700,marginBottom:16 }}>Selecionar Aluno</div>
 <Inp label="Aluno" value={sid} onChange={setSid} opts={[{v:"",l:"Selecione..."},...students.map(s=>({v:s.id,l:`${s.name} (${calcAge(s.dob)} anos)`}))]}/>
 {student&&<div style={{ background:"#f8fafc",borderRadius:10,padding:12,marginBottom:12 }}><div style={{ fontWeight:700 }}>{student.name}</div><div style={{ fontSize:13,color:"#64748b" }}>{calcAge(student.dob)} anos · {student.sex==="M"?"Masculino":student.sex==="F"?"Feminino":"—"}</div>{student.notes&&<div style={{ fontSize:12,color:"#94a3b8",marginTop:4 }}>{student.notes}</div>}</div>}
-<Btn full disabled={!sid} onClick={()=>setStep(1)}>Próximo →</Btn>
+<div style={{ fontWeight:700,fontSize:13,color:"#475569",marginTop:18,marginBottom:10 }}>Módulos desta avaliação</div>
+{[
+  {k:"questionarios",label:"Questionários",desc:"Anamnese, PAR-Q, Cardiovascular, AVDs, AIVDs"},
+  {k:"fisico",label:"Testes Físicos",desc:"SPPB, preensão, TUG, sentar-alcançar, marcha, ergométrico"},
+  {k:"cognitivo",label:"Testes Cognitivos",desc:"MMSE, Dual Task, Fluência Verbal, Span de Dígitos"},
+].map(m=>(
+<div key={m.k} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",background:modAtivos[m.k]?"#fff4ee":"#f8fafc",border:"1.5px solid "+(modAtivos[m.k]?"#FF560344":"#e2e8f0"),borderRadius:12,padding:"12px 14px",marginBottom:10 }}>
+<div>
+<div style={{ fontWeight:700,fontSize:13,color:modAtivos[m.k]?"#FF5603":"#0f172a" }}>{m.label}</div>
+<div style={{ fontSize:11,color:"#94a3b8",marginTop:2 }}>{m.desc}</div>
+</div>
+<button onClick={()=>setModAtivos(x=>({...x,[m.k]:!x[m.k]}))} style={{ width:48,height:26,borderRadius:99,border:"none",background:modAtivos[m.k]?"#FF5603":"#e2e8f0",cursor:"pointer",position:"relative",transition:"background 0.2s",flexShrink:0 }}>
+<div style={{ width:20,height:20,borderRadius:99,background:"#fff",position:"absolute",top:3,left:modAtivos[m.k]?25:3,transition:"left 0.2s",boxShadow:"0 1px 3px #0002" }}/>
+</button>
+</div>
+))}
+{!modAtivos.questionarios&&!modAtivos.fisico&&!modAtivos.cognitivo&&<div style={{ background:"#fee2e2",borderRadius:10,padding:12,marginBottom:12,fontSize:12,color:"#dc2626",fontWeight:600 }}>⚠️ Ative pelo menos um módulo pra continuar.</div>}
+<Btn full disabled={!sid||(!modAtivos.questionarios&&!modAtivos.fisico&&!modAtivos.cognitivo)} onClick={()=>setStep(s=>s+1)}>Próximo →</Btn>
 </Card>}
 {/* STEP 1: PAR-Q */}
-{step===1&&<Card>
+{realStep===1&&<Card>
 <div style={{ fontWeight:700,marginBottom:4 }}>Anamnese</div>
 <div style={{ fontSize:13,color:"#64748b",marginBottom:18 }}>Histórico de saúde, hábitos e objetivos do aluno</div>
 <div style={{ fontWeight:700,fontSize:13,color:"#FF5603",marginBottom:10,paddingBottom:6,borderBottom:"1.5px solid #fff4ee" }}>🏥 Saúde</div>
@@ -806,10 +849,10 @@ return (
 <Inp label="Observações adicionais" value={anamnese.observations} onChange={v=>setAnamnese(a=>({...a,observations:v}))} placeholder="Qualquer informação relevante..."/>
 <div style={{ marginTop:16,display:"flex",gap:10 }}>
 <Btn variant="secondary" full onClick={()=>setStep(0)}>Voltar</Btn>
-<Btn full onClick={()=>setStep(2)}>Próximo →</Btn>
+<Btn full onClick={()=>setStep(s=>s+1)}>Próximo →</Btn>
 </div>
 </Card>}
-{step===2&&<Card>
+{realStep===2&&<Card>
 <div style={{ fontWeight:700,marginBottom:4 }}>PAR-Q</div>
 <div style={{ fontSize:13,color:"#64748b",marginBottom:16 }}>Questionário de prontidão para atividade física — opcional</div>
 {/* Toggle opcional */}
@@ -828,12 +871,12 @@ return (
 {Object.values(parq).some(v=>v===true)&&<div style={{ background:"#fee2e2",borderRadius:10,padding:12,marginBottom:14 }}><div style={{ color:"#dc2626",fontWeight:700,fontSize:13 }}>⚠️ PAR-Q Positivo — avaliação médica recomendada.</div></div>}
 </>}
 <div style={{ display:"flex",gap:10,marginTop:8 }}>
-<Btn variant="secondary" full onClick={()=>setStep(1)}>Voltar</Btn>
-<Btn full onClick={()=>setStep(3)}>Próximo →</Btn>
+<Btn variant="secondary" full onClick={()=>setStep(s=>s-1)}>Voltar</Btn>
+<Btn full onClick={()=>setStep(s=>s+1)}>Próximo →</Btn>
 </div>
 </Card>}
 {/* STEP 3: AHA */}
-{step===3&&<Card>
+{realStep===3&&<Card>
 <div style={{ fontWeight:700,marginBottom:16 }}>Risco Cardiovascular (AHA)</div>
 {/* Peso e Altura → IMC automático */}
 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
@@ -868,12 +911,12 @@ return (
 {[["smoker","Tabagismo"],["diabetes","Diabetes"],["hypertension","Hipertensão"],["hyperlipid","Dislipidemia"],["family","Hist. Familiar DCV"]].map(([k,l])=>(<label key={k} style={{ display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:9,border:`1.5px solid ${aha[k]?O:"#e2e8f0"}`,background:aha[k]?"#fff4ee":"#f8fafc",cursor:"pointer" }}><input type="checkbox" checked={aha[k]} onChange={e=>setAha(a=>({...a,[k]:e.target.checked}))}/><span style={{ fontSize:13,fontWeight:600,color:aha[k]?O:"#475569" }}>{l}</span></label>))}
 </div>
 <div style={{ display:"flex",gap:10,marginTop:16 }}>
-<Btn variant="secondary" full onClick={()=>setStep(2)}>Voltar</Btn>
-<Btn full onClick={()=>setStep(4)}>Próximo →</Btn>
+<Btn variant="secondary" full onClick={()=>setStep(s=>s-1)}>Voltar</Btn>
+<Btn full onClick={()=>setStep(s=>s+1)}>Próximo →</Btn>
 </div>
 </Card>}
 {/* STEP 3: AVDs */}
-{step===4&&<Card>
+{realStep===4&&<Card>
 <div style={{ fontWeight:700,marginBottom:4 }}>Atividades da Vida Diária (AVDs)</div>
 <div style={{ fontSize:13,color:"#64748b",marginBottom:6 }}>Avaliação de Spirduso — Cuidados pessoais básicos</div>
 <div style={{ display:"flex",gap:6,marginBottom:16 }}>
@@ -888,12 +931,12 @@ return (
 </div>
 ))}
 <div style={{ display:"flex",gap:10,marginTop:8 }}>
-<Btn variant="secondary" full onClick={()=>setStep(3)}>Voltar</Btn>
-<Btn full onClick={()=>setStep(5)}>Próximo →</Btn>
+<Btn variant="secondary" full onClick={()=>setStep(s=>s-1)}>Voltar</Btn>
+<Btn full onClick={()=>setStep(s=>s+1)}>Próximo →</Btn>
 </div>
 </Card>}
 {/* STEP 4: AIVDs */}
-{step===5&&<Card>
+{realStep===5&&<Card>
 <div style={{ fontWeight:700,marginBottom:4 }}>Atividades Instrumentais da Vida Diária (AIVDs)</div>
 <div style={{ fontSize:13,color:"#64748b",marginBottom:6 }}>Avaliação de Spirduso — Participação social e autonomia</div>
 <div style={{ display:"flex",gap:6,marginBottom:16 }}>
@@ -915,12 +958,12 @@ return (
 <Inp label="Saúde autorreferida" value={funcRisk.selfhealth} onChange={v=>setFuncRisk(f=>({...f,selfhealth:parseInt(v)||0}))} opts={[{v:0,l:"0 — Muito ruim"},{v:1,l:"1 — Regular"},{v:2,l:"2 — Boa/Excelente"}]}/>
 </div>
 <div style={{ display:"flex",gap:10,marginTop:8 }}>
-<Btn variant="secondary" full onClick={()=>setStep(4)}>Voltar</Btn>
-<Btn full onClick={()=>setStep(6)}>Próximo →</Btn>
+<Btn variant="secondary" full onClick={()=>setStep(s=>s-1)}>Voltar</Btn>
+<Btn full onClick={()=>setStep(s=>s+1)}>Próximo →</Btn>
 </div>
 </Card>}
 {/* STEP 5: Testes físicos */}
-{step===6&&<Card>
+{realStep===6&&<Card>
 <div style={{ fontWeight:700,marginBottom:4 }}>Testes Físicos</div>
 <div style={{ fontSize:13,color:"#64748b",marginBottom:16 }}>Selecione os testes realizados. O resultado aparece automaticamente.</div>
 {/* ── SPPB BALANCE ── */}
@@ -1035,11 +1078,11 @@ style={{ width:"100%",padding:"9px 12px",borderRadius:9,border:"1.5px solid #e2e
 );
 })}
 <div style={{ display:"flex",gap:10,marginTop:8 }}>
-<Btn variant="secondary" full onClick={()=>setStep(5)}>Voltar</Btn>
-<Btn full onClick={()=>setStep(7)}>Próximo →</Btn>
+<Btn variant="secondary" full onClick={()=>setStep(s=>s-1)}>Voltar</Btn>
+<Btn full onClick={()=>setStep(s=>s+1)}>Próximo →</Btn>
 </div>
 </Card>}
-{step===7&&<Card>
+{realStep===7&&<Card>
 <div style={{ fontWeight:700,marginBottom:4 }}>Avaliação Cardiorrespiratória</div>
 <div style={{ fontSize:13,color:"#64748b",marginBottom:16 }}>Etapa opcional — baseada em teste ergométrico ou predição clínica</div>
 {/* Seletor de modo */}
@@ -1217,17 +1260,22 @@ return(<div style={{ background:"#f8fafc",borderRadius:12,padding:14,marginTop:4
 <div style={{ fontSize:13 }}>Avaliação cardiorrespiratória não realizada. Pode ser adicionada depois no Monitoramento.</div>
 </div>}
 <div style={{ display:"flex",gap:10,marginTop:16 }}>
-<Btn variant="secondary" full onClick={()=>setStep(6)}>Voltar</Btn>
-<Btn full onClick={()=>setStep(8)}>Próximo →</Btn>
+<Btn variant="secondary" full onClick={()=>setStep(s=>s-1)}>Voltar</Btn>
+<Btn full onClick={()=>setStep(s=>s+1)}>Próximo →</Btn>
 </div>
 </Card>}
 {/* STEP 8 — AVALIAÇÃO COGNITIVA */}
-{step===8&&<Card>
+{realStep===8&&<Card>
 <div style={{ fontWeight:700,marginBottom:4 }}>🧠 Avaliação Cognitiva</div>
 <div style={{ fontSize:13,color:"#64748b",marginBottom:16 }}>Bateria Longevus — ~15 minutos · Aplicação verbal, sem equipamento</div>
 {/* ── MMSE ── */}
 <div style={{ background:"#eef2ff",border:"1.5px solid #c7d2fe",borderRadius:12,padding:14,marginBottom:14 }}>
 <div style={{ fontWeight:700,fontSize:14,color:"#6366f1",marginBottom:4 }}>1. MMSE — Triagem Cognitiva Geral</div>
+<label style={{ display:"flex",alignItems:"center",gap:8,marginBottom:10,cursor:"pointer" }}>
+<input type="checkbox" checked={cognitiveData.selected?.mmse!==false} onChange={e=>setCognitiveData(d=>({...d,selected:{...d.selected,mmse:e.target.checked}}))} style={{ width:16,height:16,accentColor:"#6366f1",cursor:"pointer" }}/>
+<span style={{ fontSize:12,fontWeight:600,color:"#475569" }}>Aplicar este teste</span>
+</label>
+{cognitiveData.selected?.mmse!==false&&<>
 <div style={{ fontSize:12,color:"#64748b",marginBottom:12 }}>Faça cada pergunta verbalmente. Marque acerto (1) ou erro (0).</div>
 {[
 {k:"q1",l:"Orientação temporal",desc:"Qual é o ano? Mês? Dia da semana? Dia do mês? Período do dia? (1 ponto cada = máx. 5)",max:5},
@@ -1263,10 +1311,16 @@ setCognitiveData(d=>({...d,mmse:{...newMmse,total:String(t)}}));
 <span style={{ fontWeight:700,fontSize:14,color:"#6366f1" }}>Total MMSE: {cognitiveData.mmse.total||0}/30</span>
 {cognitiveData.mmse.total&&<TestResult cl={classifyMMSE(cognitiveData.mmse.total)}/>}
 </div>
+</>}
 </div>
 {/* ── DUAL TASK ── */}
 <div style={{ background:"#fff4ee",border:"1.5px solid #FF560344",borderRadius:12,padding:14,marginBottom:14 }}>
 <div style={{ fontWeight:700,fontSize:14,color:"#FF5603",marginBottom:4 }}>2. Dual Task Cost — Cognitivo-Motor</div>
+<label style={{ display:"flex",alignItems:"center",gap:8,marginBottom:10,cursor:"pointer" }}>
+<input type="checkbox" checked={cognitiveData.selected?.dualTask!==false} onChange={e=>setCognitiveData(d=>({...d,selected:{...d.selected,dualTask:e.target.checked}}))} style={{ width:16,height:16,accentColor:"#FF5603",cursor:"pointer" }}/>
+<span style={{ fontSize:12,fontWeight:600,color:"#475569" }}>Aplicar este teste</span>
+</label>
+{cognitiveData.selected?.dualTask!==false&&<>
 <div style={{ fontSize:12,color:"#64748b",marginBottom:12 }}>
 <strong>Passo 1:</strong> Marcha estacionária 20 seg sozinho → conte os passos e registre.<br/>
 <strong>Passo 2:</strong> Marcha estacionária 20 seg contando de 3 em 3 → conte os passos e registre.
@@ -1288,10 +1342,16 @@ return(
 </div>
 );
 })()}
+</>}
 </div>
 {/* ── FLUÊNCIA VERBAL ── */}
 <div style={{ background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:12,padding:14,marginBottom:14 }}>
 <div style={{ fontWeight:700,fontSize:14,color:"#16a34a",marginBottom:4 }}>3. Fluência Verbal por Categorias</div>
+<label style={{ display:"flex",alignItems:"center",gap:8,marginBottom:10,cursor:"pointer" }}>
+<input type="checkbox" checked={cognitiveData.selected?.verbalFluency!==false} onChange={e=>setCognitiveData(d=>({...d,selected:{...d.selected,verbalFluency:e.target.checked}}))} style={{ width:16,height:16,accentColor:"#16a34a",cursor:"pointer" }}/>
+<span style={{ fontSize:12,fontWeight:600,color:"#475569" }}>Aplicar este teste</span>
+</label>
+{cognitiveData.selected?.verbalFluency!==false&&<>
 <div style={{ fontSize:12,color:"#64748b",marginBottom:12 }}>
 Diga: <em>"Fale o máximo de animais que conseguir em 1 minuto."</em><br/>
 Conte as palavras válidas (sem repetições) e registre abaixo.
@@ -1299,10 +1359,16 @@ Conte as palavras válidas (sem repetições) e registre abaixo.
 <Inp label="Total de palavras (1 minuto)" type="number" value={cognitiveData.verbalFluency.score} onChange={v=>setCognitiveData(d=>({...d,verbalFluency:{...d.verbalFluency,score:v}}))} placeholder="ex: 14"/>
 <Inp label="Palavras ditas (opcional)" value={cognitiveData.verbalFluency.words} onChange={v=>setCognitiveData(d=>({...d,verbalFluency:{...d.verbalFluency,words:v}}))} placeholder="cachorro, gato, leão..."/>
 {cognitiveData.verbalFluency.score&&<TestResult cl={classifyVerbalFluency(cognitiveData.verbalFluency.score)}/>}
+</>}
 </div>
 {/* ── SPAN DE DÍGITOS ── */}
 <div style={{ background:"#fdf4ff",border:"1.5px solid #e9d5ff",borderRadius:12,padding:14,marginBottom:14 }}>
 <div style={{ fontWeight:700,fontSize:14,color:"#7c3aed",marginBottom:4 }}>4. Span de Dígitos</div>
+<label style={{ display:"flex",alignItems:"center",gap:8,marginBottom:10,cursor:"pointer" }}>
+<input type="checkbox" checked={cognitiveData.selected?.digitSpan!==false} onChange={e=>setCognitiveData(d=>({...d,selected:{...d.selected,digitSpan:e.target.checked}}))} style={{ width:16,height:16,accentColor:"#7c3aed",cursor:"pointer" }}/>
+<span style={{ fontSize:12,fontWeight:600,color:"#475569" }}>Aplicar este teste</span>
+</label>
+{cognitiveData.selected?.digitSpan!==false&&<>
 <div style={{ fontSize:12,color:"#64748b",marginBottom:8 }}>
 <strong>Direto:</strong> Fale sequências de números crescentes (3, 4, 5... dígitos). Registre quantos dígitos o aluno repetiu corretamente.<br/>
 <strong>Inverso:</strong> Peça para repetir na ordem inversa. Registre o máximo alcançado.
@@ -1320,12 +1386,20 @@ Conte as palavras válidas (sem repetições) e registre abaixo.
 <Inp label="Span Inverso (máx. dígitos)" type="number" value={cognitiveData.digitSpan.inverse} onChange={v=>setCognitiveData(d=>({...d,digitSpan:{...d.digitSpan,inverse:v}}))} placeholder="ex: 3"/>
 </div>
 {cognitiveData.digitSpan.direct&&<TestResult cl={classifyDigitSpan(cognitiveData.digitSpan.direct,cognitiveData.digitSpan.inverse)}/>}
+</>}
 </div>
 {/* Observações */}
 <Inp label="Observações cognitivas" value={cognitiveData.notes} onChange={v=>setCognitiveData(d=>({...d,notes:v}))} placeholder="Comportamento durante os testes, ansiedade, queixas relatadas..."/>
 {/* Score global */}
-{(cognitiveData.mmse.total||cognitiveData.dualTask.single||cognitiveData.verbalFluency.score||cognitiveData.digitSpan.direct)&&(()=>{
-const cs=calcCognitiveScore(cognitiveData.mmse.total,cognitiveData.dualTask.single,cognitiveData.dualTask.dual,cognitiveData.verbalFluency.score,cognitiveData.digitSpan.direct,cognitiveData.digitSpan.inverse);
+{((cognitiveData.selected?.mmse!==false&&cognitiveData.mmse.total)||(cognitiveData.selected?.dualTask!==false&&cognitiveData.dualTask.single)||(cognitiveData.selected?.verbalFluency!==false&&cognitiveData.verbalFluency.score)||(cognitiveData.selected?.digitSpan!==false&&cognitiveData.digitSpan.direct))&&(()=>{
+const cs=calcCognitiveScore(
+  cognitiveData.selected?.mmse!==false?cognitiveData.mmse.total:"",
+  cognitiveData.selected?.dualTask!==false?cognitiveData.dualTask.single:"",
+  cognitiveData.selected?.dualTask!==false?cognitiveData.dualTask.dual:"",
+  cognitiveData.selected?.verbalFluency!==false?cognitiveData.verbalFluency.score:"",
+  cognitiveData.selected?.digitSpan!==false?cognitiveData.digitSpan.direct:"",
+  cognitiveData.selected?.digitSpan!==false?cognitiveData.digitSpan.inverse:""
+);
 const cl=cs>=80?{label:"Excelente",color:"#16a34a",bg:"#dcfce7"}:cs>=65?{label:"Bom",color:"#65a30d",bg:"#ecfccb"}:cs>=50?{label:"Regular",color:"#d97706",bg:"#fef9c3"}:{label:"Comprometido",color:"#dc2626",bg:"#fee2e2"};
 return(
 <div style={{ background:cl.bg,border:"1.5px solid "+cl.color+"33",borderRadius:12,padding:"14px 16px",marginTop:8 }}>
@@ -1338,7 +1412,7 @@ return(
 );
 })()}
 <div style={{ display:"flex",gap:10,marginTop:16 }}>
-<Btn variant="secondary" full onClick={()=>setStep(7)}>Voltar</Btn>
+<Btn variant="secondary" full onClick={()=>setStep(s=>s-1)}>Voltar</Btn>
 <Btn full icon="check" onClick={finish}>Finalizar Avaliação ✓</Btn>
 </div>
 </Card>}
@@ -1703,15 +1777,12 @@ const fitCl=classifyFitness(a.physical?.score||0);
 const cvScore=Math.max(0,Math.round(100-((a.aha?.score||0)/13)*100));
 const sex=st?.sex||"";
 const [activeTab,setActiveTab]=React.useState("resultado");
+const modAtivos=a.modAtivos||{questionarios:true,fisico:true,cognitivo:true}; // avaliações antigas não tinham esse campo — assume tudo ativo
 const TABS=[
 {id:"resultado",label:"Resultado"},
-{id:"anamnese",label:"Anamnese"},
-{id:"aha",label:"Risco CV"},
-{id:"parq",label:"PAR-Q"},
-{id:"avds",label:"AVDs"},
-{id:"testes",label:"Testes"},
-{id:"cardio",label:"Cardio"},
-{id:"cognitivo",label:"Cognitivo"},
+...(modAtivos.questionarios?[{id:"anamnese",label:"Anamnese"},{id:"aha",label:"Risco CV"},{id:"parq",label:"PAR-Q"},{id:"avds",label:"AVDs"}]:[]),
+...(modAtivos.fisico?[{id:"testes",label:"Testes"},{id:"cardio",label:"Cardio"}]:[]),
+...(modAtivos.cognitivo?[{id:"cognitivo",label:"Cognitivo"}]:[]),
 ];
 return (
 <div>
@@ -2060,20 +2131,20 @@ return(<tr key={p2} style={{ borderBottom:"1px solid #f1f5f9" }}>
 <Card style={{ marginBottom:14 }}>
 <div style={{ fontWeight:700,marginBottom:16 }}>Índices Longevus</div>
 <div style={{ display:"flex",justifyContent:"space-around",flexWrap:"wrap",gap:8 }}>
-<ScoreRing score={cvScore} label="Risco Cardiovascular" color={classifyCV(cvScore).color}/>
-<ScoreRing score={a.functional?.score||0} label="Capacidade Funcional" color={funcCl.color}/>
-<ScoreRing score={a.physical?.score||0} label="Aptidão Física" color={fitCl.color}/>
+{modAtivos.questionarios&&<ScoreRing score={cvScore} label="Risco Cardiovascular" color={classifyCV(cvScore).color}/>}
+{modAtivos.questionarios&&<ScoreRing score={a.functional?.score||0} label="Capacidade Funcional" color={funcCl.color}/>}
+{modAtivos.fisico&&<ScoreRing score={a.physical?.score||0} label="Aptidão Física" color={fitCl.color}/>}
 {a.cognitiveData?.score>0&&<ScoreRing score={a.cognitiveData.score} label="Capacidade Cognitiva" color={classifyCognitive(a.cognitiveData.score).color}/>}
 <ScoreRing score={a.globalScore||0} label="Índice Global" size={100} color={gc.color}/>
 </div>
 </Card>
-<Card style={{ marginBottom:14 }}>
+{modAtivos.questionarios&&<Card style={{ marginBottom:14 }}>
 <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12 }}><div style={{ fontWeight:700 }}>Risco Cardiovascular</div><Badge color={ahaCl.color} bg={ahaCl.bg}>{ahaCl.label}</Badge></div>
 <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8 }}>
 {[["Peso",a.aha?.weight?a.aha.weight+" kg":"—"],["Altura",a.aha?.height?a.aha.height+" cm":"—"],["IMC",a.aha?.bmi?a.aha.bmi+" kg/m²":"—"],["PAS",a.aha?.sbp?a.aha.sbp+" mmHg":"—"],["PAD",a.aha?.dbp?a.aha.dbp+" mmHg":"—"],["FC",a.aha?.hr?a.aha.hr+" bpm":"—"],["Cintura",a.aha?.waist?a.aha.waist+" cm":"—"],["Quadril",a.aha?.hip?a.aha.hip+" cm":"—"],["Panturrilha",a.aha?.calf?a.aha.calf+" cm":"—"],["Score AHA",a.aha?.score]].map(([k,v])=>(<div key={k} style={{ background:"#f8fafc",borderRadius:9,padding:"9px 10px" }}><div style={{ fontSize:10,color:"#94a3b8",fontWeight:600 }}>{k}</div><div style={{ fontSize:14,fontWeight:700 }}>{v||"—"}</div></div>))}
 </div>
-</Card>
-<Card style={{ marginBottom:14 }}>
+</Card>}
+{modAtivos.questionarios&&<Card style={{ marginBottom:14 }}>
 <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10 }}><div style={{ fontWeight:700 }}>Capacidade Funcional (Spirduso)</div><Badge color={funcCl.color} bg={funcCl.bg}>{funcCl.label}</Badge></div>
 <div style={{ fontSize:13,color:"#64748b",marginBottom:10 }}>Score: <strong style={{ color:"#0f172a" }}>{a.functional?.score}/100</strong></div>
 {a.avd&&<div style={{ marginBottom:8 }}>
@@ -2088,8 +2159,8 @@ return(<tr key={p2} style={{ borderBottom:"1px solid #f1f5f9" }}>
 {[["Compras",a.aivd.shopping],["Finanças",a.aivd.finance],["Transporte",a.aivd.transport],["Medicação",a.aivd.medication],["Dom.",a.aivd.housework],["Telefone",a.aivd.telephone]].map(([k,v])=>(<div key={k} style={{ background:"#f8fafc",borderRadius:8,padding:"5px 10px",fontSize:12 }}><span style={{ color:"#94a3b8" }}>{k}: </span><span style={{ fontWeight:700,color:v===2?"#16a34a":v===1?"#d97706":"#dc2626" }}>{v===2?"Indep.":v===1?"Auxílio":"Depend."}</span></div>))}
 </div>
 </div>}
-</Card>
-<Card style={{ marginBottom:14 }}>
+</Card>}
+{modAtivos.fisico&&<Card style={{ marginBottom:14 }}>
 <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12 }}><div style={{ fontWeight:700 }}>Testes Físicos</div><Badge color={fitCl.color} bg={fitCl.bg}>{fitCl.label}</Badge></div>
 <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
 {[
@@ -2116,7 +2187,7 @@ return cl?(
 ):null;
 })}
 </div>
-</Card>
+</Card>}
 {/* Avaliação Cognitiva */}
 {a?.cognitiveData?.score > 0 && <Card style={{ marginBottom:14 }}>
 <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12 }}>
@@ -3504,6 +3575,7 @@ return (
 const ReportClinical = ({ assessment: a, student: st, notesClinical="", notesConduct="", notesGoals="" }) => {
 if (!a || !st) return null;
 const sex = st.sex || "";
+const modAtivos = a.modAtivos || {questionarios:true,fisico:true,cognitivo:true}; // avaliações antigas: assume tudo ativo
 const gc = classifyGlobal(a.globalScore||0);
 const ahaCl = classifyAHA(a.aha?.score||0);
 const funcCl = classifyFunctional(a.functional?.score||0);
@@ -3576,15 +3648,25 @@ return (
 {/* Scores */}
 <div className="report-section" style={{ marginBottom:20 }}>
 <div style={{ fontWeight:700, fontSize:13, color:"#FF5603", textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>Índices Longevus</div>
-<div style={{ display:"grid", gridTemplateColumns:`repeat(${a.cognitiveData?.score>0?5:4},1fr)`, gap:10 }}>
-{[["Risco Cardiovascular", cvScore, classifyCV(cvScore)],["Capacidade Funcional", a.functional?.score||0, funcCl],["Aptidão Física", a.physical?.score||0, fitCl],...(a.cognitiveData?.score>0?[["Capacidade Cognitiva", a.cognitiveData.score, classifyCognitive(a.cognitiveData.score)]]:[]),["Índice Global", a.globalScore||0, gc]].map(([lbl,val,cl])=>(
-<div key={lbl} style={{ background:cl.bg, border:`1.5px solid ${cl.color}33`, borderRadius:10, padding:"12px 8px", textAlign:"center" }}>
+{(()=>{
+const indices=[
+  ...(modAtivos.questionarios?[["Risco Cardiovascular", cvScore, classifyCV(cvScore)],["Capacidade Funcional", a.functional?.score||0, funcCl]]:[]),
+  ...(modAtivos.fisico?[["Aptidão Física", a.physical?.score||0, fitCl]]:[]),
+  ...(a.cognitiveData?.score>0?[["Capacidade Cognitiva", a.cognitiveData.score, classifyCognitive(a.cognitiveData.score)]]:[]),
+  ["Índice Global", a.globalScore||0, gc],
+];
+return (
+<div style={{ display:"grid", gridTemplateColumns:"repeat("+indices.length+",1fr)", gap:10 }}>
+{indices.map(([lbl,val,cl])=>(
+<div key={lbl} style={{ background:cl.bg, border:"1.5px solid "+cl.color+"33", borderRadius:10, padding:"12px 8px", textAlign:"center" }}>
 <div style={{ fontSize:26, fontWeight:900, color:cl.color }}>{Math.round(val)}</div>
 <div style={{ fontSize:10, fontWeight:700, color:cl.color, marginBottom:3 }}>{cl.label}</div>
 <div style={{ fontSize:10, color:"#64748b" }}>{lbl}</div>
 </div>
 ))}
 </div>
+);
+})()}
 </div>
 {/* PAR-Q */}
 {a.parqApplied && <div className="report-section" style={{ marginBottom:20 }}>
@@ -3594,7 +3676,7 @@ return (
 </div>
 </div>}
 {/* AHA */}
-<div className="report-section" style={{ marginBottom:20 }}>
+{modAtivos.questionarios && <div className="report-section" style={{ marginBottom:20 }}>
 <div style={{ fontWeight:700, fontSize:13, color:"#FF5603", textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>Risco Cardiovascular (AHA)</div>
 <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
 <Badge color={ahaCl.color} bg={ahaCl.bg}>{ahaCl.label} — Score: {a.aha?.score}</Badge>
@@ -3624,9 +3706,9 @@ return (
 <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:8 }}>
 {[["smoker","Tabagismo"],["diabetes","Diabetes"],["hypertension","Hipertensão"],["hyperlipid","Dislipidemia"],["family","Hist. Familiar DCV"]].filter(([k])=>a.aha?.[k]).map(([k,l])=>(<Badge key={k} color="#dc2626" bg="#fee2e2">{l}</Badge>))}
 </div>
-</div>
+</div>}
 {/* Funcional */}
-<div className="report-section" style={{ marginBottom:20 }}>
+{modAtivos.questionarios && <div className="report-section" style={{ marginBottom:20 }}>
 <div style={{ fontWeight:700, fontSize:13, color:"#FF5603", textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>Capacidade Funcional (Spirduso)</div>
 <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
 <Badge color={funcCl.color} bg={funcCl.bg}>{funcCl.label} — Score: {a.functional?.score}/100</Badge>
@@ -3653,9 +3735,9 @@ return (
 ))}
 </div>
 </div>}
-</div>
+</div>}
 {/* Testes físicos */}
-<div className="report-section" style={{ marginBottom:20 }}>
+{modAtivos.fisico && <div className="report-section" style={{ marginBottom:20 }}>
 <div style={{ fontWeight:700, fontSize:13, color:"#FF5603", textTransform:"uppercase", letterSpacing:"0.5px", marginBottom:10 }}>Testes Físicos</div>
 <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:12,flexWrap:"wrap" }}>
 <Badge color={fitCl.color} bg={fitCl.bg}>{fitCl.label} — Score: {a.physical?.score}/100</Badge>
@@ -3684,7 +3766,7 @@ return (
 );
 })}
 </div>
-</div>
+</div>}
 <AIReportDisplay text={notesClinical} title="Observações Gerais — Prof. Wellington Brito · CREF 089836-G/SP"/>
 <AIReportDisplay text={notesConduct} title="Conduta Proposta — Prof. Wellington Brito · CREF 089836-G/SP"/>
 <AIReportDisplay text={notesGoals} title="Metas do Período — Prof. Wellington Brito · CREF 089836-G/SP"/>
