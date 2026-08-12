@@ -654,7 +654,21 @@ const MeuTreino = ({studentId, ownerId, studentName, bibCustom, onLogout}) => {
         const r = await fetch(SUPA_URL+"/rest/v1/atividades_extras?select=data&student_id=eq."+encodeURIComponent(studentId)+"&limit=500", { headers });
         if(r.ok){
           const rows = await r.json();
-          setAtividades((rows||[]).map(x=>x.data).filter(Boolean));
+          const lista = (rows||[]).map(x=>x.data).filter(Boolean);
+          if(lista.length>0){
+            setAtividades(lista);
+          } else {
+            // ⚠️ DEMO — exemplos temporários só pra visualização do layout.
+            // Assim que a tabela "atividades_extras" tiver dados reais no Supabase,
+            // este bloco deixa de ser usado automaticamente. Remover antes de
+            // promover este arquivo pra versão final.
+            const hojeDemo = toISODate(new Date());
+            setAtividades([
+              {date: hojeDemo, titulo: "Aula de Spinning", obs: "09h no estúdio"},
+              {date: hojeDemo, titulo: "Aula de Natação", obs: "16h na piscina"},
+              {date: hojeDemo, titulo: "Alongamento em grupo", obs: "18h no salão"},
+            ]);
+          }
         }
       } catch(e){ /* silencioso: a Programação simplesmente aparece vazia */ }
     })();
