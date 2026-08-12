@@ -439,7 +439,7 @@ const BottomNav = ({tab, setTab}) => {
 };
 
 // ── Tela Início (visão geral do dia) ──────────────────────────────────────────
-const TelaInicio = ({firstName, treinoHojeLabel, atividadeHoje, onIrTreino, onIrProgramacao}) => {
+const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, onIrTreino, onIrProgramacao}) => {
   const hoje = new Date();
   const diaLabel = DIAS_SEMANA_LONGO[hoje.getDay()]+", "+hoje.getDate()+" de "+MESES_NOME[hoje.getMonth()];
   return (
@@ -458,17 +458,24 @@ const TelaInicio = ({firstName, treinoHojeLabel, atividadeHoje, onIrTreino, onIr
         </div>
       </Card>
 
-      {atividadeHoje && (
-        <Card style={{padding:"16px 18px",marginBottom:12,cursor:"pointer",background:"#fff7ed",borderColor:"#fed7aa"}} onClick={onIrProgramacao}>
-          <div style={{display:"flex",alignItems:"center",gap:12}}>
-            <div style={{width:44,height:44,borderRadius:12,background:"#ffe8d5",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon name="calendar" size={22} color="#c2410c"/></div>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#c2410c",textTransform:"uppercase",letterSpacing:0.3}}>Você também tem hoje</div>
-              <div style={{fontSize:16,fontWeight:800,color:"#9a3412"}}>{atividadeHoje.titulo}</div>
-              {atividadeHoje.obs && <div style={{fontSize:12,color:"#c2410c",marginTop:2}}>{atividadeHoje.obs}</div>}
-            </div>
-          </div>
-        </Card>
+      {atividadesHoje && atividadesHoje.length>0 && (
+        <div style={{marginBottom:4}}>
+          {atividadesHoje.length>1 && (
+            <div style={{fontSize:11,fontWeight:700,color:"#c2410c",textTransform:"uppercase",letterSpacing:0.3,margin:"4px 2px 6px"}}>Você também tem hoje ({atividadesHoje.length})</div>
+          )}
+          {atividadesHoje.map((atv,i)=>(
+            <Card key={i} style={{padding:"16px 18px",marginBottom:12,cursor:"pointer",background:"#fff7ed",borderColor:"#fed7aa"}} onClick={onIrProgramacao}>
+              <div style={{display:"flex",alignItems:"center",gap:12}}>
+                <div style={{width:44,height:44,borderRadius:12,background:"#ffe8d5",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon name="calendar" size={22} color="#c2410c"/></div>
+                <div style={{flex:1,minWidth:0}}>
+                  {atividadesHoje.length===1 && <div style={{fontSize:11,fontWeight:700,color:"#c2410c",textTransform:"uppercase",letterSpacing:0.3}}>Você também tem hoje</div>}
+                  <div style={{fontSize:16,fontWeight:800,color:"#9a3412"}}>{atv.titulo}</div>
+                  {atv.obs && <div style={{fontSize:12,color:"#c2410c",marginTop:2}}>{atv.obs}</div>}
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
       )}
 
       <button onClick={onIrProgramacao} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 14px",background:"#fff",fontSize:13,fontWeight:700,color:"#475569",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
@@ -505,12 +512,12 @@ const EmptyAtividade = ({texto}) => (
 
 const DiaView = ({refDate, onPrev, onNext, mapPorData, hojeISO}) => {
   const iso = toISODate(refDate);
-  const atividade = mapPorData[iso];
+  const lista = mapPorData[iso] || [];
   const label = (iso===hojeISO ? "Hoje · " : "")+DIAS_SEMANA_LONGO[refDate.getDay()]+", "+refDate.getDate()+" de "+MESES_NOME[refDate.getMonth()];
   return (
     <div>
       <NavHeader label={label} onPrev={onPrev} onNext={onNext}/>
-      {atividade ? <AtividadeCard atividade={atividade} destaque={iso===hojeISO}/> : <EmptyAtividade texto="Nenhuma atividade extra prevista para este dia."/>}
+      {lista.length>0 ? lista.map((atv,i)=><AtividadeCard key={i} atividade={atv} destaque={iso===hojeISO}/>) : <EmptyAtividade texto="Nenhuma atividade extra prevista para este dia."/>}
     </div>
   );
 };
@@ -523,14 +530,14 @@ const SemanaView = ({refDate, onPrev, onNext, mapPorData, hojeISO}) => {
       <NavHeader label={label} onPrev={onPrev} onNext={onNext}/>
       {dias.map(d=>{
         const iso = toISODate(d);
-        const atividade = mapPorData[iso];
+        const lista = mapPorData[iso] || [];
         const isHoje = iso===hojeISO;
         return (
           <div key={iso} style={{marginBottom:10}}>
             <div style={{fontSize:11,fontWeight:700,color:isHoje?"#FF5603":"#94a3b8",textTransform:"uppercase",letterSpacing:0.3,marginBottom:4}}>
               {DIAS_SEMANA_CURTO[d.getDay()]} · {d.getDate()}/{d.getMonth()+1}{isHoje?" · hoje":""}
             </div>
-            {atividade ? <AtividadeCard atividade={atividade} destaque={isHoje}/> : (
+            {lista.length>0 ? lista.map((atv,i)=><AtividadeCard key={i} atividade={atv} destaque={isHoje}/>) : (
               <div style={{fontSize:12,color:"#cbd5e1",padding:"6px 2px"}}>—</div>
             )}
           </div>
@@ -542,8 +549,8 @@ const SemanaView = ({refDate, onPrev, onNext, mapPorData, hojeISO}) => {
 
 const MesView = ({refDate, onPrev, onNext, mapPorData, hojeISO}) => {
   const dias = getMonthDates(refDate.getFullYear(), refDate.getMonth());
+  const diasComAtividade = dias.filter(d=>(mapPorData[toISODate(d)]||[]).length>0);
   const label = MESES_NOME[refDate.getMonth()]+" de "+refDate.getFullYear();
-  const diasComAtividade = dias.filter(d=>mapPorData[toISODate(d)]);
   return (
     <div>
       <NavHeader label={label} onPrev={onPrev} onNext={onNext}/>
@@ -551,14 +558,14 @@ const MesView = ({refDate, onPrev, onNext, mapPorData, hojeISO}) => {
         <EmptyAtividade texto="Nenhuma atividade extra prevista neste mês."/>
       ) : diasComAtividade.map(d=>{
         const iso = toISODate(d);
-        const atividade = mapPorData[iso];
+        const lista = mapPorData[iso] || [];
         const isHoje = iso===hojeISO;
         return (
           <div key={iso} style={{marginBottom:10}}>
             <div style={{fontSize:11,fontWeight:700,color:isHoje?"#FF5603":"#94a3b8",textTransform:"uppercase",letterSpacing:0.3,marginBottom:4}}>
               {DIAS_SEMANA_CURTO[d.getDay()]} · {d.getDate()}/{d.getMonth()+1}{isHoje?" · hoje":""}
             </div>
-            <AtividadeCard atividade={atividade} destaque={isHoje}/>
+            {lista.map((atv,i)=><AtividadeCard key={i} atividade={atv} destaque={isHoje}/>)}
           </div>
         );
       })}
@@ -571,7 +578,7 @@ const TelaProgramacao = ({atividades}) => {
   const [refDate,setRefDate]=useState(new Date());
 
   const mapPorData = {};
-  atividades.forEach(a=>{ if(a && a.date) mapPorData[a.date] = a; });
+  atividades.forEach(a=>{ if(a && a.date){ (mapPorData[a.date] = mapPorData[a.date]||[]).push(a); } });
   const hojeISO = toISODate(new Date());
 
   return (
@@ -709,7 +716,7 @@ const MeuTreino = ({studentId, ownerId, studentName, bibCustom, onLogout}) => {
   }
 
   const hojeISO = toISODate(new Date());
-  const atividadeHoje = atividades.find(a=>a && a.date===hojeISO) || null;
+  const atividadesHoje = atividades.filter(a=>a && a.date===hojeISO);
 
   const treinosUnicos = [...new Set(prog.divisao?.sequencia || ["A"])];
   const blocoAtivo = BLOCOS[blocoIdx];
@@ -785,7 +792,7 @@ const MeuTreino = ({studentId, ownerId, studentName, bibCustom, onLogout}) => {
         <TelaInicio
           firstName={firstName}
           treinoHojeLabel={treinoDeHoje && TREINO_DEFS[treinoDeHoje]?.label}
-          atividadeHoje={atividadeHoje}
+          atividadesHoje={atividadesHoje}
           onIrTreino={()=>setTab("treino")}
           onIrProgramacao={()=>setTab("programacao")}
         />
@@ -795,10 +802,14 @@ const MeuTreino = ({studentId, ownerId, studentName, bibCustom, onLogout}) => {
 
       {tab==="treino" && (
       <div style={{padding:"16px 16px 0"}}>
-        {atividadeHoje && (
-          <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:10,padding:"10px 12px",marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
-            <Icon name="calendar" size={16} color="#c2410c" style={{flexShrink:0}}/>
-            <div style={{fontSize:12,color:"#9a3412",lineHeight:1.4}}><b>Hoje você também tem:</b> {atividadeHoje.titulo}{atividadeHoje.obs?` — ${atividadeHoje.obs}`:""}</div>
+        {atividadesHoje.length>0 && (
+          <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:10,padding:"10px 12px",marginBottom:10}}>
+            {atividadesHoje.map((atv,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:8,marginTop:i>0?6:0}}>
+                <Icon name="calendar" size={16} color="#c2410c" style={{flexShrink:0}}/>
+                <div style={{fontSize:12,color:"#9a3412",lineHeight:1.4}}><b>Hoje você também tem:</b> {atv.titulo}{atv.obs?` — ${atv.obs}`:""}</div>
+              </div>
+            ))}
           </div>
         )}
         <div style={{display:"flex",gap:0,marginBottom:10,background:"#f1f5f9",borderRadius:10,padding:3}}>
