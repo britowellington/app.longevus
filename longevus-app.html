@@ -66,6 +66,10 @@ get: (k, d) => { try { const v = window.localStorage.getItem(k); return v ? JSON
 set: (k, v) => { try { window.localStorage.setItem(k, JSON.stringify(v)); } catch {} }
 };const uid = () => Math.random().toString(36).slice(2, 10);
 const todayStr = () => new Date().toISOString().slice(0, 10);
+const DIAS_SEMANA_CURTO = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+const MESES_NOME = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const toISODateLocal = (d) => { const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),dd=String(d.getDate()).padStart(2,"0"); return `${y}-${m}-${dd}`; };
+const getMonthDates = (year, month) => { const lastDay = new Date(year, month+1, 0).getDate(); return Array.from({length:lastDay}, (_,i)=>new Date(year, month, i+1)); };
 const calcAge = (dob) => {
 if (!dob) return "—";
 const d = new Date(dob), now = new Date();
@@ -3509,17 +3513,27 @@ return (
 const AtividadesExtras = ({ students, atividadesExtras, setAtividadesExtras, prefillStudentId }) => {
 const [modal,setModal]=useState(false);
 const [filterSt,setFilterSt]=useState(prefillStudentId||"");
-const emptyForm = ()=>({studentId:prefillStudentId||filterSt||"",date:todayStr(),titulo:"",obs:""});
+const emptyForm = ()=>({studentId:prefillStudentId||filterSt||"",titulo:"",obs:""});
 const [form,setForm]=useState(emptyForm());
-const openNew = () => { setForm(emptyForm()); setModal(true); };
+const [selDates,setSelDates]=useState(()=>new Set());
+const [calRef,setCalRef]=useState(()=>new Date());
+const openNew = () => { setForm(emptyForm()); setSelDates(new Set()); setCalRef(new Date()); setModal(true); };
+const toggleDate = (iso) => setSelDates(prev=>{ const next=new Set(prev); if(next.has(iso))next.delete(iso); else next.add(iso); return next; });
+const toggleWeekdayInMonth = (weekday) => {
+const dias = getMonthDates(calRef.getFullYear(), calRef.getMonth()).filter(d=>d.getDay()===weekday).map(toISODateLocal);
+const allSelected = dias.every(iso=>selDates.has(iso));
+setSelDates(prev=>{ const next=new Set(prev); dias.forEach(iso=>{ if(allSelected)next.delete(iso); else next.add(iso); }); return next; });
+};
 const save = () => {
-if(!form.studentId||!form.date||!form.titulo.trim())return;
-const id=uid();
-setAtividadesExtras(p=>[...p,{ id, studentId:form.studentId, date:form.date, titulo:form.titulo.trim(), obs:form.obs.trim() }]);
+if(!form.studentId||!form.titulo.trim()||selDates.size===0)return;
+const novas = [...selDates].sort().map(date=>({ id:uid(), studentId:form.studentId, date, titulo:form.titulo.trim(), obs:form.obs.trim() }));
+setAtividadesExtras(p=>[...p,...novas]);
 setModal(false);
 };
 const del = async id => { if(window.confirm("Remover esta atividade extra?")){ await DB.remove("atividades_extras",id); setAtividadesExtras(p=>p.filter(a=>a.id!==id)); } };
 const lista = [...atividadesExtras].filter(a=>!filterSt||a.studentId===filterSt).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+const diasDoMes = getMonthDates(calRef.getFullYear(), calRef.getMonth());
+const primeiroDiaSemana = diasDoMes[0].getDay();
 return (
 <div>
 <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10 }}>
@@ -3527,7 +3541,7 @@ return (
 <Btn sm icon="plus" onClick={openNew}>Adicionar</Btn>
 </div>
 <div style={{ fontSize:13,color:"#64748b",marginBottom:14,lineHeight:1.5 }}>
-Atribua aulas ou atividades extras (spinning, natação, alongamento...) que o aluno deve realizar em uma data específica, além do treino já programado. O aluno vê isso automaticamente no app dele, na aba "Programação".
+Atribua aulas ou atividades extras (spinning, natação, alongamento...) que o aluno deve realizar, além do treino já programado. O aluno vê isso automaticamente no app dele, na aba "Programação".
 </div>
 <select value={filterSt} onChange={e=>setFilterSt(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,marginBottom:14 }}>
 <option value="">Todos os alunos</option>
@@ -3556,10 +3570,39 @@ return (
 </div>}
 {modal&&<Modal title="Nova Atividade Extra" onClose={()=>setModal(false)}>
 <Inp label="Aluno" value={form.studentId} onChange={v=>setForm(f=>({...f,studentId:v}))} opts={[{v:"",l:"Selecione..."},...students.map(s=>({v:s.id,l:s.name}))]}/>
-<Inp label="Data" type="date" value={form.date} onChange={v=>setForm(f=>({...f,date:v}))}/>
 <Inp label="Atividade" value={form.titulo} onChange={v=>setForm(f=>({...f,titulo:v}))} placeholder="Ex: Aula de Pilates"/>
-<Inp label="Observação (opcional)" value={form.obs} onChange={v=>setForm(f=>({...f,obs:v}))} placeholder="Ex: 09h no estúdio"/>
-<Btn full onClick={save} disabled={!form.studentId||!form.date||!form.titulo.trim()}>Salvar</Btn>
+<Inp label="Horário / observação (opcional)" value={form.obs} onChange={v=>setForm(f=>({...f,obs:v}))} placeholder="Ex: 09h no estúdio"/>
+
+<div style={{ fontSize:12,fontWeight:600,color:"#475569",margin:"14px 0 8px" }}>Em quais dias?</div>
+
+<div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10 }}>
+<button onClick={()=>setCalRef(d=>new Date(d.getFullYear(),d.getMonth()-1,1))} style={{ border:"1.5px solid #e2e8f0",background:"#fff",borderRadius:8,width:30,height:30,cursor:"pointer",color:"#475569" }}>‹</button>
+<div style={{ fontSize:13,fontWeight:700 }}>{MESES_NOME[calRef.getMonth()]} de {calRef.getFullYear()}</div>
+<button onClick={()=>setCalRef(d=>new Date(d.getFullYear(),d.getMonth()+1,1))} style={{ border:"1.5px solid #e2e8f0",background:"#fff",borderRadius:8,width:30,height:30,cursor:"pointer",color:"#475569" }}>›</button>
+</div>
+
+<div style={{ fontSize:11,color:"#94a3b8",marginBottom:6 }}>Toque num dia da semana pra marcar/desmarcar todo mundo dele nesse mês:</div>
+<div style={{ display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:8 }}>
+{DIAS_SEMANA_CURTO.map((d,i)=>(
+<button key={i} onClick={()=>toggleWeekdayInMonth(i)} style={{ border:"none",background:"#f1f5f9",borderRadius:6,padding:"5px 0",fontSize:10,fontWeight:700,color:"#64748b",cursor:"pointer" }}>{d}</button>
+))}
+</div>
+
+<div style={{ display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:6 }}>
+{Array.from({length:primeiroDiaSemana}).map((_,i)=><div key={"pad"+i}/>)}
+{diasDoMes.map(d=>{
+const iso=toISODateLocal(d);
+const sel=selDates.has(iso);
+const isHoje=iso===todayStr();
+return (
+<button key={iso} onClick={()=>toggleDate(iso)} style={{ aspectRatio:"1",border:isHoje&&!sel?"1.5px solid "+O:"none",background:sel?O:"#f8fafc",color:sel?"#fff":"#0f172a",borderRadius:8,fontSize:12,fontWeight:sel?800:500,cursor:"pointer" }}>{d.getDate()}</button>
+);
+})}
+</div>
+
+<div style={{ fontSize:12,fontWeight:700,color:O,marginBottom:14 }}>{selDates.size} dia(s) selecionado(s)</div>
+
+<Btn full onClick={save} disabled={!form.studentId||!form.titulo.trim()||selDates.size===0}>Salvar {selDates.size>0?`(${selDates.size} dia${selDates.size>1?"s":""})`:""}</Btn>
 </Modal>}
 </div>
 );
