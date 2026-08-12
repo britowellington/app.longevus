@@ -290,6 +290,7 @@ zap:   ["M13 2L3 14h9l-1 8 10-12h-9z"],
 user:  ["M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2","M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"],
 link:  ["M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71","M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"],
 inbox: ["M22 12h-6l-2 3h-4l-2-3H2","M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"],
+calendar: ["M8 2v4","M16 2v4","M3 10h18","M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"],
 };
 return (
 <svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
@@ -3505,6 +3506,64 @@ return (
 </div>
 );
 };
+const AtividadesExtras = ({ students, atividadesExtras, setAtividadesExtras, prefillStudentId }) => {
+const [modal,setModal]=useState(false);
+const [filterSt,setFilterSt]=useState(prefillStudentId||"");
+const emptyForm = ()=>({studentId:prefillStudentId||filterSt||"",date:todayStr(),titulo:"",obs:""});
+const [form,setForm]=useState(emptyForm());
+const openNew = () => { setForm(emptyForm()); setModal(true); };
+const save = () => {
+if(!form.studentId||!form.date||!form.titulo.trim())return;
+const id=uid();
+setAtividadesExtras(p=>[...p,{ id, studentId:form.studentId, date:form.date, titulo:form.titulo.trim(), obs:form.obs.trim() }]);
+setModal(false);
+};
+const del = async id => { if(window.confirm("Remover esta atividade extra?")){ await DB.remove("atividades_extras",id); setAtividadesExtras(p=>p.filter(a=>a.id!==id)); } };
+const lista = [...atividadesExtras].filter(a=>!filterSt||a.studentId===filterSt).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+return (
+<div>
+<div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10 }}>
+<div style={{ fontWeight:800,fontSize:20 }}>Atividades Extras</div>
+<Btn sm icon="plus" onClick={openNew}>Adicionar</Btn>
+</div>
+<div style={{ fontSize:13,color:"#64748b",marginBottom:14,lineHeight:1.5 }}>
+Atribua aulas ou atividades extras (spinning, natação, alongamento...) que o aluno deve realizar em uma data específica, além do treino já programado. O aluno vê isso automaticamente no app dele, na aba "Programação".
+</div>
+<select value={filterSt} onChange={e=>setFilterSt(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,marginBottom:14 }}>
+<option value="">Todos os alunos</option>
+{students.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+</select>
+{lista.length===0?<Card style={{ textAlign:"center",padding:40 }}><I n="calendar" c="#cbd5e1" s={36}/><div style={{ color:"#94a3b8",marginTop:10 }}>Nenhuma atividade extra cadastrada ainda.</div></Card>:
+<div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+{lista.map(a=>{
+const st=students.find(s=>s.id===a.studentId);
+return (
+<Card key={a.id} style={{ padding:"14px 16px" }}>
+<div style={{ display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10 }}>
+<div style={{ flex:1 }}>
+<div style={{ display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:6 }}>
+<span style={{ fontWeight:700,fontSize:14 }}>{st?.name||"Aluno"}</span>
+<span style={{ fontSize:11,color:"#94a3b8" }}>{fmt(a.date)}</span>
+</div>
+<div style={{ fontSize:14,fontWeight:700,color:"#0f172a" }}>{a.titulo}</div>
+{a.obs&&<div style={{ fontSize:12,color:"#64748b",marginTop:2 }}>{a.obs}</div>}
+</div>
+<button onClick={()=>del(a.id)} style={{ background:"none",border:"none",cursor:"pointer",color:"#e2e8f0",padding:4,flexShrink:0 }}><I n="trash" s={15}/></button>
+</div>
+</Card>
+);
+})}
+</div>}
+{modal&&<Modal title="Nova Atividade Extra" onClose={()=>setModal(false)}>
+<Inp label="Aluno" value={form.studentId} onChange={v=>setForm(f=>({...f,studentId:v}))} opts={[{v:"",l:"Selecione..."},...students.map(s=>({v:s.id,l:s.name}))]}/>
+<Inp label="Data" type="date" value={form.date} onChange={v=>setForm(f=>({...f,date:v}))}/>
+<Inp label="Atividade" value={form.titulo} onChange={v=>setForm(f=>({...f,titulo:v}))} placeholder="Ex: Aula de Pilates"/>
+<Inp label="Observação (opcional)" value={form.obs} onChange={v=>setForm(f=>({...f,obs:v}))} placeholder="Ex: 09h no estúdio"/>
+<Btn full onClick={save} disabled={!form.studentId||!form.date||!form.titulo.trim()}>Salvar</Btn>
+</Modal>}
+</div>
+);
+};
 const PrintStyle = () => (
 <style>{`
 @media print {
@@ -5939,6 +5998,7 @@ const [documents,setDocuments]=useState(()=>LS.get("longevus_docs",[]));
 const [cardioRecords,setCardioRecords]=useState(()=>LS.get("longevus_cardio",[]));
 const [programs,setPrograms]=useState(()=>LS.get("longevus_programs",[]));
 const [sessions,setSessions]=useState(()=>LS.get("longevus_sessions",[]));
+const [atividadesExtras,setAtividadesExtras]=useState(()=>LS.get("longevus_atividades_extras",[]));
 const [dbReady,setDbReady]=useState(false);
 const [hubResults,setHubResults]=useState(()=>LS.get("longevus_hub_results",[]));
 useEffect(()=>{LS.set("longevus_hub_results",hubResults);},[hubResults]);
@@ -5950,9 +6010,10 @@ setDbReady(false);
 (async()=>{
 setSyncing(true);
 try {
-const [s,a,d,docs,c,p,sess] = await Promise.all([
+const [s,a,d,docs,c,p,sess,ae] = await Promise.all([
 DB.load("students"), DB.load("assessments"), DB.load("daily_logs"),
-DB.load("documents"), DB.load("cardio_records"), DB.load("programs"), DB.load("sessions")
+DB.load("documents"), DB.load("cardio_records"), DB.load("programs"), DB.load("sessions"),
+DB.load("atividades_extras")
 ]);
 if(s!==null){ setStudents(s); LS.set("longevus_students",s); }
 if(a!==null){ setAssessments(a); LS.set("longevus_assessments",a); }
@@ -5961,6 +6022,7 @@ if(docs!==null){ setDocuments(docs); LS.set("longevus_docs",docs); }
 if(c!==null){ setCardioRecords(c); LS.set("longevus_cardio",c); }
 if(p!==null){ setPrograms(p); LS.set("longevus_programs",p); }
 if(sess!==null){ setSessions(sess); LS.set("longevus_sessions",sess); }
+if(ae!==null){ setAtividadesExtras(ae); LS.set("longevus_atividades_extras",ae); }
 setDbReady(true);
 } catch(e){ setDbReady(true); }
 setSyncing(false);
@@ -5976,6 +6038,7 @@ useEffect(()=>{LS.set("longevus_docs",documents);},[documents]);
 useEffect(()=>{LS.set("longevus_cardio",cardioRecords);},[cardioRecords]);
 useEffect(()=>{LS.set("longevus_programs",programs);},[programs]);
 useEffect(()=>{LS.set("longevus_sessions",sessions);},[sessions]);
+useEffect(()=>{LS.set("longevus_atividades_extras",atividadesExtras);},[atividadesExtras]);
 // Sync Supabase — salva cada item individualmente
 useEffect(()=>{ if(dbReady) students.forEach(s=>DB.save("students",s.id,s)); },[students,dbReady]);
 useEffect(()=>{ if(dbReady) assessments.forEach(a=>DB.save("assessments",a.id,a,a.studentId)); },[assessments,dbReady]);
@@ -5984,6 +6047,7 @@ useEffect(()=>{ if(dbReady) documents.forEach(d=>DB.save("documents",d.id,d,d.st
 useEffect(()=>{ if(dbReady) cardioRecords.forEach(r=>DB.save("cardio_records",r.id,r,r.studentId)); },[cardioRecords,dbReady]);
 useEffect(()=>{ if(dbReady) programs.forEach(p=>DB.save("programs",p.id,p,p.studentId)); },[programs,dbReady]);
 useEffect(()=>{ if(dbReady) sessions.forEach(s=>DB.save("sessions",s.id,s,s.studentId)); },[sessions,dbReady]);
+useEffect(()=>{ if(dbReady) atividadesExtras.forEach(a=>DB.save("atividades_extras",a.id,a,a.studentId)); },[atividadesExtras,dbReady]);
 const nav=useCallback((p,props={})=>{setPage(p);setPageProps(props);window.scrollTo(0,0);},[]);
 const [pendingQCount,setPendingQCount]=useState(0);
 const refreshPendingCount=useCallback(async()=>{
@@ -6004,6 +6068,7 @@ const navItems=[
 ];
 const menuItems=[
 {id:"questionarios",label:"Questionários",icon:"inbox"},
+{id:"extraatividades",label:"Atividades Extras",icon:"calendar"},
 {id:"cognitivehub",label:"Hub Cognitivo",icon:"zap"},
 {id:"daily",label:"Monitoramento",icon:"act"},
 {id:"reports",label:"Relatórios",icon:"bar"},
@@ -6017,7 +6082,7 @@ const menuItems=[
 ];
 const [menuOpen, setMenuOpen] = useState(false);
 const [showSubscribe, setShowSubscribe] = useState(false);
-const activePage=page==="studentDetail"?"students":(["dashboard","students","assessments","daily","reports","documents","program","cognitivehub","profile","questionarios","vincular"].includes(page)?page:null);
+const activePage=page==="studentDetail"?"students":(["dashboard","students","assessments","daily","reports","documents","program","cognitivehub","profile","questionarios","vincular","extraatividades"].includes(page)?page:null);
 if (authLoading) {
 return <div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14 }}>Carregando...</div>;
 }
@@ -6071,6 +6136,7 @@ return (
 }{page==="documents"&&<Documents students={students} documents={documents} setDocuments={setDocuments} prefillStudentId={pageProps.studentId}/>
 }{page==="questionarios"&&<Questionarios students={students} nav={nav} onRefreshCount={refreshPendingCount}/>
 }{page==="extprograma"&&(()=>{window.open("longevus-programa.html","_self");return null;})()}{page==="cognitivehub"&&<CognitiveHub students={students} hubResults={hubResults} setHubResults={setHubResults}/>}{page==="sessions"&&<SessionTracker students={students} programs={programs} sessions={sessions} setSessions={setSessions} nav={nav}/>}{page==="vincular"&&<VincularAlunos students={students} setStudents={setStudents}/>
+}{page==="extraatividades"&&<AtividadesExtras students={students} atividadesExtras={atividadesExtras} setAtividadesExtras={setAtividadesExtras} prefillStudentId={pageProps.studentId}/>
 }{page==="profile"&&<Profile session={session} onLogoChange={setLogoUrl}/>}
 </div>
 </div>
