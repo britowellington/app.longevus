@@ -5934,7 +5934,7 @@ return (
 );
 };
 const Profile = ({ session, onLogoChange }) => {
-const [form,setForm]=useState({ nome:"", whatsapp:"", cref:"", especializacao:"", logo_url:"", pix_key:"", pix_key_type:"cpf", pix_merchant_name:"", pix_merchant_city:"" });
+const [form,setForm]=useState({ nome:"", whatsapp:"", cref:"", especializacao:"", logo_url:"", pix_key:"", pix_key_type:"cpf", pix_merchant_name:"", pix_merchant_city:"", aviso_vencimento_dias:"7" });
 const [loading,setLoading]=useState(true);
 const [saving,setSaving]=useState(false);
 const [uploading,setUploading]=useState(false);
@@ -5959,10 +5959,10 @@ useEffect(()=>{
 (async()=>{
 try {
 const headers = await DB.authHeaders();
-const r = await fetch(SUPA_URL+"/rest/v1/professionals?select=nome,whatsapp,cref,especializacao,email,logo_url,pix_key,pix_key_type,pix_merchant_name,pix_merchant_city&id=eq."+session.user.id, { headers });
+const r = await fetch(SUPA_URL+"/rest/v1/professionals?select=nome,whatsapp,cref,especializacao,email,logo_url,pix_key,pix_key_type,pix_merchant_name,pix_merchant_city,aviso_vencimento_dias&id=eq."+session.user.id, { headers });
 const rows = await r.json();
 const p = rows?.[0]||{};
-setForm({ nome:p.nome||"", whatsapp:p.whatsapp||"", cref:p.cref||"", especializacao:p.especializacao||"", email:p.email||session.user.email, logo_url:p.logo_url||"", pix_key:p.pix_key||"", pix_key_type:p.pix_key_type||"cpf", pix_merchant_name:p.pix_merchant_name||p.nome||"", pix_merchant_city:p.pix_merchant_city||"" });
+setForm({ nome:p.nome||"", whatsapp:p.whatsapp||"", cref:p.cref||"", especializacao:p.especializacao||"", email:p.email||session.user.email, logo_url:p.logo_url||"", pix_key:p.pix_key||"", pix_key_type:p.pix_key_type||"cpf", pix_merchant_name:p.pix_merchant_name||p.nome||"", pix_merchant_city:p.pix_merchant_city||"", aviso_vencimento_dias:String(p.aviso_vencimento_dias ?? 7) });
 } catch(e) {}
 setLoading(false);
 })();
@@ -5973,7 +5973,7 @@ try {
 const headers = await DB.authHeaders();
 await fetch(SUPA_URL+"/rest/v1/professionals?id=eq."+session.user.id, {
 method:"PATCH", headers: { ...headers, "Prefer":"return=minimal" },
-body: JSON.stringify({ nome:form.nome, whatsapp:form.whatsapp, cref:form.cref, especializacao:form.especializacao, pix_key:form.pix_key, pix_key_type:form.pix_key_type, pix_merchant_name:form.pix_merchant_name, pix_merchant_city:form.pix_merchant_city })
+body: JSON.stringify({ nome:form.nome, whatsapp:form.whatsapp, cref:form.cref, especializacao:form.especializacao, pix_key:form.pix_key, pix_key_type:form.pix_key_type, pix_merchant_name:form.pix_merchant_name, pix_merchant_city:form.pix_merchant_city, aviso_vencimento_dias:parseInt(form.aviso_vencimento_dias)||7 })
 });
 setMsg("Dados salvos com sucesso!");
 } catch(e) { setMsg("Erro ao salvar."); }
@@ -6050,6 +6050,11 @@ return (
 {fld("Chave Pix","pix_key","text","Somente números, e-mail ou chave aleatória")}
 {fld("Nome do recebedor (aparece no Pix)","pix_merchant_name","text","Seu nome ou nome do negócio")}
 {fld("Cidade (aparece no Pix)","pix_merchant_city","text","Ex: SAO PAULO")}
+<div style={{ marginBottom:14 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Avisar o aluno quantos dias antes do vencimento?</label>
+<input type="number" min="0" max="30" value={form.aviso_vencimento_dias} onChange={e=>setForm(f=>({...f,aviso_vencimento_dias:e.target.value}))} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
+<div style={{ fontSize:11,color:"#94a3b8",marginTop:4 }}>Nesse período, o aluno vê um aviso de vencimento próximo (com opção de pagar adiantado) toda vez que abrir o app dele — mas ainda consegue usar normalmente. Só bloqueia de fato depois que vencer.</div>
+</div>
 {msg && <div style={{ fontSize:12,color: msg.includes("Erro")?"#dc2626":"#16a34a",marginBottom:10 }}>{msg}</div>}
 <Btn full onClick={save} disabled={saving}>{saving?"Salvando...":"Salvar chave Pix"}</Btn>
 </Card>
