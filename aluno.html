@@ -29,6 +29,146 @@ const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 const fmt = (d) => { if(!d) return "—"; const [y,m,dd]=String(d).split("-"); return dd&&m&&y?`${dd}/${m}/${y}`:d; };
 const uid2 = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
+// ── Avaliação — classificações portadas do app do profissional ─────────────
+const calcAge = (dob) => {
+  if (!dob) return "—";
+  const d = new Date(dob), now = new Date();
+  let a = now.getFullYear() - d.getFullYear();
+  if (now < new Date(now.getFullYear(), d.getMonth(), d.getDate())) a--;
+  return a;
+};
+const classifyAHA = (s) => s <= 1 ? { label:"Baixo Risco", color:"#16a34a", bg:"#dcfce7" } : s <= 4 ? { label:"Risco Moderado", color:"#d97706", bg:"#fef9c3" } : { label:"Alto Risco", color:"#dc2626", bg:"#fee2e2" };
+const classifyCV = (pct) => pct >= 92 ? { label:"Baixo Risco", color:"#16a34a", bg:"#dcfce7" } : pct >= 69 ? { label:"Risco Moderado", color:"#d97706", bg:"#fef9c3" } : { label:"Alto Risco", color:"#dc2626", bg:"#fee2e2" };
+const classifyFunctional = (s) => s >= 80 ? { label:"Fisicamente Elite", color:"#16a34a", bg:"#dcfce7" } : s >= 60 ? { label:"Fisicamente Ativo", color:"#65a30d", bg:"#ecfccb" } : s >= 40 ? { label:"Fisicamente Independente", color:"#d97706", bg:"#fef9c3" } : s >= 20 ? { label:"Fisicamente Frágil", color:"#ea580c", bg:"#ffedd5" } : { label:"Fisicamente Dependente", color:"#dc2626", bg:"#fee2e2" };
+const classifyFitness = (s) => s >= 80 ? { label:"Excelente", color:"#16a34a", bg:"#dcfce7" } : s >= 60 ? { label:"Bom", color:"#65a30d", bg:"#ecfccb" } : s >= 40 ? { label:"Regular", color:"#d97706", bg:"#fef9c3" } : { label:"Fraco", color:"#dc2626", bg:"#fee2e2" };
+const classifyCognitive = (s) => s >= 80 ? { label:"Excelente", color:"#16a34a", bg:"#dcfce7" } : s >= 65 ? { label:"Bom", color:"#65a30d", bg:"#ecfccb" } : s >= 50 ? { label:"Regular", color:"#d97706", bg:"#fef9c3" } : { label:"Comprometido", color:"#dc2626", bg:"#fee2e2" };
+const classifyGlobal = (s) => s >= 75 ? { label:"Ótimo", color:"#16a34a", bg:"#dcfce7" } : s >= 55 ? { label:"Bom", color:"#65a30d", bg:"#ecfccb" } : s >= 35 ? { label:"Regular", color:"#d97706", bg:"#fef9c3" } : { label:"Crítico", color:"#dc2626", bg:"#fee2e2" };
+const classifyHandGrip = (v, sex) => {
+  const n = parseFloat(v); if (!n) return null;
+  const isMale = sex === "M";
+  if (n >= (isMale ? 35 : 23)) return { label:"Excelente", desc:"Força de preensão excelente. Indicador de força muscular global acima da média.", color:"#16a34a", bg:"#dcfce7" };
+  if (n >= (isMale ? 27 : 18)) return { label:"Bom", desc:"Força de preensão adequada. Associada a menor risco cardiovascular.", color:"#65a30d", bg:"#ecfccb" };
+  if (n >= (isMale ? 20 : 14)) return { label:"Regular", desc:"Força de preensão reduzida. Possível indicativo de sarcopenia inicial.", color:"#d97706", bg:"#fef9c3" };
+  return { label:"Fraco", desc:"Força de preensão muito baixa. Forte indicador de sarcopenia e fragilidade. Intervenção prioritária.", color:"#dc2626", bg:"#fee2e2" };
+};
+const classifyTUG = (v) => {
+  const n = parseFloat(v); if (!n) return null;
+  if (n <= 10)   return { label:"Normal", desc:"Mobilidade e equilíbrio dinâmico dentro do esperado para adultos 50+. Risco baixo de quedas.", color:"#16a34a", bg:"#dcfce7" };
+  if (n <= 13.5) return { label:"Risco Leve", desc:"Mobilidade levemente comprometida. Atenção redobrada em ambientes com obstáculos.", color:"#65a30d", bg:"#ecfccb" };
+  if (n <= 16)   return { label:"Risco Moderado", desc:"Comprometimento de marcha e equilíbrio dinâmico. Risco moderado de quedas.", color:"#d97706", bg:"#fef9c3" };
+  return { label:"Risco Alto", desc:"Alto risco de quedas. Mobilidade significativamente comprometida.", color:"#dc2626", bg:"#fee2e2" };
+};
+const classifySitReach = (v) => {
+  const n = parseFloat(v); if (v === "" || v === undefined || v === null) return null;
+  if (n >= 20) return { label:"Excelente", desc:"Flexibilidade de cadeia posterior excelente.", color:"#16a34a", bg:"#dcfce7" };
+  if (n >= 10) return { label:"Boa", desc:"Flexibilidade adequada. Manter com exercícios de mobilidade.", color:"#65a30d", bg:"#ecfccb" };
+  if (n >= 0)  return { label:"Regular", desc:"Flexibilidade abaixo da média. Risco de dores lombares e lesões.", color:"#d97706", bg:"#fef9c3" };
+  return { label:"Reduzida", desc:"Flexibilidade muito limitada. Alongamento diário recomendado.", color:"#dc2626", bg:"#fee2e2" };
+};
+const classifyMarch = (v, sex) => {
+  const n = parseFloat(v); if (!n) return null;
+  const isMale = sex === "M";
+  if (n >= (isMale ? 107 : 100)) return { label:"Excelente", desc:"Resistência aeróbica e coordenação motora excelentes para a faixa etária.", color:"#16a34a", bg:"#dcfce7" };
+  if (n >= (isMale ? 89 : 83))  return { label:"Bom", desc:"Boa resistência aeróbica. Capacidade funcional preservada.", color:"#65a30d", bg:"#ecfccb" };
+  if (n >= (isMale ? 71 : 65))  return { label:"Regular", desc:"Resistência aeróbica abaixo da média. Início de declínio cardiorrespiratório.", color:"#d97706", bg:"#fef9c3" };
+  return { label:"Fraco", desc:"Resistência aeróbica significativamente comprometida.", color:"#dc2626", bg:"#fee2e2" };
+};
+const classifySPPBBalanceScore = (totalScore) => {
+  const total = parseInt(totalScore)||0;
+  if (total === 3) return { label:"Excelente (3/3)", desc:"Equilíbrio estático preservado em todos os níveis. Baixo risco de quedas.", color:"#16a34a", bg:"#dcfce7", score:total };
+  if (total === 2) return { label:"Bom (2/3)", desc:"Bom equilíbrio. Tandem com tempo parcial.", color:"#65a30d", bg:"#ecfccb", score:total };
+  if (total === 1) return { label:"Regular (1/3)", desc:"Equilíbrio reduzido. Dificuldade no tandem.", color:"#d97706", bg:"#fef9c3", score:total };
+  return { label:"Muito Comprometido (0/3)", desc:"Incapaz de manter posições de equilíbrio. Risco muito alto de quedas.", color:"#dc2626", bg:"#fee2e2", score:0 };
+};
+const classifySPPBChairStand = (v) => {
+  if (v === "unable" || v === "0" || v === "") return { label:"Incapaz (0 pt)", desc:"Incapaz de completar 5 repetições. Fraqueza severa de MMII.", color:"#dc2626", bg:"#fee2e2", score:0 };
+  const n = parseFloat(v); if (!n) return null;
+  if (n <= 11.19) return { label:"Excelente (4 pts)", desc:"Força de MMII excelente.", color:"#16a34a", bg:"#dcfce7", score:4 };
+  if (n <= 13.69) return { label:"Bom (3 pts)", desc:"Boa força de MMII.", color:"#65a30d", bg:"#ecfccb", score:3 };
+  if (n <= 16.69) return { label:"Regular (2 pts)", desc:"Força de MMII moderada.", color:"#d97706", bg:"#fef9c3", score:2 };
+  return { label:"Fraco (1 pt)", desc:"Força de MMII reduzida — risco funcional aumentado.", color:"#ea580c", bg:"#ffedd5", score:1 };
+};
+const classifyBMI = (v) => {
+  const n = parseFloat(v); if (!n) return null;
+  if (n < 18.5) return { label:"Baixo Peso", desc:"IMC abaixo do esperado. Risco de desnutrição e sarcopenia.", color:"#6366f1", bg:"#eef2ff" };
+  if (n < 25)   return { label:"Peso Normal", desc:"IMC dentro da faixa saudável. Manter hábitos de vida ativos.", color:"#16a34a", bg:"#dcfce7" };
+  if (n < 30)   return { label:"Sobrepeso", desc:"IMC entre 25-29,9. Risco moderado de doenças metabólicas.", color:"#d97706", bg:"#fef9c3" };
+  if (n < 35)   return { label:"Obesidade Grau I", desc:"IMC entre 30-34,9. Risco elevado de DCV, diabetes e síndrome metabólica.", color:"#ea580c", bg:"#ffedd5" };
+  if (n < 40)   return { label:"Obesidade Grau II", desc:"IMC entre 35-39,9. Risco muito elevado.", color:"#dc2626", bg:"#fee2e2" };
+  return { label:"Obesidade Grau III", desc:"IMC ≥ 40. Risco extremo.", color:"#7f1d1d", bg:"#fee2e2" };
+};
+const classifyRCQ = (waist, hip, sex) => {
+  const w = parseFloat(waist), h = parseFloat(hip);
+  if (!w || !h) return null;
+  const rcq = (w/h).toFixed(2);
+  const isMale = sex === "M";
+  let label, desc, color, bg;
+  if (isMale) {
+    if (w/h < 0.90) { label="Baixo Risco"; desc="RCQ "+rcq+" — distribuição de gordura sem risco cardiovascular aumentado."; color="#16a34a"; bg="#dcfce7"; }
+    else if (w/h < 1.00) { label="Risco Moderado"; desc="RCQ "+rcq+" — risco cardiovascular moderado."; color="#d97706"; bg="#fef9c3"; }
+    else { label="Risco Alto"; desc="RCQ "+rcq+" — distribuição androide de gordura com risco cardiovascular elevado."; color="#dc2626"; bg="#fee2e2"; }
+  } else {
+    if (w/h < 0.80) { label="Baixo Risco"; desc="RCQ "+rcq+" — distribuição de gordura sem risco cardiovascular aumentado."; color="#16a34a"; bg="#dcfce7"; }
+    else if (w/h < 0.85) { label="Risco Moderado"; desc="RCQ "+rcq+" — risco cardiovascular moderado."; color="#d97706"; bg="#fef9c3"; }
+    else { label="Risco Alto"; desc="RCQ "+rcq+" — distribuição androide de gordura com risco cardiovascular elevado."; color="#dc2626"; bg="#fee2e2"; }
+  }
+  return { label, desc, color, bg, rcq };
+};
+const classifyCalf = (v, sex) => {
+  const n = parseFloat(v); if (!n) return null;
+  const cutoff = sex === "M" ? 34 : 33;
+  if (n < 31) return { label:"Risco Alto de Sarcopenia", desc:"Circunferência < 31 cm. Forte indicativo de sarcopenia. Prioridade: treino de força e acompanhamento nutricional.", color:"#dc2626", bg:"#fee2e2" };
+  if (n < cutoff) return { label:"Atenção — Risco Moderado", desc:"Circunferência "+n+" cm (referência: ≥ "+cutoff+" cm). Risco aumentado de sarcopenia.", color:"#d97706", bg:"#fef9c3" };
+  return { label:"Normal", desc:"Circunferência adequada. Baixo risco de sarcopenia.", color:"#16a34a", bg:"#dcfce7" };
+};
+const classifyMMSE = (score) => {
+  const n = parseInt(score); if (!n && n !== 0) return null;
+  if (n >= 27) return { label:"Normal", desc:"Sem indicativo de comprometimento cognitivo.", impact:"Cognição preservada para as exigências do dia a dia: gerenciar compromissos, medicamentos, finanças e seguir conversas e instruções sem dificuldade.", color:"#16a34a", bg:"#dcfce7" };
+  if (n >= 24) return { label:"Comprometimento Leve", desc:"Possível comprometimento cognitivo leve.", impact:"Pode começar a apresentar pequenos esquecimentos do dia a dia, como esquecer onde guardou objetos, repetir perguntas ou ter mais dificuldade para aprender coisas novas.", color:"#d97706", bg:"#fef9c3" };
+  if (n >= 18) return { label:"Comprometimento Moderado", desc:"Comprometimento cognitivo moderado.", impact:"Pode afetar a capacidade de seguir sequências de exercícios, memorizar orientações e manter atenção. No cotidiano, pode dificultar o controle de medicamentos, lembrar compromissos e seguir instruções com várias etapas.", color:"#ea580c", bg:"#ffedd5" };
+  return { label:"Comprometimento Grave", desc:"Comprometimento cognitivo grave.", impact:"Indica perda significativa de autonomia: dificuldade para reconhecer pessoas e lugares familiares, lembrar informações recentes e realizar atividades básicas sem auxílio.", color:"#dc2626", bg:"#fee2e2" };
+};
+const classifyDualTask = (single, dual) => {
+  const s = parseFloat(single), d = parseFloat(dual);
+  if (!s || !d) return null;
+  const cost = Math.round(((d-s)/s)*100);
+  if (cost < 0) return { cost: Math.abs(cost), label:"Sem custo (melhora)", desc:"Desempenho igual ou superior com dupla tarefa. Excelente controle cognitivo-motor.", impact:"Consegue realizar tarefas simultâneas no dia a dia (como caminhar e conversar) sem perda de equilíbrio ou atenção.", color:"#16a34a", bg:"#dcfce7" };
+  if (cost < 10) return { cost, label:"Baixo Custo (<10%)", desc:"Boa capacidade de divisão atencional.", impact:"Boa capacidade de fazer mais de uma coisa ao mesmo tempo, como andar e conversar, ou atravessar a rua observando o trânsito.", color:"#16a34a", bg:"#dcfce7" };
+  if (cost < 20) return { cost, label:"Custo Moderado (10–20%)", desc:"Atenção dividida comprometida.", impact:"Pode ter dificuldade em situações que exigem atenção dividida, como caminhar enquanto conversa ou carrega objetos.", color:"#d97706", bg:"#fef9c3" };
+  if (cost < 35) return { cost, label:"Custo Elevado (20–35%)", desc:"Dificuldade significativa de divisão atencional. Risco de queda em ambientes complexos.", impact:"Aumenta o risco de quedas em ambientes movimentados, como supermercados ou ruas com trânsito.", color:"#ea580c", bg:"#ffedd5" };
+  return { cost, label:"Custo Muito Elevado (>35%)", desc:"Comprometimento grave da atenção dividida. Alto risco de queda.", impact:"Tarefas simultâneas como caminhar e conversar tornam-se perigosas. Alto risco de quedas mesmo dentro de casa.", color:"#dc2626", bg:"#fee2e2" };
+};
+const classifyVerbalFluency = (score) => {
+  const n = parseInt(score); if (!n && n !== 0) return null;
+  if (n >= 18) return { label:"Excelente", desc:"Fluência verbal e memória semântica muito preservadas.", impact:"Facilidade para se comunicar, encontrar as palavras certas em conversas e participar ativamente de atividades sociais.", color:"#16a34a", bg:"#dcfce7" };
+  if (n >= 13) return { label:"Normal", desc:"Fluência verbal dentro do esperado.", impact:"Boa capacidade de se comunicar no dia a dia, participar de conversas e se expressar sem dificuldades relevantes.", color:"#65a30d", bg:"#ecfccb" };
+  if (n >= 9)  return { label:"Limítrofe", desc:"Fluência verbal abaixo do esperado.", impact:"Pode começar a sentir mais dificuldade para encontrar palavras durante conversas.", color:"#d97706", bg:"#fef9c3" };
+  return { label:"Reduzida", desc:"Fluência verbal significativamente reduzida.", impact:"Dificuldade significativa para manter conversas e participar de grupos sociais, o que pode levar a isolamento.", color:"#dc2626", bg:"#fee2e2" };
+};
+const classifyDigitSpan = (direct, inverse) => {
+  const d = parseInt(direct), i = inverse!==undefined&&inverse!==""?parseInt(inverse):null;
+  if (!d) return null;
+  let label, desc, impact, color, bg;
+  if (d >= 7 && (!i || i >= 5)) { label="Excelente"; desc="Memória de trabalho e curto prazo muito preservadas."; impact="Excelente capacidade de reter e manipular informações no dia a dia, como listas de compras e sequências de instruções."; color="#16a34a"; bg="#dcfce7"; }
+  else if (d >= 5 && (!i || i >= 3)) { label="Normal"; desc="Memória de trabalho adequada para a faixa etária."; impact="Boa capacidade de reter informações de curto prazo, como uma lista de tarefas ou seguir instruções com poucos passos."; color="#65a30d"; bg="#ecfccb"; }
+  else if (d >= 4 && (!i || i >= 2)) { label="Limítrofe"; desc="Memória de trabalho ligeiramente reduzida."; impact="Pode ter mais dificuldade em lembrar sequências de informações, como uma lista maior ou instruções com várias etapas."; color="#d97706"; bg="#fef9c3"; }
+  else { label="Reduzida"; desc="Memória de trabalho comprometida."; impact="Dificuldade para memorizar sequências, lembrar instruções recentes e gerenciar a tomada correta de medicamentos."; color="#dc2626"; bg="#fee2e2"; }
+  return { label, desc, impact, color, bg };
+};
+const Badge = ({ children, color, bg }) => (
+  <span style={{ color, background:bg, padding:"2px 9px", borderRadius:99, fontSize:11, fontWeight:700, border:`1px solid ${color}33`, whiteSpace:"nowrap" }}>{children}</span>
+);
+const TestResult = ({ cl }) => {
+  if (!cl) return null;
+  return (
+    <div style={{ background:cl.bg, border:`1.5px solid ${cl.color}33`, borderRadius:9, padding:"9px 12px", marginTop:4, marginBottom:8 }}>
+      <div style={{ fontWeight:700, fontSize:12, color:cl.color, marginBottom:3 }}>{cl.label}</div>
+      <div style={{ fontSize:12, color:"#475569", lineHeight:1.5 }}>{cl.desc}</div>
+      {cl.impact && <div style={{ fontSize:12, color:"#334155", lineHeight:1.45, marginTop:6, paddingTop:6, borderTop:"1px solid "+cl.color+"22" }}><strong>Impacto no dia a dia:</strong> {cl.impact}</div>}
+    </div>
+  );
+};
+
 const COGNITIVOS = [
   { id:"cartas",    nome:"Cartas Neurofuncionais", desc:"30 cartas · 4 categorias · 3 níveis",       duracao:"5–8 min",  nivel:"Basico",        cor:"#FF5603" },
   { id:"genio",     nome:"Gênio das Cores",        desc:"Memória sequencial de cores",               duracao:"4–6 min",  nivel:"Intermediario", cor:"#EC4899" },
@@ -134,6 +274,7 @@ const ICON_PATHS = {
   home: <g><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5a1 1 0 0 0 1 1H9.5a1 1 0 0 0 1-1V15h3v4.5a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1V10"/></g>,
   chevronLeft: <polyline points="15 18 9 12 15 6"/>,
   chevronRight: <polyline points="9 18 15 12 9 6"/>,
+  clipboard: <g><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="15" y2="15"/></g>,
 };
 const Icon = ({name, size=16, color="currentColor", style={}}) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"-0.15em",flexShrink:0,...style}}>{ICON_PATHS[name]}</svg>
@@ -422,6 +563,7 @@ const BottomNav = ({tab, setTab}) => {
     {key:"inicio", label:"Início", icon:"home"},
     {key:"treino", label:"Treino", icon:"dumbbell"},
     {key:"programacao", label:"Programação", icon:"calendar"},
+    {key:"avaliacao", label:"Avaliação", icon:"clipboard"},
   ];
   return (
     <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#fff",borderTop:"1.5px solid #e2e8f0",display:"flex",justifyContent:"space-around",paddingTop:8,paddingBottom:"max(8px, env(safe-area-inset-bottom))",zIndex:200,boxShadow:"0 -2px 10px rgba(15,23,42,0.05)"}}>
@@ -488,17 +630,31 @@ const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, concluidasMap, 
 };
 
 // ── Tela Programação (Dia / Semana / Mês) ─────────────────────────────────────
-const AtividadeCard = ({atividade, destaque, concluida, onToggle}) => (
-  <Card style={{padding:"12px 14px",marginBottom:8,background:concluida?"#f0fdf4":(destaque?"#fff7ed":"#fff"),borderColor:concluida?"#bbf7d0":(destaque?"#fed7aa":"#e2e8f0")}}>
-    <div style={{display:"flex",alignItems:"center",gap:10}}>
-      <button onClick={()=>onToggle && onToggle(atividade)} style={{width:30,height:30,borderRadius:9,border:concluida?"none":"1.5px solid #cbd5e1",background:concluida?"#16a34a":"#fff",color:"#fff",cursor:onToggle?"pointer":"default",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{concluida && <Icon name="check" size={16}/>}</button>
-      <div style={{flex:1,minWidth:0}}>
-        <div style={{fontSize:13,fontWeight:700,color:concluida?"#15803d":(destaque?"#9a3412":"#0f172a"),textDecoration:concluida?"line-through":"none",opacity:concluida?0.75:1}}>{atividade.titulo}</div>
-        {atividade.obs && <div style={{fontSize:11.5,color:concluida?"#16a34a":(destaque?"#c2410c":"#64748b"),marginTop:1}}>{atividade.obs}</div>}
-      </div>
-    </div>
-  </Card>
-);
+const AtividadeCard = ({atividade, destaque, concluida, onToggle}) => {
+  const [showDetail,setShowDetail]=useState(false);
+  return (
+    <>
+      <Card style={{padding:"12px 14px",marginBottom:8,background:concluida?"#f0fdf4":(destaque?"#fff7ed":"#fff"),borderColor:concluida?"#bbf7d0":(destaque?"#fed7aa":"#e2e8f0")}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <button onClick={()=>onToggle && onToggle(atividade)} style={{width:30,height:30,borderRadius:9,border:concluida?"none":"1.5px solid #cbd5e1",background:concluida?"#16a34a":"#fff",color:"#fff",cursor:onToggle?"pointer":"default",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{concluida && <Icon name="check" size={16}/>}</button>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:13,fontWeight:700,color:concluida?"#15803d":(destaque?"#9a3412":"#0f172a"),textDecoration:concluida?"line-through":"none",opacity:concluida?0.75:1}}>{atividade.titulo}</div>
+            {atividade.obs && <div style={{fontSize:11.5,color:concluida?"#16a34a":(destaque?"#c2410c":"#64748b"),marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{atividade.obs}</div>}
+          </div>
+          {atividade.obs && (
+            <button onClick={()=>setShowDetail(true)} style={{flexShrink:0,border:"1.5px solid "+(destaque?"#fed7aa":"#e2e8f0"),background:"#fff",borderRadius:8,padding:"6px 10px",fontSize:11,fontWeight:700,color:"#FF5603",cursor:"pointer",whiteSpace:"nowrap"}}>Ver detalhes</button>
+          )}
+        </div>
+      </Card>
+      {showDetail && (
+        <Modal title={atividade.titulo} onClose={()=>setShowDetail(false)}>
+          {atividade.date && <div style={{fontSize:12,color:"#94a3b8",marginBottom:14}}>{fmt(atividade.date)}</div>}
+          <div style={{fontSize:14,color:"#334155",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{atividade.obs}</div>
+        </Modal>
+      )}
+    </>
+  );
+};
 
 const NavHeader = ({label, onPrev, onNext}) => (
   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
@@ -601,7 +757,243 @@ const TelaProgramacao = ({atividades, concluidasMap, onToggleAtividade}) => {
   );
 };
 
-const MeuTreino = ({studentId, ownerId, studentName, bibCustom, onLogout}) => {
+// ── Tela de Avaliação — visualização completa da avaliação para o aluno ────
+const SecaoTitulo = ({children}) => (
+  <div style={{fontWeight:800,fontSize:14,color:"#FF5603",textTransform:"uppercase",letterSpacing:"0.4px",marginBottom:10,marginTop:22}}>{children}</div>
+);
+const LinhaDado = ({label, value, unit=""}) => (
+  <div style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #f1f5f9"}}>
+    <span style={{fontSize:13,color:"#475569"}}>{label}</span>
+    <span style={{fontSize:13,fontWeight:700,color:"#0f172a"}}>{value||"—"}{value&&unit?" "+unit:""}</span>
+  </div>
+);
+const NarrativaIA = ({text, title}) => {
+  if (!text?.trim()) return null;
+  return (
+    <div style={{marginTop:22}}>
+      <div style={{borderBottom:"2px solid #FF560322",paddingBottom:8,marginBottom:14}}>
+        <div style={{fontWeight:800,fontSize:14,color:"#0f172a"}}>{title}</div>
+      </div>
+      <div style={{fontSize:14,color:"#334155",lineHeight:1.85,whiteSpace:"pre-wrap"}}>{text}</div>
+    </div>
+  );
+};
+
+const RelatorioAvaliacao = ({assessment: a, studentData: st}) => {
+  if (!a || !st) return null;
+  const sex = st.sex || "";
+  const modAtivos = a.modAtivos || {questionarios:true,fisico:true,cognitivo:true};
+  const gc = classifyGlobal(a.globalScore||0);
+  const ahaCl = classifyAHA(a.aha?.score||0);
+  const funcCl = classifyFunctional(a.functional?.score||0);
+  const fitCl = classifyFitness(a.physical?.score||0);
+  const cvScore = Math.max(0, Math.round(100-((a.aha?.score||0)/13)*100));
+  const riskFlags = [];
+  if (a.parqApplied && a.parqFailed) riskFlags.push("PAR-Q Positivo — avaliação médica recomendada");
+  if ((a.aha?.score||0) >= 4) riskFlags.push("Risco cardiovascular alto (AHA)");
+  if (a.aha?.calf && parseFloat(a.aha.calf) < 31) riskFlags.push("Risco de sarcopenia (panturrilha reduzida)");
+  if ((a.functional?.score||0) < 40) riskFlags.push("Capacidade funcional comprometida");
+  if ((a.physical?.score||0) < 40) riskFlags.push("Aptidão física insuficiente");
+
+  const indices = [
+    ...(modAtivos.questionarios?[["Risco Cardiovascular", cvScore, classifyCV(cvScore)],["Capacidade Funcional", a.functional?.score||0, funcCl]]:[]),
+    ...(modAtivos.fisico?[["Aptidão Física", a.physical?.score||0, fitCl]]:[]),
+    ...(a.cognitiveData?.score>0?[["Capacidade Cognitiva", a.cognitiveData.score, classifyCognitive(a.cognitiveData.score)]]:[]),
+    ["Índice Global", a.globalScore||0, gc],
+  ];
+
+  return (
+    <div>
+      <div style={{background:"linear-gradient(135deg,#fff4ee,#fff)",border:"1.5px solid #FF560322",borderRadius:14,padding:"14px 16px",marginBottom:16}}>
+        <div style={{fontWeight:800,fontSize:16,color:"#0f172a",marginBottom:3}}>Sua Avaliação Física</div>
+        <div style={{fontSize:12,color:"#64748b"}}>Realizada em {fmt(a.date)} · Protocolo Longevus (AHA/ACSM/Spirduso)</div>
+      </div>
+
+      {riskFlags.length>0 && (
+        <div style={{marginBottom:16,display:"flex",flexDirection:"column",gap:6}}>
+          {riskFlags.map((f,i)=>(
+            <div key={i} style={{background:"#fee2e2",border:"1px solid #fca5a5",borderRadius:9,padding:"9px 12px",fontSize:12,fontWeight:700,color:"#dc2626"}}>⚠️ {f}</div>
+          ))}
+        </div>
+      )}
+
+      <SecaoTitulo>Seus Índices</SecaoTitulo>
+      <div style={{display:"grid",gridTemplateColumns:"repeat("+Math.min(indices.length,3)+",1fr)",gap:10}}>
+        {indices.map(([lbl,val,cl])=>(
+          <div key={lbl} style={{background:cl.bg,border:"1.5px solid "+cl.color+"33",borderRadius:12,padding:"14px 8px",textAlign:"center"}}>
+            <div style={{fontSize:26,fontWeight:900,color:cl.color}}>{Math.round(val)}</div>
+            <div style={{fontSize:11,fontWeight:700,color:cl.color,marginBottom:3}}>{cl.label}</div>
+            <div style={{fontSize:11,color:"#64748b"}}>{lbl}</div>
+          </div>
+        ))}
+      </div>
+
+      {a.parqApplied && (
+        <div style={{marginTop:16,background:a.parqFailed?"#fee2e2":"#dcfce7",border:`1px solid ${a.parqFailed?"#fca5a5":"#86efac"}`,borderRadius:9,padding:"10px 14px",fontSize:13,fontWeight:700,color:a.parqFailed?"#dc2626":"#16a34a"}}>
+          {a.parqFailed ? "⚠️ PAR-Q Positivo — avaliação médica recomendada antes de iniciar/progredir o programa." : "✅ PAR-Q Negativo — sem contraindicações identificadas."}
+        </div>
+      )}
+
+      {modAtivos.questionarios && (
+        <>
+          <SecaoTitulo>Risco Cardiovascular (AHA)</SecaoTitulo>
+          <div style={{marginBottom:10}}><Badge color={ahaCl.color} bg={ahaCl.bg}>{ahaCl.label} — Score: {a.aha?.score}</Badge></div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginBottom:10}}>
+            {[["Peso",a.aha?.weight,"kg"],["Altura",a.aha?.height,"cm"],["IMC",a.aha?.bmi,"kg/m²"],["PAS",a.aha?.sbp,"mmHg"],["PAD",a.aha?.dbp,"mmHg"],["FC Rep.",a.aha?.hr,"bpm"],["Cintura",a.aha?.waist,"cm"],["Quadril",a.aha?.hip,"cm"],["Panturrilha",a.aha?.calf,"cm"]].filter(([,v])=>v).map(([k,v,u])=>(
+              <div key={k} style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
+                <div style={{fontSize:9,color:"#94a3b8",fontWeight:700,textTransform:"uppercase"}}>{k}</div>
+                <div style={{fontSize:13,fontWeight:800,color:"#0f172a"}}>{v}{u?" "+u:""}</div>
+              </div>
+            ))}
+          </div>
+          {a.aha?.bmi && <div><div style={{fontSize:12,fontWeight:700,color:"#475569",marginBottom:3}}>IMC:</div><TestResult cl={classifyBMI(a.aha.bmi)}/></div>}
+          {a.aha?.waist && a.aha?.hip && <div><div style={{fontSize:12,fontWeight:700,color:"#475569",marginBottom:3}}>Relação Cintura-Quadril:</div><TestResult cl={classifyRCQ(a.aha.waist,a.aha.hip,sex)}/></div>}
+          {a.aha?.calf && <div><div style={{fontSize:12,fontWeight:700,color:"#475569",marginBottom:3}}>Panturrilha — Risco de Sarcopenia:</div><TestResult cl={classifyCalf(a.aha.calf,sex)}/></div>}
+        </>
+      )}
+
+      {modAtivos.questionarios && (a.avd || a.aivd) && (
+        <>
+          <SecaoTitulo>Capacidade Funcional</SecaoTitulo>
+          <div style={{marginBottom:10}}><Badge color={funcCl.color} bg={funcCl.bg}>{funcCl.label} — Score: {a.functional?.score}/100</Badge></div>
+          {a.avd && (
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#475569",marginBottom:6}}>Atividades Básicas do Dia a Dia:</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                {[["Alimentação",a.avd.eating],["Banho",a.avd.bathing],["Vestuário",a.avd.dressing],["Higiene pessoal",a.avd.toileting],["Transferência",a.avd.transferring]].filter(([,v])=>v!==undefined).map(([k,v])=>(
+                  <div key={k} style={{background:"#f8fafc",borderRadius:7,padding:"5px 10px",fontSize:12}}>
+                    <span style={{color:"#94a3b8"}}>{k}: </span>
+                    <span style={{fontWeight:700,color:v===2?"#16a34a":v===1?"#d97706":"#dc2626"}}>{v===2?"Independente":v===1?"Com auxílio":"Dependente"}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {a.aivd && (
+            <div>
+              <div style={{fontSize:12,fontWeight:700,color:"#475569",marginBottom:6}}>Atividades Instrumentais:</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                {[["Compras",a.aivd.shopping],["Finanças",a.aivd.finance],["Transporte",a.aivd.transport],["Medicação",a.aivd.medication],["Tarefas domésticas",a.aivd.housework],["Telefone/Celular",a.aivd.telephone]].filter(([,v])=>v!==undefined).map(([k,v])=>(
+                  <div key={k} style={{background:"#f8fafc",borderRadius:7,padding:"5px 10px",fontSize:12}}>
+                    <span style={{color:"#94a3b8"}}>{k}: </span>
+                    <span style={{fontWeight:700,color:v===2?"#16a34a":v===1?"#d97706":"#dc2626"}}>{v===2?"Independente":v===1?"Com auxílio":"Dependente"}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {modAtivos.fisico && (
+        <>
+          <SecaoTitulo>Testes Físicos</SecaoTitulo>
+          <div style={{marginBottom:10}}><Badge color={fitCl.color} bg={fitCl.bg}>{fitCl.label} — Score: {a.physical?.score}/100</Badge></div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {[["Equilíbrio (SPPB)", a.physical?.sppbBalanceScore!==undefined?String(a.physical.sppbBalanceScore):null, classifySPPBBalanceScore, "pts"],
+              ["Sentar e Levantar (SPPB)", a.physical?.sppbChairUnable?"unable":(a.physical?.sppbChair||null), classifySPPBChairStand, a.physical?.sppbChairUnable?"":"seg"],
+              ["Preensão Manual", a.physical?.grip, v=>classifyHandGrip(v,sex), "kgf"],
+              ["TUG — Levantar e Andar", a.physical?.tug, classifyTUG, "seg"],
+              ["Sentar e Alcançar", a.physical?.sitreach, classifySitReach, "cm"],
+              ["Marcha Estacionária 2min", a.physical?.march, v=>classifyMarch(v,sex), "passos"],
+            ].map(([name,val,clFn,unit])=>{
+              if (!val && val!=="0") return null;
+              const cl = clFn(val); if (!cl) return null;
+              return (
+                <div key={name} style={{background:"#f8fafc",borderRadius:10,padding:"11px 13px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,marginBottom:6}}>
+                    <div style={{fontSize:13,fontWeight:700,color:"#334155"}}>{name}</div>
+                    <div style={{textAlign:"right",flexShrink:0}}>
+                      <div style={{fontWeight:800,fontSize:14,color:"#0f172a"}}>{val} {unit}</div>
+                      <Badge color={cl.color} bg={cl.bg}>{cl.label}</Badge>
+                    </div>
+                  </div>
+                  <div style={{fontSize:12,color:"#64748b",lineHeight:1.4}}>{cl.desc}</div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {a?.cognitiveData?.score > 0 && (
+        <>
+          <SecaoTitulo>Avaliação Cognitiva</SecaoTitulo>
+          <div style={{marginBottom:10}}><Badge color={classifyCognitive(a.cognitiveData.score).color} bg={classifyCognitive(a.cognitiveData.score).bg}>Score Cognitivo: {a.cognitiveData.score} — {classifyCognitive(a.cognitiveData.score).label}</Badge></div>
+          {a.cognitiveData.mmse?.total && <div><div style={{fontSize:12,fontWeight:700,color:"#475569",marginBottom:3}}>MMSE — Triagem Cognitiva ({a.cognitiveData.mmse.total}/30):</div><TestResult cl={classifyMMSE(a.cognitiveData.mmse.total)}/></div>}
+          {a.cognitiveData.dualTask?.single && a.cognitiveData.dualTask?.dual && <div><div style={{fontSize:12,fontWeight:700,color:"#475569",marginBottom:3}}>Dual Task (atenção dividida):</div><TestResult cl={classifyDualTask(a.cognitiveData.dualTask.single,a.cognitiveData.dualTask.dual)}/></div>}
+          {a.cognitiveData.verbalFluency?.score && <div><div style={{fontSize:12,fontWeight:700,color:"#475569",marginBottom:3}}>Fluência Verbal ({a.cognitiveData.verbalFluency.score} palavras):</div><TestResult cl={classifyVerbalFluency(a.cognitiveData.verbalFluency.score)}/></div>}
+          {a.cognitiveData.digitSpan?.direct && <div><div style={{fontSize:12,fontWeight:700,color:"#475569",marginBottom:3}}>Span de Dígitos:</div><TestResult cl={classifyDigitSpan(a.cognitiveData.digitSpan.direct,a.cognitiveData.digitSpan.inverse)}/></div>}
+        </>
+      )}
+
+      <NarrativaIA text={a.aiTexts?.clinical} title="Observações e Recomendações — Prof. Wellington Brito · CREF 089836-G/SP"/>
+
+      <div style={{borderTop:"1.5px solid #e2e8f0",marginTop:26,paddingTop:14,fontSize:11,color:"#94a3b8",textAlign:"center"}}>
+        Avaliação realizada por Wellington Brito — Personal Trainer · CREF 089836-G/SP<br/>Especialista em Gerontologia
+      </div>
+    </div>
+  );
+};
+
+const TelaAvaliacao = ({studentId, studentData}) => {
+  const [loading,setLoading]=useState(true);
+  const [lista,setLista]=useState([]);
+  const [selIdx,setSelIdx]=useState(0);
+
+  useEffect(()=>{
+    (async()=>{
+      setLoading(true);
+      try{
+        const { data: sess } = await supa.auth.getSession();
+        const token = sess?.session?.access_token || SUPA_KEY;
+        const headers = { "apikey": SUPA_KEY, "Authorization": "Bearer "+token };
+        const r = await fetch(SUPA_URL+"/rest/v1/assessments?select=data,updated_at&student_id=eq."+encodeURIComponent(studentId)+"&order=updated_at.desc&limit=50", { headers });
+        if(r.ok){
+          const rows = await r.json();
+          const arr = (rows||[]).map(row=>row.data).filter(Boolean).sort((x,y)=>(y.date||"").localeCompare(x.date||""));
+          setLista(arr);
+        } else { setLista([]); }
+      } catch(e){ setLista([]); }
+      setSelIdx(0);
+      setLoading(false);
+    })();
+  },[studentId]);
+
+  if(loading){
+    return <div style={{padding:"60px 20px",textAlign:"center",color:"#94a3b8",fontSize:14}}>Carregando sua avaliação...</div>;
+  }
+
+  if(lista.length===0){
+    return (
+      <div style={{padding:"20px 16px"}}>
+        <Card style={{padding:"32px 20px",textAlign:"center"}}>
+          <div style={{width:52,height:52,borderRadius:14,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px"}}><Icon name="clipboard" size={24} color="#FF5603"/></div>
+          <div style={{fontWeight:700,fontSize:15,marginBottom:6}}>Nenhuma avaliação disponível ainda</div>
+          <div style={{fontSize:13,color:"#64748b",lineHeight:1.5}}>Assim que seu personal registrar sua avaliação, ela vai aparecer aqui.</div>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{padding:"16px 16px 100px"}}>
+      <div style={{fontWeight:800,fontSize:20,marginBottom:14}}>Avaliação</div>
+      {lista.length>1 && (
+        <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:10,marginBottom:6}}>
+          {lista.map((a,i)=>(
+            <button key={i} onClick={()=>setSelIdx(i)} style={{flexShrink:0,border:"1.5px solid "+(i===selIdx?"#FF5603":"#e2e8f0"),background:i===selIdx?"#fff4ee":"#fff",color:i===selIdx?"#FF5603":"#475569",borderRadius:10,padding:"8px 14px",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
+              {fmt(a.date)}{i===0?" · mais recente":""}
+            </button>
+          ))}
+        </div>
+      )}
+      <RelatorioAvaliacao assessment={lista[selIdx]} studentData={studentData}/>
+    </div>
+  );
+};
+
+const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onLogout}) => {
   const [loading,setLoading]=useState(true);
   const [prog,setProg]=useState(null);
   const [notFound,setNotFound]=useState(false);
@@ -614,7 +1006,7 @@ const MeuTreino = ({studentId, ownerId, studentName, bibCustom, onLogout}) => {
   const [lastSessions,setLastSessions]=useState([]);
   const [showCelebration,setShowCelebration]=useState(false);
   const [saveError,setSaveError]=useState("");
-  const [tab,setTab]=useState("inicio"); // inicio | treino | programacao
+  const [tab,setTab]=useState("inicio"); // inicio | treino | programacao | avaliacao
   const [atividades,setAtividades]=useState([]);
   const [concluidasMap,setConcluidasMap]=useState({});
 
@@ -865,6 +1257,7 @@ const MeuTreino = ({studentId, ownerId, studentName, bibCustom, onLogout}) => {
       )}
 
       {tab==="programacao" && <TelaProgramacao atividades={atividades} concluidasMap={concluidasMap} onToggleAtividade={toggleConcluidaAtividade}/>}
+      {tab==="avaliacao" && <TelaAvaliacao studentId={studentId} studentData={studentData}/>}
 
       {tab==="treino" && (
       <div style={{padding:"16px 16px 0"}}>
@@ -1038,6 +1431,7 @@ function App(){
   const [studentId,setStudentId]=useState(null);
   const [ownerId,setOwnerId]=useState(null);
   const [studentName,setStudentName]=useState("");
+  const [studentData,setStudentData]=useState(null);
   const [linkChecked,setLinkChecked]=useState(false);
   const [bibCustom,setBibCustom]=useState([]);
 
@@ -1062,6 +1456,7 @@ function App(){
           setStudentId(rows && rows.length>0 ? rows[0].id : null);
           setOwnerId(rows && rows.length>0 ? rows[0].owner_id : null);
           setStudentName(rows && rows.length>0 ? (rows[0].data?.name||"") : "");
+          setStudentData(rows && rows.length>0 ? (rows[0].data||null) : null);
         } else {
           setStudentId(null);
         }
@@ -1121,7 +1516,7 @@ function App(){
     );
   }
 
-  return <MeuTreino studentId={studentId} ownerId={ownerId} studentName={studentName} bibCustom={bibCustom} onLogout={onLogout}/>;
+  return <MeuTreino studentId={studentId} ownerId={ownerId} studentName={studentName} studentData={studentData} bibCustom={bibCustom} onLogout={onLogout}/>;
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);

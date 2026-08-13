@@ -3560,7 +3560,7 @@ return (
 <span style={{ fontSize:11,color:"#94a3b8" }}>{fmt(a.date)}</span>
 </div>
 <div style={{ fontSize:14,fontWeight:700,color:"#0f172a" }}>{a.titulo}</div>
-{a.obs&&<div style={{ fontSize:12,color:"#64748b",marginTop:2 }}>{a.obs}</div>}
+{a.obs&&<div style={{ fontSize:12,color:"#64748b",marginTop:2,whiteSpace:"pre-wrap" }}>{a.obs}</div>}
 </div>
 <button onClick={()=>del(a.id)} style={{ background:"none",border:"none",cursor:"pointer",color:"#e2e8f0",padding:4,flexShrink:0 }}><I n="trash" s={15}/></button>
 </div>
@@ -3571,7 +3571,11 @@ return (
 {modal&&<Modal title="Nova Atividade Extra" onClose={()=>setModal(false)}>
 <Inp label="Aluno" value={form.studentId} onChange={v=>setForm(f=>({...f,studentId:v}))} opts={[{v:"",l:"Selecione..."},...students.map(s=>({v:s.id,l:s.name}))]}/>
 <Inp label="Atividade" value={form.titulo} onChange={v=>setForm(f=>({...f,titulo:v}))} placeholder="Ex: Aula de Pilates"/>
-<Inp label="Horário / observação (opcional)" value={form.obs} onChange={v=>setForm(f=>({...f,obs:v}))} placeholder="Ex: 09h no estúdio"/>
+<div style={{ marginBottom:13 }}>
+<div style={{ fontSize:12,fontWeight:600,color:"#475569",marginBottom:5 }}>Horário / observações (opcional)</div>
+<textarea value={form.obs} onChange={e=>setForm(f=>({...f,obs:e.target.value}))} placeholder="Ex: 09h no estúdio. Levar tênis fechado e garrafa d'água. Chegar 10 min antes." rows={4} style={{ width:"100%",padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,color:"#0f172a",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical" }}/>
+<div style={{ fontSize:11,color:"#94a3b8",marginTop:4 }}>O aluno vê isso tocando em "Ver detalhes" no app dele.</div>
+</div>
 
 <div style={{ fontSize:12,fontWeight:600,color:"#475569",margin:"14px 0 8px" }}>Em quais dias?</div>
 
