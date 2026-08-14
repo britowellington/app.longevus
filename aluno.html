@@ -1624,8 +1624,15 @@ function App(){
     (async()=>{
       try{
         const token = session.access_token || SUPA_KEY;
-        const headers = { "apikey": SUPA_KEY, "Authorization": "Bearer "+token };
-        const r = await fetch(SUPA_URL+"/rest/v1/professionals?select=nome,whatsapp,pix_key,pix_key_type,pix_merchant_name,pix_merchant_city,aviso_vencimento_dias&id=eq."+encodeURIComponent(ownerId), { headers });
+        const headers = { "apikey": SUPA_KEY, "Authorization": "Bearer "+token, "Content-Type": "application/json" };
+        // Usa a função RPC (get_professional_pix_config) em vez de consultar a tabela
+        // "professionals" direto — o RLS só deixa cada profissional ler a própria linha,
+        // então o aluno precisa dessa função pra conseguir ver a chave Pix do personal dele.
+        const r = await fetch(SUPA_URL+"/rest/v1/rpc/get_professional_pix_config", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ prof_id: ownerId }),
+        });
         if(r.ok){
           const rows = await r.json();
           setProfPix(rows && rows.length>0 ? rows[0] : null);
