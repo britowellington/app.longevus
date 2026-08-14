@@ -1039,6 +1039,15 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
   const [checkin,setCheckin]=useState({esforco:null,energia:null,dor:"nenhuma",obs:""});
   const [checkinSaving,setCheckinSaving]=useState(false);
   const [checkinError,setCheckinError]=useState("");
+  // ── Check-in configurável por aluno (professor define no painel: students.data.checkinConfig) ──
+  const ccfg = studentData?.checkinConfig || {pre:{},post:{esforco:true,energia:true,dor:true,obs:true}};
+  const preFieldsEnabled = ["disposicao","hidratacao","dor","pa","glicemia"].some(k=>ccfg.pre?.[k]);
+  const postFieldsEnabled = ["esforco","energia","dor","obs"].some(k=>ccfg.post?.[k]);
+  const [preCheckin,setPreCheckin]=useState({disposicao:null,hidratacao:null,dor:"nenhuma",pas:"",pad:"",fc:"",glicemia:""});
+  const [preCheckinChecking,setPreCheckinChecking]=useState(true);
+  const [preCheckinDone,setPreCheckinDone]=useState(false);
+  const [preCheckinSaving,setPreCheckinSaving]=useState(false);
+  const [preCheckinError,setPreCheckinError]=useState("");
   const [autoSet,setAutoSet]=useState(false);
   const [done,setDone]=useState(()=>new Set());
   const [saving,setSaving]=useState(false);
@@ -1262,9 +1271,13 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
       if(r.ok){
         setSavedToday(true);
         setLastSessions(prev=>[data, ...prev]);
-        setCheckin({esforco:null,energia:null,dor:"nenhuma",obs:""});
-        setCheckinError("");
-        setShowCheckin(true);
+        if(postFieldsEnabled){
+          setCheckin({esforco:null,energia:null,dor:"nenhuma",obs:""});
+          setCheckinError("");
+          setShowCheckin(true);
+        } else {
+          setShowCelebration(true);
+        }
       } else {
         const errText = await r.text();
         setSaveError("Erro ao salvar (HTTP "+r.status+"): "+errText.slice(0,300));
@@ -1301,6 +1314,36 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
     setCheckinSaving(false);
   };
 
+  useEffect(()=>{
+    if(!preFieldsEnabled){ setPreCheckinChecking(false); return; }
+    (async()=>{
+      try{
+        const headers = await authedHeaders();
+        const today = new Date().toISOString().slice(0,10);
+        const r = await fetch(SUPA_URL+"/rest/v1/checkins?select=id&student_id=eq."+encodeURIComponent(studentId)+"&type=eq.pre_treino&data->>date=eq."+today, { headers });
+        if(r.ok){ const rows = await r.json(); setPreCheckinDone(rows.length>0); }
+      } catch(e){}
+      setPreCheckinChecking(false);
+    })();
+  },[studentId, preFieldsEnabled]);
+
+  const salvarPreCheckin = async () => {
+    setPreCheckinSaving(true);
+    setPreCheckinError("");
+    try{
+      const headers = await authedHeaders();
+      const today = new Date().toISOString().slice(0,10);
+      const data = { ...preCheckin, date: today, source:"aluno_checkin", createdAt: new Date().toISOString() };
+      const body = { id: uid2(), owner_id: ownerId, student_id: studentId, type:"pre_treino", data };
+      const r = await fetch(SUPA_URL+"/rest/v1/checkins", { method:"POST", headers, body: JSON.stringify(body) });
+      if(r.ok){ setPreCheckinDone(true); }
+      else { const errText = await r.text(); setPreCheckinError("Erro ao salvar (HTTP "+r.status+"): "+errText.slice(0,300)); }
+    } catch(e){ setPreCheckinError("Erro de conexão: "+(e?.message||String(e))); }
+    setPreCheckinSaving(false);
+  };
+
+  const showPreCheckinGate = preFieldsEnabled && !preCheckinChecking && !preCheckinDone;
+
   const firstName = (studentName||"").trim().split(" ")[0] || "";
 
   return (
@@ -1327,7 +1370,75 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
       {tab==="programacao" && <TelaProgramacao atividades={atividades} concluidasMap={concluidasMap} onToggleAtividade={toggleConcluidaAtividade}/>}
       {tab==="avaliacao" && <TelaAvaliacao studentId={studentId} studentData={studentData}/>}
 
-      {tab==="treino" && (
+      {tab==="treino" && showPreCheckinGate && (
+        <div style={{padding:"16px 18px"}}>
+          <Card style={{padding:"18px 16px"}}>
+            <div style={{fontWeight:800,fontSize:16,marginBottom:2}}>Antes de começar</div>
+            <div style={{fontSize:12,color:"#64748b",marginBottom:18}}>Responda rapidinho pra liberar o treino de hoje</div>
+            {ccfg.pre?.disposicao && (
+            <div style={{marginBottom:20}}>
+              <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>Como você está disposto?</div>
+              <div style={{display:"flex",gap:8}}>
+                {[{v:1,e:"😣",l:"Exausto"},{v:2,e:"😴",l:"Cansado"},{v:3,e:"😐",l:"Neutro"},{v:4,e:"🙂",l:"Disposto"},{v:5,e:"😁",l:"Animado"}].map(o=>(
+                  <button key={o.v} onClick={()=>setPreCheckin(c=>({...c,disposicao:o.v}))} style={{flex:1,padding:"10px 2px",borderRadius:10,border:preCheckin.disposicao===o.v?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:preCheckin.disposicao===o.v?"#fff4ee":"#fff",cursor:"pointer",textAlign:"center",fontFamily:"inherit"}}>
+                    <div style={{fontSize:20}}>{o.e}</div>
+                    <div style={{fontSize:8,fontWeight:700,color:preCheckin.disposicao===o.v?"#FF5603":"#94a3b8",marginTop:2}}>{o.l}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            )}
+            {ccfg.pre?.hidratacao && (
+            <div style={{marginBottom:20}}>
+              <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>Como foi seu consumo de água ontem?</div>
+              <div style={{display:"flex",gap:8}}>
+                {[{v:1,l:"Muito pouco"},{v:2,l:"Pouco"},{v:3,l:"Regular"},{v:4,l:"Bom"},{v:5,l:"Ótimo"}].map(o=>(
+                  <button key={o.v} onClick={()=>setPreCheckin(c=>({...c,hidratacao:o.v}))} style={{flex:1,padding:"10px 2px",borderRadius:10,border:preCheckin.hidratacao===o.v?"1.5px solid #3b82f6":"1.5px solid #e2e8f0",background:preCheckin.hidratacao===o.v?"#eff6ff":"#fff",cursor:"pointer",textAlign:"center",fontFamily:"inherit"}}>
+                    <div style={{fontSize:9,fontWeight:700,color:preCheckin.hidratacao===o.v?"#3b82f6":"#94a3b8"}}>{o.l}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            )}
+            {ccfg.pre?.dor && (
+            <div style={{marginBottom:20}}>
+              <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>Dor ou desconforto agora</div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {[{v:"nenhuma",l:"Nenhuma"},{v:"leve",l:"Leve"},{v:"moderada",l:"Moderada"},{v:"alta",l:"Alta"}].map(o=>(
+                  <button key={o.v} onClick={()=>setPreCheckin(c=>({...c,dor:o.v}))} style={{padding:"8px 12px",borderRadius:9,border:preCheckin.dor===o.v?"none":"1.5px solid #e2e8f0",background:preCheckin.dor===o.v?"#FF5603":"#fff",color:preCheckin.dor===o.v?"#fff":"#475569",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>
+                ))}
+              </div>
+            </div>
+            )}
+            {ccfg.pre?.pa && (
+            <div style={{marginBottom:20}}>
+              <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>Pressão arterial / FC</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+                <input value={preCheckin.pas} onChange={e=>setPreCheckin(c=>({...c,pas:e.target.value}))} placeholder="PAS" inputMode="numeric" style={{padding:"9px 10px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box"}}/>
+                <input value={preCheckin.pad} onChange={e=>setPreCheckin(c=>({...c,pad:e.target.value}))} placeholder="PAD" inputMode="numeric" style={{padding:"9px 10px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box"}}/>
+                <input value={preCheckin.fc} onChange={e=>setPreCheckin(c=>({...c,fc:e.target.value}))} placeholder="FC" inputMode="numeric" style={{padding:"9px 10px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box"}}/>
+              </div>
+            </div>
+            )}
+            {ccfg.pre?.glicemia && (
+            <div style={{marginBottom:20}}>
+              <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>Glicemia (mg/dL)</div>
+              <input value={preCheckin.glicemia} onChange={e=>setPreCheckin(c=>({...c,glicemia:e.target.value}))} placeholder="100" inputMode="numeric" style={{width:"100%",padding:"9px 10px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box"}}/>
+            </div>
+            )}
+            {preCheckinError && (
+              <div style={{marginBottom:14,background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"10px 12px",fontSize:12,color:"#dc2626",display:"flex",alignItems:"flex-start",gap:6}}>
+                <Icon name="alert" size={14} style={{marginTop:1,flexShrink:0}}/><span>{preCheckinError}</span>
+              </div>
+            )}
+            <Btn full onClick={salvarPreCheckin} disabled={(ccfg.pre?.disposicao&&preCheckin.disposicao===null)||(ccfg.pre?.hidratacao&&preCheckin.hidratacao===null)||preCheckinSaving}>
+              {preCheckinSaving ? "Salvando..." : "Começar treino"}
+            </Btn>
+          </Card>
+        </div>
+      )}
+
+      {tab==="treino" && !showPreCheckinGate && (
       <div style={{padding:"16px 16px 0"}}>
         {atividadesHoje.length>0 && (
           <div style={{marginBottom:10}}>
@@ -1454,6 +1565,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
 
       {showCheckin && (
         <Modal title="Como foi seu treino?" onClose={()=>{}}>
+          {ccfg.post?.esforco && (
           <div style={{marginBottom:22}}>
             <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>Esforço (0 fácil — 10 máximo)</div>
             <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
@@ -1462,6 +1574,8 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
               ))}
             </div>
           </div>
+          )}
+          {ccfg.post?.energia && (
           <div style={{marginBottom:22}}>
             <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>Energia</div>
             <div style={{display:"flex",gap:8}}>
@@ -1473,6 +1587,8 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
               ))}
             </div>
           </div>
+          )}
+          {ccfg.post?.dor && (
           <div style={{marginBottom:22}}>
             <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>Dor ou desconforto</div>
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
@@ -1481,16 +1597,19 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
               ))}
             </div>
           </div>
+          )}
+          {ccfg.post?.obs && (
           <div style={{marginBottom:20}}>
             <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:8}}>Observação (opcional)</div>
             <textarea value={checkin.obs} onChange={e=>setCheckin(c=>({...c,obs:e.target.value}))} placeholder="Ex: senti dificuldade no agachamento..." style={{width:"100%",minHeight:70,padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box",resize:"vertical"}}/>
           </div>
+          )}
           {checkinError && (
             <div style={{marginBottom:14,background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"10px 12px",fontSize:12,color:"#dc2626",display:"flex",alignItems:"flex-start",gap:6}}>
               <Icon name="alert" size={14} style={{marginTop:1,flexShrink:0}}/><span>{checkinError}</span>
             </div>
           )}
-          <Btn full onClick={salvarCheckin} disabled={checkin.esforco===null||checkin.energia===null||checkinSaving}>
+          <Btn full onClick={salvarCheckin} disabled={(ccfg.post?.esforco&&checkin.esforco===null)||(ccfg.post?.energia&&checkin.energia===null)||checkinSaving}>
             {checkinSaving ? "Salvando..." : "Concluir e ver resultado"}
           </Btn>
         </Modal>
