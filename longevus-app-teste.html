@@ -640,7 +640,7 @@ const currentProgram = stPrograms[0];
 const stLogs = dailyLogs.filter(l=>l.studentId===studentId).sort((a,b)=>b.date?.localeCompare(a.date));
 const stDocs = documents.filter(d=>d.studentId===studentId).sort((a,b)=>b.date?.localeCompare(a.date));
 const delAssessment = async id=>{if(window.confirm("Remover avaliação?")){await DB.remove("assessments",id);setAssessments(p=>p.filter(a=>a.id!==id));}};
-const openEdit = ()=>{setForm({name:st.name,dob:st.dob||"",sex:st.sex||"",phone:st.phone||"",email:st.email||"",whatsapp:st.whatsapp||"",responsibleName:st.responsibleName||"",responsiblePhone:st.responsiblePhone||"",doctorName:st.doctorName||"",doctorPhone:st.doctorPhone||"",billing:{ativo:st.billing?.ativo||false,plano:st.billing?.plano||"",valor:st.billing?.valor||"",vencimento:st.billing?.vencimento||""},checkinConfig:{pre:{disposicao:st.checkinConfig?.pre?.disposicao??true,hidratacao:st.checkinConfig?.pre?.hidratacao??true,dor:st.checkinConfig?.pre?.dor??false,pa:st.checkinConfig?.pre?.pa??false,glicemia:st.checkinConfig?.pre?.glicemia??false},post:{esforco:st.checkinConfig?.post?.esforco??true,energia:st.checkinConfig?.post?.energia??true,dor:st.checkinConfig?.post?.dor??true,obs:st.checkinConfig?.post?.obs??true}}});setEditModal(true);};
+const openEdit = ()=>{setForm({name:st.name,dob:st.dob||"",sex:st.sex||"",phone:st.phone||"",email:st.email||"",whatsapp:st.whatsapp||"",responsibleName:st.responsibleName||"",responsiblePhone:st.responsiblePhone||"",doctorName:st.doctorName||"",doctorPhone:st.doctorPhone||"",billing:{ativo:st.billing?.ativo||false,plano:st.billing?.plano||"",valor:st.billing?.valor||"",vencimento:st.billing?.vencimento||""},checkinConfig:{pre:{disposicao:st.checkinConfig?.pre?.disposicao??true,hidratacao:st.checkinConfig?.pre?.hidratacao??true,alimentacao:st.checkinConfig?.pre?.alimentacao??true,sono:st.checkinConfig?.pre?.sono??true,dor:st.checkinConfig?.pre?.dor??false,pa:st.checkinConfig?.pre?.pa??false,glicemia:st.checkinConfig?.pre?.glicemia??false},post:{esforco:st.checkinConfig?.post?.esforco??true,energia:st.checkinConfig?.post?.energia??true,dor:st.checkinConfig?.post?.dor??true,obs:st.checkinConfig?.post?.obs??true}}});setEditModal(true);};
 const saveEdit = ()=>{if(!form.name.trim())return;setStudents(p=>p.map(s=>s.id===studentId?{...s,...form}:s));setEditModal(false);};
 const marcarPago = ()=>{
   const proxVenc = new Date(); proxVenc.setDate(proxVenc.getDate()+30);
@@ -822,6 +822,8 @@ return (
 {[
   {k:"disposicao",label:"Disposição"},
   {k:"hidratacao",label:"Hidratação"},
+  {k:"alimentacao",label:"Alimentação"},
+  {k:"sono",label:"Qualidade do sono"},
   {k:"dor",label:"Dor rápida"},
   {k:"pa",label:"Pressão arterial / FC"},
   {k:"glicemia",label:"Glicemia"},
