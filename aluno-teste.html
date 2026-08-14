@@ -1210,6 +1210,19 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
     if(idxUltimoGlobal !== -1) treinoDeHoje = treinosSequencia[(idxUltimoGlobal+1)%treinosSequencia.length];
   }
 
+  useEffect(()=>{
+    if(!preFieldsEnabled){ setPreCheckinChecking(false); return; }
+    (async()=>{
+      try{
+        const headers = await authedHeaders();
+        const today = new Date().toISOString().slice(0,10);
+        const r = await fetch(SUPA_URL+"/rest/v1/checkins?select=id&student_id=eq."+encodeURIComponent(studentId)+"&type=eq.pre_treino&data->>date=eq."+today, { headers });
+        if(r.ok){ const rows = await r.json(); setPreCheckinDone(rows.length>0); }
+      } catch(e){}
+      setPreCheckinChecking(false);
+    })();
+  },[studentId, preFieldsEnabled]);
+
   if(loading){
     return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14}}>Carregando seu treino...</div>;
   }
@@ -1313,19 +1326,6 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
     }
     setCheckinSaving(false);
   };
-
-  useEffect(()=>{
-    if(!preFieldsEnabled){ setPreCheckinChecking(false); return; }
-    (async()=>{
-      try{
-        const headers = await authedHeaders();
-        const today = new Date().toISOString().slice(0,10);
-        const r = await fetch(SUPA_URL+"/rest/v1/checkins?select=id&student_id=eq."+encodeURIComponent(studentId)+"&type=eq.pre_treino&data->>date=eq."+today, { headers });
-        if(r.ok){ const rows = await r.json(); setPreCheckinDone(rows.length>0); }
-      } catch(e){}
-      setPreCheckinChecking(false);
-    })();
-  },[studentId, preFieldsEnabled]);
 
   const salvarPreCheckin = async () => {
     setPreCheckinSaving(true);
