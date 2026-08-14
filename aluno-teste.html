@@ -1400,9 +1400,10 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
             <div style={{marginBottom:20}}>
               <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>Como foi seu consumo de água ontem?</div>
               <div style={{display:"flex",gap:8}}>
-                {[{v:1,l:"Muito pouco"},{v:2,l:"Pouco"},{v:3,l:"Regular"},{v:4,l:"Bom"},{v:5,l:"Ótimo"}].map(o=>(
+                {[{v:1,e:"💧",l:"Muito pouco"},{v:2,e:"💧💧",l:"Pouco"},{v:3,e:"💧💧💧",l:"Regular"},{v:4,e:"💧💧💧💧",l:"Bom"},{v:5,e:"💧💧💧💧💧",l:"Ótimo"}].map(o=>(
                   <button key={o.v} onClick={()=>setPreCheckin(c=>({...c,hidratacao:o.v}))} style={{flex:1,padding:"10px 2px",borderRadius:10,border:preCheckin.hidratacao===o.v?"1.5px solid #3b82f6":"1.5px solid #e2e8f0",background:preCheckin.hidratacao===o.v?"#eff6ff":"#fff",cursor:"pointer",textAlign:"center",fontFamily:"inherit"}}>
-                    <div style={{fontSize:9,fontWeight:700,color:preCheckin.hidratacao===o.v?"#3b82f6":"#94a3b8"}}>{o.l}</div>
+                    <div style={{fontSize:9,lineHeight:1}}>{o.e}</div>
+                    <div style={{fontSize:9,fontWeight:700,color:preCheckin.hidratacao===o.v?"#3b82f6":"#94a3b8",marginTop:3}}>{o.l}</div>
                   </button>
                 ))}
               </div>
@@ -1412,9 +1413,10 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
             <div style={{marginBottom:20}}>
               <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>Como foi sua alimentação hoje?</div>
               <div style={{display:"flex",gap:8}}>
-                {[{v:1,l:"Ruim"},{v:2,l:"Regular"},{v:3,l:"Boa"},{v:4,l:"Ótima"}].map(o=>(
+                {[{v:1,e:"🍔",l:"Ruim"},{v:2,e:"🥪",l:"Regular"},{v:3,e:"🥗",l:"Boa"},{v:4,e:"🥦",l:"Ótima"}].map(o=>(
                   <button key={o.v} onClick={()=>setPreCheckin(c=>({...c,alimentacao:o.v}))} style={{flex:1,padding:"10px 2px",borderRadius:10,border:preCheckin.alimentacao===o.v?"1.5px solid #16a34a":"1.5px solid #e2e8f0",background:preCheckin.alimentacao===o.v?"#f0fdf4":"#fff",cursor:"pointer",textAlign:"center",fontFamily:"inherit"}}>
-                    <div style={{fontSize:10,fontWeight:700,color:preCheckin.alimentacao===o.v?"#16a34a":"#94a3b8"}}>{o.l}</div>
+                    <div style={{fontSize:19}}>{o.e}</div>
+                    <div style={{fontSize:10,fontWeight:700,color:preCheckin.alimentacao===o.v?"#16a34a":"#94a3b8",marginTop:2}}>{o.l}</div>
                   </button>
                 ))}
               </div>
@@ -1424,9 +1426,10 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
             <div style={{marginBottom:20}}>
               <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>Como foi seu sono essa noite?</div>
               <div style={{display:"flex",gap:8}}>
-                {[{v:1,l:"Ruim"},{v:2,l:"Regular"},{v:3,l:"Boa"},{v:4,l:"Ótima"}].map(o=>(
+                {[{v:1,e:"🌑",l:"Ruim"},{v:2,e:"🌗",l:"Regular"},{v:3,e:"🌖",l:"Boa"},{v:4,e:"🌕",l:"Ótima"}].map(o=>(
                   <button key={o.v} onClick={()=>setPreCheckin(c=>({...c,sono:o.v}))} style={{flex:1,padding:"10px 2px",borderRadius:10,border:preCheckin.sono===o.v?"1.5px solid #7e22ce":"1.5px solid #e2e8f0",background:preCheckin.sono===o.v?"#fdf4ff":"#fff",cursor:"pointer",textAlign:"center",fontFamily:"inherit"}}>
-                    <div style={{fontSize:10,fontWeight:700,color:preCheckin.sono===o.v?"#7e22ce":"#94a3b8"}}>{o.l}</div>
+                    <div style={{fontSize:19}}>{o.e}</div>
+                    <div style={{fontSize:10,fontWeight:700,color:preCheckin.sono===o.v?"#7e22ce":"#94a3b8",marginTop:2}}>{o.l}</div>
                   </button>
                 ))}
               </div>
@@ -1436,15 +1439,15 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
             <div style={{marginBottom:20}}>
               <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>Dor ou desconforto agora</div>
               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                {[{v:"nenhuma",l:"Nenhuma"},{v:"leve",l:"Leve"},{v:"moderada",l:"Moderada"},{v:"alta",l:"Alta"}].map(o=>(
-                  <button key={o.v} onClick={()=>setPreCheckin(c=>({...c,dor:o.v}))} style={{padding:"8px 12px",borderRadius:9,border:preCheckin.dor===o.v?"none":"1.5px solid #e2e8f0",background:preCheckin.dor===o.v?"#FF5603":"#fff",color:preCheckin.dor===o.v?"#fff":"#475569",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>
+                {[{v:"nenhuma",e:"😊",l:"Nenhuma"},{v:"leve",e:"😕",l:"Leve"},{v:"moderada",e:"😣",l:"Moderada"},{v:"alta",e:"😖",l:"Alta"}].map(o=>(
+                  <button key={o.v} onClick={()=>setPreCheckin(c=>({...c,dor:o.v}))} style={{padding:"8px 12px",borderRadius:9,border:preCheckin.dor===o.v?"none":"1.5px solid #e2e8f0",background:preCheckin.dor===o.v?"#FF5603":"#fff",color:preCheckin.dor===o.v?"#fff":"#475569",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}><span style={{fontSize:15}}>{o.e}</span>{o.l}</button>
                 ))}
               </div>
             </div>
             )}
             {ccfg.pre?.pa && (
             <div style={{marginBottom:20}}>
-              <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>Pressão arterial / FC</div>
+              <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>❤️ Pressão arterial / FC</div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
                 <input value={preCheckin.pas} onChange={e=>setPreCheckin(c=>({...c,pas:e.target.value}))} placeholder="PAS" inputMode="numeric" style={{padding:"9px 10px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box"}}/>
                 <input value={preCheckin.pad} onChange={e=>setPreCheckin(c=>({...c,pad:e.target.value}))} placeholder="PAD" inputMode="numeric" style={{padding:"9px 10px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box"}}/>
@@ -1454,7 +1457,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
             )}
             {ccfg.pre?.glicemia && (
             <div style={{marginBottom:20}}>
-              <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>Glicemia (mg/dL)</div>
+              <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>🩸 Glicemia (mg/dL)</div>
               <input value={preCheckin.glicemia} onChange={e=>setPreCheckin(c=>({...c,glicemia:e.target.value}))} placeholder="100" inputMode="numeric" style={{width:"100%",padding:"9px 10px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box"}}/>
             </div>
             )}
@@ -1632,8 +1635,8 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
           <div style={{marginBottom:22}}>
             <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>Dor ou desconforto</div>
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-              {[{v:"nenhuma",l:"Nenhuma"},{v:"leve",l:"Leve"},{v:"moderada",l:"Moderada"},{v:"alta",l:"Alta"}].map(o=>(
-                <button key={o.v} onClick={()=>setCheckin(c=>({...c,dor:o.v}))} style={{padding:"8px 12px",borderRadius:9,border:checkin.dor===o.v?"none":"1.5px solid #e2e8f0",background:checkin.dor===o.v?"#FF5603":"#fff",color:checkin.dor===o.v?"#fff":"#475569",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>
+              {[{v:"nenhuma",e:"😊",l:"Nenhuma"},{v:"leve",e:"😕",l:"Leve"},{v:"moderada",e:"😣",l:"Moderada"},{v:"alta",e:"😖",l:"Alta"}].map(o=>(
+                <button key={o.v} onClick={()=>setCheckin(c=>({...c,dor:o.v}))} style={{padding:"8px 12px",borderRadius:9,border:checkin.dor===o.v?"none":"1.5px solid #e2e8f0",background:checkin.dor===o.v?"#FF5603":"#fff",color:checkin.dor===o.v?"#fff":"#475569",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}><span style={{fontSize:15}}>{o.e}</span>{o.l}</button>
               ))}
             </div>
           </div>
