@@ -1036,7 +1036,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
   const [blocoIdx,setBlocoIdx]=useState(0);
   const [treinoIdx,setTreinoIdx]=useState(0);
   const [showCheckin,setShowCheckin]=useState(false);
-  const [checkin,setCheckin]=useState({esforco:null,energia:null,dor:"nenhuma",obs:""});
+  const [checkin,setCheckin]=useState({esforco:null,completude:null,dor:"nenhuma",obs:""});
   const [checkinSaving,setCheckinSaving]=useState(false);
   const [checkinError,setCheckinError]=useState("");
   // ── Check-in configurável por aluno (professor define no painel: students.data.checkinConfig) ──
@@ -1285,7 +1285,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
         setSavedToday(true);
         setLastSessions(prev=>[data, ...prev]);
         if(postFieldsEnabled){
-          setCheckin({esforco:null,energia:null,dor:"nenhuma",obs:""});
+          setCheckin({esforco:null,completude:null,dor:"nenhuma",obs:""});
           setCheckinError("");
           setShowCheckin(true);
         } else {
@@ -1308,7 +1308,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
       const headers = await authedHeaders();
       const today = new Date().toISOString().slice(0,10);
       const data = {
-        esforco: checkin.esforco, energia: checkin.energia, dor: checkin.dor, obs: checkin.obs,
+        esforco: checkin.esforco, completude: checkin.completude, dor: checkin.dor, obs: checkin.obs,
         treinoKey: treinoAtivo, blocoKey: blocoAtivo.key, date: today,
         source: "aluno_checkin", createdAt: new Date().toISOString()
       };
@@ -1618,14 +1618,14 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
             </div>
           </div>
           )}
-          {ccfg.post?.energia && (
+          {ccfg.post?.completude && (
           <div style={{marginBottom:22}}>
-            <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>Energia</div>
+            <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>Conseguiu completar o treino como planejado?</div>
             <div style={{display:"flex",gap:8}}>
-              {[{v:1,e:"😴",l:"Cansado"},{v:2,e:"😐",l:"Neutro"},{v:3,e:"🙂",l:"Bem"},{v:4,e:"😃",l:"Disposto"},{v:5,e:"🔥",l:"Cheio"}].map(o=>(
-                <button key={o.v} onClick={()=>setCheckin(c=>({...c,energia:o.v}))} style={{flex:1,padding:"10px 2px",borderRadius:10,border:checkin.energia===o.v?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:checkin.energia===o.v?"#fff4ee":"#fff",cursor:"pointer",textAlign:"center",fontFamily:"inherit"}}>
+              {[{v:"sim",e:"✅",l:"Sim, completo"},{v:"parcial",e:"⚠️",l:"Parcialmente"},{v:"nao",e:"❌",l:"Não consegui"}].map(o=>(
+                <button key={o.v} onClick={()=>setCheckin(c=>({...c,completude:o.v}))} style={{flex:1,padding:"12px 4px",borderRadius:10,border:checkin.completude===o.v?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:checkin.completude===o.v?"#fff4ee":"#fff",cursor:"pointer",textAlign:"center",fontFamily:"inherit"}}>
                   <div style={{fontSize:22}}>{o.e}</div>
-                  <div style={{fontSize:9,fontWeight:700,color:checkin.energia===o.v?"#FF5603":"#94a3b8",marginTop:2}}>{o.l}</div>
+                  <div style={{fontSize:10,fontWeight:700,color:checkin.completude===o.v?"#FF5603":"#94a3b8",marginTop:3}}>{o.l}</div>
                 </button>
               ))}
             </div>
@@ -1643,9 +1643,9 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
           )}
           {ccfg.post?.obs && (
           <div style={{marginBottom:20}}>
-            <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:4}}>Observação</div>
-            <div style={{fontSize:11,color:"#94a3b8",marginBottom:8}}>Conte rapidinho como foi — pode ser uma frase curta</div>
-            <textarea value={checkin.obs} onChange={e=>setCheckin(c=>({...c,obs:e.target.value}))} placeholder="Ex: senti dificuldade no agachamento..." style={{width:"100%",minHeight:70,padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box",resize:"vertical"}}/>
+            <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:4}}>Teve dificuldade em algum exercício específico?</div>
+            <div style={{fontSize:11,color:"#94a3b8",marginBottom:8}}>Pode ser bem curto — isso ajuda seu professor a ajustar seu próximo treino</div>
+            <textarea value={checkin.obs} onChange={e=>setCheckin(c=>({...c,obs:e.target.value}))} placeholder="Ex: senti dificuldade no agachamento, ou tive que reduzir o peso do supino..." style={{width:"100%",minHeight:70,padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box",resize:"vertical"}}/>
           </div>
           )}
           {checkinError && (
@@ -1653,7 +1653,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
               <Icon name="alert" size={14} style={{marginTop:1,flexShrink:0}}/><span>{checkinError}</span>
             </div>
           )}
-          <Btn full onClick={salvarCheckin} disabled={(ccfg.post?.esforco&&checkin.esforco===null)||(ccfg.post?.energia&&checkin.energia===null)||(ccfg.post?.obs&&!checkin.obs.trim())||checkinSaving}>
+          <Btn full onClick={salvarCheckin} disabled={(ccfg.post?.esforco&&checkin.esforco===null)||(ccfg.post?.completude&&checkin.completude===null)||(ccfg.post?.obs&&!checkin.obs.trim())||checkinSaving}>
             {checkinSaving ? "Salvando..." : "Concluir e ver resultado"}
           </Btn>
         </Modal>
