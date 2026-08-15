@@ -523,8 +523,24 @@ const ResetPassword = ({onDone}) => {
   );
 };
 
+// ── Campo de carga (peso utilizado) — editável pelo aluno a cada sessão ──────
+const CargaInput = ({value, onChange, lastCarga, compact}) => (
+  <div style={{display:"flex",alignItems:"center",gap:6}} onClick={e=>e.stopPropagation()}>
+    <span style={{fontSize:compact?11:12,color:"#94a3b8"}}>Carga:</span>
+    <input
+      type="text"
+      inputMode="decimal"
+      value={value}
+      onChange={e=>onChange(e.target.value)}
+      placeholder={lastCarga?lastCarga+"kg":"kg"}
+      style={{width:56,padding:compact?"4px 6px":"5px 7px",borderRadius:7,border:"1.5px solid #e2e8f0",fontSize:compact?11:12,fontWeight:700,color:"#0f172a",fontFamily:"inherit",textAlign:"center",background:"#f8fafc"}}
+    />
+    <span style={{fontSize:compact?10:11,color:"#94a3b8"}}>kg</span>
+  </div>
+);
+
 // ── Exercício individual (com check-off) ─────────────────────────────────────
-const ExercicioItem = ({item, bibCustom, checked, onToggle}) => {
+const ExercicioItem = ({item, bibCustom, checked, onToggle, carga, onCargaChange, lastCarga}) => {
   const [showDetail,setShowDetail]=useState(false);
   const isCog = item.isCognitivo || item.exId==="cognitivo";
   const cogEx = isCog ? COGNITIVOS.find(c=>c.id===item.cogId) : null;
@@ -551,11 +567,12 @@ const ExercicioItem = ({item, bibCustom, checked, onToggle}) => {
         </div>
         <div style={{padding:"14px 16px"}}>
           <div style={{fontWeight:800,fontSize:16,lineHeight:1.3,color:cor,textDecoration:checked?"line-through":"none",opacity:checked?0.7:1,marginBottom:8}}>{nome}</div>
-          <div style={{display:"flex",gap:14,fontSize:12,color:"#94a3b8"}}>
+          <div style={{display:"flex",gap:14,fontSize:12,color:"#94a3b8",flexWrap:"wrap",rowGap:6}}>
             <span>Séries: <b style={{color:"#475569"}}>{item.series}</b></span>
             <span>Reps: <b style={{color:"#475569"}}>{item.reps}</b></span>
             <span>Descanso: <b style={{color:"#475569"}}>{item.descanso}</b></span>
           </div>
+          {!isCog && <div style={{marginTop:8}}><CargaInput value={carga||""} onChange={onCargaChange} lastCarga={lastCarga}/></div>}
           {item.obs && <div style={{marginTop:10,fontSize:12,color:"#64748b",fontStyle:"italic",padding:"8px 10px",background:"#f8fafc",borderRadius:8,display:"flex",alignItems:"flex-start",gap:6}}><Icon name="note" size={13} style={{marginTop:1,flexShrink:0}}/><span>{item.obs}</span></div>}
           {hasDetail && (
             <button onClick={()=>setShowDetail(true)} style={{marginTop:12,width:"100%",fontSize:13,fontWeight:700,color:"#FF5603",background:"transparent",border:"1.5px solid #FF5603",borderRadius:9,padding:"10px 12px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
@@ -581,7 +598,7 @@ const ExercicioItem = ({item, bibCustom, checked, onToggle}) => {
           {isCog ? (
             <div style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:"#94a3b8",marginTop:2}}><Icon name="clock" size={11}/> {item.reps}</div>
           ) : (
-            <div style={{display:"flex",gap:10,marginTop:2,fontSize:11,color:"#94a3b8"}}>
+            <div style={{display:"flex",gap:10,marginTop:2,fontSize:11,color:"#94a3b8",flexWrap:"wrap",rowGap:5}}>
               <span>Séries: <b style={{color:"#475569"}}>{item.series}</b></span>
               <span>Reps: <b style={{color:"#475569"}}>{item.reps}</b></span>
               <span>Descanso: <b style={{color:"#475569"}}>{item.descanso}</b></span>
@@ -592,6 +609,7 @@ const ExercicioItem = ({item, bibCustom, checked, onToggle}) => {
           <a href={HUB_URL} target="_blank" rel="noreferrer" style={{fontSize:11,fontWeight:700,color:"#FF5603",textDecoration:"none",whiteSpace:"nowrap"}}>Abrir ›</a>
         )}
       </div>
+      {!isCog && <div style={{marginTop:8,marginLeft:48}}><CargaInput compact value={carga||""} onChange={onCargaChange} lastCarga={lastCarga}/></div>}
       {item.obs && <div style={{marginTop:8,fontSize:11,color:"#64748b",fontStyle:"italic",padding:"6px 8px",background:"#f8fafc",borderRadius:6,display:"flex",alignItems:"flex-start",gap:6}}><Icon name="note" size={12} style={{marginTop:1,flexShrink:0}}/><span>{item.obs}</span></div>}
       {hasDetail && (
         <button onClick={()=>setShowDetail(true)} style={{marginTop:8,fontSize:11,fontWeight:700,color:"#FF5603",background:"transparent",border:"1.5px solid #FF5603",borderRadius:7,padding:"5px 12px",cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5}}>
@@ -1063,6 +1081,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
   const [preCheckinError,setPreCheckinError]=useState("");
   const [autoSet,setAutoSet]=useState(false);
   const [done,setDone]=useState(()=>new Set());
+  const [cargas,setCargas]=useState({}); // {[momento-idx]: "20"} — carga/peso informado pelo aluno nesta sessão
   const [saving,setSaving]=useState(false);
   const [savedToday,setSavedToday]=useState(false);
   const [lastSessions,setLastSessions]=useState([]);
@@ -1277,9 +1296,25 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
     setSavedToday(false);
   };
 
-  // Reseta o check-off ao trocar de bloco ou treino manualmente
-  const changeTreino = (i) => { setTreinoIdx(i); setDone(new Set()); setSavedToday(false); };
-  const changeBloco = (i) => { if(i>maxUnlockedIdx) return; setBlocoIdx(i); setTreinoIdx(0); setDone(new Set()); setSavedToday(false); };
+  const setCarga = (key, val) => {
+    setCargas(prev=>({...prev, [key]: val}));
+    setSavedToday(false);
+  };
+
+  // Busca a última carga registrada pelo aluno para este exercício (por exId, na sessão mais recente que tiver o dado)
+  const getLastCarga = (exId) => {
+    if(!exId) return null;
+    for(const s of lastSessions){
+      if(!s.cargas) continue;
+      const found = Object.values(s.cargas).find(c=>c && c.exId===exId && c.carga);
+      if(found) return found.carga;
+    }
+    return null;
+  };
+
+  // Reseta o check-off e as cargas ao trocar de bloco ou treino manualmente
+  const changeTreino = (i) => { setTreinoIdx(i); setDone(new Set()); setCargas({}); setSavedToday(false); };
+  const changeBloco = (i) => { if(i>maxUnlockedIdx) return; setBlocoIdx(i); setTreinoIdx(0); setDone(new Set()); setCargas({}); setSavedToday(false); };
 
   const concluirTreino = async () => {
     setSaving(true);
@@ -1287,9 +1322,20 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
     try{
       const headers = await authedHeaders();
       const today = new Date().toISOString().slice(0,10);
+      const cargasPreenchidas = {};
+      allKeys.forEach(k=>{
+        const v = (cargas[k]||"").toString().trim();
+        if(!v) return;
+        const [mk, idxStr] = k.split("-");
+        const it = (sessao[mk]||[])[Number(idxStr)];
+        if(!it || it.isCognitivo || it.exId==="cognitivo") return;
+        const ex = bibCustom.find(e=>e.id===it.exId) || EXERCISES.find(e=>e.id===it.exId);
+        cargasPreenchidas[k] = { exId: it.exId, nome: ex?.nome||"Exercício", carga: v };
+      });
       const data = {
         studentId, programId: prog.id, blocoKey: blocoAtivo.key, treinoKey: treinoAtivo,
         date: today, totalEx: totalCount, completedEx: doneCount,
+        cargas: cargasPreenchidas,
         source: "aluno_checkin", createdAt: new Date().toISOString()
       };
       const body = { id: uid2(), data, owner_id: ownerId, student_id: studentId };
@@ -1582,7 +1628,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
               </div>
               {items.map((item,idx)=>{
                 const k = key+"-"+idx;
-                return <ExercicioItem key={k} item={item} bibCustom={bibCustom} checked={done.has(k)} onToggle={()=>toggle(k)}/>;
+                return <ExercicioItem key={k} item={item} bibCustom={bibCustom} checked={done.has(k)} onToggle={()=>toggle(k)} carga={cargas[k]} onCargaChange={v=>setCarga(k,v)} lastCarga={getLastCarga(item.exId)}/>;
               })}
             </div>
           );
