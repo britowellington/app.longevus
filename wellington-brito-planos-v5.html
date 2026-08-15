@@ -82,8 +82,9 @@
     text-align:center; padding:30px 0 40px; font-size:12.5px; color:var(--muted);
     border-top:1px solid var(--line);
   }
-  footer a{ color:var(--muted); }
+  footer a{ color:var(--muted); display:inline-flex; align-items:center; gap:6px; vertical-align:middle; }
   footer a:hover{ color:var(--orange); }
+  footer svg{ display:inline-block; }
 </style>
 </head>
 <body>
@@ -141,7 +142,7 @@
     <div class="plano">
       <div class="tag">Consultoria avulsa</div>
       <h2 class="serif">Consultoria</h2>
-      <div class="freq">Avaliação e plano de treino, sem acompanhamento contínuo</div>
+      <div class="freq">Avaliação e plano de treino, acompanhamento contínuo</div>
       <div class="preco">
         <span class="valor serif">R$ 180</span>
       </div>
@@ -158,9 +159,14 @@
 </main>
 
 <footer>
-  <a href="https://wa.me/5511977431011" target="_blank" rel="noopener">(11) 97743-1011</a> ·
-  <a href="https://instagram.com/britowellington" target="_blank" rel="noopener">@britowellington</a> ·
-  CREF 089836-G/SP
+  <a href="https://wa.me/5511977431011" target="_blank" rel="noopener">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91C21.96 6.45 17.5 2 12.04 2zm5.8 14.06c-.24.68-1.4 1.31-1.93 1.35-.51.05-1 .24-3.4-.71-2.88-1.15-4.73-4.03-4.87-4.22-.14-.19-1.17-1.56-1.17-2.98 0-1.42.75-2.11 1.02-2.4.27-.29.58-.36.78-.36.2 0 .39 0 .56.01.18.01.42-.07.65.5.24.58.82 2 .89 2.15.07.15.12.32.02.51-.1.19-.15.31-.29.48-.15.17-.31.38-.44.51-.15.15-.3.31-.13.6.17.29.76 1.25 1.63 2.03 1.12 1 2.06 1.31 2.35 1.46.29.15.46.13.63-.08.17-.2.72-.84.91-1.13.19-.29.38-.24.63-.15.26.1 1.65.78 1.93.92.29.15.48.22.55.34.07.13.07.75-.17 1.43z"/></svg>
+    (11) 97743-1011
+  </a> ·
+  <a href="https://instagram.com/britowellington" target="_blank" rel="noopener">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+    @britowellington
+  </a>
 </footer>
 
 </body>
