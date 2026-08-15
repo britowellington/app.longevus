@@ -660,7 +660,7 @@ return (
 </div>
 );
 };
-const StudentDetail = ({ studentId, students, setStudents, assessments, setAssessments, programs, setPrograms, dailyLogs, documents, checkins, initialTab, nav }) => {
+const StudentDetail = ({ studentId, students, setStudents, assessments, setAssessments, programs, setPrograms, dailyLogs, documents, checkins, professorFeedbacks, setProfessorFeedbacks, initialTab, nav }) => {
 const st = students.find(s=>s.id===studentId);
 const [tab,setTab] = useState(initialTab||"aval");
 const [editModal,setEditModal] = useState(false);
@@ -672,6 +672,17 @@ const currentProgram = stPrograms[0];
 const stLogs = dailyLogs.filter(l=>l.studentId===studentId).sort((a,b)=>b.date?.localeCompare(a.date));
 const stDocs = documents.filter(d=>d.studentId===studentId).sort((a,b)=>b.date?.localeCompare(a.date));
 const stCheckins = (checkins||[]).filter(c=>c.student_id===studentId).sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||""));
+const stFeedbacks = (professorFeedbacks||[]).filter(f=>f.studentId===studentId).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+const [feedbackModal,setFeedbackModal] = useState(false);
+const [feedbackForm,setFeedbackForm] = useState(null);
+const openNewFeedback = ()=>{setFeedbackForm({date:new Date().toISOString().slice(0,10),text:""});setFeedbackModal(true);};
+const saveFeedback = ()=>{
+if(!feedbackForm.text.trim())return;
+const novo = {id:uid(),studentId,date:feedbackForm.date,text:feedbackForm.text.trim(),createdAt:new Date().toISOString()};
+setProfessorFeedbacks(p=>[novo,...p]);
+setFeedbackModal(false);
+};
+const delFeedback = async id=>{if(window.confirm("Remover este feedback?")){await DB.remove("professor_feedbacks",id);setProfessorFeedbacks(p=>p.filter(f=>f.id!==id));}};
 const delAssessment = async id=>{if(window.confirm("Remover avaliação?")){await DB.remove("assessments",id);setAssessments(p=>p.filter(a=>a.id!==id));}};
 const openEdit = ()=>{setForm({name:st.name,dob:st.dob||"",sex:st.sex||"",phone:st.phone||"",email:st.email||"",whatsapp:st.whatsapp||"",responsibleName:st.responsibleName||"",responsiblePhone:st.responsiblePhone||"",doctorName:st.doctorName||"",doctorPhone:st.doctorPhone||"",billing:{ativo:st.billing?.ativo||false,plano:st.billing?.plano||"",valor:st.billing?.valor||"",vencimento:st.billing?.vencimento||""},checkinConfig:{pre:{disposicao:st.checkinConfig?.pre?.disposicao??true,hidratacao:st.checkinConfig?.pre?.hidratacao??true,alimentacao:st.checkinConfig?.pre?.alimentacao??true,sono:st.checkinConfig?.pre?.sono??true,dor:st.checkinConfig?.pre?.dor??false,pa:st.checkinConfig?.pre?.pa??false,glicemia:st.checkinConfig?.pre?.glicemia??false},post:{esforco:st.checkinConfig?.post?.esforco??true,completude:st.checkinConfig?.post?.completude??true,dor:st.checkinConfig?.post?.dor??true,obs:st.checkinConfig?.post?.obs??true}}});setEditModal(true);};
 const saveEdit = ()=>{if(!form.name.trim())return;setStudents(p=>p.map(s=>s.id===studentId?{...s,...form}:s));setEditModal(false);};
@@ -777,6 +788,24 @@ return (
 )}
 {tab==="checkin"&&(
 <div>
+<Card style={{ padding:"14px 16px",marginBottom:14 }}>
+<div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:stFeedbacks.length?10:0 }}>
+<div style={{ fontWeight:800,fontSize:13,color:"#0f172a" }}>📝 Feedbacks do professor</div>
+<Btn sm icon="plus" onClick={openNewFeedback}>Novo feedback</Btn>
+</div>
+{stFeedbacks.length>0&&
+<div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+{stFeedbacks.map(f=>(
+<div key={f.id} style={{ background:"#fff4ee",border:"1.5px solid #fed7aa",borderRadius:9,padding:"10px 12px" }}>
+<div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4 }}>
+<div style={{ fontSize:11,fontWeight:700,color:"#c2410c" }}>{fmt(f.date)}</div>
+<button onClick={()=>delFeedback(f.id)} style={{ background:"none",border:"none",cursor:"pointer",color:"#cbd5e1",padding:2 }}><I n="trash" s={13}/></button>
+</div>
+<div style={{ fontSize:13,color:"#334155",whiteSpace:"pre-wrap" }}>{f.text}</div>
+</div>
+))}
+</div>}
+</Card>
 {stCheckins.length===0?
 <Card style={{ textAlign:"center",padding:32 }}>
 <I n="act" c="#cbd5e1" s={32}/>
@@ -930,6 +959,14 @@ return (
 <div style={{ display:"flex",gap:10,marginTop:8 }}>
 <Btn variant="secondary" full onClick={()=>setEditModal(false)}>Cancelar</Btn>
 <Btn full onClick={saveEdit}>Salvar</Btn>
+</div>
+</Modal>}
+{feedbackModal&&feedbackForm&&<Modal title="Novo feedback" onClose={()=>setFeedbackModal(false)}>
+<Inp label="Data" type="date" value={feedbackForm.date} onChange={v=>setFeedbackForm(f=>({...f,date:v}))}/>
+<Inp label="Resumo do que foi conversado" rows={5} value={feedbackForm.text} onChange={v=>setFeedbackForm(f=>({...f,text:v}))} placeholder="Ex: Conversamos sobre a dor no joelho, ajustei a carga do agachamento e reforcei a hidratação..."/>
+<div style={{ display:"flex",gap:10,marginTop:8 }}>
+<Btn variant="secondary" full onClick={()=>setFeedbackModal(false)}>Cancelar</Btn>
+<Btn full onClick={saveFeedback}>Salvar</Btn>
 </div>
 </Modal>}
 </div>
@@ -6381,6 +6418,7 @@ const [checkins,setCheckins]=useState(()=>LS.get("longevus_checkins",[]));
 const [notifOpen,setNotifOpen]=useState(false);
 const [checkinsSeenAt,setCheckinsSeenAt]=useState(()=>LS.get("longevus_checkins_seen_at","1970-01-01T00:00:00.000Z"));
 const [atividadesExtras,setAtividadesExtras]=useState(()=>LS.get("longevus_atividades_extras",[]));
+const [professorFeedbacks,setProfessorFeedbacks]=useState(()=>LS.get("longevus_professor_feedbacks",[]));
 const [dbReady,setDbReady]=useState(false);
 const [hubResults,setHubResults]=useState(()=>LS.get("longevus_hub_results",[]));
 useEffect(()=>{LS.set("longevus_hub_results",hubResults);},[hubResults]);
@@ -6392,10 +6430,10 @@ setDbReady(false);
 (async()=>{
 setSyncing(true);
 try {
-const [s,a,d,docs,c,p,sess,ae,ck] = await Promise.all([
+const [s,a,d,docs,c,p,sess,ae,ck,pf] = await Promise.all([
 DB.load("students"), DB.load("assessments"), DB.load("daily_logs"),
 DB.load("documents"), DB.load("cardio_records"), DB.load("programs"), DB.load("sessions"),
-DB.load("atividades_extras"), DB.loadRaw("checkins")
+DB.load("atividades_extras"), DB.loadRaw("checkins"), DB.load("professor_feedbacks")
 ]);
 if(s!==null){ setStudents(s); LS.set("longevus_students",s); }
 if(a!==null){ setAssessments(a); LS.set("longevus_assessments",a); }
@@ -6406,6 +6444,7 @@ if(p!==null){ setPrograms(p); LS.set("longevus_programs",p); }
 if(sess!==null){ setSessions(sess); LS.set("longevus_sessions",sess); }
 if(ae!==null){ setAtividadesExtras(ae); LS.set("longevus_atividades_extras",ae); }
 if(ck!==null){ setCheckins(ck); LS.set("longevus_checkins",ck); }
+if(pf!==null){ setProfessorFeedbacks(pf); LS.set("longevus_professor_feedbacks",pf); }
 setDbReady(true);
 } catch(e){ setDbReady(true); }
 setSyncing(false);
@@ -6422,6 +6461,7 @@ useEffect(()=>{LS.set("longevus_cardio",cardioRecords);},[cardioRecords]);
 useEffect(()=>{LS.set("longevus_programs",programs);},[programs]);
 useEffect(()=>{LS.set("longevus_sessions",sessions);},[sessions]);
 useEffect(()=>{LS.set("longevus_atividades_extras",atividadesExtras);},[atividadesExtras]);
+useEffect(()=>{LS.set("longevus_professor_feedbacks",professorFeedbacks);},[professorFeedbacks]);
 // Sync Supabase — salva cada item individualmente
 useEffect(()=>{ if(dbReady) students.forEach(s=>DB.save("students",s.id,s)); },[students,dbReady]);
 useEffect(()=>{ if(dbReady) assessments.forEach(a=>DB.save("assessments",a.id,a,a.studentId)); },[assessments,dbReady]);
@@ -6431,6 +6471,7 @@ useEffect(()=>{ if(dbReady) cardioRecords.forEach(r=>DB.save("cardio_records",r.
 useEffect(()=>{ if(dbReady) programs.forEach(p=>DB.save("programs",p.id,p,p.studentId)); },[programs,dbReady]);
 useEffect(()=>{ if(dbReady) sessions.forEach(s=>DB.save("sessions",s.id,s,s.studentId)); },[sessions,dbReady]);
 useEffect(()=>{ if(dbReady) atividadesExtras.forEach(a=>DB.save("atividades_extras",a.id,a,a.studentId)); },[atividadesExtras,dbReady]);
+useEffect(()=>{ if(dbReady) professorFeedbacks.forEach(f=>DB.save("professor_feedbacks",f.id,f,f.studentId)); },[professorFeedbacks,dbReady]);
 const nav=useCallback((p,props={})=>{setPage(p);setPageProps(props);window.scrollTo(0,0);},[]);
 const [pendingQCount,setPendingQCount]=useState(0);
 const refreshPendingCount=useCallback(async()=>{
@@ -6552,7 +6593,7 @@ return (
 <div style={{ padding:"20px 16px",maxWidth:640,margin:"0 auto" }}>
 {page==="dashboard"&&<Dashboard students={students} assessments={assessments} dailyLogs={dailyLogs} nav={nav}/>}
 {page==="students"&&<Students students={students} setStudents={setStudents} nav={nav}/>}
-{page==="studentDetail"&&<StudentDetail studentId={pageProps.studentId} students={students} setStudents={setStudents} assessments={assessments} setAssessments={setAssessments} programs={programs} setPrograms={setPrograms} dailyLogs={dailyLogs} documents={documents} checkins={checkins} initialTab={pageProps.initialTab} nav={nav}/>}
+{page==="studentDetail"&&<StudentDetail studentId={pageProps.studentId} students={students} setStudents={setStudents} assessments={assessments} setAssessments={setAssessments} programs={programs} setPrograms={setPrograms} dailyLogs={dailyLogs} documents={documents} checkins={checkins} professorFeedbacks={professorFeedbacks} setProfessorFeedbacks={setProfessorFeedbacks} initialTab={pageProps.initialTab} nav={nav}/>}
 {page==="assessments"&&<AssessmentsList assessments={assessments} students={students} setAssessments={setAssessments} nav={nav}/>}
 {page==="newAssessment"&&<NewAssessment students={students} setAssessments={setAssessments} nav={nav} prefillStudentId={pageProps.studentId}/>}
 {page==="result"&&<Result assessmentId={pageProps.id} assessments={assessments} setAssessments={setAssessments} students={students} nav={nav}/>}
