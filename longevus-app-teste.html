@@ -78,6 +78,14 @@ const rows = await r.json();
 return rows.map(row => row.data);
 } catch(e) { return null; }
 },
+async loadRaw(table, query) {
+try {
+const headers = await this.authHeaders();
+const r = await fetch(SUPA_URL+"/rest/v1/"+table+"?"+(query||"select=*&order=created_at.desc"), { headers });
+if (!r.ok) return null;
+return await r.json();
+} catch(e) { return null; }
+},
 async save(table, id, data, studentId) {
 try {
 const headers = await this.authHeaders();
@@ -628,7 +636,7 @@ return (
 </div>
 );
 };
-const StudentDetail = ({ studentId, students, setStudents, assessments, setAssessments, programs, setPrograms, dailyLogs, documents, nav }) => {
+const StudentDetail = ({ studentId, students, setStudents, assessments, setAssessments, programs, setPrograms, dailyLogs, documents, checkins, nav }) => {
 const st = students.find(s=>s.id===studentId);
 const [tab,setTab] = useState("aval");
 const [editModal,setEditModal] = useState(false);
@@ -639,8 +647,9 @@ const stPrograms = programs.filter(p=>p.studentId===studentId).sort((a,b)=>(b.cr
 const currentProgram = stPrograms[0];
 const stLogs = dailyLogs.filter(l=>l.studentId===studentId).sort((a,b)=>b.date?.localeCompare(a.date));
 const stDocs = documents.filter(d=>d.studentId===studentId).sort((a,b)=>b.date?.localeCompare(a.date));
+const stCheckins = (checkins||[]).filter(c=>c.student_id===studentId).sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||""));
 const delAssessment = async id=>{if(window.confirm("Remover avaliação?")){await DB.remove("assessments",id);setAssessments(p=>p.filter(a=>a.id!==id));}};
-const openEdit = ()=>{setForm({name:st.name,dob:st.dob||"",sex:st.sex||"",phone:st.phone||"",email:st.email||"",whatsapp:st.whatsapp||"",responsibleName:st.responsibleName||"",responsiblePhone:st.responsiblePhone||"",doctorName:st.doctorName||"",doctorPhone:st.doctorPhone||"",billing:{ativo:st.billing?.ativo||false,plano:st.billing?.plano||"",valor:st.billing?.valor||"",vencimento:st.billing?.vencimento||""},checkinConfig:{pre:{disposicao:st.checkinConfig?.pre?.disposicao??true,hidratacao:st.checkinConfig?.pre?.hidratacao??true,alimentacao:st.checkinConfig?.pre?.alimentacao??true,sono:st.checkinConfig?.pre?.sono??true,dor:st.checkinConfig?.pre?.dor??false,pa:st.checkinConfig?.pre?.pa??false,glicemia:st.checkinConfig?.pre?.glicemia??false},post:{esforco:st.checkinConfig?.post?.esforco??true,energia:st.checkinConfig?.post?.energia??true,dor:st.checkinConfig?.post?.dor??true,obs:st.checkinConfig?.post?.obs??true}}});setEditModal(true);};
+const openEdit = ()=>{setForm({name:st.name,dob:st.dob||"",sex:st.sex||"",phone:st.phone||"",email:st.email||"",whatsapp:st.whatsapp||"",responsibleName:st.responsibleName||"",responsiblePhone:st.responsiblePhone||"",doctorName:st.doctorName||"",doctorPhone:st.doctorPhone||"",billing:{ativo:st.billing?.ativo||false,plano:st.billing?.plano||"",valor:st.billing?.valor||"",vencimento:st.billing?.vencimento||""},checkinConfig:{pre:{disposicao:st.checkinConfig?.pre?.disposicao??true,hidratacao:st.checkinConfig?.pre?.hidratacao??true,alimentacao:st.checkinConfig?.pre?.alimentacao??true,sono:st.checkinConfig?.pre?.sono??true,dor:st.checkinConfig?.pre?.dor??false,pa:st.checkinConfig?.pre?.pa??false,glicemia:st.checkinConfig?.pre?.glicemia??false},post:{esforco:st.checkinConfig?.post?.esforco??true,completude:st.checkinConfig?.post?.completude??true,dor:st.checkinConfig?.post?.dor??true,obs:st.checkinConfig?.post?.obs??true}}});setEditModal(true);};
 const saveEdit = ()=>{if(!form.name.trim())return;setStudents(p=>p.map(s=>s.id===studentId?{...s,...form}:s));setEditModal(false);};
 const marcarPago = ()=>{
   const proxVenc = new Date(); proxVenc.setDate(proxVenc.getDate()+30);
@@ -653,7 +662,7 @@ window.open("longevus-programa.html?novo="+encodeURIComponent(st.id),"_self");
 const openViewProgram = (prog) => {
 window.open("longevus-programa.html?ver="+encodeURIComponent(prog.id),"_self");
 };
-const TABS=[{id:"aval",label:"Avaliações"},{id:"treino",label:"Treino"},{id:"mon",label:"Monitoramento"},{id:"doc",label:"Documentos"}];
+const TABS=[{id:"aval",label:"Avaliações"},{id:"treino",label:"Treino"},{id:"checkin",label:"Check-in"},{id:"mon",label:"Monitoramento"},{id:"doc",label:"Documentos"}];
 return (
 <div>
 <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:16 }}>
@@ -740,6 +749,51 @@ return (
 </div>
 </Card>}
 {stPrograms.length>1&&<div style={{ fontSize:11,color:"#94a3b8",marginTop:10,textAlign:"center" }}>+{stPrograms.length-1} programa(s) anterior(es)</div>}
+</div>
+)}
+{tab==="checkin"&&(
+<div>
+{stCheckins.length===0?
+<Card style={{ textAlign:"center",padding:32 }}>
+<I n="act" c="#cbd5e1" s={32}/>
+<div style={{ color:"#94a3b8",marginTop:10 }}>Nenhum check-in respondido ainda.</div>
+</Card>:
+<div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+{stCheckins.slice(0,30).map(c=>{
+const d = c.data||{};
+const isPre = c.type==="pre_treino";
+const dt = c.created_at ? new Date(c.created_at) : null;
+const dtLabel = dt ? dt.toLocaleDateString("pt-BR")+" às "+dt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}) : "";
+const escalaDisposicao = {1:"😣 Exausto",2:"😴 Cansado",3:"😐 Neutro",4:"🙂 Disposto",5:"😁 Animado"};
+const escalaHidra = {1:"💧 Muito pouco",2:"💧💧 Pouco",3:"💧💧💧 Regular",4:"💧💧💧💧 Bom",5:"💧💧💧💧💧 Ótimo"};
+const escalaAlim = {1:"🍔 Ruim",2:"🥪 Regular",3:"🥗 Boa",4:"🥦 Ótima"};
+const escalaSono = {1:"🌑 Ruim",2:"🌗 Regular",3:"🌖 Boa",4:"🌕 Ótima"};
+const escalaEsforco = {1:"😌 Tranquilo",2:"🙂 Moderado",3:"😅 Puxado",4:"😓 Muito puxado",5:"🥵 No limite"};
+const escalaDor = {nenhuma:"😊 Nenhuma",leve:"😕 Leve",moderada:"😣 Moderada",alta:"😖 Alta"};
+const escalaCompletude = {sim:"✅ Completo",parcial:"⚠️ Parcial",nao:"❌ Não conseguiu"};
+const alerta = (isPre===false && (d.dor==="alta"||d.dor==="moderada")) || (isPre===false && d.completude==="nao");
+return (
+<Card key={c.id} style={{ padding:"14px 16px",border:alerta?"1.5px solid #fecaca":undefined,background:alerta?"#fffbfa":undefined }}>
+<div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8 }}>
+<Badge color={isPre?"#3b82f6":O} bg={isPre?"#eff6ff":"#fff4ee"}>{isPre?"Antes do treino":"Depois do treino"}</Badge>
+<div style={{ fontSize:11,color:"#94a3b8" }}>{dtLabel}</div>
+</div>
+<div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+{d.disposicao!=null && <div style={{ fontSize:13,color:"#334155" }}>Disposição: <b>{escalaDisposicao[d.disposicao]}</b></div>}
+{d.hidratacao!=null && <div style={{ fontSize:13,color:"#334155" }}>Hidratação: <b>{escalaHidra[d.hidratacao]}</b></div>}
+{d.alimentacao!=null && <div style={{ fontSize:13,color:"#334155" }}>Alimentação: <b>{escalaAlim[d.alimentacao]}</b></div>}
+{d.sono!=null && <div style={{ fontSize:13,color:"#334155" }}>Sono: <b>{escalaSono[d.sono]}</b></div>}
+{(d.pas||d.pad||d.fc) && <div style={{ fontSize:13,color:"#334155" }}>❤️ PA/FC: <b>{d.pas||"—"}/{d.pad||"—"} mmHg · {d.fc||"—"} bpm</b></div>}
+{d.glicemia && <div style={{ fontSize:13,color:"#334155" }}>🩸 Glicemia: <b>{d.glicemia} mg/dL</b></div>}
+{d.esforco!=null && <div style={{ fontSize:13,color:"#334155" }}>Esforço: <b>{escalaEsforco[d.esforco]}</b></div>}
+{d.completude && <div style={{ fontSize:13,color:"#334155" }}>Completude: <b>{escalaCompletude[d.completude]}</b></div>}
+{d.dor && <div style={{ fontSize:13,color:d.dor==="alta"||d.dor==="moderada"?"#dc2626":"#334155" }}>Dor: <b>{escalaDor[d.dor]}</b></div>}
+{d.obs && <div style={{ fontSize:12,color:"#64748b",marginTop:4,fontStyle:"italic" }}>📝 "{d.obs}"</div>}
+</div>
+</Card>
+);})}
+{stCheckins.length>30&&<div style={{ fontSize:11,color:"#94a3b8",textAlign:"center" }}>Mostrando os 30 mais recentes de {stCheckins.length}</div>}
+</div>}
 </div>
 )}
 {tab==="mon"&&(
@@ -838,7 +892,7 @@ return (
 <div style={{ fontSize:11,color:"#94a3b8",marginBottom:10,marginTop:12 }}>Depois do treino</div>
 {[
   {k:"esforco",label:"Esforço (PSE 0-10)"},
-  {k:"energia",label:"Energia"},
+  {k:"completude",label:"Completude do treino"},
   {k:"dor",label:"Dor rápida"},
   {k:"obs",label:"Observação livre"},
 ].map(item=>(
@@ -6239,6 +6293,7 @@ const [documents,setDocuments]=useState(()=>LS.get("longevus_docs",[]));
 const [cardioRecords,setCardioRecords]=useState(()=>LS.get("longevus_cardio",[]));
 const [programs,setPrograms]=useState(()=>LS.get("longevus_programs",[]));
 const [sessions,setSessions]=useState(()=>LS.get("longevus_sessions",[]));
+const [checkins,setCheckins]=useState(()=>LS.get("longevus_checkins",[]));
 const [atividadesExtras,setAtividadesExtras]=useState(()=>LS.get("longevus_atividades_extras",[]));
 const [dbReady,setDbReady]=useState(false);
 const [hubResults,setHubResults]=useState(()=>LS.get("longevus_hub_results",[]));
@@ -6251,10 +6306,10 @@ setDbReady(false);
 (async()=>{
 setSyncing(true);
 try {
-const [s,a,d,docs,c,p,sess,ae] = await Promise.all([
+const [s,a,d,docs,c,p,sess,ae,ck] = await Promise.all([
 DB.load("students"), DB.load("assessments"), DB.load("daily_logs"),
 DB.load("documents"), DB.load("cardio_records"), DB.load("programs"), DB.load("sessions"),
-DB.load("atividades_extras")
+DB.load("atividades_extras"), DB.loadRaw("checkins")
 ]);
 if(s!==null){ setStudents(s); LS.set("longevus_students",s); }
 if(a!==null){ setAssessments(a); LS.set("longevus_assessments",a); }
@@ -6264,6 +6319,7 @@ if(c!==null){ setCardioRecords(c); LS.set("longevus_cardio",c); }
 if(p!==null){ setPrograms(p); LS.set("longevus_programs",p); }
 if(sess!==null){ setSessions(sess); LS.set("longevus_sessions",sess); }
 if(ae!==null){ setAtividadesExtras(ae); LS.set("longevus_atividades_extras",ae); }
+if(ck!==null){ setCheckins(ck); LS.set("longevus_checkins",ck); }
 setDbReady(true);
 } catch(e){ setDbReady(true); }
 setSyncing(false);
@@ -6369,7 +6425,7 @@ return (
 <div style={{ padding:"20px 16px",maxWidth:640,margin:"0 auto" }}>
 {page==="dashboard"&&<Dashboard students={students} assessments={assessments} dailyLogs={dailyLogs} nav={nav}/>}
 {page==="students"&&<Students students={students} setStudents={setStudents} nav={nav}/>}
-{page==="studentDetail"&&<StudentDetail studentId={pageProps.studentId} students={students} setStudents={setStudents} assessments={assessments} setAssessments={setAssessments} programs={programs} setPrograms={setPrograms} dailyLogs={dailyLogs} documents={documents} nav={nav}/>}
+{page==="studentDetail"&&<StudentDetail studentId={pageProps.studentId} students={students} setStudents={setStudents} assessments={assessments} setAssessments={setAssessments} programs={programs} setPrograms={setPrograms} dailyLogs={dailyLogs} documents={documents} checkins={checkins} nav={nav}/>}
 {page==="assessments"&&<AssessmentsList assessments={assessments} students={students} setAssessments={setAssessments} nav={nav}/>}
 {page==="newAssessment"&&<NewAssessment students={students} setAssessments={setAssessments} nav={nav} prefillStudentId={pageProps.studentId}/>}
 {page==="result"&&<Result assessmentId={pageProps.id} assessments={assessments} setAssessments={setAssessments} students={students} nav={nav}/>}
