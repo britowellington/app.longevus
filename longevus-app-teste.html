@@ -339,6 +339,7 @@ link:  ["M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71","M14 11a5 
 inbox: ["M22 12h-6l-2 3h-4l-2-3H2","M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"],
 calendar: ["M8 2v4","M16 2v4","M3 10h18","M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"],
 money: ["M12 1v22","M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"],
+bell: ["M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9","M13.73 21a2 2 0 0 1-3.46 0"],
 };
 return (
 <svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
@@ -636,9 +637,9 @@ return (
 </div>
 );
 };
-const StudentDetail = ({ studentId, students, setStudents, assessments, setAssessments, programs, setPrograms, dailyLogs, documents, checkins, nav }) => {
+const StudentDetail = ({ studentId, students, setStudents, assessments, setAssessments, programs, setPrograms, dailyLogs, documents, checkins, initialTab, nav }) => {
 const st = students.find(s=>s.id===studentId);
-const [tab,setTab] = useState("aval");
+const [tab,setTab] = useState(initialTab||"aval");
 const [editModal,setEditModal] = useState(false);
 const [form,setForm] = useState(null);
 if(!st) return <div style={{ textAlign:"center",padding:40,color:"#94a3b8" }}>Aluno não encontrado.</div>;
@@ -3734,7 +3735,50 @@ return (
 </div>
 );
 };
-const AtividadesExtras = ({ students, atividadesExtras, setAtividadesExtras, prefillStudentId }) => {
+const PRECAUCOES_DICT = [
+{ keywords:["artrose no joelho","artrose de joelho","artrose joelho","artrose  joelho"], texto:"Evitar exercícios que exijam dobrar muito o joelho (agachamento profundo) e evitar saltos ou movimentos de impacto. Priorizar amplitude controlada e sem dor." },
+{ keywords:["prótese no joelho","protese no joelho","prótese de joelho","protese de joelho"], texto:"Evitar impacto e amplitude excessiva de flexão do joelho. Priorizar exercícios controlados, sem dor durante o movimento." },
+{ keywords:["prótese no quadril","protese no quadril","prótese de quadril","protese de quadril"], texto:"Evitar rotação forçada do quadril e evitar cruzar as pernas além do confortável." },
+{ keywords:["artrose no quadril","artrose de quadril","artrose quadril"], texto:"Evitar movimentos de grande amplitude no quadril e exercícios com impacto. Priorizar amplitude confortável, sem dor." },
+{ keywords:["artrose"], texto:"Evitar movimentos com muito impacto ou amplitude forçada na articulação afetada. Priorizar exercícios controlados e sem dor." },
+{ keywords:["hérnia de disco","hernia de disco","hernia"], texto:"Evitar exercícios com a coluna curvada sob carga (ex: levantar peso com as costas arredondadas) e evitar rotações bruscas do tronco." },
+{ keywords:["lombalgia","dor lombar","dor na coluna","lombar"], texto:"Evitar exercícios que sobrecarreguem a lombar, como agachamentos muito profundos ou levantar peso com a coluna curvada." },
+{ keywords:["problema cardíaco","problema cardiaco","cardiopatia","cardíaco","cardiaco","infarto","coração"], texto:"Evitar treinos muito intensos ou aumentos bruscos de esforço. Aumentar a intensidade aos poucos e ficar atento a falta de ar, tontura ou dor no peito." },
+{ keywords:["hipertensão","hipertensao","pressão alta","pressao alta","hipertenso"], texto:"Evitar prender a respiração durante o esforço e evitar mudanças bruscas de posição (levantar rápido, por exemplo)." },
+{ keywords:["diabetes","diabético","diabetico"], texto:"Ficar atento a sinais de queda de açúcar no sangue (tontura, suor frio, tremores) durante o exercício." },
+{ keywords:["osteoporose"], texto:"Evitar exercícios de alto impacto, saltos e movimentos bruscos de flexão da coluna." },
+{ keywords:["labirintite","tontura","vertigem"], texto:"Evitar mudanças rápidas de posição da cabeça e exercícios que exijam muito equilíbrio sem apoio por perto." },
+{ keywords:["tendinite no ombro","tendinite ombro","dor no ombro","ombro"], texto:"Evitar movimentos acima da linha da cabeça com carga alta. Parar se sentir dor durante o movimento." },
+{ keywords:["bursite"], texto:"Evitar apoio prolongado ou pressão direta sobre a articulação afetada." },
+{ keywords:["avc","derrame"], texto:"Ter atenção redobrada ao equilíbrio. Evitar exercícios que exijam coordenação complexa sem supervisão próxima." },
+];
+const getSugestoesPrecaucao = (studentId, assessments, checkins) => {
+if(!studentId) return [];
+const textoPartes = [];
+const stAssess = [...assessments].filter(a=>a.studentId===studentId).sort((a,b)=>b.date?.localeCompare(a.date));
+const ultima = stAssess[0];
+if(ultima?.anamnese){
+textoPartes.push(ultima.anamnese.pathologies||"");
+textoPartes.push(ultima.anamnese.mainComplaints||"");
+textoPartes.push(ultima.anamnese.painLocation||"");
+}
+const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-30);
+const stCheckins = (checkins||[]).filter(c=>c.student_id===studentId && c.created_at && new Date(c.created_at)>=cutoff);
+stCheckins.forEach(c=>{ if(c.data?.obs) textoPartes.push(c.data.obs); });
+const textoBusca = textoPartes.join(" ").toLowerCase();
+const encontrados = [];
+PRECAUCOES_DICT.forEach(item=>{
+if(item.keywords.some(kw=>textoBusca.includes(kw))){
+if(!encontrados.some(e=>e.texto===item.texto)) encontrados.push(item);
+}
+});
+const dorRecorrente = stCheckins.filter(c=>c.type==="pos_treino"&&(c.data?.dor==="moderada"||c.data?.dor==="alta")).length;
+if(dorRecorrente>=2){
+encontrados.push({ keywords:[], texto:"Este aluno relatou dor moderada/alta em treinos recentes (últimos 30 dias). Considere reduzir intensidade ou ajustar exercícios até reavaliação." });
+}
+return encontrados;
+};
+const AtividadesExtras = ({ students, atividadesExtras, setAtividadesExtras, prefillStudentId, assessments, checkins }) => {
 const [modal,setModal]=useState(false);
 const [filterSt,setFilterSt]=useState(prefillStudentId||"");
 const emptyForm = ()=>({studentId:prefillStudentId||filterSt||"",titulo:"",obs:""});
@@ -3795,6 +3839,23 @@ return (
 {modal&&<Modal title="Nova Atividade Extra" onClose={()=>setModal(false)}>
 <Inp label="Aluno" value={form.studentId} onChange={v=>setForm(f=>({...f,studentId:v}))} opts={[{v:"",l:"Selecione..."},...students.map(s=>({v:s.id,l:s.name}))]}/>
 <Inp label="Atividade" value={form.titulo} onChange={v=>setForm(f=>({...f,titulo:v}))} placeholder="Ex: Aula de Pilates"/>
+{form.studentId && (()=>{
+const sugestoes = getSugestoesPrecaucao(form.studentId, assessments, checkins);
+if(sugestoes.length===0) return null;
+return (
+<div style={{ marginBottom:13,background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"10px 12px" }}>
+<div style={{ fontSize:12,fontWeight:700,color:"#92400e",marginBottom:8,display:"flex",alignItems:"center",gap:6 }}>💡 Baseado na anamnese e check-ins deste aluno</div>
+<div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+{sugestoes.map((s,i)=>(
+<div key={i} style={{ display:"flex",gap:8,alignItems:"flex-start" }}>
+<div style={{ fontSize:12,color:"#78350f",flex:1,lineHeight:1.4 }}>{s.texto}</div>
+<button onClick={()=>setForm(f=>({...f,obs:(f.obs?f.obs.trim()+"\n":"")+s.texto}))} style={{ flexShrink:0,border:"1.5px solid #f59e0b",background:"#fff",color:"#92400e",borderRadius:7,padding:"4px 9px",fontSize:11,fontWeight:700,cursor:"pointer" }}>Usar</button>
+</div>
+))}
+</div>
+</div>
+);
+})()}
 <div style={{ marginBottom:13 }}>
 <div style={{ fontSize:12,fontWeight:600,color:"#475569",marginBottom:5 }}>Horário / observações (opcional)</div>
 <textarea value={form.obs} onChange={e=>setForm(f=>({...f,obs:e.target.value}))} placeholder="Ex: 09h no estúdio. Levar tênis fechado e garrafa d'água. Chegar 10 min antes." rows={4} style={{ width:"100%",padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,color:"#0f172a",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical" }}/>
@@ -6294,6 +6355,8 @@ const [cardioRecords,setCardioRecords]=useState(()=>LS.get("longevus_cardio",[])
 const [programs,setPrograms]=useState(()=>LS.get("longevus_programs",[]));
 const [sessions,setSessions]=useState(()=>LS.get("longevus_sessions",[]));
 const [checkins,setCheckins]=useState(()=>LS.get("longevus_checkins",[]));
+const [notifOpen,setNotifOpen]=useState(false);
+const [checkinsSeenAt,setCheckinsSeenAt]=useState(()=>LS.get("longevus_checkins_seen_at","1970-01-01T00:00:00.000Z"));
 const [atividadesExtras,setAtividadesExtras]=useState(()=>LS.get("longevus_atividades_extras",[]));
 const [dbReady,setDbReady]=useState(false);
 const [hubResults,setHubResults]=useState(()=>LS.get("longevus_hub_results",[]));
@@ -6413,6 +6476,47 @@ return (
 </div>
 <div style={{ fontSize:12,color:"#94a3b8",display:"flex",alignItems:"center",gap:10 }}>
 <span>{syncing?"☁️ Sincronizando...":students.length+" aluno(s)"}</span>
+<div style={{ position:"relative" }}>
+<button onClick={()=>{
+  const opening=!notifOpen;
+  setNotifOpen(opening);
+  if(opening){ const now=new Date().toISOString(); setCheckinsSeenAt(now); LS.set("longevus_checkins_seen_at",now); }
+}} style={{ border:"none",background:"transparent",cursor:"pointer",padding:6,position:"relative",display:"flex",alignItems:"center" }}>
+<I n="bell" c="#475569" s={19}/>
+{checkins.filter(c=>c.created_at && c.created_at>checkinsSeenAt).length>0 && (
+<span style={{ position:"absolute",top:2,right:2,minWidth:15,height:15,borderRadius:99,background:"#dc2626",color:"#fff",fontSize:9,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 3px" }}>
+{checkins.filter(c=>c.created_at && c.created_at>checkinsSeenAt).length}
+</span>
+)}
+</button>
+{notifOpen && (
+<>
+<div onClick={()=>setNotifOpen(false)} style={{ position:"fixed",inset:0,zIndex:199 }}/>
+<div style={{ position:"absolute",top:"calc(100% + 8px)",right:0,width:320,maxHeight:420,overflowY:"auto",background:"#fff",borderRadius:14,boxShadow:"0 12px 32px rgba(0,0,0,0.18)",border:"1.5px solid #e2e8f0",zIndex:200 }}>
+<div style={{ padding:"12px 14px",fontWeight:800,fontSize:13,borderBottom:"1px solid #f1f5f9",color:"#0f172a" }}>Check-ins recentes</div>
+{[...checkins].sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||"")).slice(0,15).length===0?
+<div style={{ padding:20,textAlign:"center",fontSize:12,color:"#94a3b8" }}>Nenhum check-in ainda.</div>:
+[...checkins].sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||"")).slice(0,15).map(c=>{
+const d=c.data||{};
+const stName=(students.find(s=>s.id===c.student_id)||{}).name||"Aluno";
+const isPre=c.type==="pre_treino";
+const alerta=!isPre && (d.dor==="alta"||d.dor==="moderada"||d.completude==="nao");
+const dt=c.created_at?new Date(c.created_at):null;
+const dtLabel=dt?dt.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})+" "+dt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}):"";
+return (
+<div key={c.id} onClick={()=>{setNotifOpen(false);nav("studentDetail",{studentId:c.student_id,initialTab:"checkin"});}} style={{ padding:"11px 14px",borderBottom:"1px solid #f8fafc",cursor:"pointer",display:"flex",gap:8,alignItems:"flex-start",background:alerta?"#fffbfa":"#fff" }}>
+<div style={{ width:7,height:7,borderRadius:99,background:alerta?"#dc2626":(isPre?"#3b82f6":O),marginTop:5,flexShrink:0 }}/>
+<div style={{ flex:1,minWidth:0 }}>
+<div style={{ fontWeight:700,fontSize:12.5,color:"#0f172a" }}>{stName}</div>
+<div style={{ fontSize:11,color:"#94a3b8" }}>{isPre?"Antes do treino":"Depois do treino"} · {dtLabel}</div>
+{alerta && <div style={{ fontSize:11,color:"#dc2626",fontWeight:700,marginTop:2 }}>⚠️ {d.completude==="nao"?"Não completou o treino":"Dor "+d.dor}</div>}
+</div>
+</div>
+);})}
+</div>
+</>
+)}
+</div>
 <button onClick={()=>supa.auth.signOut()} style={{ border:"none",background:"transparent",color:"#94a3b8",fontSize:12,cursor:"pointer",textDecoration:"underline" }}>Sair</button>
 </div>
 </div>
@@ -6425,7 +6529,7 @@ return (
 <div style={{ padding:"20px 16px",maxWidth:640,margin:"0 auto" }}>
 {page==="dashboard"&&<Dashboard students={students} assessments={assessments} dailyLogs={dailyLogs} nav={nav}/>}
 {page==="students"&&<Students students={students} setStudents={setStudents} nav={nav}/>}
-{page==="studentDetail"&&<StudentDetail studentId={pageProps.studentId} students={students} setStudents={setStudents} assessments={assessments} setAssessments={setAssessments} programs={programs} setPrograms={setPrograms} dailyLogs={dailyLogs} documents={documents} checkins={checkins} nav={nav}/>}
+{page==="studentDetail"&&<StudentDetail studentId={pageProps.studentId} students={students} setStudents={setStudents} assessments={assessments} setAssessments={setAssessments} programs={programs} setPrograms={setPrograms} dailyLogs={dailyLogs} documents={documents} checkins={checkins} initialTab={pageProps.initialTab} nav={nav}/>}
 {page==="assessments"&&<AssessmentsList assessments={assessments} students={students} setAssessments={setAssessments} nav={nav}/>}
 {page==="newAssessment"&&<NewAssessment students={students} setAssessments={setAssessments} nav={nav} prefillStudentId={pageProps.studentId}/>}
 {page==="result"&&<Result assessmentId={pageProps.id} assessments={assessments} setAssessments={setAssessments} students={students} nav={nav}/>}
@@ -6434,7 +6538,7 @@ return (
 }{page==="documents"&&<Documents students={students} documents={documents} setDocuments={setDocuments} prefillStudentId={pageProps.studentId}/>
 }{page==="questionarios"&&<Questionarios students={students} nav={nav} onRefreshCount={refreshPendingCount}/>
 }{page==="extprograma"&&(()=>{window.open("longevus-programa.html","_self");return null;})()}{page==="cognitivehub"&&<CognitiveHub students={students} hubResults={hubResults} setHubResults={setHubResults}/>}{page==="sessions"&&<SessionTracker students={students} programs={programs} sessions={sessions} setSessions={setSessions} nav={nav}/>}{page==="vincular"&&<VincularAlunos students={students} setStudents={setStudents}/>
-}{page==="extraatividades"&&<AtividadesExtras students={students} atividadesExtras={atividadesExtras} setAtividadesExtras={setAtividadesExtras} prefillStudentId={pageProps.studentId}/>
+}{page==="extraatividades"&&<AtividadesExtras students={students} atividadesExtras={atividadesExtras} setAtividadesExtras={setAtividadesExtras} prefillStudentId={pageProps.studentId} assessments={assessments} checkins={checkins}/>
 }{page==="financeiro"&&<Financeiro students={students} setStudents={setStudents} nav={nav}/>
 }{page==="profile"&&<Profile session={session} onLogoChange={setLogoUrl}/>}
 </div>

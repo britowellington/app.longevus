@@ -1400,10 +1400,15 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
             <div style={{marginBottom:20}}>
               <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>Como foi seu consumo de água ontem?</div>
               <div style={{display:"flex",gap:8}}>
-                {[{v:1,e:"💧",l:"Muito pouco"},{v:2,e:"💧💧",l:"Pouco"},{v:3,e:"💧💧💧",l:"Regular"},{v:4,e:"💧💧💧💧",l:"Bom"},{v:5,e:"💧💧💧💧💧",l:"Ótimo"}].map(o=>(
-                  <button key={o.v} onClick={()=>setPreCheckin(c=>({...c,hidratacao:o.v}))} style={{flex:1,padding:"10px 2px",borderRadius:10,border:preCheckin.hidratacao===o.v?"1.5px solid #3b82f6":"1.5px solid #e2e8f0",background:preCheckin.hidratacao===o.v?"#eff6ff":"#fff",cursor:"pointer",textAlign:"center",fontFamily:"inherit"}}>
-                    <div style={{fontSize:9,lineHeight:1}}>{o.e}</div>
-                    <div style={{fontSize:9,fontWeight:700,color:preCheckin.hidratacao===o.v?"#3b82f6":"#94a3b8",marginTop:3}}>{o.l}</div>
+                {[{v:1,l:"Muito pouco"},{v:2,l:"Pouco"},{v:3,l:"Regular"},{v:4,l:"Bom"},{v:5,l:"Ótimo"}].map(o=>(
+                  <button key={o.v} onClick={()=>setPreCheckin(c=>({...c,hidratacao:o.v}))} style={{flex:1,padding:"10px 2px",borderRadius:10,border:preCheckin.hidratacao===o.v?"1.5px solid #3b82f6":"1.5px solid #e2e8f0",background:preCheckin.hidratacao===o.v?"#eff6ff":"#fff",cursor:"pointer",textAlign:"center",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                    <span style={{fontSize:16}}>💧</span>
+                    <div style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
+                      {Array.from({length:o.v}).map((_,i)=>(
+                        <div key={i} style={{width:7,height:preCheckin.hidratacao===o.v?5:4,background:preCheckin.hidratacao===o.v?"#3b82f6":"#cbd5e1",borderRadius:2,marginBottom:1}}/>
+                      ))}
+                    </div>
+                    <div style={{fontSize:9,fontWeight:700,color:preCheckin.hidratacao===o.v?"#3b82f6":"#94a3b8",marginTop:2}}>{o.l}</div>
                   </button>
                 ))}
               </div>
@@ -1438,9 +1443,12 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
             {ccfg.pre?.dor && (
             <div style={{marginBottom:20}}>
               <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>Dor ou desconforto agora</div>
-              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              <div style={{display:"flex",gap:6}}>
                 {[{v:"nenhuma",e:"😊",l:"Nenhuma"},{v:"leve",e:"😕",l:"Leve"},{v:"moderada",e:"😣",l:"Moderada"},{v:"alta",e:"😖",l:"Alta"}].map(o=>(
-                  <button key={o.v} onClick={()=>setPreCheckin(c=>({...c,dor:o.v}))} style={{padding:"8px 12px",borderRadius:9,border:preCheckin.dor===o.v?"none":"1.5px solid #e2e8f0",background:preCheckin.dor===o.v?"#FF5603":"#fff",color:preCheckin.dor===o.v?"#fff":"#475569",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}><span style={{fontSize:15}}>{o.e}</span>{o.l}</button>
+                  <button key={o.v} onClick={()=>setPreCheckin(c=>({...c,dor:o.v}))} style={{flex:1,padding:"10px 2px",borderRadius:10,border:preCheckin.dor===o.v?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:preCheckin.dor===o.v?"#fff4ee":"#fff",cursor:"pointer",textAlign:"center",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+                    <span style={{fontSize:19}}>{o.e}</span>
+                    <span style={{fontSize:9,fontWeight:700,color:preCheckin.dor===o.v?"#FF5603":"#94a3b8"}}>{o.l}</span>
+                  </button>
                 ))}
               </div>
             </div>
@@ -1634,9 +1642,12 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
           {ccfg.post?.dor && (
           <div style={{marginBottom:22}}>
             <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>Dor ou desconforto</div>
-            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            <div style={{display:"flex",gap:6}}>
               {[{v:"nenhuma",e:"😊",l:"Nenhuma"},{v:"leve",e:"😕",l:"Leve"},{v:"moderada",e:"😣",l:"Moderada"},{v:"alta",e:"😖",l:"Alta"}].map(o=>(
-                <button key={o.v} onClick={()=>setCheckin(c=>({...c,dor:o.v}))} style={{padding:"8px 12px",borderRadius:9,border:checkin.dor===o.v?"none":"1.5px solid #e2e8f0",background:checkin.dor===o.v?"#FF5603":"#fff",color:checkin.dor===o.v?"#fff":"#475569",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}><span style={{fontSize:15}}>{o.e}</span>{o.l}</button>
+                <button key={o.v} onClick={()=>setCheckin(c=>({...c,dor:o.v}))} style={{flex:1,padding:"10px 2px",borderRadius:10,border:checkin.dor===o.v?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:checkin.dor===o.v?"#fff4ee":"#fff",cursor:"pointer",textAlign:"center",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+                  <span style={{fontSize:19}}>{o.e}</span>
+                  <span style={{fontSize:9,fontWeight:700,color:checkin.dor===o.v?"#FF5603":"#94a3b8"}}>{o.l}</span>
+                </button>
               ))}
             </div>
           </div>
