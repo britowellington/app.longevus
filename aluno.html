@@ -1138,20 +1138,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, onL
         }
       } catch(e){ /* tabela ainda não existe, RLS bloqueando, ou sem internet — cai no fallback abaixo */ }
 
-      if(lista.length>0){
-        setAtividades(lista);
-      } else {
-        // ⚠️ DEMO — exemplos temporários só pra visualização do layout.
-        // Assim que a tabela "atividades_extras" tiver dados reais no Supabase
-        // (e a busca acima funcionar), este bloco deixa de ser usado
-        // automaticamente. Remover antes de promover este arquivo pra versão final.
-        const hojeDemo = toISODate(new Date());
-        setAtividades([
-          {date: hojeDemo, titulo: "Aula de Spinning", obs: "09h no estúdio", _id: "demo-1"},
-          {date: hojeDemo, titulo: "Aula de Natação", obs: "16h na piscina", _id: "demo-2"},
-          {date: hojeDemo, titulo: "Alongamento em grupo", obs: "18h no salão", _id: "demo-3"},
-        ]);
-      }
+      setAtividades(lista);
     })();
   },[studentId]);
 
