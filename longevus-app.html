@@ -2807,6 +2807,30 @@ const VincularAlunos = ({ students, setStudents }) => {
 const [search, setSearch] = useState("");
 const [drafts, setDrafts] = useState({});
 const [savedId, setSavedId] = useState("");
+const [vinculados, setVinculados] = useState([]);
+const [pendencias, setPendencias] = useState([]);
+const [loadingPend, setLoadingPend] = useState(true);
+const [escolha, setEscolha] = useState({});
+const [busyUid, setBusyUid] = useState("");
+const [erro, setErro] = useState("");
+
+const carregarStatus = async () => {
+setLoadingPend(true);
+setErro("");
+try{
+const headers = await DB.authHeaders();
+const [rVinc, rPend] = await Promise.all([
+fetch(SUPA_URL+"/rest/v1/rpc/rpc_listar_vinculados", { method:"POST", headers, body:"{}" }),
+fetch(SUPA_URL+"/rest/v1/rpc/rpc_listar_pendencias", { method:"POST", headers, body:"{}" }),
+]);
+if(rVinc.ok) setVinculados((await rVinc.json()).map(r=>r.student_id));
+if(rPend.ok) setPendencias(await rPend.json());
+if(!rVinc.ok || !rPend.ok) setErro("Não consegui carregar o status de vínculo. Confira se o SQL de vínculo automático já foi rodado no Supabase.");
+} catch(e){ setErro("Não consegui carregar o status de vínculo. Confira se o SQL de vínculo automático já foi rodado no Supabase."); }
+setLoadingPend(false);
+};
+useEffect(() => { carregarStatus(); }, []);
+
 const getEmail = (s) => drafts[s.id] !== undefined ? drafts[s.id] : (s.portalEmail || "");
 const setEmail = (id, v) => setDrafts(d => ({ ...d, [id]: v }));
 const salvar = (s) => {
@@ -2815,11 +2839,68 @@ setStudents(prev => prev.map(x => x.id === s.id ? { ...x, portalEmail: val } : x
 setSavedId(s.id);
 setTimeout(() => setSavedId(""), 2000);
 };
+
+const vincularManual = async (uid) => {
+const studentId = escolha[uid];
+if(!studentId) return;
+setBusyUid(uid);
+setErro("");
+try{
+const headers = await DB.authHeaders();
+const r = await fetch(SUPA_URL+"/rest/v1/rpc/rpc_vincular_aluno_manual", {
+method:"POST", headers,
+body: JSON.stringify({ target_student_id: studentId, pending_user_id: uid }),
+});
+if(!r.ok){ const t = await r.text(); throw new Error(t); }
+await carregarStatus();
+} catch(e){ setErro("Erro ao vincular: "+(e.message||e)); }
+setBusyUid("");
+};
+
+const ignorarPendencia = async (uid) => {
+setBusyUid(uid);
+try{
+const headers = await DB.authHeaders();
+await fetch(SUPA_URL+"/rest/v1/rpc/rpc_ignorar_pendencia", {
+method:"POST", headers, body: JSON.stringify({ pending_user_id: uid }),
+});
+await carregarStatus();
+} catch(e){}
+setBusyUid("");
+};
+
+const alunosDisponiveis = students.filter(s => !vinculados.includes(s.id));
 const filtered = students.filter(s => (s.name||"").toLowerCase().includes(search.toLowerCase()));
+
 return (
 <div>
 <div style={{ fontWeight:800,fontSize:20,marginBottom:6 }}>🔗 Vincular Alunos ao Portal</div>
-<div style={{ fontSize:13,color:"#64748b",marginBottom:16,lineHeight:1.5 }}>Digite o e-mail de cada aluno pra liberar o acesso dele ao "Meu Treino" (aluno.html). Ele entra com esse e-mail e recebe um link mágico, sem senha.</div>
+<div style={{ fontSize:13,color:"#64748b",marginBottom:16,lineHeight:1.5 }}>Digite o e-mail de cada aluno pra liberar o acesso dele ao "Meu Treino" (aluno.html). Quando ele criar a senha usando esse e-mail, o vínculo acontece sozinho.</div>
+
+{erro && <div style={{ background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:9,padding:"10px 12px",fontSize:12,color:"#dc2626",marginBottom:14 }}>{erro}</div>}
+
+{!loadingPend && pendencias.length>0 && (
+<div style={{ marginBottom:20 }}>
+<div style={{ fontSize:12,fontWeight:700,color:"#c2410c",textTransform:"uppercase",marginBottom:10 }}>⏳ Pendências de aprovação ({pendencias.length})</div>
+<div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+{pendencias.map(p=>(
+<Card key={p.user_id} style={{ padding:"14px 16px",border:"1.5px solid #fed7aa" }}>
+<div style={{ fontWeight:700,fontSize:14,marginBottom:2 }}>{p.email}</div>
+<div style={{ fontSize:11,color:"#94a3b8",marginBottom:10 }}>Criou login em {new Date(p.created_at).toLocaleDateString("pt-BR")} — não bateu com nenhum e-mail cadastrado.</div>
+<div style={{ display:"flex",gap:8 }}>
+<select value={escolha[p.user_id]||""} onChange={e=>setEscolha(x=>({...x,[p.user_id]:e.target.value}))} style={{ flex:1,padding:"9px 10px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",background:"#fff" }}>
+<option value="">Selecionar aluno...</option>
+{alunosDisponiveis.map(s=>(<option key={s.id} value={s.id}>{s.name||"Aluno sem nome"}</option>))}
+</select>
+<Btn sm onClick={()=>vincularManual(p.user_id)} disabled={!escolha[p.user_id]||busyUid===p.user_id}>{busyUid===p.user_id?"...":"Vincular"}</Btn>
+</div>
+<button onClick={()=>ignorarPendencia(p.user_id)} disabled={busyUid===p.user_id} style={{ marginTop:8,background:"none",border:"none",color:"#94a3b8",fontSize:11,textDecoration:"underline",cursor:"pointer",padding:0 }}>Ignorar</button>
+</Card>
+))}
+</div>
+</div>
+)}
+
 <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar aluno..." style={{ width:"100%",padding:"10px 14px",borderRadius:10,border:"1.5px solid #e2e8f0",background:"#fff",fontSize:14,fontFamily:"inherit",marginBottom:14,boxSizing:"border-box" }}/>
 {filtered.length===0?(
 <Card style={{ textAlign:"center",padding:40 }}><div style={{ color:"#94a3b8" }}>Nenhum aluno encontrado.</div></Card>
@@ -2827,6 +2908,7 @@ return (
 <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
 {filtered.map(s=>{
 const changed = getEmail(s) !== (s.portalEmail||"");
+const vinculado = vinculados.includes(s.id);
 return (
 <Card key={s.id} style={{ padding:"14px 16px" }}>
 <div style={{ fontWeight:700,fontSize:14,marginBottom:8 }}>{s.name||"Aluno sem nome"}</div>
@@ -2834,8 +2916,9 @@ return (
 <input type="email" value={getEmail(s)} onChange={e=>setEmail(s.id,e.target.value)} placeholder="email-do-aluno@exemplo.com" style={{ flex:1,padding:"9px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box" }}/>
 <Btn sm onClick={()=>salvar(s)} disabled={!changed||!getEmail(s).trim()}>{savedId===s.id?"✓ Salvo":"Salvar"}</Btn>
 </div>
-{s.portalEmail && !changed && <div style={{ fontSize:11,color:"#16a34a",marginTop:6 }}>✅ Acesso liberado para {s.portalEmail}</div>}
-{!s.portalEmail && <div style={{ fontSize:11,color:"#94a3b8",marginTop:6 }}>Ainda sem acesso ao portal.</div>}
+{vinculado && <div style={{ fontSize:11,color:"#16a34a",marginTop:6 }}>✅ Vinculado e ativo{getEmail(s)?(" — "+getEmail(s)):""}</div>}
+{!vinculado && s.portalEmail && !changed && <div style={{ fontSize:11,color:"#d97706",marginTop:6 }}>🕒 E-mail cadastrado, aguardando o aluno criar a senha</div>}
+{!vinculado && !s.portalEmail && <div style={{ fontSize:11,color:"#94a3b8",marginTop:6 }}>Ainda sem acesso ao portal.</div>}
 </Card>
 );
 })}

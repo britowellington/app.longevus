@@ -2013,17 +2013,30 @@ function App(){
     (async()=>{
       try{
         const token = session.access_token || SUPA_KEY;
-        const headers = { "apikey": SUPA_KEY, "Authorization": "Bearer "+token };
-        const r = await fetch(SUPA_URL+"/rest/v1/students?select=id,owner_id,data&limit=1", { headers });
-        if(r.ok){
+        const headers = { "apikey": SUPA_KEY, "Authorization": "Bearer "+token, "Content-Type": "application/json" };
+        const buscar = async () => {
+          const r = await fetch(SUPA_URL+"/rest/v1/students?select=id,owner_id,data&limit=1", { headers });
+          if(!r.ok) return null;
           const rows = await r.json();
-          setStudentId(rows && rows.length>0 ? rows[0].id : null);
-          setOwnerId(rows && rows.length>0 ? rows[0].owner_id : null);
-          setStudentName(rows && rows.length>0 ? (rows[0].data?.name||"") : "");
-          setStudentData(rows && rows.length>0 ? (rows[0].data||null) : null);
-        } else {
-          setStudentId(null);
+          return rows && rows.length>0 ? rows[0] : null;
+        };
+        let row = await buscar();
+        if(!row){
+          // Ainda não achou nenhum aluno vinculado a este login — tenta
+          // casar automaticamente pelo e-mail que o personal já cadastrou
+          // em "Vincular Alunos". Se não achar, fica registrado como
+          // pendência pro personal aprovar manualmente.
+          try{
+            await fetch(SUPA_URL+"/rest/v1/rpc/rpc_registrar_e_vincular_signup", {
+              method: "POST", headers, body: JSON.stringify({ prof_id: PROF_ID }),
+            });
+          } catch(e){}
+          row = await buscar();
         }
+        setStudentId(row ? row.id : null);
+        setOwnerId(row ? row.owner_id : null);
+        setStudentName(row ? (row.data?.name||"") : "");
+        setStudentData(row ? (row.data||null) : null);
       } catch(e){ setStudentId(null); }
       setLinkChecked(true);
     })();
@@ -2095,7 +2108,7 @@ function App(){
         <Card style={{maxWidth:380,width:"100%",padding:"32px 26px",textAlign:"center"}}>
           <div style={{width:56,height:56,borderRadius:16,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px"}}><Icon name="lock" size={26} color="#FF5603"/></div>
           <div style={{fontWeight:700,fontSize:15,marginBottom:8}}>Acesso ainda não liberado</div>
-          <div style={{fontSize:13,color:"#64748b",marginBottom:20,lineHeight:1.5}}>Seu e-mail entrou, mas seu personal ainda não vinculou sua conta ao seu cadastro. Fale com ele para liberar o acesso.</div>
+          <div style={{fontSize:13,color:"#64748b",marginBottom:20,lineHeight:1.5}}>Sua conta foi criada, mas ainda não encontramos seu cadastro. Isso pode acontecer se o e-mail usado aqui for diferente do que o Wellington cadastrou pra você. Avise ele — a solicitação já está registrada pra ele aprovar.</div>
           <Btn variant="secondary" full onClick={onLogout}>Sair</Btn>
         </Card>
       </div>
