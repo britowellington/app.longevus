@@ -50,6 +50,35 @@ const ProgDB = {
   }
 };
 
+// ─── MODELOS DE PERIODIZAÇÃO (biblioteca reutilizável) ────────────────────────
+const ModeloDB = {
+  async load(){
+    try{
+      const headers = await authHeadersFn();
+      const r = await fetch(SUPA_URL+"/rest/v1/periodizacoes_modelo?select=*&order=updated_at.desc", { headers });
+      if(!r.ok) return null;
+      return await r.json();
+    }catch(e){ return null; }
+  },
+  async save(modelo){
+    try{
+      const headers = { ...(await authHeadersFn()), "Prefer": "resolution=merge-duplicates" };
+      const { data: sess } = await supa.auth.getSession();
+      const ownerId = sess?.session?.user?.id;
+      const body = { id: modelo.id, owner_id: ownerId, nome: modelo.nome, categoria: modelo.categoria||null, origem_programa_id: modelo.origemProgramaId||null, data: modelo.data, vezes_usada: modelo.vezesUsada||0, updated_at: new Date().toISOString() };
+      const r = await fetch(SUPA_URL+"/rest/v1/periodizacoes_modelo", { method:"POST", headers, body: JSON.stringify(body) });
+      return r.ok;
+    }catch(e){ return false; }
+  },
+  async remove(id){
+    try{
+      const headers = await authHeadersFn();
+      await fetch(SUPA_URL+"/rest/v1/periodizacoes_modelo?id=eq."+id, { method:"DELETE", headers });
+      return true;
+    }catch(e){ return false; }
+  }
+};
+
 // ─── PATOLOGIAS (origem alternativa de geração de programa) ──────────────────
 async function fetchPatologias(){
   try{
@@ -1189,8 +1218,29 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav})=>{
   const [prescricao,setPrescricao]=useState(null);
   const [blocoIdx,setBlocoIdx]=useState(0);
   const [treinoIdx,setTreinoIdx]=useState(0);
+  const [modeloModal,setModeloModal]=useState(false);
+  const [modeloNome,setModeloNome]=useState("");
+  const [modeloSalvando,setModeloSalvando]=useState(false);
+  const [modeloFeedback,setModeloFeedback]=useState("");
   useEffect(()=>{if(prog)setPrescricao(JSON.parse(JSON.stringify(prog.prescricao||{})));},[programId]);
   if(!prog||!prescricao)return null;
+  const abrirModeloModal=()=>{setModeloNome(prog.titulo||"Periodização");setModeloFeedback("");setModeloModal(true);};
+  const confirmarSalvarModelo=async()=>{
+    if(!modeloNome.trim())return;
+    setModeloSalvando(true);
+    const modelo={
+      id:uid(),
+      nome:modeloNome.trim(),
+      categoria:prog.origem==="patologia"?prog.patologiaId:null,
+      origemProgramaId:prog.id,
+      vezesUsada:0,
+      data:{titulo:prog.titulo,freq:prog.freq,divisao:prog.divisao,obs:prog.obs,prescricao,origem:prog.origem,patologiaId:prog.patologiaId||null}
+    };
+    const ok=await ModeloDB.save(modelo);
+    setModeloSalvando(false);
+    if(ok){setModeloFeedback("✅ Modelo salvo na sua biblioteca de periodizações.");setTimeout(()=>setModeloModal(false),1400);}
+    else setModeloFeedback("⚠️ Não foi possível salvar agora. Tente novamente.");
+  };
   const treinosUnicos=[...new Set(prog.divisao?.sequencia||["A"])];
   const blocoAtivo=BLOCOS[blocoIdx];
   const treinoAtivo=treinosUnicos[treinoIdx];
@@ -1206,7 +1256,7 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav})=>{
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
         <button onClick={()=>nav("lista")} style={{border:"none",background:"#f1f5f9",borderRadius:10,padding:"8px 12px",cursor:"pointer",fontSize:14,color:"#64748b",fontWeight:700}}>‹</button>
         <div style={{flex:1}}><div style={{fontWeight:800,fontSize:17}}>{prog.titulo||"Programa"}</div><div style={{fontSize:12,color:"#94a3b8"}}>{student?.name} · {fmt(prog.criadoEm)}</div></div>
-        {editMode?(<div style={{display:"flex",gap:6}}><Btn sm variant="secondary" onClick={cancelEdit}>Cancelar</Btn><Btn sm onClick={saveEdits}>💾 Salvar</Btn></div>):(<Btn sm variant="ghost" onClick={()=>setEditMode(true)}>✏️ Editar</Btn>)}
+        {editMode?(<div style={{display:"flex",gap:6}}><Btn sm variant="secondary" onClick={cancelEdit}>Cancelar</Btn><Btn sm onClick={saveEdits}>💾 Salvar</Btn></div>):(<div style={{display:"flex",gap:6}}><Btn sm variant="ghost" onClick={abrirModeloModal}>⭐ Salvar como modelo</Btn><Btn sm variant="ghost" onClick={()=>setEditMode(true)}>✏️ Editar</Btn></div>)}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:7,marginBottom:12}}>
         {[["24","sem."],["4","blocos"],[String(prog.freq)+"×","sem."],[String(totalEx),"exerc."]].map(([v,l])=>(<div key={l} style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"9px 5px",textAlign:"center"}}><div style={{fontSize:16,fontWeight:800,color:"#FF5603"}}>{v}</div><div style={{fontSize:10,color:"#94a3b8",marginTop:1}}>{l}</div></div>))}
@@ -1239,6 +1289,17 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav})=>{
       <div style={{marginTop:16,paddingTop:14,borderTop:"1px solid #f1f5f9"}}>
         <Btn variant="danger" full onClick={deletePrograma}>🗑 Remover programa</Btn>
       </div>
+      {modeloModal&&(
+        <Modal title="Salvar como modelo" onClose={()=>{if(!modeloSalvando)setModeloModal(false);}}>
+          <div style={{padding:"4px 2px 2px"}}>
+            <div style={{fontSize:12,color:"#64748b",marginBottom:12,lineHeight:1.5}}>Isso salva uma cópia desta periodização (todos os blocos e exercícios) na sua biblioteca, pra usar depois com outros alunos — sem alterar o programa atual de {student?.name||"este aluno"}.</div>
+            <label style={{fontSize:12,fontWeight:700,color:"#475569",display:"block",marginBottom:5}}>Nome do modelo</label>
+            <input value={modeloNome} onChange={e=>setModeloNome(e.target.value)} placeholder="Ex: Hipertrofia Iniciante 8 sem" style={{width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,fontFamily:"inherit",boxSizing:"border-box",marginBottom:14}}/>
+            {modeloFeedback&&<div style={{fontSize:12,marginBottom:12,color:modeloFeedback.startsWith("✅")?"#16a34a":"#dc2626",fontWeight:600}}>{modeloFeedback}</div>}
+            <Btn full disabled={modeloSalvando||!modeloNome.trim()} onClick={confirmarSalvarModelo}>{modeloSalvando?"Salvando...":"💾 Salvar na biblioteca"}</Btn>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };
