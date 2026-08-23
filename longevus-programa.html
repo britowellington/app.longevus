@@ -1211,10 +1211,10 @@ const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,n
 };
 
 // ─── TELA: VER PROGRAMA ───────────────────────────────────────────────────────
-const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav})=>{
+const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEdit})=>{
   const prog=programs.find(p=>p.id===programId);
   const student=students.find(s=>s.id===prog?.studentId);
-  const [editMode,setEditMode]=useState(false);
+  const [editMode,setEditMode]=useState(!!autoEdit);
   const [prescricao,setPrescricao]=useState(null);
   const [blocoIdx,setBlocoIdx]=useState(0);
   const [treinoIdx,setTreinoIdx]=useState(0);
@@ -1391,10 +1391,14 @@ const ListaModelos=({modelos,loading,nav}) => {
   );
 };
 
-const VerModelo=({modeloId,modelos,setModelos,bibCustom,nav}) => {
+const VerModelo=({modeloId,modelos,setModelos,bibCustom,students,programs,setPrograms,nav}) => {
   const modelo=modelos.find(m=>m.id===modeloId);
   const [blocoIdx,setBlocoIdx]=useState(0);
   const [treinoIdx,setTreinoIdx]=useState(0);
+  const [usarModal,setUsarModal]=useState(false);
+  const [alunoSel,setAlunoSel]=useState("");
+  const [buscaAluno,setBuscaAluno]=useState("");
+  const [aplicando,setAplicando]=useState(false);
   if(!modelo)return null;
   const d=modelo.data||{};
   const prescricao=d.prescricao||{};
@@ -1407,6 +1411,27 @@ const VerModelo=({modeloId,modelos,setModelos,bibCustom,nav}) => {
     await ModeloDB.remove(modelo.id);
     setModelos(prev=>prev.filter(m=>m.id!==modelo.id));
     nav("modelos");
+  };
+  const abrirUsarModal=()=>{setAlunoSel("");setBuscaAluno("");setUsarModal(true);};
+  const alunosFiltrados=(students||[]).filter(s=>(s.name||"").toLowerCase().includes(buscaAluno.toLowerCase()));
+  const aplicarAoAluno=async(editarAntes)=>{
+    if(!alunoSel)return;
+    setAplicando(true);
+    const programasDoAluno=(programs||[]).filter(p=>p.studentId===alunoSel);
+    const cicloAtual=programasDoAluno.length+1;
+    const novoProg={
+      id:uid(),studentId:alunoSel,titulo:d.titulo||modelo.nome,semanas:24,freq:d.freq,divisao:d.divisao,
+      obs:d.obs||"",prescricao:JSON.parse(JSON.stringify(prescricao)),
+      criadoEm:new Date().toISOString().slice(0,10),assessmentRef:null,
+      origem:d.origem||"manual",patologiaId:d.patologiaId||null,ciclo:cicloAtual,variante:1,
+      origemModeloId:modelo.id
+    };
+    const fresh=LS.get("longevus_programs",programs);
+    const updated=[...fresh.filter(p=>p.id!==novoProg.id),novoProg];
+    setPrograms(updated);LS.set("longevus_programs",updated);await ProgDB.save(novoProg);
+    ModeloDB.save({id:modelo.id,nome:modelo.nome,categoria:modelo.categoria,origemProgramaId:modelo.origem_programa_id,vezesUsada:(modelo.vezes_usada||0)+1,data:d});
+    setAplicando(false);setUsarModal(false);
+    nav("ver",{id:novoProg.id,autoEdit:editarAntes});
   };
   return(
     <div>
@@ -1443,9 +1468,40 @@ const VerModelo=({modeloId,modelos,setModelos,bibCustom,nav}) => {
         editMode={false}
       />
       <div style={{marginTop:16,paddingTop:14,borderTop:"1px solid #f1f5f9",display:"flex",flexDirection:"column",gap:8}}>
-        <Btn full disabled>👤 Usar com aluno (em breve)</Btn>
+        <Btn full onClick={abrirUsarModal}>👤 Usar com aluno</Btn>
         <Btn variant="danger" full onClick={excluirModelo}>🗑 Remover modelo</Btn>
       </div>
+      {usarModal&&(
+        <Modal title="Usar com aluno" onClose={()=>{if(!aplicando)setUsarModal(false);}}>
+          <div style={{padding:"4px 2px 2px"}}>
+            {!alunoSel?(
+              <>
+                <div style={{fontSize:12,color:"#64748b",marginBottom:10,lineHeight:1.5}}>Escolha o aluno que vai receber esta periodização.</div>
+                <input value={buscaAluno} onChange={e=>setBuscaAluno(e.target.value)} placeholder="Buscar aluno..." style={{width:"100%",padding:"9px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,fontFamily:"inherit",boxSizing:"border-box",marginBottom:10}}/>
+                <div style={{maxHeight:280,overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
+                  {alunosFiltrados.length===0?(
+                    <div style={{fontSize:12,color:"#94a3b8",textAlign:"center",padding:12}}>Nenhum aluno encontrado.</div>
+                  ):alunosFiltrados.map(s=>(
+                    <button key={s.id} onClick={()=>setAlunoSel(s.id)} style={{display:"flex",alignItems:"center",gap:10,border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 11px",background:"#fff",cursor:"pointer",textAlign:"left"}}>
+                      <div style={{width:32,height:32,borderRadius:9,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,color:"#FF5603",flexShrink:0}}>{s.name?.[0]?.toUpperCase()||"?"}</div>
+                      <div style={{fontWeight:700,fontSize:13}}>{s.name}</div>
+                    </button>
+                  ))}
+                </div>
+              </>
+            ):(
+              <>
+                <div style={{fontSize:12,color:"#64748b",marginBottom:14,lineHeight:1.5}}>Enviar "<b>{modelo.nome}</b>" para <b>{students.find(s=>s.id===alunoSel)?.name}</b>?</div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  <Btn full disabled={aplicando} onClick={()=>aplicarAoAluno(false)}>{aplicando?"Enviando...":"✅ Enviar como está"}</Btn>
+                  <Btn full variant="secondary" disabled={aplicando} onClick={()=>aplicarAoAluno(true)}>{aplicando?"Enviando...":"✏️ Editar antes de enviar"}</Btn>
+                  <Btn full variant="ghost" disabled={aplicando} onClick={()=>setAlunoSel("")}>‹ Trocar aluno</Btn>
+                </div>
+              </>
+            )}
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };
@@ -1623,9 +1679,9 @@ function AppInner(){
         <div style={{padding:"20px 16px",maxWidth:640,margin:"0 auto",paddingBottom:90}}>
           {page==="lista"&&<Lista programs={programs} students={students} nav={nav}/>}
           {page==="modelos"&&<ListaModelos modelos={modelos} loading={modelosLoading} nav={nav}/>}
-          {page==="modeloVer"&&<VerModelo modeloId={pageProps.id} modelos={modelos} setModelos={setModelos} bibCustom={bibCustom} nav={nav}/>}
+          {page==="modeloVer"&&<VerModelo modeloId={pageProps.id} modelos={modelos} setModelos={setModelos} bibCustom={bibCustom} students={students} programs={programs} setPrograms={setPrograms} nav={nav}/>}
           {page==="novo"&&<NovoProgramaWizard students={students} assessments={assessments} programs={programs} setPrograms={setPrograms} bibCustom={bibCustom} nav={nav} prefillStudentId={pageProps.studentId}/>}
-          {page==="ver"&&<VerPrograma programId={pageProps.id} programs={programs} setPrograms={setPrograms} students={students} bibCustom={bibCustom} nav={nav}/>}
+          {page==="ver"&&<VerPrograma programId={pageProps.id} programs={programs} setPrograms={setPrograms} students={students} bibCustom={bibCustom} nav={nav} autoEdit={pageProps.autoEdit}/>}
         </div>
       </div>
       {/* Barra de navegação global */}
