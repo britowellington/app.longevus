@@ -1313,7 +1313,8 @@ const Lista=({programs,students,nav})=>{
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
         <div style={{fontWeight:800,fontSize:20}}>📋 Programas</div>
         <div style={{display:"flex",gap:8}}>
-          <Btn sm variant="ghost" onClick={()=>{window.open("longevus-biblioteca.html","_blank");}}>📚 Biblioteca</Btn>
+          <Btn sm variant="ghost" onClick={()=>{window.open("longevus-biblioteca.html","_blank");}}>📚 Exercícios</Btn>
+          <Btn sm variant="ghost" onClick={()=>nav("modelos")}>⭐ Modelos</Btn>
           <Btn sm onClick={()=>nav("novo")}>+ Novo</Btn>
         </div>
       </div>
@@ -1343,6 +1344,108 @@ const Lista=({programs,students,nav})=>{
           })}
         </div>
       )}
+    </div>
+  );
+};
+
+// ─── BIBLIOTECA DE MODELOS DE PERIODIZAÇÃO ────────────────────────────────────
+const ListaModelos=({modelos,loading,nav}) => {
+  const [search,setSearch]=useState("");
+  const filtered=modelos.filter(m=>(m.nome||"").toLowerCase().includes(search.toLowerCase()));
+  return(
+    <div>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+        <button onClick={()=>nav("lista")} style={{border:"none",background:"#f1f5f9",borderRadius:10,padding:"8px 12px",cursor:"pointer",fontSize:14,color:"#64748b",fontWeight:700}}>‹</button>
+        <div style={{fontWeight:800,fontSize:20}}>⭐ Modelos de Periodização</div>
+      </div>
+      <div style={{fontSize:12,color:"#94a3b8",marginBottom:14,lineHeight:1.5}}>Periodizações completas que você salvou pra reaproveitar com futuros alunos — envie exatamente como está ou edite antes.</div>
+      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar modelo..." style={{width:"100%",padding:"10px 14px",borderRadius:10,border:"1.5px solid #e2e8f0",background:"#fff",fontSize:14,fontFamily:"inherit",marginBottom:14}}/>
+      {loading?(
+        <Card style={{textAlign:"center",padding:40}}><div style={{color:"#94a3b8"}}>Carregando modelos...</div></Card>
+      ):filtered.length===0?(
+        <Card style={{textAlign:"center",padding:40}}>
+          <div style={{fontSize:36,marginBottom:10}}>⭐</div>
+          <div style={{color:"#94a3b8",marginBottom:4}}>Nenhum modelo salvo ainda.</div>
+          <div style={{color:"#cbd5e1",fontSize:12}}>Abra um programa de um aluno e toque em "Salvar como modelo".</div>
+        </Card>
+      ):(
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {filtered.map(m=>{
+            const d=m.data||{};
+            const total=Object.values(d.prescricao||{}).reduce((a,b)=>a+Object.values(b||{}).reduce((c,s)=>c+Object.values(s||{}).reduce((e,arr)=>e+(arr?.length||0),0),0),0);
+            return(<Card key={m.id} onClick={()=>nav("modeloVer",{id:m.id})} style={{padding:"14px 16px"}}>
+              <div style={{display:"flex",alignItems:"center",gap:12}}>
+                <div style={{width:44,height:44,borderRadius:12,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>⭐</div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:15}}>{m.nome}</div>
+                  <div style={{fontSize:12,color:"#94a3b8",marginTop:1}}>{d.divisao?.label||"—"} · {d.freq}× por semana · {total} exerc.</div>
+                  <div style={{fontSize:11,color:"#cbd5e1",marginTop:2}}>{(m.vezes_usada||0)>0?`Usado ${m.vezes_usada}× · `:""}Salvo em {fmt((m.created_at||"").slice(0,10))}</div>
+                </div>
+                <div style={{fontSize:20,color:"#cbd5e1"}}>›</div>
+              </div>
+            </Card>);
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const VerModelo=({modeloId,modelos,setModelos,bibCustom,nav}) => {
+  const modelo=modelos.find(m=>m.id===modeloId);
+  const [blocoIdx,setBlocoIdx]=useState(0);
+  const [treinoIdx,setTreinoIdx]=useState(0);
+  if(!modelo)return null;
+  const d=modelo.data||{};
+  const prescricao=d.prescricao||{};
+  const treinosUnicos=[...new Set(d.divisao?.sequencia||["A"])];
+  const blocoAtivo=BLOCOS[blocoIdx];
+  const treinoAtivo=treinosUnicos[treinoIdx];
+  const totalEx=Object.values(prescricao).reduce((a,b)=>a+Object.values(b||{}).reduce((c,s)=>c+Object.values(s||{}).reduce((e,arr)=>e+(arr?.length||0),0),0),0);
+  const excluirModelo=async()=>{
+    if(!window.confirm("Remover este modelo da biblioteca?"))return;
+    await ModeloDB.remove(modelo.id);
+    setModelos(prev=>prev.filter(m=>m.id!==modelo.id));
+    nav("modelos");
+  };
+  return(
+    <div>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+        <button onClick={()=>nav("modelos")} style={{border:"none",background:"#f1f5f9",borderRadius:10,padding:"8px 12px",cursor:"pointer",fontSize:14,color:"#64748b",fontWeight:700}}>‹</button>
+        <div style={{flex:1}}><div style={{fontWeight:800,fontSize:17}}>⭐ {modelo.nome}</div><div style={{fontSize:12,color:"#94a3b8"}}>Modelo salvo em {fmt((modelo.created_at||"").slice(0,10))}</div></div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:7,marginBottom:12}}>
+        {[["24","sem."],["4","blocos"],[String(d.freq||"—")+"×","sem."],[String(totalEx),"exerc."]].map(([v,l])=>(<div key={l} style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"9px 5px",textAlign:"center"}}><div style={{fontSize:16,fontWeight:800,color:"#FF5603"}}>{v}</div><div style={{fontSize:10,color:"#94a3b8",marginTop:1}}>{l}</div></div>))}
+      </div>
+      <Card style={{marginBottom:10,padding:"10px 14px"}}>
+        <div style={{fontSize:11,fontWeight:700,color:"#64748b",marginBottom:6,textTransform:"uppercase"}}>Semana tipo · {d.divisao?.label}</div>
+        <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+          {(d.divisao?.sequencia||[]).map((t,i)=>{const td=TREINO_DEFS[t];return(<div key={i} style={{textAlign:"center",minWidth:40}}><div style={{fontSize:10,color:"#94a3b8",marginBottom:2}}>D{i+1}</div><div style={{background:td?.bg,border:`1.5px solid ${td?.border}`,borderRadius:7,padding:"4px 5px",fontWeight:800,fontSize:11,color:td?.cor}}>{t}</div></div>);})}
+        </div>
+      </Card>
+      {d.obs&&<Card style={{marginBottom:10,background:"#f8fafc",padding:"9px 13px"}}><div style={{fontSize:12,color:"#64748b",fontStyle:"italic"}}>📝 {d.obs}</div></Card>}
+      <div style={{display:"flex",gap:0,marginBottom:8,background:"#f1f5f9",borderRadius:10,padding:3}}>
+        {BLOCOS.map((b,i)=>(<button key={b.key} onClick={()=>{setBlocoIdx(i);setTreinoIdx(0);}} style={{flex:1,border:"none",borderRadius:8,padding:"6px 3px",fontSize:10,fontWeight:700,cursor:"pointer",background:blocoIdx===i?b.cor.bg:"transparent",color:blocoIdx===i?b.cor.texto:"#94a3b8",lineHeight:1.3}}><div>B{i+1}</div><div style={{fontSize:8,marginTop:1}}>{b.semanas}</div></button>))}
+      </div>
+      <div style={{background:blocoAtivo.cor.bg,border:`1.5px solid ${blocoAtivo.cor.border}`,borderRadius:9,padding:"7px 12px",marginBottom:8}}>
+        <div style={{fontWeight:700,fontSize:12,color:blocoAtivo.cor.texto}}>{blocoAtivo.label} · sem. {blocoAtivo.semanas} · {blocoAtivo.desc}</div>
+      </div>
+      <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+        {treinosUnicos.map((t,i)=>{const td=TREINO_DEFS[t];return(<button key={t} onClick={()=>setTreinoIdx(i)} style={{flex:1,minWidth:60,border:`1.5px solid ${treinoIdx===i?td.cor:td.border}`,borderRadius:9,padding:"7px 6px",fontSize:11,fontWeight:700,cursor:"pointer",background:treinoIdx===i?td.bg:"#fff",color:treinoIdx===i?td.cor:"#64748b",textAlign:"center"}}>{td.label}</button>);})}
+      </div>
+      <TreinoMomentos
+        key={blocoAtivo.key+"-"+treinoAtivo}
+        treinoKey={treinoAtivo}
+        blocoKey={blocoAtivo.key}
+        sessao={(prescricao[blocoAtivo.key]||{})[treinoAtivo]||{inicial:[],principal:[],final:[]}}
+        onChange={()=>{}}
+        bibCustom={bibCustom}
+        editMode={false}
+      />
+      <div style={{marginTop:16,paddingTop:14,borderTop:"1px solid #f1f5f9",display:"flex",flexDirection:"column",gap:8}}>
+        <Btn full disabled>👤 Usar com aluno (em breve)</Btn>
+        <Btn variant="danger" full onClick={excluirModelo}>🗑 Remover modelo</Btn>
+      </div>
     </div>
   );
 };
@@ -1437,6 +1540,8 @@ function AppInner(){
   const [students]=useState(()=>LS.get("longevus_students",[]));
   const [assessments]=useState(()=>LS.get("longevus_assessments",[]));
   const [programs,setPrograms]=useState(()=>LS.get("longevus_programs",[]));
+  const [modelos,setModelos]=useState([]);
+  const [modelosLoading,setModelosLoading]=useState(true);
   const [bibCustom,setBibCustom]=useState(()=>{
     const db=typeof window!=="undefined"&&window.EXERCICIOS_DB?window.EXERCICIOS_DB:[];
     const salvo=LS.get("longevus_biblioteca",[]);
@@ -1477,6 +1582,15 @@ function AppInner(){
     })();
   },[]);
 
+  useEffect(()=>{
+    (async()=>{
+      setModelosLoading(true);
+      const remote = await ModeloDB.load();
+      setModelos(remote||[]);
+      setModelosLoading(false);
+    })();
+  },[]);
+
   const initialNav = (()=>{
     try{
       const qs = new URLSearchParams(window.location.search);
@@ -1489,7 +1603,7 @@ function AppInner(){
   })();
   const [page,setPage]=useState(initialNav.page);
   const [pageProps,setPageProps]=useState(initialNav.pageProps);
-  const nav=useCallback((p,props={})=>{if(p==="lista"){setPrograms(prev=>LS.get("longevus_programs",prev));ProgDB.load().then(remote=>{if(remote!==null){setPrograms(remote);LS.set("longevus_programs",remote);}});}setPage(p);setPageProps(props);window.scrollTo(0,0);},[]);
+  const nav=useCallback((p,props={})=>{if(p==="lista"){setPrograms(prev=>LS.get("longevus_programs",prev));ProgDB.load().then(remote=>{if(remote!==null){setPrograms(remote);LS.set("longevus_programs",remote);}});}if(p==="modelos"){setModelosLoading(true);ModeloDB.load().then(remote=>{setModelos(remote||[]);setModelosLoading(false);});}setPage(p);setPageProps(props);window.scrollTo(0,0);},[]);
   useEffect(()=>{LS.set("longevus_programs",programs);},[programs]);
   return(
     <>
@@ -1508,6 +1622,8 @@ function AppInner(){
         </div>
         <div style={{padding:"20px 16px",maxWidth:640,margin:"0 auto",paddingBottom:90}}>
           {page==="lista"&&<Lista programs={programs} students={students} nav={nav}/>}
+          {page==="modelos"&&<ListaModelos modelos={modelos} loading={modelosLoading} nav={nav}/>}
+          {page==="modeloVer"&&<VerModelo modeloId={pageProps.id} modelos={modelos} setModelos={setModelos} bibCustom={bibCustom} nav={nav}/>}
           {page==="novo"&&<NovoProgramaWizard students={students} assessments={assessments} programs={programs} setPrograms={setPrograms} bibCustom={bibCustom} nav={nav} prefillStudentId={pageProps.studentId}/>}
           {page==="ver"&&<VerPrograma programId={pageProps.id} programs={programs} setPrograms={setPrograms} students={students} bibCustom={bibCustom} nav={nav}/>}
         </div>
