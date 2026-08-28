@@ -5302,6 +5302,152 @@ title={"Ver no YouTube: "+name}>
 </svg>
 </a>
 );
+const STATUS_AGENDA = {
+presenca: { label:"Presença", color:"#16a34a", bg:"#dcfce7", dot:"#16a34a" },
+falta: { label:"Falta", color:"#dc2626", bg:"#fee2e2", dot:"#dc2626" },
+observacao: { label:"Observação", color:"#d97706", bg:"#fef9c3", dot:"#d97706" },
+};
+const Agenda = ({ students, agendaEntries, setAgendaEntries, nav }) => {
+const [viewMode,setViewMode]=useState("calendario");
+const [filterSt,setFilterSt]=useState("");
+const [calRef,setCalRef]=useState(()=>new Date());
+const [modal,setModal]=useState(false);
+const [editId,setEditId]=useState(null);
+const [dayModal,setDayModal]=useState(null);
+const emptyForm = (date) => ({ studentId:filterSt||"", date:date||todayStr(), status:"presenca", obs:"" });
+const [form,setForm]=useState(emptyForm());
+const openNew = (date) => { setEditId(null); setForm(emptyForm(date)); setModal(true); };
+const openEdit = (entry) => { setEditId(entry.id); setForm({ studentId:entry.studentId, date:entry.date, status:entry.status, obs:entry.obs||"" }); setModal(true); };
+const save = () => {
+if(!form.studentId||!form.date) return;
+if(editId){ setAgendaEntries(p=>p.map(e=>e.id===editId?{...e,...form}:e)); }
+else { setAgendaEntries(p=>[...p,{ id:uid(), ...form }]); }
+setModal(false);
+};
+const del = async (id) => { if(window.confirm("Remover este registro da agenda?")){ await DB.remove("agenda",id); setAgendaEntries(p=>p.filter(e=>e.id!==id)); } };
+const entriesFiltradas = [...agendaEntries].filter(e=>!filterSt||e.studentId===filterSt);
+const diasDoMes = getMonthDates(calRef.getFullYear(), calRef.getMonth());
+const primeiroDiaSemana = diasDoMes[0].getDay();
+const mesRef = toISODateLocal(calRef).slice(0,7);
+const entriesDoMes = entriesFiltradas.filter(e=>e.date && e.date.slice(0,7)===mesRef);
+const contagemMes = { presenca:0, falta:0, observacao:0 };
+entriesDoMes.forEach(e=>{ if(contagemMes[e.status]!==undefined) contagemMes[e.status]++; });
+const entriesPorDia = (iso) => entriesFiltradas.filter(e=>e.date===iso);
+const listaOrdenada = [...entriesFiltradas].sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+return (
+<div>
+<div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10 }}>
+<div style={{ fontWeight:800,fontSize:20 }}>📅 Agenda</div>
+<Btn sm icon="plus" onClick={()=>openNew(todayStr())}>Novo</Btn>
+</div>
+<div style={{ fontSize:13,color:"#64748b",marginBottom:14,lineHeight:1.5 }}>
+Selecione o aluno e o dia para registrar presença, falta ou uma observação. Toque num dia do calendário pra ver ou adicionar registros.
+</div>
+<select value={filterSt} onChange={e=>setFilterSt(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,marginBottom:12 }}>
+<option value="">Todos os alunos</option>
+{students.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+</select>
+<div style={{ display:"flex",gap:6,marginBottom:14 }}>
+<button onClick={()=>setViewMode("calendario")} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:viewMode==="calendario"?O:"#f1f5f9",color:viewMode==="calendario"?"#fff":"#64748b" }}>Calendário</button>
+<button onClick={()=>setViewMode("lista")} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:viewMode==="lista"?O:"#f1f5f9",color:viewMode==="lista"?"#fff":"#64748b" }}>Lista</button>
+</div>
+{viewMode==="calendario" && <>
+<div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10 }}>
+<button onClick={()=>setCalRef(d=>new Date(d.getFullYear(),d.getMonth()-1,1))} style={{ border:"1.5px solid #e2e8f0",background:"#fff",borderRadius:8,width:30,height:30,cursor:"pointer",color:"#475569" }}>‹</button>
+<div style={{ fontSize:14,fontWeight:800 }}>{MESES_NOME[calRef.getMonth()]} de {calRef.getFullYear()}</div>
+<button onClick={()=>setCalRef(d=>new Date(d.getFullYear(),d.getMonth()+1,1))} style={{ border:"1.5px solid #e2e8f0",background:"#fff",borderRadius:8,width:30,height:30,cursor:"pointer",color:"#475569" }}>›</button>
+</div>
+<div style={{ display:"flex",gap:10,marginBottom:12,flexWrap:"wrap" }}>
+{Object.entries(STATUS_AGENDA).map(([k,v])=>(
+<div key={k} style={{ display:"flex",alignItems:"center",gap:5,fontSize:11,color:"#64748b" }}><span style={{ width:8,height:8,borderRadius:99,background:v.dot,display:"inline-block" }}/>{v.label} ({contagemMes[k]||0})</div>
+))}
+</div>
+<div style={{ display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:6 }}>
+{DIAS_SEMANA_CURTO.map((d,i)=><div key={i} style={{ textAlign:"center",fontSize:10,fontWeight:700,color:"#94a3b8",padding:"4px 0" }}>{d}</div>)}
+</div>
+<div style={{ display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:16 }}>
+{Array.from({length:primeiroDiaSemana}).map((_,i)=><div key={"pad"+i}/>)}
+{diasDoMes.map(d=>{
+const iso=toISODateLocal(d);
+const doDia=entriesPorDia(iso);
+const isHoje=iso===todayStr();
+const statusesUnicos=[...new Set(doDia.map(e=>e.status))];
+return (
+<button key={iso} onClick={()=>setDayModal(iso)} style={{ aspectRatio:"1",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,border:isHoje?"1.5px solid "+O:"1.5px solid #f1f5f9",background:"#fff",borderRadius:8,cursor:"pointer",padding:2 }}>
+<span style={{ fontSize:12,fontWeight:isHoje?800:500,color:isHoje?O:"#0f172a" }}>{d.getDate()}</span>
+{statusesUnicos.length>0 && <div style={{ display:"flex",gap:2 }}>{statusesUnicos.slice(0,3).map(s=><span key={s} style={{ width:5,height:5,borderRadius:99,background:STATUS_AGENDA[s]?.dot||"#94a3b8" }}/>)}</div>}
+</button>
+);
+})}
+</div>
+</>}
+{viewMode==="lista" && (
+listaOrdenada.length===0?<Card style={{ textAlign:"center",padding:40 }}><I n="calendar" c="#cbd5e1" s={36}/><div style={{ color:"#94a3b8",marginTop:10 }}>Nenhum registro na agenda ainda.</div></Card>:
+<div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+{listaOrdenada.map(e=>{
+const st=students.find(s=>s.id===e.studentId);
+const cfg=STATUS_AGENDA[e.status]||STATUS_AGENDA.presenca;
+return (
+<Card key={e.id} onClick={()=>openEdit(e)} style={{ padding:"14px 16px" }}>
+<div style={{ display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10 }}>
+<div style={{ flex:1,minWidth:0 }}>
+<div style={{ display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:6 }}>
+<span style={{ fontWeight:700,fontSize:14 }}>{st?.name||"Aluno"}</span>
+<span style={{ fontSize:11,color:"#94a3b8" }}>{fmt(e.date)}</span>
+<Badge color={cfg.color} bg={cfg.bg}>{cfg.label}</Badge>
+</div>
+{e.obs && <div style={{ fontSize:12,color:"#64748b",marginTop:2,whiteSpace:"pre-wrap" }}>{e.obs}</div>}
+</div>
+<button onClick={ev=>{ev.stopPropagation();del(e.id);}} style={{ background:"none",border:"none",cursor:"pointer",color:"#e2e8f0",padding:4,flexShrink:0 }}><I n="trash" s={15}/></button>
+</div>
+</Card>
+);
+})}
+</div>
+)}
+{dayModal && <Modal title={fmt(dayModal)} onClose={()=>setDayModal(null)}>
+{entriesPorDia(dayModal).length===0?
+<div style={{ textAlign:"center",padding:"20px 0",color:"#94a3b8",fontSize:13 }}>Nenhum registro neste dia.</div>:
+<div style={{ display:"flex",flexDirection:"column",gap:8,marginBottom:16 }}>
+{entriesPorDia(dayModal).map(e=>{
+const st=students.find(s=>s.id===e.studentId);
+const cfg=STATUS_AGENDA[e.status]||STATUS_AGENDA.presenca;
+return (
+<div key={e.id} onClick={()=>{setDayModal(null);openEdit(e);}} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,padding:"10px 12px",border:"1.5px solid #f1f5f9",borderRadius:10,cursor:"pointer" }}>
+<div style={{ flex:1,minWidth:0 }}>
+<div style={{ fontWeight:700,fontSize:13 }}>{st?.name||"Aluno"}</div>
+{e.obs && <div style={{ fontSize:11,color:"#94a3b8",marginTop:2 }}>{e.obs}</div>}
+</div>
+<Badge color={cfg.color} bg={cfg.bg}>{cfg.label}</Badge>
+</div>
+);
+})}
+</div>}
+<Btn full icon="plus" onClick={()=>{const d=dayModal;setDayModal(null);openNew(d);}}>Adicionar registro neste dia</Btn>
+</Modal>}
+{modal&&<Modal title={editId?"Editar Registro":"Novo Registro"} onClose={()=>setModal(false)}>
+<Inp label="Aluno" value={form.studentId} onChange={v=>setForm(f=>({...f,studentId:v}))} opts={[{v:"",l:"Selecione..."},...students.map(s=>({v:s.id,l:s.name}))]}/>
+<Inp label="Data" type="date" value={form.date} onChange={v=>setForm(f=>({...f,date:v}))}/>
+<div style={{ marginBottom:13 }}>
+<div style={{ fontSize:12,fontWeight:600,color:"#475569",marginBottom:5 }}>Status</div>
+<div style={{ display:"flex",gap:6 }}>
+{Object.entries(STATUS_AGENDA).map(([k,v])=>(
+<button key={k} onClick={()=>setForm(f=>({...f,status:k}))} style={{ flex:1,border:form.status===k?`1.5px solid ${v.color}`:"1.5px solid #e2e8f0",background:form.status===k?v.bg:"#f8fafc",color:form.status===k?v.color:"#64748b",borderRadius:9,padding:"9px 4px",fontSize:12,fontWeight:700,cursor:"pointer" }}>{v.label}</button>
+))}
+</div>
+</div>
+<div style={{ marginBottom:13 }}>
+<div style={{ fontSize:12,fontWeight:600,color:"#475569",marginBottom:5 }}>Observações (opcional)</div>
+<textarea value={form.obs} onChange={e=>setForm(f=>({...f,obs:e.target.value}))} placeholder="Ex: Justificou a falta por consulta médica. Chegou 15 min atrasado. Sentiu dor no joelho durante o treino." rows={4} style={{ width:"100%",padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,color:"#0f172a",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical" }}/>
+</div>
+<div style={{ display:"flex",gap:8 }}>
+{editId && <Btn variant="danger" onClick={()=>{del(editId);setModal(false);}}>Excluir</Btn>}
+<Btn full onClick={save} disabled={!form.studentId||!form.date}>Salvar</Btn>
+</div>
+</Modal>}
+</div>
+);
+};
 const ProgramGenerator = ({ students, assessments, programs, setPrograms, nav }) => {
 return <div/>;
 const [selSt, setSelSt] = useState("");
@@ -6502,6 +6648,7 @@ const [notifOpen,setNotifOpen]=useState(false);
 const [checkinsSeenAt,setCheckinsSeenAt]=useState(()=>LS.get("longevus_checkins_seen_at","1970-01-01T00:00:00.000Z"));
 const [atividadesExtras,setAtividadesExtras]=useState(()=>LS.get("longevus_atividades_extras",[]));
 const [professorFeedbacks,setProfessorFeedbacks]=useState(()=>LS.get("longevus_professor_feedbacks",[]));
+const [agendaEntries,setAgendaEntries]=useState(()=>LS.get("longevus_agenda",[]));
 const [dbReady,setDbReady]=useState(false);
 const [hubResults,setHubResults]=useState(()=>LS.get("longevus_hub_results",[]));
 useEffect(()=>{LS.set("longevus_hub_results",hubResults);},[hubResults]);
@@ -6513,10 +6660,10 @@ setDbReady(false);
 (async()=>{
 setSyncing(true);
 try {
-const [s,a,d,docs,c,p,sess,ae,ck,pf] = await Promise.all([
+const [s,a,d,docs,c,p,sess,ae,ck,pf,ag] = await Promise.all([
 DB.load("students"), DB.load("assessments"), DB.load("daily_logs"),
 DB.load("documents"), DB.load("cardio_records"), DB.load("programs"), DB.load("sessions"),
-DB.load("atividades_extras"), DB.loadRaw("checkins"), DB.load("professor_feedbacks")
+DB.load("atividades_extras"), DB.loadRaw("checkins"), DB.load("professor_feedbacks"), DB.load("agenda")
 ]);
 if(s!==null){ setStudents(s); LS.set("longevus_students",s); }
 if(a!==null){ setAssessments(a); LS.set("longevus_assessments",a); }
@@ -6528,6 +6675,7 @@ if(sess!==null){ setSessions(sess); LS.set("longevus_sessions",sess); }
 if(ae!==null){ setAtividadesExtras(ae); LS.set("longevus_atividades_extras",ae); }
 if(ck!==null){ setCheckins(ck); LS.set("longevus_checkins",ck); }
 if(pf!==null){ setProfessorFeedbacks(pf); LS.set("longevus_professor_feedbacks",pf); }
+if(ag!==null){ setAgendaEntries(ag); LS.set("longevus_agenda",ag); }
 setDbReady(true);
 } catch(e){ setDbReady(true); }
 setSyncing(false);
@@ -6545,6 +6693,7 @@ useEffect(()=>{LS.set("longevus_programs",programs);},[programs]);
 useEffect(()=>{LS.set("longevus_sessions",sessions);},[sessions]);
 useEffect(()=>{LS.set("longevus_atividades_extras",atividadesExtras);},[atividadesExtras]);
 useEffect(()=>{LS.set("longevus_professor_feedbacks",professorFeedbacks);},[professorFeedbacks]);
+useEffect(()=>{LS.set("longevus_agenda",agendaEntries);},[agendaEntries]);
 // Sync Supabase — salva cada item individualmente
 useEffect(()=>{ if(dbReady) students.forEach(s=>DB.save("students",s.id,s)); },[students,dbReady]);
 useEffect(()=>{ if(dbReady) assessments.forEach(a=>DB.save("assessments",a.id,a,a.studentId)); },[assessments,dbReady]);
@@ -6555,6 +6704,7 @@ useEffect(()=>{ if(dbReady) programs.forEach(p=>DB.save("programs",p.id,p,p.stud
 useEffect(()=>{ if(dbReady) sessions.forEach(s=>DB.save("sessions",s.id,s,s.studentId)); },[sessions,dbReady]);
 useEffect(()=>{ if(dbReady) atividadesExtras.forEach(a=>DB.save("atividades_extras",a.id,a,a.studentId)); },[atividadesExtras,dbReady]);
 useEffect(()=>{ if(dbReady) professorFeedbacks.forEach(f=>DB.save("professor_feedbacks",f.id,f,f.studentId)); },[professorFeedbacks,dbReady]);
+useEffect(()=>{ if(dbReady) agendaEntries.forEach(e=>DB.save("agenda",e.id,e,e.studentId)); },[agendaEntries,dbReady]);
 const nav=useCallback((p,props={})=>{setPage(p);setPageProps(props);window.scrollTo(0,0);},[]);
 const [pendingQCount,setPendingQCount]=useState(0);
 const refreshPendingCount=useCallback(async()=>{
@@ -6574,6 +6724,7 @@ const navItems=[
 {id:"extprograma",label:"Programa",icon:"zap"},
 ];
 const menuItems=[
+{id:"agenda",label:"Agenda",icon:"calendar"},
 {id:"questionarios",label:"Questionários",icon:"inbox"},
 {id:"extraatividades",label:"Atividades Extras",icon:"calendar"},
 {id:"financeiro",label:"Financeiro",icon:"money"},
@@ -6590,7 +6741,7 @@ const menuItems=[
 ];
 const [menuOpen, setMenuOpen] = useState(false);
 const [showSubscribe, setShowSubscribe] = useState(false);
-const activePage=page==="studentDetail"?"students":(["dashboard","students","assessments","daily","reports","documents","program","cognitivehub","profile","questionarios","vincular","extraatividades","financeiro"].includes(page)?page:null);
+const activePage=page==="studentDetail"?"students":(["dashboard","students","assessments","daily","reports","documents","program","cognitivehub","profile","questionarios","vincular","extraatividades","financeiro","agenda"].includes(page)?page:null);
 if (authLoading) {
 return <div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14 }}>Carregando...</div>;
 }
@@ -6687,6 +6838,7 @@ return (
 }{page==="extprograma"&&(()=>{window.open("longevus-programa.html","_self");return null;})()}{page==="cognitivehub"&&<CognitiveHub students={students} hubResults={hubResults} setHubResults={setHubResults}/>}{page==="sessions"&&<SessionTracker students={students} programs={programs} sessions={sessions} setSessions={setSessions} nav={nav}/>}{page==="vincular"&&<VincularAlunos students={students} setStudents={setStudents}/>
 }{page==="extraatividades"&&<AtividadesExtras students={students} atividadesExtras={atividadesExtras} setAtividadesExtras={setAtividadesExtras} prefillStudentId={pageProps.studentId} assessments={assessments} checkins={checkins}/>
 }{page==="financeiro"&&<Financeiro students={students} setStudents={setStudents} nav={nav}/>
+}{page==="agenda"&&<Agenda students={students} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} nav={nav}/>
 }{page==="profile"&&<Profile session={session} onLogoChange={setLogoUrl}/>}
 </div>
 </div>
