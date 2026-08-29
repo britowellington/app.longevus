@@ -660,11 +660,17 @@ return (
 </div>
 );
 };
-const StudentDetail = ({ studentId, students, setStudents, assessments, setAssessments, programs, setPrograms, dailyLogs, documents, checkins, professorFeedbacks, setProfessorFeedbacks, initialTab, nav }) => {
+const StudentDetail = ({ studentId, students, setStudents, assessments, setAssessments, programs, setPrograms, dailyLogs, documents, checkins, professorFeedbacks, setProfessorFeedbacks, agendaEntries, setAgendaEntries, initialTab, nav }) => {
 const st = students.find(s=>s.id===studentId);
 const [tab,setTab] = useState(initialTab||"aval");
 const [editModal,setEditModal] = useState(false);
 const [form,setForm] = useState(null);
+const [agendaMonthRef,setAgendaMonthRef] = useState(()=>new Date());
+const [agendaEditId,setAgendaEditId] = useState(null);
+const [agendaEditForm,setAgendaEditForm] = useState(null);
+const openAgendaEdit = (entry) => { setAgendaEditId(entry.id); setAgendaEditForm({ date:entry.date, time:entry.time||"", status:entry.status, obs:entry.obs||"" }); };
+const saveAgendaEdit = () => { setAgendaEntries(p=>p.map(e=>e.id===agendaEditId?{...e,...agendaEditForm}:e)); setAgendaEditId(null); };
+const delAgendaEntry = async (id) => { if(window.confirm("Remover este compromisso da agenda?")){ await DB.remove("agenda",id); setAgendaEntries(p=>p.filter(e=>e.id!==id)); setAgendaEditId(null); } };
 if(!st) return <div style={{ textAlign:"center",padding:40,color:"#94a3b8" }}>Aluno não encontrado.</div>;
 const stAssessments = assessments.filter(a=>a.studentId===studentId).sort((a,b)=>b.date?.localeCompare(a.date));
 const stPrograms = programs.filter(p=>p.studentId===studentId).sort((a,b)=>(b.criadoEm||"").localeCompare(a.criadoEm||""));
@@ -673,6 +679,11 @@ const stLogs = dailyLogs.filter(l=>l.studentId===studentId).sort((a,b)=>b.date?.
 const stDocs = documents.filter(d=>d.studentId===studentId).sort((a,b)=>b.date?.localeCompare(a.date));
 const stCheckins = (checkins||[]).filter(c=>c.student_id===studentId).sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||""));
 const stFeedbacks = (professorFeedbacks||[]).filter(f=>f.studentId===studentId).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+const stAgenda = (agendaEntries||[]).filter(e=>e.studentId===studentId);
+const agendaMesRef = toISODateLocal(agendaMonthRef).slice(0,7);
+const stAgendaMes = stAgenda.filter(e=>e.date && e.date.slice(0,7)===agendaMesRef).sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(a.time||"").localeCompare(b.time||""));
+const agendaContagemMes = { agendado:0, confirmada:0, realizada:0, falta:0 };
+stAgendaMes.forEach(e=>{ if(agendaContagemMes[e.status]!==undefined) agendaContagemMes[e.status]++; });
 const [feedbackModal,setFeedbackModal] = useState(false);
 const [feedbackForm,setFeedbackForm] = useState(null);
 const openNewFeedback = ()=>{setFeedbackForm({date:new Date().toISOString().slice(0,10),text:""});setFeedbackModal(true);};
@@ -697,7 +708,7 @@ window.open("longevus-programa.html?novo="+encodeURIComponent(st.id),"_self");
 const openViewProgram = (prog) => {
 window.open("longevus-programa.html?ver="+encodeURIComponent(prog.id),"_self");
 };
-const TABS=[{id:"aval",label:"Avaliações"},{id:"treino",label:"Treino"},{id:"checkin",label:"Check-in"},{id:"mon",label:"Monitoramento"},{id:"doc",label:"Documentos"}];
+const TABS=[{id:"aval",label:"Avaliações"},{id:"treino",label:"Treino"},{id:"agenda",label:"Agenda"},{id:"checkin",label:"Check-in"},{id:"mon",label:"Monitoramento"},{id:"doc",label:"Documentos"}];
 return (
 <div>
 <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:16 }}>
@@ -784,6 +795,63 @@ return (
 </div>
 </Card>}
 {stPrograms.length>1&&<div style={{ fontSize:11,color:"#94a3b8",marginTop:10,textAlign:"center" }}>+{stPrograms.length-1} programa(s) anterior(es)</div>}
+</div>
+)}
+{tab==="agenda"&&(
+<div>
+<div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10 }}>
+<button onClick={()=>setAgendaMonthRef(d=>new Date(d.getFullYear(),d.getMonth()-1,1))} style={{ border:"1.5px solid #e2e8f0",background:"#fff",borderRadius:8,width:30,height:30,cursor:"pointer",color:"#475569" }}>‹</button>
+<div style={{ fontSize:14,fontWeight:800 }}>{MESES_NOME[agendaMonthRef.getMonth()]} de {agendaMonthRef.getFullYear()}</div>
+<button onClick={()=>setAgendaMonthRef(d=>new Date(d.getFullYear(),d.getMonth()+1,1))} style={{ border:"1.5px solid #e2e8f0",background:"#fff",borderRadius:8,width:30,height:30,cursor:"pointer",color:"#475569" }}>›</button>
+</div>
+<div style={{ display:"flex",gap:8,flexWrap:"wrap",marginBottom:16 }}>
+{Object.entries(STATUS_AGENDA).map(([k,v])=>(
+<div key={k} style={{ flex:"1 1 40%",background:v.bg,borderRadius:10,padding:"10px 12px",textAlign:"center" }}>
+<div style={{ fontSize:20,fontWeight:800,color:v.color }}>{agendaContagemMes[k]||0}</div>
+<div style={{ fontSize:11,fontWeight:700,color:v.color }}>{v.label}</div>
+</div>
+))}
+</div>
+{stAgendaMes.length===0?<Card style={{ textAlign:"center",padding:32 }}><I n="calendar" c="#cbd5e1" s={32}/><div style={{ color:"#94a3b8",marginTop:10 }}>Nenhuma aula agendada neste mês.</div></Card>:
+<div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+{stAgendaMes.map(e=>{
+const cfg=STATUS_AGENDA[e.status]||STATUS_AGENDA.agendado;
+return (
+<Card key={e.id} onClick={()=>openAgendaEdit(e)} style={{ padding:"14px 16px" }}>
+<div style={{ display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10 }}>
+<div style={{ flex:1,minWidth:0 }}>
+<div style={{ display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:6 }}>
+<span style={{ fontWeight:700,fontSize:14 }}>{fmt(e.date)}{e.time?" · "+e.time:""}</span>
+<Badge color={cfg.color} bg={cfg.bg}>{cfg.label}</Badge>
+</div>
+{e.obs && <div style={{ fontSize:12,color:"#64748b",marginTop:2,whiteSpace:"pre-wrap" }}>{e.obs}</div>}
+</div>
+<button onClick={ev=>{ev.stopPropagation();delAgendaEntry(e.id);}} style={{ background:"none",border:"none",cursor:"pointer",color:"#e2e8f0",padding:4,flexShrink:0 }}><I n="trash" s={15}/></button>
+</div>
+</Card>
+);
+})}
+</div>}
+{agendaEditId&&agendaEditForm&&<Modal title="Compromisso" onClose={()=>setAgendaEditId(null)}>
+<Inp label="Data" type="date" value={agendaEditForm.date} onChange={v=>setAgendaEditForm(f=>({...f,date:v}))}/>
+<Inp label="Horário" type="time" value={agendaEditForm.time} onChange={v=>setAgendaEditForm(f=>({...f,time:v}))}/>
+<div style={{ marginBottom:13 }}>
+<div style={{ fontSize:12,fontWeight:600,color:"#475569",marginBottom:5 }}>Status</div>
+<div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
+{Object.entries(STATUS_AGENDA).map(([k,v])=>(
+<button key={k} onClick={()=>setAgendaEditForm(f=>({...f,status:k}))} style={{ flex:"1 1 45%",border:agendaEditForm.status===k?`1.5px solid ${v.color}`:"1.5px solid #e2e8f0",background:agendaEditForm.status===k?v.bg:"#f8fafc",color:agendaEditForm.status===k?v.color:"#64748b",borderRadius:9,padding:"9px 4px",fontSize:12,fontWeight:700,cursor:"pointer" }}>{v.label}</button>
+))}
+</div>
+</div>
+<div style={{ marginBottom:13 }}>
+<div style={{ fontSize:12,fontWeight:600,color:"#475569",marginBottom:5 }}>Observação / justificativa (opcional)</div>
+<textarea value={agendaEditForm.obs} onChange={e=>setAgendaEditForm(f=>({...f,obs:e.target.value}))} rows={4} style={{ width:"100%",padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,color:"#0f172a",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical" }}/>
+</div>
+<div style={{ display:"flex",gap:8 }}>
+<Btn variant="danger" onClick={()=>delAgendaEntry(agendaEditId)}>Excluir</Btn>
+<Btn full onClick={saveAgendaEdit}>Salvar</Btn>
+</div>
+</Modal>}
 </div>
 )}
 {tab==="checkin"&&(
@@ -6924,7 +6992,7 @@ return (
 <div style={{ padding:"20px 16px",maxWidth:640,margin:"0 auto" }}>
 {page==="dashboard"&&<Dashboard students={students} assessments={assessments} dailyLogs={dailyLogs} nav={nav}/>}
 {page==="students"&&<Students students={students} setStudents={setStudents} nav={nav}/>}
-{page==="studentDetail"&&<StudentDetail studentId={pageProps.studentId} students={students} setStudents={setStudents} assessments={assessments} setAssessments={setAssessments} programs={programs} setPrograms={setPrograms} dailyLogs={dailyLogs} documents={documents} checkins={checkins} professorFeedbacks={professorFeedbacks} setProfessorFeedbacks={setProfessorFeedbacks} initialTab={pageProps.initialTab} nav={nav}/>}
+{page==="studentDetail"&&<StudentDetail studentId={pageProps.studentId} students={students} setStudents={setStudents} assessments={assessments} setAssessments={setAssessments} programs={programs} setPrograms={setPrograms} dailyLogs={dailyLogs} documents={documents} checkins={checkins} professorFeedbacks={professorFeedbacks} setProfessorFeedbacks={setProfessorFeedbacks} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} initialTab={pageProps.initialTab} nav={nav}/>}
 {page==="assessments"&&<AssessmentsList assessments={assessments} students={students} setAssessments={setAssessments} nav={nav}/>}
 {page==="newAssessment"&&<NewAssessment students={students} setAssessments={setAssessments} nav={nav} prefillStudentId={pageProps.studentId}/>}
 {page==="result"&&<Result assessmentId={pageProps.id} assessments={assessments} setAssessments={setAssessments} students={students} nav={nav}/>}
