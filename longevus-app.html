@@ -5613,6 +5613,97 @@ return (
 </div>
 );
 };
+const LEAD_STAGES = [
+{ id:"novo", label:"Novo Contato", color:"#64748b", bg:"#f1f5f9" },
+{ id:"conversa", label:"Em Conversa", color:"#2563eb", bg:"#dbeafe" },
+{ id:"experimental", label:"Aula Experimental", color:"#d97706", bg:"#fef3c7" },
+{ id:"proposta", label:"Proposta Enviada", color:"#7c3aed", bg:"#ede9fe" },
+{ id:"convertido", label:"Convertido", color:"#16a34a", bg:"#dcfce7" },
+{ id:"perdido", label:"Perdido", color:"#dc2626", bg:"#fee2e2" },
+];
+const LEAD_ORIGENS = ["WhatsApp","Presencial","Indicação","Instagram","Outro"];
+const Leads = ({ leads, setLeads, students, setStudents, nav }) => {
+const [modal,setModal]=useState(false);
+const [editId,setEditId]=useState(null);
+const emptyForm = ()=>({ name:"", phone:"", origem:"WhatsApp", obs:"", stage:"novo" });
+const [form,setForm]=useState(emptyForm());
+const openNew = () => { setEditId(null); setForm(emptyForm()); setModal(true); };
+const openEdit = (lead) => { setEditId(lead.id); setForm({ name:lead.name, phone:lead.phone||"", origem:lead.origem||"WhatsApp", obs:lead.obs||"", stage:lead.stage }); setModal(true); };
+const save = () => {
+if(!form.name.trim()) return;
+if(editId) setLeads(p=>p.map(l=>l.id===editId?{...l,...form,name:form.name.trim()}:l));
+else setLeads(p=>[...p,{ id:uid(), ...form, name:form.name.trim(), createdAt:todayStr() }]);
+setModal(false);
+};
+const del = async (id) => { if(window.confirm("Remover este lead?")){ await DB.remove("leads",id); setLeads(p=>p.filter(l=>l.id!==id)); } };
+const moveStage = (lead, delta) => {
+const idx = LEAD_STAGES.findIndex(s=>s.id===lead.stage);
+const next = LEAD_STAGES[idx+delta];
+if(!next) return;
+setLeads(p=>p.map(l=>l.id===lead.id?{...l,stage:next.id}:l));
+};
+const converter = (lead) => {
+if(!window.confirm(`Converter "${lead.name}" em aluno?`)) return;
+const novoAluno = { id:uid(), name:lead.name, phone:lead.phone||"", whatsapp:lead.phone||"", dob:"", sex:"", createdAt:todayStr() };
+setStudents(p=>[...p,novoAluno]);
+setLeads(p=>p.map(l=>l.id===lead.id?{...l,stage:"convertido",studentId:novoAluno.id}:l));
+};
+return (
+<div>
+<div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10 }}>
+<div style={{ fontWeight:800,fontSize:20 }}>🧲 Leads</div>
+<Btn sm icon="plus" onClick={openNew}>Novo Lead</Btn>
+</div>
+<div style={{ fontSize:13,color:"#64748b",marginBottom:14,lineHeight:1.5 }}>
+Acompanhe cada pessoa que chegou até você (WhatsApp, indicação, presencial...) desde o primeiro contato até virar aluno.
+</div>
+<div style={{ display:"flex",gap:10,overflowX:"auto",paddingBottom:10,WebkitOverflowScrolling:"touch",margin:"0 -20px",padding:"0 20px 10px" }}>
+{LEAD_STAGES.map((stage,idx)=>{
+const doStage = leads.filter(l=>l.stage===stage.id);
+return (
+<div key={stage.id} style={{ flex:"0 0 240px",width:240 }}>
+<div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8,padding:"0 2px" }}>
+<div style={{ fontSize:12,fontWeight:800,color:stage.color }}>{stage.label}</div>
+<div style={{ fontSize:11,fontWeight:700,color:"#fff",background:stage.color,borderRadius:99,minWidth:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 5px" }}>{doStage.length}</div>
+</div>
+<div style={{ display:"flex",flexDirection:"column",gap:8,minHeight:60 }}>
+{doStage.length===0 && <div style={{ border:"1.5px dashed #e2e8f0",borderRadius:10,padding:"16px 8px",textAlign:"center",fontSize:11,color:"#cbd5e1" }}>Vazio</div>}
+{doStage.map(lead=>(
+<Card key={lead.id} onClick={()=>openEdit(lead)} style={{ padding:"10px 12px" }}>
+<div style={{ fontWeight:700,fontSize:13,marginBottom:3 }}>{lead.name}</div>
+<div style={{ fontSize:11,color:"#94a3b8",marginBottom:6 }}>{lead.origem}{lead.phone?" · "+lead.phone:""}</div>
+{lead.obs && <div style={{ fontSize:11,color:"#64748b",marginBottom:6,whiteSpace:"pre-wrap" }}>{lead.obs}</div>}
+<div style={{ display:"flex",alignItems:"center",gap:4 }} onClick={e=>e.stopPropagation()}>
+<button disabled={idx===0} onClick={()=>moveStage(lead,-1)} style={{ border:"1px solid #e2e8f0",background:"#fff",borderRadius:6,width:24,height:24,cursor:idx===0?"default":"pointer",opacity:idx===0?0.3:1,fontSize:12,color:"#475569" }}>‹</button>
+<button disabled={idx===LEAD_STAGES.length-1} onClick={()=>moveStage(lead,1)} style={{ border:"1px solid #e2e8f0",background:"#fff",borderRadius:6,width:24,height:24,cursor:idx===LEAD_STAGES.length-1?"default":"pointer",opacity:idx===LEAD_STAGES.length-1?0.3:1,fontSize:12,color:"#475569" }}>›</button>
+{!lead.studentId && <button onClick={()=>converter(lead)} style={{ flex:1,border:"none",background:"#dcfce7",color:"#16a34a",borderRadius:6,padding:"4px 6px",fontSize:10,fontWeight:700,cursor:"pointer" }}>🎓 Converter</button>}
+{lead.studentId && <button onClick={()=>nav("studentDetail",{studentId:lead.studentId})} style={{ flex:1,border:"none",background:"#f1f5f9",color:"#475569",borderRadius:6,padding:"4px 6px",fontSize:10,fontWeight:700,cursor:"pointer" }}>Ver aluno</button>}
+<button onClick={()=>del(lead.id)} style={{ border:"none",background:"none",cursor:"pointer",color:"#e2e8f0",padding:2 }}><I n="trash" s={13}/></button>
+</div>
+</Card>
+))}
+</div>
+</div>
+);
+})}
+</div>
+{modal&&<Modal title={editId?"Editar Lead":"Novo Lead"} onClose={()=>setModal(false)}>
+<Inp label="Nome *" value={form.name} onChange={v=>setForm(f=>({...f,name:v}))} placeholder="Nome do contato"/>
+<Inp label="Telefone / WhatsApp" value={form.phone} onChange={v=>setForm(f=>({...f,phone:v}))} placeholder="(00) 00000-0000"/>
+<Inp label="Origem" value={form.origem} onChange={v=>setForm(f=>({...f,origem:v}))} opts={LEAD_ORIGENS.map(o=>({v:o,l:o}))}/>
+<Inp label="Etapa" value={form.stage} onChange={v=>setForm(f=>({...f,stage:v}))} opts={LEAD_STAGES.map(s=>({v:s.id,l:s.label}))}/>
+<div style={{ marginBottom:13 }}>
+<div style={{ fontSize:12,fontWeight:600,color:"#475569",marginBottom:5 }}>Observações</div>
+<textarea value={form.obs} onChange={e=>setForm(f=>({...f,obs:e.target.value}))} placeholder="Ex: Veio pelo Instagram, interessada em treino funcional 3x/semana." rows={4} style={{ width:"100%",padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,color:"#0f172a",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical" }}/>
+</div>
+<div style={{ display:"flex",gap:8 }}>
+{editId && <Btn variant="danger" onClick={()=>{del(editId);setModal(false);}}>Excluir</Btn>}
+<Btn full onClick={save} disabled={!form.name.trim()}>Salvar</Btn>
+</div>
+</Modal>}
+</div>
+);
+};
 const ProgramGenerator = ({ students, assessments, programs, setPrograms, nav }) => {
 return <div/>;
 const [selSt, setSelSt] = useState("");
@@ -6814,6 +6905,7 @@ const [checkinsSeenAt,setCheckinsSeenAt]=useState(()=>LS.get("longevus_checkins_
 const [atividadesExtras,setAtividadesExtras]=useState(()=>LS.get("longevus_atividades_extras",[]));
 const [professorFeedbacks,setProfessorFeedbacks]=useState(()=>LS.get("longevus_professor_feedbacks",[]));
 const [agendaEntries,setAgendaEntries]=useState(()=>LS.get("longevus_agenda",[]));
+const [leads,setLeads]=useState(()=>LS.get("longevus_leads",[]));
 const [dbReady,setDbReady]=useState(false);
 const [hubResults,setHubResults]=useState(()=>LS.get("longevus_hub_results",[]));
 useEffect(()=>{LS.set("longevus_hub_results",hubResults);},[hubResults]);
@@ -6825,10 +6917,10 @@ setDbReady(false);
 (async()=>{
 setSyncing(true);
 try {
-const [s,a,d,docs,c,p,sess,ae,ck,pf,ag] = await Promise.all([
+const [s,a,d,docs,c,p,sess,ae,ck,pf,ag,ld] = await Promise.all([
 DB.load("students"), DB.load("assessments"), DB.load("daily_logs"),
 DB.load("documents"), DB.load("cardio_records"), DB.load("programs"), DB.load("sessions"),
-DB.load("atividades_extras"), DB.loadRaw("checkins"), DB.load("professor_feedbacks"), DB.load("agenda")
+DB.load("atividades_extras"), DB.loadRaw("checkins"), DB.load("professor_feedbacks"), DB.load("agenda"), DB.load("leads")
 ]);
 if(s!==null){ setStudents(s); LS.set("longevus_students",s); }
 if(a!==null){ setAssessments(a); LS.set("longevus_assessments",a); }
@@ -6841,6 +6933,7 @@ if(ae!==null){ setAtividadesExtras(ae); LS.set("longevus_atividades_extras",ae);
 if(ck!==null){ setCheckins(ck); LS.set("longevus_checkins",ck); }
 if(pf!==null){ setProfessorFeedbacks(pf); LS.set("longevus_professor_feedbacks",pf); }
 if(ag!==null){ setAgendaEntries(ag); LS.set("longevus_agenda",ag); }
+if(ld!==null){ setLeads(ld); LS.set("longevus_leads",ld); }
 setDbReady(true);
 } catch(e){ setDbReady(true); }
 setSyncing(false);
@@ -6859,6 +6952,7 @@ useEffect(()=>{LS.set("longevus_sessions",sessions);},[sessions]);
 useEffect(()=>{LS.set("longevus_atividades_extras",atividadesExtras);},[atividadesExtras]);
 useEffect(()=>{LS.set("longevus_professor_feedbacks",professorFeedbacks);},[professorFeedbacks]);
 useEffect(()=>{LS.set("longevus_agenda",agendaEntries);},[agendaEntries]);
+useEffect(()=>{LS.set("longevus_leads",leads);},[leads]);
 // Sync Supabase — salva cada item individualmente
 useEffect(()=>{ if(dbReady) students.forEach(s=>DB.save("students",s.id,s)); },[students,dbReady]);
 useEffect(()=>{ if(dbReady) assessments.forEach(a=>DB.save("assessments",a.id,a,a.studentId)); },[assessments,dbReady]);
@@ -6870,6 +6964,7 @@ useEffect(()=>{ if(dbReady) sessions.forEach(s=>DB.save("sessions",s.id,s,s.stud
 useEffect(()=>{ if(dbReady) atividadesExtras.forEach(a=>DB.save("atividades_extras",a.id,a,a.studentId)); },[atividadesExtras,dbReady]);
 useEffect(()=>{ if(dbReady) professorFeedbacks.forEach(f=>DB.save("professor_feedbacks",f.id,f,f.studentId)); },[professorFeedbacks,dbReady]);
 useEffect(()=>{ if(dbReady) agendaEntries.forEach(e=>DB.save("agenda",e.id,e,e.studentId)); },[agendaEntries,dbReady]);
+useEffect(()=>{ if(dbReady) leads.forEach(l=>DB.save("leads",l.id,l,l.studentId||null)); },[leads,dbReady]);
 const nav=useCallback((p,props={})=>{setPage(p);setPageProps(props);window.scrollTo(0,0);},[]);
 const [pendingQCount,setPendingQCount]=useState(0);
 const refreshPendingCount=useCallback(async()=>{
@@ -6889,6 +6984,7 @@ const navItems=[
 {id:"extprograma",label:"Programa",icon:"zap"},
 ];
 const menuItems=[
+{id:"leads",label:"Leads",icon:"user"},
 {id:"agenda",label:"Agenda",icon:"calendar"},
 {id:"questionarios",label:"Questionários",icon:"inbox"},
 {id:"extraatividades",label:"Atividades Extras",icon:"calendar"},
@@ -6906,7 +7002,7 @@ const menuItems=[
 ];
 const [menuOpen, setMenuOpen] = useState(false);
 const [showSubscribe, setShowSubscribe] = useState(false);
-const activePage=page==="studentDetail"?"students":(["dashboard","students","assessments","daily","reports","documents","program","cognitivehub","profile","questionarios","vincular","extraatividades","financeiro","agenda"].includes(page)?page:null);
+const activePage=page==="studentDetail"?"students":(["dashboard","students","assessments","daily","reports","documents","program","cognitivehub","profile","questionarios","vincular","extraatividades","financeiro","agenda","leads"].includes(page)?page:null);
 if (authLoading) {
 return <div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14 }}>Carregando...</div>;
 }
@@ -7004,6 +7100,7 @@ return (
 }{page==="extraatividades"&&<AtividadesExtras students={students} atividadesExtras={atividadesExtras} setAtividadesExtras={setAtividadesExtras} prefillStudentId={pageProps.studentId} assessments={assessments} checkins={checkins}/>
 }{page==="financeiro"&&<Financeiro students={students} setStudents={setStudents} nav={nav}/>
 }{page==="agenda"&&<Agenda students={students} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} nav={nav}/>
+}{page==="leads"&&<Leads leads={leads} setLeads={setLeads} students={students} setStudents={setStudents} nav={nav}/>
 }{page==="profile"&&<Profile session={session} onLogoChange={setLogoUrl}/>}
 </div>
 </div>
