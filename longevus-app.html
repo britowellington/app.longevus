@@ -5303,45 +5303,68 @@ title={"Ver no YouTube: "+name}>
 </a>
 );
 const STATUS_AGENDA = {
-presenca: { label:"Presença", color:"#16a34a", bg:"#dcfce7", dot:"#16a34a" },
+agendado: { label:"Agendado", color:"#64748b", bg:"#f1f5f9", dot:"#94a3b8" },
+confirmada: { label:"Confirmada", color:"#2563eb", bg:"#dbeafe", dot:"#2563eb" },
+realizada: { label:"Realizada", color:"#16a34a", bg:"#dcfce7", dot:"#16a34a" },
 falta: { label:"Falta", color:"#dc2626", bg:"#fee2e2", dot:"#dc2626" },
-observacao: { label:"Observação", color:"#d97706", bg:"#fef9c3", dot:"#d97706" },
 };
 const Agenda = ({ students, agendaEntries, setAgendaEntries, nav }) => {
 const [viewMode,setViewMode]=useState("calendario");
 const [filterSt,setFilterSt]=useState("");
 const [calRef,setCalRef]=useState(()=>new Date());
-const [modal,setModal]=useState(false);
-const [editId,setEditId]=useState(null);
 const [dayModal,setDayModal]=useState(null);
-const emptyForm = (date) => ({ studentId:filterSt||"", date:date||todayStr(), status:"presenca", obs:"" });
-const [form,setForm]=useState(emptyForm());
-const openNew = (date) => { setEditId(null); setForm(emptyForm(date)); setModal(true); };
-const openEdit = (entry) => { setEditId(entry.id); setForm({ studentId:entry.studentId, date:entry.date, status:entry.status, obs:entry.obs||"" }); setModal(true); };
-const save = () => {
-if(!form.studentId||!form.date) return;
-if(editId){ setAgendaEntries(p=>p.map(e=>e.id===editId?{...e,...form}:e)); }
-else { setAgendaEntries(p=>[...p,{ id:uid(), ...form }]); }
-setModal(false);
+const [scheduleModal,setScheduleModal]=useState(false);
+const emptySchedule = ()=>({ studentId:filterSt||"", time:"", obs:"" });
+const [scheduleForm,setScheduleForm]=useState(emptySchedule());
+const [selDates,setSelDates]=useState(()=>new Set());
+const [scheduleCalRef,setScheduleCalRef]=useState(()=>new Date());
+const openSchedule = () => { setScheduleForm(emptySchedule()); setSelDates(new Set()); setScheduleCalRef(new Date()); setScheduleModal(true); };
+const toggleDate = (iso) => setSelDates(prev=>{ const next=new Set(prev); if(next.has(iso))next.delete(iso); else next.add(iso); return next; });
+const toggleWeekdayInMonth = (weekday) => {
+const dias = getMonthDates(scheduleCalRef.getFullYear(), scheduleCalRef.getMonth()).filter(d=>d.getDay()===weekday).map(toISODateLocal);
+const allSelected = dias.every(iso=>selDates.has(iso));
+setSelDates(prev=>{ const next=new Set(prev); dias.forEach(iso=>{ if(allSelected)next.delete(iso); else next.add(iso); }); return next; });
 };
-const del = async (id) => { if(window.confirm("Remover este registro da agenda?")){ await DB.remove("agenda",id); setAgendaEntries(p=>p.filter(e=>e.id!==id)); } };
+const saveSchedule = () => {
+if(!scheduleForm.studentId||!scheduleForm.time||selDates.size===0) return;
+const novas = [...selDates].sort().map(date=>({ id:uid(), studentId:scheduleForm.studentId, date, time:scheduleForm.time, status:"agendado", obs:scheduleForm.obs.trim() }));
+setAgendaEntries(p=>[...p,...novas]);
+setScheduleModal(false);
+};
+const scheduleDiasDoMes = getMonthDates(scheduleCalRef.getFullYear(), scheduleCalRef.getMonth());
+const schedulePrimeiroDiaSemana = scheduleDiasDoMes[0].getDay();
+const [entryModal,setEntryModal]=useState(false);
+const [entryEditId,setEntryEditId]=useState(null);
+const [entryForm,setEntryForm]=useState({ studentId:"", date:"", time:"", status:"agendado", obs:"" });
+const openEntry = (date, entry) => {
+if(entry){ setEntryEditId(entry.id); setEntryForm({ studentId:entry.studentId, date:entry.date, time:entry.time||"", status:entry.status, obs:entry.obs||"" }); }
+else { setEntryEditId(null); setEntryForm({ studentId:filterSt||"", date:date||todayStr(), time:"", status:"agendado", obs:"" }); }
+setEntryModal(true);
+};
+const saveEntry = () => {
+if(!entryForm.studentId||!entryForm.date) return;
+if(entryEditId){ setAgendaEntries(p=>p.map(e=>e.id===entryEditId?{...e,...entryForm}:e)); }
+else { setAgendaEntries(p=>[...p,{ id:uid(), ...entryForm }]); }
+setEntryModal(false);
+};
+const delEntry = async (id) => { if(window.confirm("Remover este compromisso da agenda?")){ await DB.remove("agenda",id); setAgendaEntries(p=>p.filter(e=>e.id!==id)); } };
 const entriesFiltradas = [...agendaEntries].filter(e=>!filterSt||e.studentId===filterSt);
 const diasDoMes = getMonthDates(calRef.getFullYear(), calRef.getMonth());
 const primeiroDiaSemana = diasDoMes[0].getDay();
 const mesRef = toISODateLocal(calRef).slice(0,7);
 const entriesDoMes = entriesFiltradas.filter(e=>e.date && e.date.slice(0,7)===mesRef);
-const contagemMes = { presenca:0, falta:0, observacao:0 };
+const contagemMes = { agendado:0, confirmada:0, realizada:0, falta:0 };
 entriesDoMes.forEach(e=>{ if(contagemMes[e.status]!==undefined) contagemMes[e.status]++; });
-const entriesPorDia = (iso) => entriesFiltradas.filter(e=>e.date===iso);
-const listaOrdenada = [...entriesFiltradas].sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+const entriesPorDia = (iso) => entriesFiltradas.filter(e=>e.date===iso).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
+const listaOrdenada = [...entriesFiltradas].sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(a.time||"").localeCompare(b.time||""));
 return (
 <div>
 <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10 }}>
 <div style={{ fontWeight:800,fontSize:20 }}>📅 Agenda</div>
-<Btn sm icon="plus" onClick={()=>openNew(todayStr())}>Novo</Btn>
+<Btn sm icon="plus" onClick={openSchedule}>Agendar Aulas</Btn>
 </div>
 <div style={{ fontSize:13,color:"#64748b",marginBottom:14,lineHeight:1.5 }}>
-Selecione o aluno e o dia para registrar presença, falta ou uma observação. Toque num dia do calendário pra ver ou adicionar registros.
+Primeiro agende os dias e o horário das aulas com o aluno. Quando o dia chegar, toque no compromisso pra marcar se foi confirmada, realizada, se o aluno faltou, e deixar uma observação.
 </div>
 <select value={filterSt} onChange={e=>setFilterSt(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,marginBottom:12 }}>
 <option value="">Todos os alunos</option>
@@ -5382,23 +5405,23 @@ return (
 </div>
 </>}
 {viewMode==="lista" && (
-listaOrdenada.length===0?<Card style={{ textAlign:"center",padding:40 }}><I n="calendar" c="#cbd5e1" s={36}/><div style={{ color:"#94a3b8",marginTop:10 }}>Nenhum registro na agenda ainda.</div></Card>:
+listaOrdenada.length===0?<Card style={{ textAlign:"center",padding:40 }}><I n="calendar" c="#cbd5e1" s={36}/><div style={{ color:"#94a3b8",marginTop:10 }}>Nenhuma aula agendada ainda.</div></Card>:
 <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
 {listaOrdenada.map(e=>{
 const st=students.find(s=>s.id===e.studentId);
-const cfg=STATUS_AGENDA[e.status]||STATUS_AGENDA.presenca;
+const cfg=STATUS_AGENDA[e.status]||STATUS_AGENDA.agendado;
 return (
-<Card key={e.id} onClick={()=>openEdit(e)} style={{ padding:"14px 16px" }}>
+<Card key={e.id} onClick={()=>openEntry(e.date,e)} style={{ padding:"14px 16px" }}>
 <div style={{ display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10 }}>
 <div style={{ flex:1,minWidth:0 }}>
 <div style={{ display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:6 }}>
 <span style={{ fontWeight:700,fontSize:14 }}>{st?.name||"Aluno"}</span>
-<span style={{ fontSize:11,color:"#94a3b8" }}>{fmt(e.date)}</span>
+<span style={{ fontSize:11,color:"#94a3b8" }}>{fmt(e.date)}{e.time?" · "+e.time:""}</span>
 <Badge color={cfg.color} bg={cfg.bg}>{cfg.label}</Badge>
 </div>
 {e.obs && <div style={{ fontSize:12,color:"#64748b",marginTop:2,whiteSpace:"pre-wrap" }}>{e.obs}</div>}
 </div>
-<button onClick={ev=>{ev.stopPropagation();del(e.id);}} style={{ background:"none",border:"none",cursor:"pointer",color:"#e2e8f0",padding:4,flexShrink:0 }}><I n="trash" s={15}/></button>
+<button onClick={ev=>{ev.stopPropagation();delEntry(e.id);}} style={{ background:"none",border:"none",cursor:"pointer",color:"#e2e8f0",padding:4,flexShrink:0 }}><I n="trash" s={15}/></button>
 </div>
 </Card>
 );
@@ -5407,15 +5430,15 @@ return (
 )}
 {dayModal && <Modal title={fmt(dayModal)} onClose={()=>setDayModal(null)}>
 {entriesPorDia(dayModal).length===0?
-<div style={{ textAlign:"center",padding:"20px 0",color:"#94a3b8",fontSize:13 }}>Nenhum registro neste dia.</div>:
+<div style={{ textAlign:"center",padding:"20px 0",color:"#94a3b8",fontSize:13 }}>Nenhuma aula agendada neste dia.</div>:
 <div style={{ display:"flex",flexDirection:"column",gap:8,marginBottom:16 }}>
 {entriesPorDia(dayModal).map(e=>{
 const st=students.find(s=>s.id===e.studentId);
-const cfg=STATUS_AGENDA[e.status]||STATUS_AGENDA.presenca;
+const cfg=STATUS_AGENDA[e.status]||STATUS_AGENDA.agendado;
 return (
-<div key={e.id} onClick={()=>{setDayModal(null);openEdit(e);}} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,padding:"10px 12px",border:"1.5px solid #f1f5f9",borderRadius:10,cursor:"pointer" }}>
+<div key={e.id} onClick={()=>{setDayModal(null);openEntry(e.date,e);}} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,padding:"10px 12px",border:"1.5px solid #f1f5f9",borderRadius:10,cursor:"pointer" }}>
 <div style={{ flex:1,minWidth:0 }}>
-<div style={{ fontWeight:700,fontSize:13 }}>{st?.name||"Aluno"}</div>
+<div style={{ fontWeight:700,fontSize:13 }}>{st?.name||"Aluno"}{e.time?" · "+e.time:""}</div>
 {e.obs && <div style={{ fontSize:11,color:"#94a3b8",marginTop:2 }}>{e.obs}</div>}
 </div>
 <Badge color={cfg.color} bg={cfg.bg}>{cfg.label}</Badge>
@@ -5423,26 +5446,60 @@ return (
 );
 })}
 </div>}
-<Btn full icon="plus" onClick={()=>{const d=dayModal;setDayModal(null);openNew(d);}}>Adicionar registro neste dia</Btn>
+<Btn full icon="plus" onClick={()=>{const d=dayModal;setDayModal(null);openEntry(d,null);}}>Adicionar aula avulsa neste dia</Btn>
 </Modal>}
-{modal&&<Modal title={editId?"Editar Registro":"Novo Registro"} onClose={()=>setModal(false)}>
-<Inp label="Aluno" value={form.studentId} onChange={v=>setForm(f=>({...f,studentId:v}))} opts={[{v:"",l:"Selecione..."},...students.map(s=>({v:s.id,l:s.name}))]}/>
-<Inp label="Data" type="date" value={form.date} onChange={v=>setForm(f=>({...f,date:v}))}/>
+{scheduleModal&&<Modal title="Agendar Aulas" onClose={()=>setScheduleModal(false)}>
+<Inp label="Aluno" value={scheduleForm.studentId} onChange={v=>setScheduleForm(f=>({...f,studentId:v}))} opts={[{v:"",l:"Selecione..."},...students.map(s=>({v:s.id,l:s.name}))]}/>
+<Inp label="Horário" type="time" value={scheduleForm.time} onChange={v=>setScheduleForm(f=>({...f,time:v}))}/>
+<div style={{ marginBottom:13 }}>
+<div style={{ fontSize:12,fontWeight:600,color:"#475569",marginBottom:5 }}>Observação (opcional)</div>
+<textarea value={scheduleForm.obs} onChange={e=>setScheduleForm(f=>({...f,obs:e.target.value}))} placeholder="Ex: Treino de força no estúdio." rows={3} style={{ width:"100%",padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,color:"#0f172a",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical" }}/>
+</div>
+<div style={{ fontSize:12,fontWeight:600,color:"#475569",margin:"14px 0 8px" }}>Em quais dias?</div>
+<div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10 }}>
+<button onClick={()=>setScheduleCalRef(d=>new Date(d.getFullYear(),d.getMonth()-1,1))} style={{ border:"1.5px solid #e2e8f0",background:"#fff",borderRadius:8,width:30,height:30,cursor:"pointer",color:"#475569" }}>‹</button>
+<div style={{ fontSize:13,fontWeight:700 }}>{MESES_NOME[scheduleCalRef.getMonth()]} de {scheduleCalRef.getFullYear()}</div>
+<button onClick={()=>setScheduleCalRef(d=>new Date(d.getFullYear(),d.getMonth()+1,1))} style={{ border:"1.5px solid #e2e8f0",background:"#fff",borderRadius:8,width:30,height:30,cursor:"pointer",color:"#475569" }}>›</button>
+</div>
+<div style={{ fontSize:11,color:"#94a3b8",marginBottom:6 }}>Toque num dia da semana pra marcar/desmarcar todo mundo dele nesse mês:</div>
+<div style={{ display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:8 }}>
+{DIAS_SEMANA_CURTO.map((d,i)=>(
+<button key={i} onClick={()=>toggleWeekdayInMonth(i)} style={{ border:"none",background:"#f1f5f9",borderRadius:6,padding:"5px 0",fontSize:10,fontWeight:700,color:"#64748b",cursor:"pointer" }}>{d}</button>
+))}
+</div>
+<div style={{ display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:6 }}>
+{Array.from({length:schedulePrimeiroDiaSemana}).map((_,i)=><div key={"pad"+i}/>)}
+{scheduleDiasDoMes.map(d=>{
+const iso=toISODateLocal(d);
+const sel=selDates.has(iso);
+const isHoje=iso===todayStr();
+return (
+<button key={iso} onClick={()=>toggleDate(iso)} style={{ aspectRatio:"1",border:isHoje&&!sel?"1.5px solid "+O:"none",background:sel?O:"#f8fafc",color:sel?"#fff":"#0f172a",borderRadius:8,fontSize:12,fontWeight:sel?800:500,cursor:"pointer" }}>{d.getDate()}</button>
+);
+})}
+</div>
+<div style={{ fontSize:12,fontWeight:700,color:O,marginBottom:14 }}>{selDates.size} dia(s) selecionado(s)</div>
+<Btn full onClick={saveSchedule} disabled={!scheduleForm.studentId||!scheduleForm.time||selDates.size===0}>Salvar {selDates.size>0?`(${selDates.size} dia${selDates.size>1?"s":""})`:""}</Btn>
+</Modal>}
+{entryModal&&<Modal title={entryEditId?"Compromisso":"Nova Aula Avulsa"} onClose={()=>setEntryModal(false)}>
+<Inp label="Aluno" value={entryForm.studentId} onChange={v=>setEntryForm(f=>({...f,studentId:v}))} opts={[{v:"",l:"Selecione..."},...students.map(s=>({v:s.id,l:s.name}))]}/>
+<Inp label="Data" type="date" value={entryForm.date} onChange={v=>setEntryForm(f=>({...f,date:v}))}/>
+<Inp label="Horário" type="time" value={entryForm.time} onChange={v=>setEntryForm(f=>({...f,time:v}))}/>
 <div style={{ marginBottom:13 }}>
 <div style={{ fontSize:12,fontWeight:600,color:"#475569",marginBottom:5 }}>Status</div>
-<div style={{ display:"flex",gap:6 }}>
+<div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
 {Object.entries(STATUS_AGENDA).map(([k,v])=>(
-<button key={k} onClick={()=>setForm(f=>({...f,status:k}))} style={{ flex:1,border:form.status===k?`1.5px solid ${v.color}`:"1.5px solid #e2e8f0",background:form.status===k?v.bg:"#f8fafc",color:form.status===k?v.color:"#64748b",borderRadius:9,padding:"9px 4px",fontSize:12,fontWeight:700,cursor:"pointer" }}>{v.label}</button>
+<button key={k} onClick={()=>setEntryForm(f=>({...f,status:k}))} style={{ flex:"1 1 45%",border:entryForm.status===k?`1.5px solid ${v.color}`:"1.5px solid #e2e8f0",background:entryForm.status===k?v.bg:"#f8fafc",color:entryForm.status===k?v.color:"#64748b",borderRadius:9,padding:"9px 4px",fontSize:12,fontWeight:700,cursor:"pointer" }}>{v.label}</button>
 ))}
 </div>
 </div>
 <div style={{ marginBottom:13 }}>
-<div style={{ fontSize:12,fontWeight:600,color:"#475569",marginBottom:5 }}>Observações (opcional)</div>
-<textarea value={form.obs} onChange={e=>setForm(f=>({...f,obs:e.target.value}))} placeholder="Ex: Justificou a falta por consulta médica. Chegou 15 min atrasado. Sentiu dor no joelho durante o treino." rows={4} style={{ width:"100%",padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,color:"#0f172a",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical" }}/>
+<div style={{ fontSize:12,fontWeight:600,color:"#475569",marginBottom:5 }}>Observação / justificativa (opcional)</div>
+<textarea value={entryForm.obs} onChange={e=>setEntryForm(f=>({...f,obs:e.target.value}))} placeholder="Ex: Justificou a falta por consulta médica. Chegou 15 min atrasado. Sentiu dor no joelho durante o treino." rows={4} style={{ width:"100%",padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,color:"#0f172a",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical" }}/>
 </div>
 <div style={{ display:"flex",gap:8 }}>
-{editId && <Btn variant="danger" onClick={()=>{del(editId);setModal(false);}}>Excluir</Btn>}
-<Btn full onClick={save} disabled={!form.studentId||!form.date}>Salvar</Btn>
+{entryEditId && <Btn variant="danger" onClick={()=>{delEntry(entryEditId);setEntryModal(false);}}>Excluir</Btn>}
+<Btn full onClick={saveEntry} disabled={!entryForm.studentId||!entryForm.date}>Salvar</Btn>
 </div>
 </Modal>}
 </div>
