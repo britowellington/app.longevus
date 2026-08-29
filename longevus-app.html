@@ -5308,11 +5308,20 @@ confirmada: { label:"Confirmada", color:"#2563eb", bg:"#dbeafe", dot:"#2563eb" }
 realizada: { label:"Realizada", color:"#16a34a", bg:"#dcfce7", dot:"#16a34a" },
 falta: { label:"Falta", color:"#dc2626", bg:"#fee2e2", dot:"#dc2626" },
 };
+const getWeekDates = (date) => {
+const d = new Date(date);
+const dom = new Date(d.getFullYear(), d.getMonth(), d.getDate()-d.getDay());
+return Array.from({length:7},(_,i)=>new Date(dom.getFullYear(), dom.getMonth(), dom.getDate()+i));
+};
+const cap1 = (s) => s ? s.charAt(0).toUpperCase()+s.slice(1) : s;
 const Agenda = ({ students, agendaEntries, setAgendaEntries, nav }) => {
-const [viewMode,setViewMode]=useState("calendario");
+const [viewMode,setViewMode]=useState("dia");
 const [filterSt,setFilterSt]=useState("");
-const [calRef,setCalRef]=useState(()=>new Date());
-const [dayModal,setDayModal]=useState(null);
+const [refDate,setRefDate]=useState(()=>new Date());
+const goPrev = () => setRefDate(d=>{ const n=new Date(d); if(viewMode==="dia") n.setDate(n.getDate()-1); else if(viewMode==="semana") n.setDate(n.getDate()-7); else n.setMonth(n.getMonth()-1); return n; });
+const goNext = () => setRefDate(d=>{ const n=new Date(d); if(viewMode==="dia") n.setDate(n.getDate()+1); else if(viewMode==="semana") n.setDate(n.getDate()+7); else n.setMonth(n.getMonth()+1); return n; });
+const goHoje = () => setRefDate(new Date());
+// modal de agendamento em lote (aluno + horário + vários dias)
 const [scheduleModal,setScheduleModal]=useState(false);
 const emptySchedule = ()=>({ studentId:filterSt||"", time:"", obs:"" });
 const [scheduleForm,setScheduleForm]=useState(emptySchedule());
@@ -5333,6 +5342,7 @@ setScheduleModal(false);
 };
 const scheduleDiasDoMes = getMonthDates(scheduleCalRef.getFullYear(), scheduleCalRef.getMonth());
 const schedulePrimeiroDiaSemana = scheduleDiasDoMes[0].getDay();
+// modal de aula única (editar status/horário/observação de um compromisso já agendado, ou criar um avulso)
 const [entryModal,setEntryModal]=useState(false);
 const [entryEditId,setEntryEditId]=useState(null);
 const [entryForm,setEntryForm]=useState({ studentId:"", date:"", time:"", status:"agendado", obs:"" });
@@ -5349,14 +5359,32 @@ setEntryModal(false);
 };
 const delEntry = async (id) => { if(window.confirm("Remover este compromisso da agenda?")){ await DB.remove("agenda",id); setAgendaEntries(p=>p.filter(e=>e.id!==id)); } };
 const entriesFiltradas = [...agendaEntries].filter(e=>!filterSt||e.studentId===filterSt);
-const diasDoMes = getMonthDates(calRef.getFullYear(), calRef.getMonth());
-const primeiroDiaSemana = diasDoMes[0].getDay();
-const mesRef = toISODateLocal(calRef).slice(0,7);
+const entriesPorDia = (iso) => entriesFiltradas.filter(e=>e.date===iso).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
+const listaOrdenada = [...entriesFiltradas].sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(a.time||"").localeCompare(b.time||""));
+const refIso = toISODateLocal(refDate);
+const weekDates = getWeekDates(refDate);
+const monthDiasDoMes = getMonthDates(refDate.getFullYear(), refDate.getMonth());
+const monthPrimeiroDiaSemana = monthDiasDoMes[0].getDay();
+const mesRef = refIso.slice(0,7);
 const entriesDoMes = entriesFiltradas.filter(e=>e.date && e.date.slice(0,7)===mesRef);
 const contagemMes = { agendado:0, confirmada:0, realizada:0, falta:0 };
 entriesDoMes.forEach(e=>{ if(contagemMes[e.status]!==undefined) contagemMes[e.status]++; });
-const entriesPorDia = (iso) => entriesFiltradas.filter(e=>e.date===iso).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
-const listaOrdenada = [...entriesFiltradas].sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(a.time||"").localeCompare(b.time||""));
+const EntryRow = ({ e }) => {
+const st=students.find(s=>s.id===e.studentId);
+const cfg=STATUS_AGENDA[e.status]||STATUS_AGENDA.agendado;
+return (
+<div onClick={()=>openEntry(e.date,e)} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,padding:"10px 12px",border:"1.5px solid #f1f5f9",borderRadius:10,cursor:"pointer" }}>
+<div style={{ flex:1,minWidth:0 }}>
+<div style={{ fontWeight:700,fontSize:13 }}>{e.time?e.time+" · ":""}{st?.name||"Aluno"}</div>
+{e.obs && <div style={{ fontSize:11,color:"#94a3b8",marginTop:2 }}>{e.obs}</div>}
+</div>
+<Badge color={cfg.color} bg={cfg.bg}>{cfg.label}</Badge>
+</div>
+);
+};
+const headerLabel = viewMode==="dia" ? cap1(refDate.toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long"}))
+: viewMode==="semana" ? `${weekDates[0].getDate()} ${MESES_NOME[weekDates[0].getMonth()].slice(0,3)} – ${weekDates[6].getDate()} ${MESES_NOME[weekDates[6].getMonth()].slice(0,3)} de ${weekDates[6].getFullYear()}`
+: `${MESES_NOME[refDate.getMonth()]} de ${refDate.getFullYear()}`;
 return (
 <div>
 <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10 }}>
@@ -5371,15 +5399,47 @@ Primeiro agende os dias e o horário das aulas com o aluno. Quando o dia chegar,
 {students.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
 </select>
 <div style={{ display:"flex",gap:6,marginBottom:14 }}>
-<button onClick={()=>setViewMode("calendario")} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:viewMode==="calendario"?O:"#f1f5f9",color:viewMode==="calendario"?"#fff":"#64748b" }}>Calendário</button>
-<button onClick={()=>setViewMode("lista")} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:viewMode==="lista"?O:"#f1f5f9",color:viewMode==="lista"?"#fff":"#64748b" }}>Lista</button>
+{[["dia","Dia"],["semana","Semana"],["mes","Mês"],["lista","Lista"]].map(([k,l])=>(
+<button key={k} onClick={()=>setViewMode(k)} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:viewMode===k?O:"#f1f5f9",color:viewMode===k?"#fff":"#64748b" }}>{l}</button>
+))}
 </div>
-{viewMode==="calendario" && <>
-<div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10 }}>
-<button onClick={()=>setCalRef(d=>new Date(d.getFullYear(),d.getMonth()-1,1))} style={{ border:"1.5px solid #e2e8f0",background:"#fff",borderRadius:8,width:30,height:30,cursor:"pointer",color:"#475569" }}>‹</button>
-<div style={{ fontSize:14,fontWeight:800 }}>{MESES_NOME[calRef.getMonth()]} de {calRef.getFullYear()}</div>
-<button onClick={()=>setCalRef(d=>new Date(d.getFullYear(),d.getMonth()+1,1))} style={{ border:"1.5px solid #e2e8f0",background:"#fff",borderRadius:8,width:30,height:30,cursor:"pointer",color:"#475569" }}>›</button>
+{viewMode!=="lista" && (
+<div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,gap:8 }}>
+<button onClick={goPrev} style={{ border:"1.5px solid #e2e8f0",background:"#fff",borderRadius:8,width:30,height:30,cursor:"pointer",color:"#475569",flexShrink:0 }}>‹</button>
+<div style={{ flex:1,textAlign:"center" }}>
+<div style={{ fontSize:14,fontWeight:800 }}>{headerLabel}</div>
+{refIso!==todayStr() && <button onClick={goHoje} style={{ border:"none",background:"none",color:O,fontSize:11,fontWeight:700,cursor:"pointer",padding:0,marginTop:2 }}>Ir para hoje</button>}
 </div>
+<button onClick={goNext} style={{ border:"1.5px solid #e2e8f0",background:"#fff",borderRadius:8,width:30,height:30,cursor:"pointer",color:"#475569",flexShrink:0 }}>›</button>
+</div>
+)}
+{viewMode==="dia" && (
+entriesPorDia(refIso).length===0?
+<Card style={{ textAlign:"center",padding:40 }}><I n="calendar" c="#cbd5e1" s={36}/><div style={{ color:"#94a3b8",marginTop:10 }}>Nenhuma aula agendada neste dia.</div></Card>:
+<div style={{ display:"flex",flexDirection:"column",gap:8,marginBottom:16 }}>
+{entriesPorDia(refIso).map(e=><EntryRow key={e.id} e={e}/>)}
+</div>
+)}
+{viewMode==="dia" && <Btn full icon="plus" onClick={()=>openEntry(refIso,null)}>Adicionar aula avulsa neste dia</Btn>}
+{viewMode==="semana" && (
+<div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+{weekDates.map(d=>{
+const iso=toISODateLocal(d);
+const doDia=entriesPorDia(iso);
+const isHoje=iso===todayStr();
+return (
+<Card key={iso} style={{ padding:"12px 14px", border:isHoje?`1.5px solid ${O}`:undefined }}>
+<div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:doDia.length?8:0 }}>
+<div style={{ fontSize:12,fontWeight:800,color:isHoje?O:"#0f172a" }}>{DIAS_SEMANA_CURTO[d.getDay()]} · {d.getDate()}/{d.getMonth()+1}</div>
+<button onClick={()=>openEntry(iso,null)} style={{ border:"none",background:"none",cursor:"pointer",color:"#94a3b8",padding:2 }}><I n="plus" s={16}/></button>
+</div>
+{doDia.length>0 && <div style={{ display:"flex",flexDirection:"column",gap:6 }}>{doDia.map(e=><EntryRow key={e.id} e={e}/>)}</div>}
+</Card>
+);
+})}
+</div>
+)}
+{viewMode==="mes" && <>
 <div style={{ display:"flex",gap:10,marginBottom:12,flexWrap:"wrap" }}>
 {Object.entries(STATUS_AGENDA).map(([k,v])=>(
 <div key={k} style={{ display:"flex",alignItems:"center",gap:5,fontSize:11,color:"#64748b" }}><span style={{ width:8,height:8,borderRadius:99,background:v.dot,display:"inline-block" }}/>{v.label} ({contagemMes[k]||0})</div>
@@ -5389,14 +5449,14 @@ Primeiro agende os dias e o horário das aulas com o aluno. Quando o dia chegar,
 {DIAS_SEMANA_CURTO.map((d,i)=><div key={i} style={{ textAlign:"center",fontSize:10,fontWeight:700,color:"#94a3b8",padding:"4px 0" }}>{d}</div>)}
 </div>
 <div style={{ display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:16 }}>
-{Array.from({length:primeiroDiaSemana}).map((_,i)=><div key={"pad"+i}/>)}
-{diasDoMes.map(d=>{
+{Array.from({length:monthPrimeiroDiaSemana}).map((_,i)=><div key={"pad"+i}/>)}
+{monthDiasDoMes.map(d=>{
 const iso=toISODateLocal(d);
 const doDia=entriesPorDia(iso);
 const isHoje=iso===todayStr();
 const statusesUnicos=[...new Set(doDia.map(e=>e.status))];
 return (
-<button key={iso} onClick={()=>setDayModal(iso)} style={{ aspectRatio:"1",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,border:isHoje?"1.5px solid "+O:"1.5px solid #f1f5f9",background:"#fff",borderRadius:8,cursor:"pointer",padding:2 }}>
+<button key={iso} onClick={()=>{setRefDate(d);setViewMode("dia");}} style={{ aspectRatio:"1",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,border:isHoje?"1.5px solid "+O:"1.5px solid #f1f5f9",background:"#fff",borderRadius:8,cursor:"pointer",padding:2 }}>
 <span style={{ fontSize:12,fontWeight:isHoje?800:500,color:isHoje?O:"#0f172a" }}>{d.getDate()}</span>
 {statusesUnicos.length>0 && <div style={{ display:"flex",gap:2 }}>{statusesUnicos.slice(0,3).map(s=><span key={s} style={{ width:5,height:5,borderRadius:99,background:STATUS_AGENDA[s]?.dot||"#94a3b8" }}/>)}</div>}
 </button>
@@ -5428,26 +5488,6 @@ return (
 })}
 </div>
 )}
-{dayModal && <Modal title={fmt(dayModal)} onClose={()=>setDayModal(null)}>
-{entriesPorDia(dayModal).length===0?
-<div style={{ textAlign:"center",padding:"20px 0",color:"#94a3b8",fontSize:13 }}>Nenhuma aula agendada neste dia.</div>:
-<div style={{ display:"flex",flexDirection:"column",gap:8,marginBottom:16 }}>
-{entriesPorDia(dayModal).map(e=>{
-const st=students.find(s=>s.id===e.studentId);
-const cfg=STATUS_AGENDA[e.status]||STATUS_AGENDA.agendado;
-return (
-<div key={e.id} onClick={()=>{setDayModal(null);openEntry(e.date,e);}} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,padding:"10px 12px",border:"1.5px solid #f1f5f9",borderRadius:10,cursor:"pointer" }}>
-<div style={{ flex:1,minWidth:0 }}>
-<div style={{ fontWeight:700,fontSize:13 }}>{st?.name||"Aluno"}{e.time?" · "+e.time:""}</div>
-{e.obs && <div style={{ fontSize:11,color:"#94a3b8",marginTop:2 }}>{e.obs}</div>}
-</div>
-<Badge color={cfg.color} bg={cfg.bg}>{cfg.label}</Badge>
-</div>
-);
-})}
-</div>}
-<Btn full icon="plus" onClick={()=>{const d=dayModal;setDayModal(null);openEntry(d,null);}}>Adicionar aula avulsa neste dia</Btn>
-</Modal>}
 {scheduleModal&&<Modal title="Agendar Aulas" onClose={()=>setScheduleModal(false)}>
 <Inp label="Aluno" value={scheduleForm.studentId} onChange={v=>setScheduleForm(f=>({...f,studentId:v}))} opts={[{v:"",l:"Selecione..."},...students.map(s=>({v:s.id,l:s.name}))]}/>
 <Inp label="Horário" type="time" value={scheduleForm.time} onChange={v=>setScheduleForm(f=>({...f,time:v}))}/>
