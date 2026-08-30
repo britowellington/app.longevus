@@ -122,6 +122,54 @@ return a;
 };
 const fmt = (d) => d ? new Date(d + "T00:00:00").toLocaleDateString("pt-BR") : "—";
 const O = "#FF5603";
+const EXERCISES = [
+{id:"ex01",nome:"Sentar e Levantar da Cadeira",cat:"Fortalecimento",grupo:"MMII",foco:"Pernas e Glúteos",nivel:"Basico",icone:"🪑",momento:"principal"},
+{id:"ex02",nome:"Elevação de Calcanhares",cat:"Fortalecimento",grupo:"MMII",foco:"Panturrilha",nivel:"Basico",icone:"🦵",momento:"principal"},
+{id:"ex03",nome:"Extensão de Perna para Trás",cat:"Fortalecimento",grupo:"MMII",foco:"Glúteos e Extensores do Quadril",nivel:"Basico",icone:"🏋️",momento:"principal"},
+{id:"ex04",nome:"Elevação de Perna à Frente",cat:"Fortalecimento",grupo:"MMII",foco:"Quadríceps e Flexores do Quadril",nivel:"Basico",icone:"🦿",momento:"principal"},
+{id:"ex05",nome:"Agachamento Assistido",cat:"Fortalecimento",grupo:"MMII",foco:"Quadríceps, Glúteos e Core",nivel:"Intermediario",icone:"⬇️",momento:"principal"},
+{id:"ex06",nome:"Agachamento Livre",cat:"Fortalecimento",grupo:"MMII",foco:"Cadeia Posterior e Core",nivel:"Avancado",icone:"🏆",momento:"principal"},
+{id:"ex07",nome:"Flexão de Parede",cat:"Fortalecimento",grupo:"MMSS",foco:"Peito e Tríceps",nivel:"Basico",icone:"🤲",momento:"principal"},
+{id:"ex08",nome:"Elevação Lateral dos Braços",cat:"Fortalecimento",grupo:"MMSS",foco:"Ombros",nivel:"Intermediario",icone:"💪",momento:"principal"},
+{id:"ex09",nome:"Remada com Elástico",cat:"Fortalecimento",grupo:"MMSS",foco:"Costas e Bíceps",nivel:"Intermediario",icone:"🎗️",momento:"principal"},
+{id:"ex10",nome:"Rosca Direta com Peso Leve",cat:"Fortalecimento",grupo:"MMSS",foco:"Bíceps",nivel:"Basico",icone:"💪",momento:"principal"},
+{id:"ex11",nome:"Tocar o Joelho Oposto (Sentado)",cat:"Core",grupo:"Core",foco:"Abdome e Oblíquos",nivel:"Basico",icone:"🎯",momento:"principal"},
+{id:"ex12",nome:"Extensão de Tronco na Cadeira",cat:"Core",grupo:"Core",foco:"Extensores da Coluna",nivel:"Basico",icone:"🪑",momento:"principal"},
+{id:"ex13",nome:"Contração Abdominal Sentado",cat:"Core",grupo:"Core",foco:"Core Profundo",nivel:"Basico",icone:"🔒",momento:"principal"},
+{id:"ex14",nome:"Pés Unidos — Equilíbrio Estático",cat:"Equilíbrio",grupo:"Equilíbrio",foco:"Equilíbrio Estático",nivel:"Basico",icone:"⚖️",momento:"principal"},
+{id:"ex15",nome:"Equilíbrio em Uma Perna",cat:"Equilíbrio",grupo:"Equilíbrio",foco:"Estabilidade do Tornozelo",nivel:"Basico",icone:"🦶",momento:"principal"},
+{id:"ex16",nome:"Deslocamento de Tronco A/P",cat:"Equilíbrio",grupo:"Equilíbrio",foco:"Equilíbrio Anteroposterior",nivel:"Basico",icone:"↕️",momento:"principal"},
+{id:"ex17",nome:"Caminhada Tandem",cat:"Equilíbrio",grupo:"Equilíbrio",foco:"Equilíbrio Dinâmico",nivel:"Intermediario",icone:"👣",momento:"principal"},
+{id:"ex18",nome:"Equilíbrio com Tarefa Dual",cat:"Equilíbrio",grupo:"Equilíbrio",foco:"Atenção Dividida",nivel:"Avancado",icone:"🧠",momento:"principal"},
+{id:"ex19",nome:"Rotação de Tornozelos e Punhos",cat:"Mobilidade",grupo:"Mobilidade",foco:"Articulações Distais",nivel:"Basico",icone:"🔁",momento:"inicial"},
+{id:"ex20",nome:"Rotação de Quadril em Círculos",cat:"Mobilidade",grupo:"Mobilidade",foco:"Quadril e Lombar",nivel:"Basico",icone:"🌀",momento:"inicial"},
+{id:"ex21",nome:"Marcha com Elevação de Joelhos",cat:"Mobilidade",grupo:"Mobilidade",foco:"Flexores do Quadril",nivel:"Basico",icone:"🚶",momento:"inicial"},
+{id:"ex22",nome:"Rotação do Pescoço",cat:"Mobilidade",grupo:"Mobilidade",foco:"Coluna Cervical",nivel:"Basico",icone:"🔄",momento:"inicial"},
+{id:"ex23",nome:"Alongamento da Panturrilha na Parede",cat:"Alongamento",grupo:"Alongamento",foco:"Panturrilha e Tornozelo",nivel:"Basico",icone:"🧘",momento:"final"},
+{id:"ex24",nome:"Alongamento Lateral do Tronco",cat:"Alongamento",grupo:"Alongamento",foco:"Tronco e Intercostais",nivel:"Basico",icone:"🙆",momento:"final"},
+{id:"ex25",nome:"Alongamento de Quadril e Glúteo",cat:"Alongamento",grupo:"Alongamento",foco:"Quadril e Glúteos",nivel:"Basico",icone:"🏃",momento:"final"},
+{id:"ex26",nome:"Alongamento de Isquiotibiais",cat:"Alongamento",grupo:"Alongamento",foco:"Posterior da Coxa",nivel:"Basico",icone:"🦵",momento:"final"},
+{id:"ex27",nome:"Alongamento de Ombros com Toalha",cat:"Alongamento",grupo:"Alongamento",foco:"Peito e Ombros",nivel:"Basico",icone:"🤸",momento:"final"},
+{id:"ex28",nome:"Respiração Diafragmática",cat:"Relaxamento",grupo:"Alongamento",foco:"Sistema Nervoso e Relaxamento",nivel:"Basico",icone:"🌬️",momento:"final"},
+{id:"ex29",nome:"Marcha no Lugar com Apoio",cat:"Cardio",grupo:"Cardio",foco:"Resistência Cardiovascular",nivel:"Basico",icone:"🏃",momento:"principal"},
+{id:"ex30",nome:"Caminhada com Variações",cat:"Cardio",grupo:"Cardio",foco:"Marcha e Coordenação",nivel:"Basico",icone:"👟",momento:"principal"},
+{id:"ex31",nome:"Subida e Descida de Degrau",cat:"Funcional",grupo:"Funcional",foco:"MMII e Equilíbrio Dinâmico",nivel:"Intermediario",icone:"🪜",momento:"principal"},
+{id:"ex32",nome:"Lançar e Pegar Bola",cat:"Coordenação",grupo:"Coordenação",foco:"Coordenação e Tarefa Dual",nivel:"Intermediario",icone:"🏀",momento:"principal"},
+{id:"ex33",nome:"Sequência de Passos Laterais",cat:"Coordenação",grupo:"Coordenação",foco:"Padrão Motor",nivel:"Intermediario",icone:"👣",momento:"principal"},
+];
+const TREINO_DEFS={
+A:{label:"Treino A",cor:"#3b82f6",bg:"#eff6ff",border:"#bfdbfe",desc:"MMII + Equilíbrio + Mobilidade"},
+B:{label:"Treino B",cor:"#d97706",bg:"#fffbeb",border:"#fde68a",desc:"MMSS + Core + Alongamento"},
+C:{label:"Treino C",cor:"#7e22ce",bg:"#fdf4ff",border:"#e9d5ff",desc:"Funcional + Cardio + Coordenação"},
+D:{label:"Treino D",cor:"#15803d",bg:"#f0fdf4",border:"#bbf7d0",desc:"Full Body + Mobilidade Geral"},
+};
+const BLOCOS = [
+{key:"b1",label:"Bloco 1 — Adaptação",semanas:"1–6",cor:{bg:"#eff6ff",border:"#bfdbfe",texto:"#1d4ed8",dot:"#3b82f6"}},
+{key:"b2",label:"Bloco 2 — Desenvolvimento",semanas:"7–12",cor:{bg:"#fff7ed",border:"#fed7aa",texto:"#c2410c",dot:"#FF5603"}},
+{key:"b3",label:"Bloco 3 — Intensificação",semanas:"13–18",cor:{bg:"#fdf4ff",border:"#e9d5ff",texto:"#7e22ce",dot:"#a855f7"}},
+{key:"b4",label:"Bloco 4 — Consolidação",semanas:"19–24",cor:{bg:"#f0fdf4",border:"#bbf7d0",texto:"#15803d",dot:"#22c55e"}},
+];
+const MOMENTOS = [["inicial","Aquecimento","#22c55e"],["principal","Principal","#3b82f6"],["final","Volta à calma","#a855f7"]];
 const classifyAHA = (s) => s <= 1 ? { label:"Baixo Risco", color:"#16a34a", bg:"#dcfce7" } : s <= 4 ? { label:"Risco Moderado", color:"#d97706", bg:"#fef9c3" } : { label:"Alto Risco", color:"#dc2626", bg:"#fee2e2" };
 const classifyCV = (pct) => pct >= 92 ? { label:"Baixo Risco", color:"#16a34a", bg:"#dcfce7" } : pct >= 69 ? { label:"Risco Moderado", color:"#d97706", bg:"#fef9c3" } : { label:"Alto Risco", color:"#dc2626", bg:"#fee2e2" };
 const classifyFunctional = (s) => s >= 80 ? { label:"Fisicamente Elite", color:"#16a34a", bg:"#dcfce7" } : s >= 60 ? { label:"Fisicamente Ativo", color:"#65a30d", bg:"#ecfccb" } : s >= 40 ? { label:"Fisicamente Independente", color:"#d97706", bg:"#fef9c3" } : s >= 20 ? { label:"Fisicamente Frágil", color:"#ea580c", bg:"#ffedd5" } : { label:"Fisicamente Dependente", color:"#dc2626", bg:"#fee2e2" };
@@ -660,7 +708,7 @@ return (
 </div>
 );
 };
-const StudentDetail = ({ studentId, students, setStudents, assessments, setAssessments, programs, setPrograms, dailyLogs, documents, checkins, sessions, professorFeedbacks, setProfessorFeedbacks, agendaEntries, setAgendaEntries, initialTab, nav }) => {
+const StudentDetail = ({ studentId, students, setStudents, assessments, setAssessments, programs, setPrograms, dailyLogs, documents, checkins, sessions, setSessions, professorFeedbacks, setProfessorFeedbacks, agendaEntries, setAgendaEntries, initialTab, nav }) => {
 const st = students.find(s=>s.id===studentId);
 const [tab,setTab] = useState(initialTab||"aval");
 const [editModal,setEditModal] = useState(false);
@@ -703,7 +751,60 @@ if(Array.isArray(s.exercises)) s.exercises.forEach(e=>{ if(e && e.load && !isNaN
 return out;
 };
 const stCargas = (sessions||[]).filter(s=>s && s.studentId===studentId).flatMap(extrairCargas).filter(c=>c.date).sort((a,b)=>a.date.localeCompare(b.date));
-const exerciciosComCarga = [...new Set(stCargas.map(c=>c.name))].sort();
+const exerciciosDoPrograma = new Set();
+if(currentProgram?.prescricao){
+Object.values(currentProgram.prescricao).forEach(porTreino=>{
+Object.values(porTreino).forEach(sessaoB=>{
+MOMENTOS.forEach(([mk])=>{
+(sessaoB[mk]||[]).forEach(it=>{
+if(it && it.exId && it.exId!=="cognitivo"){ const ex=EXERCISES.find(e=>e.id===it.exId); if(ex) exerciciosDoPrograma.add(ex.nome); }
+});
+});
+});
+});
+}
+const exerciciosComCarga = [...new Set([...stCargas.map(c=>c.name), ...exerciciosDoPrograma])].sort();
+const stSessions = (sessions||[]).filter(s=>s && s.studentId===studentId).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+const requiredPerBlock = 6 * (currentProgram?.freq || 3);
+const sessionsPerBloco = (key) => stSessions.filter(s=>s.blocoKey===key).length;
+let maxUnlockedIdx = 0;
+for(let i=1;i<BLOCOS.length;i++){ if(sessionsPerBloco(BLOCOS[i-1].key) >= requiredPerBlock) maxUnlockedIdx = i; else break; }
+const treinosUnicos = currentProgram ? [...new Set(currentProgram.divisao?.sequencia || ["A"])] : [];
+let treinoDeHojeCalc = treinosUnicos[0];
+if(stSessions.length>0 && treinosUnicos.length>0){
+const idxUltimo = treinosUnicos.indexOf(stSessions[0].treinoKey);
+if(idxUltimo!==-1) treinoDeHojeCalc = treinosUnicos[(idxUltimo+1)%treinosUnicos.length];
+}
+const [presBlocoIdx,setPresBlocoIdx] = useState(maxUnlockedIdx);
+const [presTreinoIdx,setPresTreinoIdx] = useState(()=>{ const i=treinosUnicos.indexOf(treinoDeHojeCalc); return i===-1?0:i; });
+const [presDone,setPresDone] = useState(()=>new Set());
+const [presCargasTreino,setPresCargasTreino] = useState({});
+const [presTreinoSalvo,setPresTreinoSalvo] = useState(false);
+const blocoAtivoPres = BLOCOS[presBlocoIdx] || BLOCOS[0];
+const treinoAtivoPres = treinosUnicos[presTreinoIdx] || treinosUnicos[0] || "A";
+const tdPres = TREINO_DEFS[treinoAtivoPres];
+const sessaoPres = ((currentProgram?.prescricao||{})[blocoAtivoPres.key]||{})[treinoAtivoPres] || {inicial:[],principal:[],final:[]};
+const allKeysPres = [];
+MOMENTOS.forEach(([mk])=>{ (sessaoPres[mk]||[]).forEach((_,idx)=>allKeysPres.push(mk+"-"+idx)); });
+const togglePresDone = (k) => setPresDone(prev=>{ const n=new Set(prev); if(n.has(k))n.delete(k); else n.add(k); return n; });
+const setPresCarga = (k, val) => setPresCargasTreino(prev=>({ ...prev, [k]:val }));
+const salvarTreinoPresencial = () => {
+const cargasPreenchidas = {};
+allKeysPres.forEach(k=>{
+const v = presCargasTreino[k];
+if(!v) return;
+const [mk, idxStr] = k.split("-");
+const it = (sessaoPres[mk]||[])[parseInt(idxStr,10)];
+if(!it || it.exId==="cognitivo") return;
+const ex = EXERCISES.find(e=>e.id===it.exId);
+cargasPreenchidas[k] = { exId:it.exId, nome:ex?.nome||"Exercício", carga:v };
+});
+const novaSessao = { id:uid(), studentId, programId:currentProgram?.id, blocoKey:blocoAtivoPres.key, treinoKey:treinoAtivoPres, date:todayStr(), totalEx:allKeysPres.length, completedEx:presDone.size, cargas:cargasPreenchidas, source:"professor_presencial", createdAt:new Date().toISOString() };
+setSessions(prev=>[...prev, novaSessao]);
+setPresTreinoSalvo(true);
+setPresDone(new Set());
+setPresCargasTreino({});
+};
 const stEvolAssessments = [...stAssessments].sort((a,b)=>(a.date||"").localeCompare(b.date||""));
 const TESTES_METRICAS = [
 { id:"global", label:"Índice Global", get:a=>a.globalScore, max:100 },
@@ -718,13 +819,13 @@ const vals = data.map(d=>d.y);
 const min = Math.min(...vals), max = Math.max(...vals);
 const range = (max-min)||1;
 const stepX = data.length>1 ? (w-pad*2)/(data.length-1) : 0;
-const pts = data.map((d,i)=>({ x:pad+i*stepX, y:h-pad-((d.y-min)/range)*(h-pad*2), ...d }));
-const pathD = pts.map((p,i)=>(i===0?"M":"L")+p.x.toFixed(1)+","+p.y.toFixed(1)).join(" ");
+const pts = data.map((d,i)=>({ ...d, px:pad+i*stepX, py:h-pad-((d.y-min)/range)*(h-pad*2) }));
+const pathD = pts.map((p,i)=>(i===0?"M":"L")+p.px.toFixed(1)+","+p.py.toFixed(1)).join(" ");
 return (
 <div>
 <svg width="100%" viewBox={`0 0 ${w} ${h}`} style={{ overflow:"visible" }}>
 <path d={pathD} fill="none" stroke={color} strokeWidth="2.5"/>
-{pts.map((p,i)=>(<circle key={i} cx={p.x} cy={p.y} r="3.5" fill={color}/>))}
+{pts.map((p,i)=>(<circle key={i} cx={p.px} cy={p.py} r="3.5" fill={color}/>))}
 </svg>
 <div style={{ display:"flex",justifyContent:"space-between",fontSize:9,color:"#94a3b8",marginTop:2 }}>
 <span>{fmt(data[0].x)} · {data[0].y}</span>
@@ -1008,8 +1109,9 @@ return (
 {tab==="presencial"&&(
 <div>
 <div style={{ display:"flex",gap:6,marginBottom:14 }}>
-<button onClick={()=>{setPresTab("pre");setPresMsg("");}} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:presTab==="pre"?O:"#f1f5f9",color:presTab==="pre"?"#fff":"#64748b" }}>Antes do treino</button>
-<button onClick={()=>{setPresTab("pos");setPresMsg("");}} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:presTab==="pos"?O:"#f1f5f9",color:presTab==="pos"?"#fff":"#64748b" }}>Depois do treino</button>
+<button onClick={()=>{setPresTab("pre");setPresMsg("");}} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:presTab==="pre"?O:"#f1f5f9",color:presTab==="pre"?"#fff":"#64748b" }}>Antes</button>
+<button onClick={()=>{setPresTab("treino");setPresMsg("");}} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:presTab==="treino"?O:"#f1f5f9",color:presTab==="treino"?"#fff":"#64748b" }}>Treino do dia</button>
+<button onClick={()=>{setPresTab("pos");setPresMsg("");}} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:presTab==="pos"?O:"#f1f5f9",color:presTab==="pos"?"#fff":"#64748b" }}>Depois</button>
 </div>
 <div style={{ fontSize:12,color:"#94a3b8",marginBottom:16,lineHeight:1.5 }}>
 Exatamente as mesmas perguntas que aparecem no app de {(st.name||"").split(" ")[0]}. Preencha como se fosse ele(a), durante o atendimento presencial.
@@ -1103,9 +1205,69 @@ Exatamente as mesmas perguntas que aparecem no app de {(st.name||"").split(" ")[
 )}
 <Btn full onClick={salvarPresPre} disabled={presSaving||(ccfg.pre?.disposicao&&presPre.disposicao===null)||(ccfg.pre?.hidratacao&&presPre.hidratacao===null)||(ccfg.pre?.alimentacao&&presPre.alimentacao===null)||(ccfg.pre?.sono&&presPre.sono===null)}>{presSaving?"Salvando...":"Registrar check-in"}</Btn>
 </>}
+{presTab==="treino" && <>
+{!currentProgram ? <Card style={{ textAlign:"center",padding:32 }}><I n="clip" c="#cbd5e1" s={32}/><div style={{ color:"#94a3b8",marginTop:10 }}>Este aluno ainda não tem um programa montado.</div></Card> : <>
+<div style={{ fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:0.5,marginBottom:8 }}>Bloco</div>
+<div style={{ display:"flex",gap:6,marginBottom:16,flexWrap:"wrap" }}>
+{BLOCOS.map((b,i)=>(
+<button key={b.key} onClick={()=>setPresBlocoIdx(i)} style={{ flex:"1 1 40%",border:presBlocoIdx===i?`1.5px solid ${b.cor.dot}`:"1.5px solid #e2e8f0",background:presBlocoIdx===i?b.cor.bg:"#f8fafc",color:presBlocoIdx===i?b.cor.texto:"#64748b",borderRadius:9,padding:"8px 6px",fontSize:11,fontWeight:700,cursor:"pointer" }}>{b.label}</button>
+))}
+</div>
+<div style={{ fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:0.5,marginBottom:8 }}>Treino de hoje</div>
+<div style={{ fontSize:11,color:"#94a3b8",marginBottom:8,marginTop:-4 }}>{treinosUnicos.length>0 ? `Sugestão automática: ${treinoDeHojeCalc}. Se o aluno vai fazer outro, é só escolher abaixo.` : "Programa sem sequência de treinos definida."}</div>
+<div style={{ display:"flex",gap:6,marginBottom:18,flexWrap:"wrap" }}>
+{treinosUnicos.map((t,i)=>{ const td=TREINO_DEFS[t]||{label:"Treino "+t,cor:"#64748b",bg:"#f1f5f9"}; return (
+<button key={t} onClick={()=>setPresTreinoIdx(i)} style={{ flex:"1 1 30%",border:presTreinoIdx===i?`1.5px solid ${td.cor}`:"1.5px solid #e2e8f0",background:presTreinoIdx===i?td.bg:"#f8fafc",color:presTreinoIdx===i?td.cor:"#64748b",borderRadius:9,padding:"10px 6px",fontSize:12,fontWeight:800,cursor:"pointer" }}>{td.label}</button>
+); })}
+</div>
+{MOMENTOS.map(([mk,mlabel,mcor])=>{
+const itens = sessaoPres[mk]||[];
+if(itens.length===0) return null;
+return (
+<div key={mk} style={{ marginBottom:18 }}>
+<div style={{ fontSize:12,fontWeight:800,color:mcor,marginBottom:8 }}>{mlabel}</div>
+<div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+{itens.map((it,idx)=>{
+const key = mk+"-"+idx;
+const isCog = it.isCognitivo || it.exId==="cognitivo";
+const ex = !isCog ? EXERCISES.find(e=>e.id===it.exId) : null;
+const nome = isCog ? "Atividade Cognitiva" : (ex?.nome||"Exercício");
+const done = presDone.has(key);
+return (
+<Card key={key} style={{ padding:"12px 14px",background:done?"#f0fdf4":"#fff",borderColor:done?"#bbf7d0":"#e2e8f0" }}>
+<div style={{ display:"flex",alignItems:"center",gap:10 }}>
+<button onClick={()=>togglePresDone(key)} style={{ width:26,height:26,borderRadius:8,border:done?"none":"1.5px solid #cbd5e1",background:done?"#16a34a":"#fff",color:"#fff",cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14 }}>{done?"✓":""}</button>
+<div style={{ width:34,height:34,borderRadius:9,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0 }}>{isCog?"🧠":(ex?.icone||"🏋️")}</div>
+<div style={{ flex:1,minWidth:0 }}>
+<div style={{ fontWeight:700,fontSize:13,textDecoration:done?"line-through":"none",opacity:done?0.7:1 }}>{nome}</div>
+{!isCog && <div style={{ display:"flex",gap:10,marginTop:2,fontSize:11,color:"#94a3b8",flexWrap:"wrap",rowGap:4 }}>
+<span>Séries: <b style={{ color:"#475569" }}>{it.series}</b></span>
+<span>Reps: <b style={{ color:"#475569" }}>{it.reps}</b></span>
+<span>Descanso: <b style={{ color:"#475569" }}>{it.descanso}</b></span>
+</div>}
+</div>
+</div>
+{!isCog && <div style={{ marginTop:8,marginLeft:44 }}>
+<input value={presCargasTreino[key]||""} onChange={e=>setPresCarga(key,e.target.value)} placeholder="Carga usada hoje (kg)" style={{ width:"100%",padding:"8px 10px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:12,fontFamily:"inherit",boxSizing:"border-box" }}/>
+</div>}
+{it.obs && <div style={{ marginTop:8,marginLeft:44,fontSize:11,color:"#64748b",fontStyle:"italic" }}>{it.obs}</div>}
+</Card>
+);
+})}
+</div>
+</div>
+);
+})}
+{allKeysPres.length===0 && <div style={{ textAlign:"center",color:"#cbd5e1",fontSize:12,padding:"20px 0" }}>Não há exercícios prescritos para este bloco/treino.</div>}
+<div style={{ fontSize:12,color:"#94a3b8",marginBottom:10,textAlign:"center" }}>{presDone.size}/{allKeysPres.length} concluídos</div>
+<Btn full onClick={salvarTreinoPresencial} disabled={allKeysPres.length===0}>Concluir treino de hoje</Btn>
+{presTreinoSalvo && <div style={{ marginTop:14,textAlign:"center",fontSize:12,fontWeight:700,color:"#16a34a" }}>Treino registrado! Já aparece na aba Evolução.</div>}
+</>}
+</>}
 {presTab==="pos" && <>
 {ccfg.post?.esforco && (
 <div style={{ marginBottom:20 }}>
+
 <div style={{ fontWeight:700,fontSize:13,color:"#475569",marginBottom:10 }}>Esforço do treino</div>
 <div style={{ display:"flex",gap:6 }}>
 {[{v:1,e:"😌",l:"Tranquilo"},{v:2,e:"🙂",l:"Moderado"},{v:3,e:"😅",l:"Puxado"},{v:4,e:"😓",l:"Muito puxado"},{v:5,e:"🥵",l:"No limite"}].map(o=>(
@@ -7653,7 +7815,7 @@ return (
 <div style={{ padding:"20px 16px",maxWidth:640,margin:"0 auto" }}>
 {page==="dashboard"&&<Dashboard students={students} assessments={assessments} dailyLogs={dailyLogs} nav={nav}/>}
 {page==="students"&&<Students students={students} setStudents={setStudents} nav={nav}/>}
-{page==="studentDetail"&&<StudentDetail studentId={pageProps.studentId} students={students} setStudents={setStudents} assessments={assessments} setAssessments={setAssessments} programs={programs} setPrograms={setPrograms} dailyLogs={dailyLogs} documents={documents} checkins={checkins} sessions={sessions} professorFeedbacks={professorFeedbacks} setProfessorFeedbacks={setProfessorFeedbacks} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} initialTab={pageProps.initialTab} nav={nav}/>}
+{page==="studentDetail"&&<StudentDetail studentId={pageProps.studentId} students={students} setStudents={setStudents} assessments={assessments} setAssessments={setAssessments} programs={programs} setPrograms={setPrograms} dailyLogs={dailyLogs} documents={documents} checkins={checkins} sessions={sessions} setSessions={setSessions} professorFeedbacks={professorFeedbacks} setProfessorFeedbacks={setProfessorFeedbacks} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} initialTab={pageProps.initialTab} nav={nav}/>}
 {page==="assessments"&&<AssessmentsList assessments={assessments} students={students} setAssessments={setAssessments} nav={nav}/>}
 {page==="newAssessment"&&<NewAssessment students={students} setAssessments={setAssessments} nav={nav} prefillStudentId={pageProps.studentId}/>}
 {page==="result"&&<Result assessmentId={pageProps.id} assessments={assessments} setAssessments={setAssessments} students={students} nav={nav}/>}
