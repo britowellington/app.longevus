@@ -5613,93 +5613,350 @@ return (
 </div>
 );
 };
-const LEAD_STAGES = [
-{ id:"novo", label:"Novo Contato", color:"#64748b", bg:"#f1f5f9" },
-{ id:"conversa", label:"Em Conversa", color:"#2563eb", bg:"#dbeafe" },
-{ id:"experimental", label:"Aula Experimental", color:"#d97706", bg:"#fef3c7" },
-{ id:"proposta", label:"Proposta Enviada", color:"#7c3aed", bg:"#ede9fe" },
-{ id:"convertido", label:"Convertido", color:"#16a34a", bg:"#dcfce7" },
-{ id:"perdido", label:"Perdido", color:"#dc2626", bg:"#fee2e2" },
+const LEAD_ETAPAS = [
+{ id:"novo", label:"Novo Lead", emoji:"🟡", color:"#ca8a04", bg:"#fef9c3" },
+{ id:"contato", label:"Contato Iniciado", emoji:"🔵", color:"#2563eb", bg:"#dbeafe" },
+{ id:"qualificado", label:"Qualificado", emoji:"🟣", color:"#7c3aed", bg:"#ede9fe" },
+{ id:"exp_agendada", label:"Exp. Agendada", emoji:"🟠", color:"#ea580c", bg:"#ffedd5" },
+{ id:"exp_realizada", label:"Exp. Realizada", emoji:"🟢", color:"#0d9488", bg:"#ccfbf1" },
+{ id:"proposta", label:"Proposta/Fechamento", emoji:"💰", color:"#0891b2", bg:"#cffafe" },
+{ id:"fechado", label:"Cliente Fechado", emoji:"✅", color:"#16a34a", bg:"#dcfce7" },
+{ id:"followup", label:"Follow-up/Recuperação", emoji:"🔴", color:"#dc2626", bg:"#fee2e2" },
+{ id:"perdido", label:"Perdido/Sem Interesse", emoji:"⚫", color:"#475569", bg:"#e2e8f0" },
 ];
-const LEAD_ORIGENS = ["WhatsApp","Presencial","Indicação","Instagram","Outro"];
+const LEAD_STATUS = [
+{ id:"ativo", label:"Ativo", emoji:"🟢", color:"#16a34a", bg:"#dcfce7" },
+{ id:"aguardando", label:"Aguardando resposta", emoji:"🟡", color:"#ca8a04", bg:"#fef9c3" },
+{ id:"followup_agendado", label:"Follow-up agendado", emoji:"🔵", color:"#2563eb", bg:"#dbeafe" },
+{ id:"sem_resposta", label:"Sem resposta", emoji:"🔴", color:"#dc2626", bg:"#fee2e2" },
+{ id:"perdido", label:"Perdido", emoji:"⚫", color:"#475569", bg:"#e2e8f0" },
+{ id:"convertido", label:"Convertido", emoji:"✅", color:"#16a34a", bg:"#dcfce7" },
+];
+const LEAD_ORIGENS = ["Instagram","Indicação de aluno","Indicação de amigo","Academia","WhatsApp","Google","Evento","Outro"];
+const LEAD_OBJETIVOS = ["Emagrecimento","Hipertrofia","Força","Mobilidade","Condicionamento","Saúde","Autonomia","50+","Outro"];
+const LEAD_TEMPERATURAS = [
+{ id:"quente", label:"Quente", emoji:"🔥", color:"#dc2626", bg:"#fee2e2" },
+{ id:"morno", label:"Morno", emoji:"🟡", color:"#ca8a04", bg:"#fef9c3" },
+{ id:"frio", label:"Frio", emoji:"❄️", color:"#2563eb", bg:"#dbeafe" },
+];
+const PROXIMA_ACAO_TIPOS = ["Enviar mensagem","Fazer ligação","Enviar proposta","Confirmar aula experimental","Fazer follow-up","Perguntar se decidiu","Verificar disponibilidade","Outro"];
+const MOTIVO_NAO_FECHAMENTO = ["💰 Preço","⏰ Horário","📍 Localização","🤔 Vai pensar","👨‍👩‍👧 Precisa conversar com alguém","🏋️ Preferiu treinar sozinho","📅 Momento inadequado","❌ Não respondeu","Outro"];
+const OLD_STAGE_TO_ETAPA = { novo:"novo", conversa:"contato", experimental:"exp_agendada", proposta:"proposta", convertido:"fechado", perdido:"perdido" };
+const migrateLead = (l) => {
+if(l.etapa) return { ...l, valorPotencial: l.valorPotencial || "", historico: l.historico || (l.createdAt ? [{ ts:l.createdAt+"T00:00:00", texto:"Lead cadastrado" }] : []) };
+const etapa = OLD_STAGE_TO_ETAPA[l.stage] || "novo";
+return {
+...l,
+etapa,
+status: l.stage==="convertido" ? "convertido" : l.stage==="perdido" ? "perdido" : "ativo",
+whatsapp: l.whatsapp || l.phone || "",
+instagram: l.instagram || "",
+idade: l.idade || "",
+sexo: l.sexo || "",
+indicadoPor: l.indicadoPor || "",
+objetivo: l.objetivo || "",
+necessidade: l.necessidade || "",
+temperatura: l.temperatura || "morno",
+proximaAcaoTipo: l.proximaAcaoTipo || "",
+proximaAcaoData: l.proximaAcaoData || "",
+proximaAcaoHorario: l.proximaAcaoHorario || "",
+proximaAcaoObs: l.proximaAcaoObs || "",
+motivoNaoFechamento: l.motivoNaoFechamento || "",
+motivoObs: l.motivoObs || "",
+valorPotencial: l.valorPotencial || "",
+historico: l.historico || (l.createdAt ? [{ ts:l.createdAt+"T00:00:00", texto:"Lead cadastrado" }] : []),
+};
+};
 const Leads = ({ leads, setLeads, students, setStudents, nav }) => {
+const [ledView,setLedView]=useState("kanban");
 const [modal,setModal]=useState(false);
 const [editId,setEditId]=useState(null);
-const emptyForm = ()=>({ name:"", phone:"", origem:"WhatsApp", obs:"", stage:"novo" });
+const emptyForm = ()=>({ name:"", whatsapp:"", instagram:"", idade:"", sexo:"", origem:"WhatsApp", indicadoPor:"", objetivo:"", necessidade:"", temperatura:"morno", etapa:"novo", status:"ativo", obs:"", proximaAcaoTipo:"", proximaAcaoData:"", proximaAcaoHorario:"", proximaAcaoObs:"", motivoNaoFechamento:"", motivoObs:"", valorPotencial:"" });
 const [form,setForm]=useState(emptyForm());
 const openNew = () => { setEditId(null); setForm(emptyForm()); setModal(true); };
-const openEdit = (lead) => { setEditId(lead.id); setForm({ name:lead.name, phone:lead.phone||"", origem:lead.origem||"WhatsApp", obs:lead.obs||"", stage:lead.stage }); setModal(true); };
+const openEdit = (lead) => { setEditId(lead.id); setForm({ ...emptyForm(), ...lead }); setModal(true); };
 const save = () => {
 if(!form.name.trim()) return;
-if(editId) setLeads(p=>p.map(l=>l.id===editId?{...l,...form,name:form.name.trim()}:l));
-else setLeads(p=>[...p,{ id:uid(), ...form, name:form.name.trim(), createdAt:todayStr() }]);
+const now = new Date().toISOString();
+if(editId) setLeads(p=>p.map(l=>{
+if(l.id!==editId) return l;
+const novasEntradas=[];
+if(l.etapa!==form.etapa){ const et=LEAD_ETAPAS.find(e=>e.id===form.etapa); novasEntradas.push({ ts:now, texto:`Etapa alterada para: ${et?et.emoji+" "+et.label:form.etapa}` }); }
+if(l.status!==form.status){ const stt=LEAD_STATUS.find(s=>s.id===form.status); novasEntradas.push({ ts:now, texto:`Status alterado para: ${stt?stt.emoji+" "+stt.label:form.status}` }); }
+return { ...l, ...form, name:form.name.trim(), historico:[...(l.historico||[]),...novasEntradas] };
+}));
+else setLeads(p=>[...p,{ id:uid(), ...form, name:form.name.trim(), createdAt:todayStr(), historico:[{ ts:now, texto:"Lead cadastrado" }] }]);
 setModal(false);
 };
 const del = async (id) => { if(window.confirm("Remover este lead?")){ await DB.remove("leads",id); setLeads(p=>p.filter(l=>l.id!==id)); } };
-const moveStage = (lead, delta) => {
-const idx = LEAD_STAGES.findIndex(s=>s.id===lead.stage);
-const next = LEAD_STAGES[idx+delta];
-if(!next) return;
-setLeads(p=>p.map(l=>l.id===lead.id?{...l,stage:next.id}:l));
+const [motivoModal,setMotivoModal]=useState(null);
+const [motivoForm,setMotivoForm]=useState({ motivoNaoFechamento:"", motivoObs:"" });
+const setEtapaRapida = (lead, etapa) => {
+const status = etapa==="fechado" ? "convertido" : etapa==="perdido" ? "perdido" : lead.status==="convertido"||lead.status==="perdido" ? "ativo" : lead.status;
+const et=LEAD_ETAPAS.find(e=>e.id===etapa);
+const now=new Date().toISOString();
+setLeads(p=>p.map(l=>l.id===lead.id?{...l,etapa,status,historico:[...(l.historico||[]),{ ts:now, texto:`Etapa alterada para: ${et?et.emoji+" "+et.label:etapa}` }]}:l));
+if((etapa==="followup"||etapa==="perdido") && lead.etapa!==etapa){
+setMotivoForm({ motivoNaoFechamento:lead.motivoNaoFechamento||"", motivoObs:lead.motivoObs||"" });
+setMotivoModal(lead.id);
+}
 };
+const saveMotivo = () => { const now=new Date().toISOString(); setLeads(p=>p.map(l=>l.id===motivoModal?{...l,...motivoForm,historico:[...(l.historico||[]),{ ts:now, texto:`Motivo registrado: ${motivoForm.motivoNaoFechamento||"—"}` }]}:l)); setMotivoModal(null); };
 const converter = (lead) => {
 if(!window.confirm(`Converter "${lead.name}" em aluno?`)) return;
-const novoAluno = { id:uid(), name:lead.name, phone:lead.phone||"", whatsapp:lead.phone||"", dob:"", sex:"", createdAt:todayStr() };
+const novoAluno = { id:uid(), name:lead.name, phone:lead.whatsapp||"", whatsapp:lead.whatsapp||"", dob:"", sex:"", createdAt:todayStr() };
 setStudents(p=>[...p,novoAluno]);
-setLeads(p=>p.map(l=>l.id===lead.id?{...l,stage:"convertido",studentId:novoAluno.id}:l));
+const now=new Date().toISOString();
+setLeads(p=>p.map(l=>l.id===lead.id?{...l,etapa:"fechado",status:"convertido",studentId:novoAluno.id,historico:[...(l.historico||[]),{ ts:now, texto:"🎓 Cliente convertido em aluno" }]}:l));
 };
+const mostraIndicadoPor = form.origem==="Indicação de aluno" || form.origem==="Indicação de amigo";
+const totalGeral = leads.length;
+const leadsAtivos = leads.filter(l=>l.etapa!=="fechado"&&l.etapa!=="perdido").length;
+const qtdNovos = leads.filter(l=>l.etapa==="novo").length;
+const qtdExperimentais = leads.filter(l=>l.etapa==="exp_agendada").length;
+const qtdFollowups = leads.filter(l=>l.etapa==="followup").length;
+const qtdConvertidos = leads.filter(l=>l.etapa==="fechado").length;
+const taxaConversao = totalGeral>0 ? Math.round((qtdConvertidos/totalGeral)*100) : 0;
+const valorPotencialTotal = leads.filter(l=>l.etapa!=="fechado"&&l.etapa!=="perdido").reduce((sum,l)=>sum+(parseFloat(l.valorPotencial)||0),0);
+const fmtMoeda = (v) => v.toLocaleString("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0});
+const STAT_CARDS = [
+{ label:"Leads Ativos", value:leadsAtivos, emoji:"🧲", color:"#2563eb", bg:"#dbeafe" },
+{ label:"Novos", value:qtdNovos, emoji:"🟡", color:"#ca8a04", bg:"#fef9c3" },
+{ label:"Experimentais", value:qtdExperimentais, emoji:"🟠", color:"#ea580c", bg:"#ffedd5" },
+{ label:"Follow-ups", value:qtdFollowups, emoji:"🔴", color:"#dc2626", bg:"#fee2e2" },
+{ label:"Convertidos", value:qtdConvertidos, emoji:"✅", color:"#16a34a", bg:"#dcfce7" },
+{ label:"Taxa de Conversão", value:taxaConversao+"%", emoji:"📈", color:"#7c3aed", bg:"#ede9fe" },
+{ label:"Valor Potencial", value:fmtMoeda(valorPotencialTotal), emoji:"💰", color:"#0891b2", bg:"#cffafe" },
+];
+const hojeStr = todayStr();
+const novosHoje = leads.filter(l=>l.createdAt===hojeStr);
+const contatosPendentes = leads.filter(l=>l.etapa==="novo");
+const experimentaisHoje = leads.filter(l=>l.etapa==="exp_agendada" && l.proximaAcaoData===hojeStr).sort((a,b)=>(a.proximaAcaoHorario||"").localeCompare(b.proximaAcaoHorario||""));
+const followupsHoje = leads.filter(l=>l.etapa!=="exp_agendada" && l.etapa!=="fechado" && l.etapa!=="perdido" && l.proximaAcaoData===hojeStr).sort((a,b)=>(a.proximaAcaoHorario||"").localeCompare(b.proximaAcaoHorario||""));
+const followupsAtrasados = leads.filter(l=>l.etapa!=="fechado" && l.etapa!=="perdido" && l.proximaAcaoData && l.proximaAcaoData<hojeStr).sort((a,b)=>a.proximaAcaoData.localeCompare(b.proximaAcaoData));
+const diasAtraso = (d) => Math.round((new Date(hojeStr+"T00:00:00") - new Date(d+"T00:00:00"))/86400000);
+const relatorioOrigem = LEAD_ORIGENS.map(o=>{
+const doOrigem = leads.filter(l=>l.origem===o);
+const convertidosOrigem = doOrigem.filter(l=>l.etapa==="fechado").length;
+const conversao = doOrigem.length>0 ? Math.round((convertidosOrigem/doOrigem.length)*100) : 0;
+return { origem:o, total:doOrigem.length, convertidos:convertidosOrigem, conversao };
+}).filter(r=>r.total>0).sort((a,b)=>b.total-a.total);
+const SecaoHoje = ({ emoji, titulo, itens, render }) => (
+<div style={{ marginBottom:20 }}>
+<div style={{ fontSize:13,fontWeight:800,marginBottom:8 }}>{emoji} {titulo}{itens.length>0?` (${itens.length})`:""}</div>
+{itens.length===0 ? <div style={{ fontSize:12,color:"#cbd5e1",padding:"4px 0 8px" }}>Nada por aqui.</div> :
+<div style={{ display:"flex",flexDirection:"column",gap:6 }}>{itens.map(render)}</div>}
+</div>
+);
 return (
 <div>
 <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10 }}>
 <div style={{ fontWeight:800,fontSize:20 }}>🧲 Leads</div>
 <Btn sm icon="plus" onClick={openNew}>Novo Lead</Btn>
 </div>
+<div style={{ display:"flex",gap:6,marginBottom:14 }}>
+<button onClick={()=>setLedView("kanban")} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:ledView==="kanban"?O:"#f1f5f9",color:ledView==="kanban"?"#fff":"#64748b" }}>🗂 Kanban</button>
+<button onClick={()=>setLedView("hoje")} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:ledView==="hoje"?O:"#f1f5f9",color:ledView==="hoje"?"#fff":"#64748b" }}>📅 Hoje</button>
+<button onClick={()=>setLedView("relatorio")} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:ledView==="relatorio"?O:"#f1f5f9",color:ledView==="relatorio"?"#fff":"#64748b" }}>📊 Relatório</button>
+</div>
+{ledView==="kanban" && <>
 <div style={{ fontSize:13,color:"#64748b",marginBottom:14,lineHeight:1.5 }}>
 Acompanhe cada pessoa que chegou até você (WhatsApp, indicação, presencial...) desde o primeiro contato até virar aluno.
 </div>
+<div style={{ display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8,marginBottom:16 }}>
+{STAT_CARDS.map(c=>(
+<div key={c.label} style={{ background:c.bg,borderRadius:12,padding:"10px 12px" }}>
+<div style={{ fontSize:10,fontWeight:700,color:c.color,marginBottom:3 }}>{c.emoji} {c.label}</div>
+<div style={{ fontSize:19,fontWeight:800,color:c.color }}>{c.value}</div>
+</div>
+))}
+</div>
 <div style={{ display:"flex",gap:10,overflowX:"auto",paddingBottom:10,WebkitOverflowScrolling:"touch",margin:"0 -20px",padding:"0 20px 10px" }}>
-{LEAD_STAGES.map((stage,idx)=>{
-const doStage = leads.filter(l=>l.stage===stage.id);
+{LEAD_ETAPAS.map(etapa=>{
+const doEtapa = leads.filter(l=>l.etapa===etapa.id);
 return (
-<div key={stage.id} style={{ flex:"0 0 240px",width:240 }}>
+<div key={etapa.id} style={{ flex:"0 0 240px",width:240 }}>
 <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8,padding:"0 2px" }}>
-<div style={{ fontSize:12,fontWeight:800,color:stage.color }}>{stage.label}</div>
-<div style={{ fontSize:11,fontWeight:700,color:"#fff",background:stage.color,borderRadius:99,minWidth:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 5px" }}>{doStage.length}</div>
+<div style={{ fontSize:12,fontWeight:800,color:etapa.color }}>{etapa.emoji} {etapa.label}</div>
+<div style={{ fontSize:11,fontWeight:700,color:"#fff",background:etapa.color,borderRadius:99,minWidth:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 5px" }}>{doEtapa.length}</div>
 </div>
 <div style={{ display:"flex",flexDirection:"column",gap:8,minHeight:60 }}>
-{doStage.length===0 && <div style={{ border:"1.5px dashed #e2e8f0",borderRadius:10,padding:"16px 8px",textAlign:"center",fontSize:11,color:"#cbd5e1" }}>Vazio</div>}
-{doStage.map(lead=>(
+{doEtapa.length===0 && <div style={{ border:"1.5px dashed #e2e8f0",borderRadius:10,padding:"16px 8px",textAlign:"center",fontSize:11,color:"#cbd5e1" }}>Vazio</div>}
+{doEtapa.map(lead=>{
+const temp=LEAD_TEMPERATURAS.find(t=>t.id===lead.temperatura)||LEAD_TEMPERATURAS[1];
+const stat=LEAD_STATUS.find(s=>s.id===lead.status);
+return (
 <Card key={lead.id} onClick={()=>openEdit(lead)} style={{ padding:"10px 12px" }}>
-<div style={{ fontWeight:700,fontSize:13,marginBottom:3 }}>{lead.name}</div>
-<div style={{ fontSize:11,color:"#94a3b8",marginBottom:6 }}>{lead.origem}{lead.phone?" · "+lead.phone:""}</div>
+<div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:6,marginBottom:3 }}>
+<div style={{ fontWeight:700,fontSize:13 }}>{lead.name}</div>
+<span title={temp.label} style={{ fontSize:13,flexShrink:0 }}>{temp.emoji}</span>
+</div>
+<div style={{ fontSize:11,color:"#94a3b8",marginBottom:6 }}>{lead.origem}{lead.whatsapp?" · "+lead.whatsapp:""}</div>
+{stat && <div style={{ marginBottom:6 }}><Badge color={stat.color} bg={stat.bg}>{stat.emoji} {stat.label}</Badge></div>}
+{lead.proximaAcaoData && (() => { const atrasada = lead.proximaAcaoData < todayStr(); return (
+<div style={{ fontSize:10,fontWeight:700,color:atrasada?"#dc2626":"#64748b",marginBottom:6 }}>{atrasada?"⚠️ ":"🔔 "}{lead.proximaAcaoTipo||"Próxima ação"} · {fmt(lead.proximaAcaoData)}{lead.proximaAcaoHorario?" "+lead.proximaAcaoHorario:""}</div>
+); })()}
 {lead.obs && <div style={{ fontSize:11,color:"#64748b",marginBottom:6,whiteSpace:"pre-wrap" }}>{lead.obs}</div>}
 <div style={{ display:"flex",alignItems:"center",gap:4 }} onClick={e=>e.stopPropagation()}>
-<button disabled={idx===0} onClick={()=>moveStage(lead,-1)} style={{ border:"1px solid #e2e8f0",background:"#fff",borderRadius:6,width:24,height:24,cursor:idx===0?"default":"pointer",opacity:idx===0?0.3:1,fontSize:12,color:"#475569" }}>‹</button>
-<button disabled={idx===LEAD_STAGES.length-1} onClick={()=>moveStage(lead,1)} style={{ border:"1px solid #e2e8f0",background:"#fff",borderRadius:6,width:24,height:24,cursor:idx===LEAD_STAGES.length-1?"default":"pointer",opacity:idx===LEAD_STAGES.length-1?0.3:1,fontSize:12,color:"#475569" }}>›</button>
-{!lead.studentId && <button onClick={()=>converter(lead)} style={{ flex:1,border:"none",background:"#dcfce7",color:"#16a34a",borderRadius:6,padding:"4px 6px",fontSize:10,fontWeight:700,cursor:"pointer" }}>🎓 Converter</button>}
-{lead.studentId && <button onClick={()=>nav("studentDetail",{studentId:lead.studentId})} style={{ flex:1,border:"none",background:"#f1f5f9",color:"#475569",borderRadius:6,padding:"4px 6px",fontSize:10,fontWeight:700,cursor:"pointer" }}>Ver aluno</button>}
-<button onClick={()=>del(lead.id)} style={{ border:"none",background:"none",cursor:"pointer",color:"#e2e8f0",padding:2 }}><I n="trash" s={13}/></button>
+<select value={lead.etapa} onChange={e=>setEtapaRapida(lead,e.target.value)} style={{ flex:1,border:"1px solid #e2e8f0",background:"#f8fafc",borderRadius:6,padding:"4px 4px",fontSize:10,color:"#334155" }}>
+{LEAD_ETAPAS.map(et=><option key={et.id} value={et.id}>{et.emoji} {et.label}</option>)}
+</select>
+{!lead.studentId && <button onClick={()=>converter(lead)} style={{ border:"none",background:"#dcfce7",color:"#16a34a",borderRadius:6,padding:"4px 6px",fontSize:10,fontWeight:700,cursor:"pointer",flexShrink:0 }}>🎓</button>}
+{lead.studentId && <button onClick={()=>nav("studentDetail",{studentId:lead.studentId})} style={{ border:"none",background:"#f1f5f9",color:"#475569",borderRadius:6,padding:"4px 6px",fontSize:10,fontWeight:700,cursor:"pointer",flexShrink:0 }}>Ver aluno</button>}
+<button onClick={()=>del(lead.id)} style={{ border:"none",background:"none",cursor:"pointer",color:"#e2e8f0",padding:2,flexShrink:0 }}><I n="trash" s={13}/></button>
 </div>
 </Card>
-))}
+);
+})}
 </div>
 </div>
 );
 })}
 </div>
-{modal&&<Modal title={editId?"Editar Lead":"Novo Lead"} onClose={()=>setModal(false)}>
+</>}
+{ledView==="hoje" && <>
+<div style={{ fontSize:13,color:"#64748b",marginBottom:16,lineHeight:1.5 }}>
+Tudo o que precisa da sua atenção hoje, {fmt(hojeStr)}.
+</div>
+<SecaoHoje emoji="🔥" titulo="Novos Leads" itens={novosHoje} render={l=>(
+<Card key={l.id} onClick={()=>openEdit(l)} style={{ padding:"10px 12px",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+<span style={{ fontWeight:700,fontSize:13 }}>{l.name}</span>
+<span style={{ fontSize:11,color:"#94a3b8" }}>{l.origem}</span>
+</Card>
+)}/>
+<SecaoHoje emoji="📞" titulo="Contatos Pendentes" itens={contatosPendentes} render={l=>(
+<Card key={l.id} onClick={()=>openEdit(l)} style={{ padding:"10px 12px",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+<span style={{ fontWeight:700,fontSize:13 }}>{l.name}</span>
+<span style={{ fontSize:11,color:"#94a3b8" }}>{l.whatsapp||l.origem}</span>
+</Card>
+)}/>
+<SecaoHoje emoji="🏋️" titulo="Experimentais de Hoje" itens={experimentaisHoje} render={l=>(
+<Card key={l.id} onClick={()=>openEdit(l)} style={{ padding:"10px 12px",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+<span style={{ fontWeight:700,fontSize:13 }}>{l.name}</span>
+<Badge color="#ea580c" bg="#ffedd5">{l.proximaAcaoHorario||"—"}</Badge>
+</Card>
+)}/>
+<SecaoHoje emoji="🔔" titulo="Follow-ups de Hoje" itens={followupsHoje} render={l=>(
+<Card key={l.id} onClick={()=>openEdit(l)} style={{ padding:"10px 12px",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+<span style={{ fontWeight:700,fontSize:13 }}>{l.name}</span>
+<Badge color="#2563eb" bg="#dbeafe">{l.proximaAcaoHorario||"—"}</Badge>
+</Card>
+)}/>
+<SecaoHoje emoji="⚠️" titulo="Follow-ups Atrasados" itens={followupsAtrasados} render={l=>{
+const dias=diasAtraso(l.proximaAcaoData);
+return (
+<Card key={l.id} onClick={()=>openEdit(l)} style={{ padding:"10px 12px",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+<span style={{ fontWeight:700,fontSize:13 }}>{l.name}</span>
+<Badge color="#dc2626" bg="#fee2e2">{dias} dia{dias>1?"s":""} atrasado</Badge>
+</Card>
+);
+}}/>
+</>}
+{ledView==="relatorio" && <>
+<div style={{ fontSize:13,color:"#64748b",marginBottom:16,lineHeight:1.5 }}>
+Quais canais trazem mais leads — e, principalmente, quais trazem leads que realmente viram aluno.
+</div>
+{relatorioOrigem.length===0 ? <Card style={{ textAlign:"center",padding:32 }}><I n="bar" c="#cbd5e1" s={32}/><div style={{ color:"#94a3b8",marginTop:10 }}>Nenhum lead cadastrado ainda.</div></Card> :
+<div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+{relatorioOrigem.map(r=>(
+<Card key={r.origem} style={{ padding:"12px 14px" }}>
+<div style={{ fontWeight:700,fontSize:14,marginBottom:10 }}>{r.origem}</div>
+<div style={{ display:"flex",gap:8 }}>
+<div style={{ flex:1,textAlign:"center" }}>
+<div style={{ fontSize:18,fontWeight:800,color:"#334155" }}>{r.total}</div>
+<div style={{ fontSize:10,color:"#94a3b8" }}>Leads</div>
+</div>
+<div style={{ flex:1,textAlign:"center" }}>
+<div style={{ fontSize:18,fontWeight:800,color:"#16a34a" }}>{r.convertidos}</div>
+<div style={{ fontSize:10,color:"#94a3b8" }}>Clientes</div>
+</div>
+<div style={{ flex:1,textAlign:"center" }}>
+<div style={{ fontSize:18,fontWeight:800,color:"#7c3aed" }}>{r.conversao}%</div>
+<div style={{ fontSize:10,color:"#94a3b8" }}>Conversão</div>
+</div>
+</div>
+</Card>
+))}
+</div>}
+</>}
+{modal&&<Modal title={editId?"Ficha do Lead":"Novo Lead"} onClose={()=>setModal(false)}>
+<div style={{ fontSize:11,fontWeight:800,color:"#94a3b8",textTransform:"uppercase",letterSpacing:0.5,margin:"0 0 8px" }}>Dados básicos</div>
 <Inp label="Nome *" value={form.name} onChange={v=>setForm(f=>({...f,name:v}))} placeholder="Nome do contato"/>
-<Inp label="Telefone / WhatsApp" value={form.phone} onChange={v=>setForm(f=>({...f,phone:v}))} placeholder="(00) 00000-0000"/>
-<Inp label="Origem" value={form.origem} onChange={v=>setForm(f=>({...f,origem:v}))} opts={LEAD_ORIGENS.map(o=>({v:o,l:o}))}/>
-<Inp label="Etapa" value={form.stage} onChange={v=>setForm(f=>({...f,stage:v}))} opts={LEAD_STAGES.map(s=>({v:s.id,l:s.label}))}/>
+<Inp label="WhatsApp" value={form.whatsapp} onChange={v=>setForm(f=>({...f,whatsapp:v}))} placeholder="(00) 00000-0000"/>
+<Inp label="Instagram" value={form.instagram} onChange={v=>setForm(f=>({...f,instagram:v}))} placeholder="@usuario"/>
+<div style={{ display:"flex",gap:10 }}>
+<div style={{ flex:1 }}><Inp label="Idade" value={form.idade} onChange={v=>setForm(f=>({...f,idade:v}))} placeholder="Ex: 62"/></div>
+<div style={{ flex:1 }}><Inp label="Sexo" value={form.sexo} onChange={v=>setForm(f=>({...f,sexo:v}))} opts={[{v:"",l:"Selecione..."},{v:"F",l:"Feminino"},{v:"M",l:"Masculino"},{v:"Outro",l:"Outro"}]}/></div>
+</div>
+<div style={{ fontSize:11,fontWeight:800,color:"#94a3b8",textTransform:"uppercase",letterSpacing:0.5,margin:"14px 0 8px" }}>Origem</div>
+<Inp label="Origem do lead" value={form.origem} onChange={v=>setForm(f=>({...f,origem:v}))} opts={LEAD_ORIGENS.map(o=>({v:o,l:o}))}/>
+{mostraIndicadoPor && <Inp label="Indicado por" value={form.indicadoPor} onChange={v=>setForm(f=>({...f,indicadoPor:v}))} placeholder="Nome de quem indicou"/>}
+<div style={{ fontSize:11,fontWeight:800,color:"#94a3b8",textTransform:"uppercase",letterSpacing:0.5,margin:"14px 0 8px" }}>Objetivo / Necessidade</div>
+<Inp label="Objetivo principal" value={form.objetivo} onChange={v=>setForm(f=>({...f,objetivo:v}))} opts={[{v:"",l:"Selecione..."},...LEAD_OBJETIVOS.map(o=>({v:o,l:o}))]}/>
+<div style={{ marginBottom:13 }}>
+<div style={{ fontSize:12,fontWeight:600,color:"#475569",marginBottom:5 }}>Principal necessidade / dor</div>
+<textarea value={form.necessidade} onChange={e=>setForm(f=>({...f,necessidade:e.target.value}))} placeholder="Ex: Tem medo de cair. Está sedentário. Quer voltar a treinar depois dos 60." rows={3} style={{ width:"100%",padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,color:"#0f172a",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical" }}/>
+</div>
+<div style={{ fontSize:11,fontWeight:800,color:"#94a3b8",textTransform:"uppercase",letterSpacing:0.5,margin:"14px 0 8px" }}>Temperatura</div>
+<div style={{ display:"flex",gap:6,marginBottom:13 }}>
+{LEAD_TEMPERATURAS.map(t=>(
+<button key={t.id} onClick={()=>setForm(f=>({...f,temperatura:t.id}))} style={{ flex:1,border:form.temperatura===t.id?`1.5px solid ${t.color}`:"1.5px solid #e2e8f0",background:form.temperatura===t.id?t.bg:"#f8fafc",color:form.temperatura===t.id?t.color:"#64748b",borderRadius:9,padding:"9px 4px",fontSize:12,fontWeight:700,cursor:"pointer" }}>{t.emoji} {t.label}</button>
+))}
+</div>
+<Inp label="Valor do plano (R$) — opcional" type="number" value={form.valorPotencial} onChange={v=>setForm(f=>({...f,valorPotencial:v}))} placeholder="Ex: 350"/>
+<div style={{ fontSize:11,fontWeight:800,color:"#94a3b8",textTransform:"uppercase",letterSpacing:0.5,margin:"14px 0 8px" }}>Funil</div>
+<div style={{ display:"flex",gap:10 }}>
+<div style={{ flex:1 }}><Inp label="Etapa" value={form.etapa} onChange={v=>setForm(f=>({...f,etapa:v}))} opts={LEAD_ETAPAS.map(e=>({v:e.id,l:e.emoji+" "+e.label}))}/></div>
+<div style={{ flex:1 }}><Inp label="Status" value={form.status} onChange={v=>setForm(f=>({...f,status:v}))} opts={LEAD_STATUS.map(s=>({v:s.id,l:s.emoji+" "+s.label}))}/></div>
+</div>
+<div style={{ fontSize:11,fontWeight:800,color:"#94a3b8",textTransform:"uppercase",letterSpacing:0.5,margin:"14px 0 8px" }}>Próxima ação</div>
+<Inp label="O que fazer" value={form.proximaAcaoTipo} onChange={v=>setForm(f=>({...f,proximaAcaoTipo:v}))} opts={[{v:"",l:"Selecione..."},...PROXIMA_ACAO_TIPOS.map(t=>({v:t,l:t}))]}/>
+<div style={{ display:"flex",gap:10 }}>
+<div style={{ flex:1 }}><Inp label="Data" type="date" value={form.proximaAcaoData} onChange={v=>setForm(f=>({...f,proximaAcaoData:v}))}/></div>
+<div style={{ flex:1 }}><Inp label="Horário" type="time" value={form.proximaAcaoHorario} onChange={v=>setForm(f=>({...f,proximaAcaoHorario:v}))}/></div>
+</div>
+<div style={{ marginBottom:13 }}>
+<div style={{ fontSize:12,fontWeight:600,color:"#475569",marginBottom:5 }}>Observação da próxima ação</div>
+<textarea value={form.proximaAcaoObs} onChange={e=>setForm(f=>({...f,proximaAcaoObs:e.target.value}))} placeholder="Ex: Perguntar se conseguiu conversar com a esposa sobre o plano." rows={2} style={{ width:"100%",padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,color:"#0f172a",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical" }}/>
+</div>
+{(form.etapa==="followup"||form.etapa==="perdido") && <>
+<div style={{ fontSize:11,fontWeight:800,color:"#94a3b8",textTransform:"uppercase",letterSpacing:0.5,margin:"14px 0 8px" }}>Motivo de não fechamento</div>
+<Inp label="Motivo" value={form.motivoNaoFechamento} onChange={v=>setForm(f=>({...f,motivoNaoFechamento:v}))} opts={[{v:"",l:"Selecione..."},...MOTIVO_NAO_FECHAMENTO.map(m=>({v:m,l:m}))]}/>
+<div style={{ marginBottom:13 }}>
+<div style={{ fontSize:12,fontWeight:600,color:"#475569",marginBottom:5 }}>Observação complementar</div>
+<textarea value={form.motivoObs} onChange={e=>setForm(f=>({...f,motivoObs:e.target.value}))} rows={2} style={{ width:"100%",padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,color:"#0f172a",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical" }}/>
+</div>
+</>}
 <div style={{ marginBottom:13 }}>
 <div style={{ fontSize:12,fontWeight:600,color:"#475569",marginBottom:5 }}>Observações</div>
-<textarea value={form.obs} onChange={e=>setForm(f=>({...f,obs:e.target.value}))} placeholder="Ex: Veio pelo Instagram, interessada em treino funcional 3x/semana." rows={4} style={{ width:"100%",padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,color:"#0f172a",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical" }}/>
+<textarea value={form.obs} onChange={e=>setForm(f=>({...f,obs:e.target.value}))} placeholder="Ex: Veio pelo Instagram, interessada em treino funcional 3x/semana." rows={3} style={{ width:"100%",padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,color:"#0f172a",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical" }}/>
 </div>
+{editId && (form.historico||[]).length>0 && <>
+<div style={{ fontSize:11,fontWeight:800,color:"#94a3b8",textTransform:"uppercase",letterSpacing:0.5,margin:"14px 0 8px" }}>Histórico</div>
+<div style={{ display:"flex",flexDirection:"column",gap:8,marginBottom:16,maxHeight:220,overflowY:"auto",border:"1.5px solid #f1f5f9",borderRadius:10,padding:"10px 12px" }}>
+{[...(form.historico||[])].sort((a,b)=>a.ts.localeCompare(b.ts)).map((h,i)=>(
+<div key={i} style={{ display:"flex",gap:8,fontSize:12 }}>
+<div style={{ color:"#94a3b8",flexShrink:0,minWidth:98 }}>{new Date(h.ts).toLocaleDateString("pt-BR")} {new Date(h.ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</div>
+<div style={{ color:"#334155" }}>{h.texto}</div>
+</div>
+))}
+</div>
+</>}
+{editId && form.studentId && <div style={{ marginBottom:13 }}><Btn variant="secondary" onClick={()=>{setModal(false);nav("studentDetail",{studentId:form.studentId});}}>Ver ficha do aluno</Btn></div>}
+{editId && !form.studentId && <div style={{ marginBottom:13 }}><Btn variant="secondary" onClick={()=>{save();converter(form);}}>🎓 Converter em Aluno</Btn></div>}
 <div style={{ display:"flex",gap:8 }}>
 {editId && <Btn variant="danger" onClick={()=>{del(editId);setModal(false);}}>Excluir</Btn>}
 <Btn full onClick={save} disabled={!form.name.trim()}>Salvar</Btn>
 </div>
+</Modal>}
+{motivoModal && <Modal title="Motivo" onClose={()=>setMotivoModal(null)}>
+<div style={{ fontSize:13,color:"#64748b",marginBottom:14 }}>Por que esse lead não fechou agora?</div>
+<Inp label="Motivo de não fechamento" value={motivoForm.motivoNaoFechamento} onChange={v=>setMotivoForm(f=>({...f,motivoNaoFechamento:v}))} opts={[{v:"",l:"Selecione..."},...MOTIVO_NAO_FECHAMENTO.map(m=>({v:m,l:m}))]}/>
+<div style={{ marginBottom:13 }}>
+<div style={{ fontSize:12,fontWeight:600,color:"#475569",marginBottom:5 }}>Observação complementar</div>
+<textarea value={motivoForm.motivoObs} onChange={e=>setMotivoForm(f=>({...f,motivoObs:e.target.value}))} rows={3} style={{ width:"100%",padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,color:"#0f172a",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical" }}/>
+</div>
+<Btn full onClick={saveMotivo}>Salvar</Btn>
 </Modal>}
 </div>
 );
@@ -6905,7 +7162,7 @@ const [checkinsSeenAt,setCheckinsSeenAt]=useState(()=>LS.get("longevus_checkins_
 const [atividadesExtras,setAtividadesExtras]=useState(()=>LS.get("longevus_atividades_extras",[]));
 const [professorFeedbacks,setProfessorFeedbacks]=useState(()=>LS.get("longevus_professor_feedbacks",[]));
 const [agendaEntries,setAgendaEntries]=useState(()=>LS.get("longevus_agenda",[]));
-const [leads,setLeads]=useState(()=>LS.get("longevus_leads",[]));
+const [leads,setLeads]=useState(()=>LS.get("longevus_leads",[]).map(migrateLead));
 const [dbReady,setDbReady]=useState(false);
 const [hubResults,setHubResults]=useState(()=>LS.get("longevus_hub_results",[]));
 useEffect(()=>{LS.set("longevus_hub_results",hubResults);},[hubResults]);
@@ -6933,7 +7190,7 @@ if(ae!==null){ setAtividadesExtras(ae); LS.set("longevus_atividades_extras",ae);
 if(ck!==null){ setCheckins(ck); LS.set("longevus_checkins",ck); }
 if(pf!==null){ setProfessorFeedbacks(pf); LS.set("longevus_professor_feedbacks",pf); }
 if(ag!==null){ setAgendaEntries(ag); LS.set("longevus_agenda",ag); }
-if(ld!==null){ setLeads(ld); LS.set("longevus_leads",ld); }
+if(ld!==null){ const ldMigrado=ld.map(migrateLead); setLeads(ldMigrado); LS.set("longevus_leads",ldMigrado); }
 setDbReady(true);
 } catch(e){ setDbReady(true); }
 setSyncing(false);
