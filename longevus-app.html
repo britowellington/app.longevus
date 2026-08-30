@@ -7242,22 +7242,30 @@ const navItems=[
 ];
 const menuItems=[
 {id:"leads",label:"Leads",icon:"user"},
-{id:"agenda",label:"Agenda",icon:"calendar"},
-{id:"questionarios",label:"Questionários",icon:"inbox"},
-{id:"extraatividades",label:"Atividades Extras",icon:"calendar"},
+{group:"Agenda",icon:"calendar",items:[
+{id:"agenda",label:"Agenda"},
+{id:"extraatividades",label:"Atividades Extras"},
+]},
+{group:"Avaliação e Acompanhamento",icon:"clip",items:[
+{id:"questionarios",label:"Questionários"},
+{id:"daily",label:"Monitoramento"},
+{id:"reports",label:"Relatórios"},
+]},
+{group:"Treino e Conteúdo",icon:"zap",items:[
+{id:"cognitivehub",label:"Hub Cognitivo"},
+{id:"extprograma",label:"Gerador de Programa"},
+{id:"extbiblioteca",label:"Biblioteca"},
+{id:"documents",label:"Documentos"},
+]},
 {id:"financeiro",label:"Financeiro",icon:"money"},
-{id:"cognitivehub",label:"Hub Cognitivo",icon:"zap"},
-{id:"daily",label:"Monitoramento",icon:"act"},
-{id:"reports",label:"Relatórios",icon:"bar"},
-{id:"documents",label:"Documentos",icon:"clip"},
-
-{id:"extbiblioteca",label:"Biblioteca",icon:"clip"},
-
-{id:"extprograma",label:"Gerador de Programa",icon:"zap"},
-{id:"vincular",label:"Vincular Alunos",icon:"user"},
-{id:"profile",label:"Meu Perfil",icon:"user"},
+{group:"Conta",icon:"user",items:[
+{id:"vincular",label:"Vincular Alunos"},
+{id:"profile",label:"Meu Perfil"},
+]},
 ];
+const ALL_MENU_IDS = menuItems.flatMap(m=>m.group?m.items.map(it=>it.id):[m.id]);
 const [menuOpen, setMenuOpen] = useState(false);
+const [openGroup, setOpenGroup] = useState(null);
 const [showSubscribe, setShowSubscribe] = useState(false);
 const activePage=page==="studentDetail"?"students":(["dashboard","students","assessments","daily","reports","documents","program","cognitivehub","profile","questionarios","vincular","extraatividades","financeiro","agenda","leads"].includes(page)?page:null);
 if (authLoading) {
@@ -7374,28 +7382,55 @@ return (
 </button>
 ))}
 {/* Botão hamburguer */}
-<button onClick={()=>setMenuOpen(o=>!o)} style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,padding:"9px 4px 8px",border:"none",background:"transparent",cursor:"pointer",color:menuOpen||menuItems.some(m=>m.id===activePage)?"#FF5603":"#94a3b8",position:"relative" }}>
+<button onClick={()=>setMenuOpen(o=>{ const next=!o; if(next){ const g=menuItems.find(m=>m.group&&m.items.some(it=>it.id===activePage)); setOpenGroup(g?g.group:null); } return next; })} style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,padding:"9px 4px 8px",border:"none",background:"transparent",cursor:"pointer",color:menuOpen||ALL_MENU_IDS.includes(activePage)?"#FF5603":"#94a3b8",position:"relative" }}>
 <div style={{ display:"flex",flexDirection:"column",gap:4,alignItems:"center",justifyContent:"center" }}>
-<div style={{ width:18,height:2,borderRadius:2,background:menuOpen||menuItems.some(m=>m.id===activePage)?"#FF5603":"#94a3b8",transition:"background 0.2s" }}/>
-<div style={{ width:18,height:2,borderRadius:2,background:menuOpen||menuItems.some(m=>m.id===activePage)?"#FF5603":"#94a3b8",transition:"background 0.2s" }}/>
-<div style={{ width:18,height:2,borderRadius:2,background:menuOpen||menuItems.some(m=>m.id===activePage)?"#FF5603":"#94a3b8",transition:"background 0.2s" }}/>
+<div style={{ width:18,height:2,borderRadius:2,background:menuOpen||ALL_MENU_IDS.includes(activePage)?"#FF5603":"#94a3b8",transition:"background 0.2s" }}/>
+<div style={{ width:18,height:2,borderRadius:2,background:menuOpen||ALL_MENU_IDS.includes(activePage)?"#FF5603":"#94a3b8",transition:"background 0.2s" }}/>
+<div style={{ width:18,height:2,borderRadius:2,background:menuOpen||ALL_MENU_IDS.includes(activePage)?"#FF5603":"#94a3b8",transition:"background 0.2s" }}/>
 </div>
-<span style={{ fontSize:10,fontWeight:menuOpen||menuItems.some(m=>m.id===activePage)?700:500 }}>Mais</span>
+<span style={{ fontSize:10,fontWeight:menuOpen||ALL_MENU_IDS.includes(activePage)?700:500 }}>Mais</span>
 {/* Menu dropdown */}
-{menuOpen&&<div style={{ position:"absolute",bottom:"100%",right:0,background:"#fff",borderRadius:"14px 14px 0 14px",boxShadow:"0 -4px 24px #0000001a",border:"1.5px solid #f1f5f9",minWidth:180,zIndex:999,overflow:"hidden" }}>
+{menuOpen&&<div style={{ position:"absolute",bottom:"100%",right:0,background:"#fff",borderRadius:"14px 14px 0 14px",boxShadow:"0 -4px 24px #0000001a",border:"1.5px solid #f1f5f9",minWidth:220,maxHeight:"70vh",overflowY:"auto",zIndex:999,overflowX:"hidden" }}>
 {menuItems.map(m=>{
+if(m.group){
+const isOpenG = openGroup===m.group;
+const hasActive = m.items.some(it=>it.id===activePage);
+return (
+<div key={m.group}>
+<button onClick={(e)=>{ e.stopPropagation(); setOpenGroup(o=>o===m.group?null:m.group); }} style={{ width:"100%",display:"flex",alignItems:"center",gap:12,padding:"14px 18px",border:"none",background:hasActive?"#fff4ee":"#fff",cursor:"pointer",borderBottom:"1px solid #f8fafc" }}>
+<I n={m.icon} s={18} c={hasActive?"#FF5603":"#64748b"}/>
+<span style={{ fontSize:14,fontWeight:hasActive?700:500,color:hasActive?"#FF5603":"#0f172a",flex:1,textAlign:"left" }}>{m.group}</span>
+<span style={{ display:"inline-flex",transform:isOpenG?"rotate(90deg)":"rotate(-90deg)",transition:"transform 0.2s" }}><I n="back" s={13} c="#94a3b8"/></span>
+</button>
+{isOpenG && <div style={{ background:"#fafbfc" }}>
+{m.items.map(it=>{
+const isActive = activePage===it.id;
+return (
+<button key={it.id} onClick={(e)=>{
+  e.stopPropagation();
+  if(it.id==="extprograma"){window.open("longevus-programa.html","_self");return;}
+  if(it.id==="extbiblioteca"){window.open("longevus-biblioteca.html","_self");return;}
+  nav(it.id);setMenuOpen(false);
+}} style={{ width:"100%",display:"flex",alignItems:"center",gap:12,padding:"12px 18px 12px 48px",border:"none",background:isActive?"#fff4ee":"#fafbfc",cursor:"pointer",borderBottom:"1px solid #f1f5f9" }}>
+<span style={{ fontSize:13,fontWeight:isActive?700:500,color:isActive?"#FF5603":"#334155" }}>{it.label}</span>
+{it.id==="questionarios"&&pendingQCount>0&&<span style={{ marginLeft:"auto",background:"#dc2626",color:"#fff",fontSize:10,fontWeight:800,borderRadius:99,padding:"2px 7px" }}>{pendingQCount}</span>}
+{isActive&&<div style={{ width:6,height:6,borderRadius:99,background:"#FF5603",marginLeft:it.id==="questionarios"&&pendingQCount>0?8:"auto" }}/>}
+</button>
+);
+})}
+</div>}
+</div>
+);
+}
 const isActive = activePage===m.id;
 return(
 <button key={m.id} onClick={(e)=>{
   e.stopPropagation();
-  if(m.id==="extprograma"){window.open("longevus-programa.html","_self");return;}
-  if(m.id==="extbiblioteca"){window.open("longevus-biblioteca.html","_self");return;}
   nav(m.id);setMenuOpen(false);
 }} style={{ width:"100%",display:"flex",alignItems:"center",gap:12,padding:"14px 18px",border:"none",background:isActive?"#fff4ee":"#fff",cursor:"pointer",borderBottom:"1px solid #f8fafc" }}>
 <I n={m.icon} s={18} c={isActive?"#FF5603":"#64748b"}/>
 <span style={{ fontSize:14,fontWeight:isActive?700:500,color:isActive?"#FF5603":"#0f172a" }}>{m.label}</span>
-{m.id==="questionarios"&&pendingQCount>0&&<span style={{ marginLeft:"auto",background:"#dc2626",color:"#fff",fontSize:10,fontWeight:800,borderRadius:99,padding:"2px 7px" }}>{pendingQCount}</span>}
-{isActive&&<div style={{ width:6,height:6,borderRadius:99,background:"#FF5603",marginLeft:m.id==="questionarios"&&pendingQCount>0?8:"auto" }}/>}
+{isActive&&<div style={{ width:6,height:6,borderRadius:99,background:"#FF5603",marginLeft:"auto" }}/>}
 </button>
 );
 })}
