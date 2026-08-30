@@ -708,7 +708,41 @@ window.open("longevus-programa.html?novo="+encodeURIComponent(st.id),"_self");
 const openViewProgram = (prog) => {
 window.open("longevus-programa.html?ver="+encodeURIComponent(prog.id),"_self");
 };
-const TABS=[{id:"aval",label:"Avaliações"},{id:"treino",label:"Treino"},{id:"agenda",label:"Agenda"},{id:"checkin",label:"Check-in"},{id:"mon",label:"Monitoramento"},{id:"doc",label:"Documentos"}];
+const ccfg = st.checkinConfig || {pre:{disposicao:true,hidratacao:true,alimentacao:true,sono:true,dor:false,pa:false,glicemia:false},post:{esforco:true,completude:true,dor:true,obs:true}};
+const emptyPresPre = () => ({ disposicao:null, hidratacao:null, alimentacao:null, sono:null, dor:"nenhuma", pas:"", pad:"", fc:"", glicemia:"" });
+const emptyPresPos = () => ({ esforco:null, completude:null, dor:"nenhuma", obs:"" });
+const [presTab,setPresTab] = useState("pre");
+const [presPre,setPresPre] = useState(emptyPresPre());
+const [presPos,setPresPos] = useState(emptyPresPos());
+const [presSaving,setPresSaving] = useState(false);
+const [presMsg,setPresMsg] = useState("");
+const submeterCheckin = async (type, data) => {
+try {
+const headers = await DB.authHeaders();
+const { data: sess } = await supa.auth.getSession();
+const ownerId = sess?.session?.user?.id;
+const body = { id: uid(), owner_id: ownerId, student_id: studentId, type, data };
+const r = await fetch(SUPA_URL+"/rest/v1/checkins", { method:"POST", headers, body: JSON.stringify(body) });
+return r.ok;
+} catch(e) { return false; }
+};
+const salvarPresPre = async () => {
+setPresSaving(true); setPresMsg("");
+const data = { ...presPre, date: todayStr(), source:"professor_presencial", createdAt: new Date().toISOString() };
+const ok = await submeterCheckin("pre_treino", data);
+setPresSaving(false);
+setPresMsg(ok?"Check-in registrado!":"Erro ao salvar. Tente novamente.");
+if(ok) setPresPre(emptyPresPre());
+};
+const salvarPresPos = async () => {
+setPresSaving(true); setPresMsg("");
+const data = { esforco:presPos.esforco, completude:presPos.completude, dor:presPos.dor, obs:presPos.obs, date:todayStr(), source:"professor_presencial", createdAt: new Date().toISOString() };
+const ok = await submeterCheckin("pos_treino", data);
+setPresSaving(false);
+setPresMsg(ok?"Check-out registrado!":"Erro ao salvar. Tente novamente.");
+if(ok) setPresPos(emptyPresPos());
+};
+const TABS=[{id:"aval",label:"Avaliações"},{id:"treino",label:"Treino"},{id:"agenda",label:"Agenda"},{id:"checkin",label:"Check-in"},{id:"presencial",label:"Presencial"},{id:"mon",label:"Monitoramento"},{id:"doc",label:"Documentos"}];
 return (
 <div>
 <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:16 }}>
@@ -915,6 +949,156 @@ return (
 );})}
 {stCheckins.length>30&&<div style={{ fontSize:11,color:"#94a3b8",textAlign:"center" }}>Mostrando os 30 mais recentes de {stCheckins.length}</div>}
 </div>}
+</div>
+)}
+{tab==="presencial"&&(
+<div>
+<div style={{ display:"flex",gap:6,marginBottom:14 }}>
+<button onClick={()=>{setPresTab("pre");setPresMsg("");}} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:presTab==="pre"?O:"#f1f5f9",color:presTab==="pre"?"#fff":"#64748b" }}>Antes do treino</button>
+<button onClick={()=>{setPresTab("pos");setPresMsg("");}} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:presTab==="pos"?O:"#f1f5f9",color:presTab==="pos"?"#fff":"#64748b" }}>Depois do treino</button>
+</div>
+<div style={{ fontSize:12,color:"#94a3b8",marginBottom:16,lineHeight:1.5 }}>
+Exatamente as mesmas perguntas que aparecem no app de {(st.name||"").split(" ")[0]}. Preencha como se fosse ele(a), durante o atendimento presencial.
+</div>
+{presTab==="pre" && <>
+{ccfg.pre?.disposicao && (
+<div style={{ marginBottom:20 }}>
+<div style={{ fontWeight:700,fontSize:13,color:"#475569",marginBottom:10 }}>Como você está disposto?</div>
+<div style={{ display:"flex",gap:8 }}>
+{[{v:1,e:"😣",l:"Exausto"},{v:2,e:"😴",l:"Cansado"},{v:3,e:"😐",l:"Neutro"},{v:4,e:"🙂",l:"Disposto"},{v:5,e:"😁",l:"Animado"}].map(o=>(
+<button key={o.v} onClick={()=>setPresPre(c=>({...c,disposicao:o.v}))} style={{ flex:1,padding:"10px 2px",borderRadius:10,border:presPre.disposicao===o.v?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:presPre.disposicao===o.v?"#fff4ee":"#fff",cursor:"pointer",textAlign:"center",fontFamily:"inherit" }}>
+<div style={{ fontSize:20 }}>{o.e}</div>
+<div style={{ fontSize:8,fontWeight:700,color:presPre.disposicao===o.v?"#FF5603":"#94a3b8",marginTop:2 }}>{o.l}</div>
+</button>
+))}
+</div>
+</div>
+)}
+{ccfg.pre?.hidratacao && (
+<div style={{ marginBottom:20 }}>
+<div style={{ fontWeight:700,fontSize:13,color:"#475569",marginBottom:10 }}>Como foi seu consumo de água ontem?</div>
+<div style={{ display:"flex",gap:8 }}>
+{[{v:1,l:"Muito pouco"},{v:2,l:"Pouco"},{v:3,l:"Regular"},{v:4,l:"Bom"},{v:5,l:"Ótimo"}].map(o=>(
+<button key={o.v} onClick={()=>setPresPre(c=>({...c,hidratacao:o.v}))} style={{ flex:1,padding:"10px 2px",borderRadius:10,border:presPre.hidratacao===o.v?"1.5px solid #3b82f6":"1.5px solid #e2e8f0",background:presPre.hidratacao===o.v?"#eff6ff":"#fff",cursor:"pointer",textAlign:"center",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:4 }}>
+<span style={{ fontSize:16 }}>💧</span>
+<div style={{ display:"flex",flexDirection:"column",alignItems:"center" }}>
+{Array.from({length:o.v}).map((_,i)=>(
+<div key={i} style={{ width:7,height:presPre.hidratacao===o.v?5:4,background:presPre.hidratacao===o.v?"#3b82f6":"#cbd5e1",borderRadius:2,marginBottom:1 }}/>
+))}
+</div>
+<div style={{ fontSize:9,fontWeight:700,color:presPre.hidratacao===o.v?"#3b82f6":"#94a3b8",marginTop:2 }}>{o.l}</div>
+</button>
+))}
+</div>
+</div>
+)}
+{ccfg.pre?.alimentacao && (
+<div style={{ marginBottom:20 }}>
+<div style={{ fontWeight:700,fontSize:13,color:"#475569",marginBottom:10 }}>Como foi sua alimentação hoje?</div>
+<div style={{ display:"flex",gap:8 }}>
+{[{v:1,e:"🍔",l:"Ruim"},{v:2,e:"🥪",l:"Regular"},{v:3,e:"🥗",l:"Boa"},{v:4,e:"🥦",l:"Ótima"}].map(o=>(
+<button key={o.v} onClick={()=>setPresPre(c=>({...c,alimentacao:o.v}))} style={{ flex:1,padding:"10px 2px",borderRadius:10,border:presPre.alimentacao===o.v?"1.5px solid #16a34a":"1.5px solid #e2e8f0",background:presPre.alimentacao===o.v?"#f0fdf4":"#fff",cursor:"pointer",textAlign:"center",fontFamily:"inherit" }}>
+<div style={{ fontSize:19 }}>{o.e}</div>
+<div style={{ fontSize:10,fontWeight:700,color:presPre.alimentacao===o.v?"#16a34a":"#94a3b8",marginTop:2 }}>{o.l}</div>
+</button>
+))}
+</div>
+</div>
+)}
+{ccfg.pre?.sono && (
+<div style={{ marginBottom:20 }}>
+<div style={{ fontWeight:700,fontSize:13,color:"#475569",marginBottom:10 }}>Como foi seu sono essa noite?</div>
+<div style={{ display:"flex",gap:8 }}>
+{[{v:1,e:"🌑",l:"Ruim"},{v:2,e:"🌗",l:"Regular"},{v:3,e:"🌖",l:"Boa"},{v:4,e:"🌕",l:"Ótima"}].map(o=>(
+<button key={o.v} onClick={()=>setPresPre(c=>({...c,sono:o.v}))} style={{ flex:1,padding:"10px 2px",borderRadius:10,border:presPre.sono===o.v?"1.5px solid #7e22ce":"1.5px solid #e2e8f0",background:presPre.sono===o.v?"#fdf4ff":"#fff",cursor:"pointer",textAlign:"center",fontFamily:"inherit" }}>
+<div style={{ fontSize:19 }}>{o.e}</div>
+<div style={{ fontSize:10,fontWeight:700,color:presPre.sono===o.v?"#7e22ce":"#94a3b8",marginTop:2 }}>{o.l}</div>
+</button>
+))}
+</div>
+</div>
+)}
+{ccfg.pre?.dor && (
+<div style={{ marginBottom:20 }}>
+<div style={{ fontWeight:700,fontSize:13,color:"#475569",marginBottom:10 }}>Dor ou desconforto agora</div>
+<div style={{ display:"flex",gap:6 }}>
+{[{v:"nenhuma",e:"😊",l:"Nenhuma"},{v:"leve",e:"😕",l:"Leve"},{v:"moderada",e:"😣",l:"Moderada"},{v:"alta",e:"😖",l:"Alta"}].map(o=>(
+<button key={o.v} onClick={()=>setPresPre(c=>({...c,dor:o.v}))} style={{ flex:1,padding:"10px 2px",borderRadius:10,border:presPre.dor===o.v?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:presPre.dor===o.v?"#fff4ee":"#fff",cursor:"pointer",textAlign:"center",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:2 }}>
+<span style={{ fontSize:19 }}>{o.e}</span>
+<span style={{ fontSize:9,fontWeight:700,color:presPre.dor===o.v?"#FF5603":"#94a3b8" }}>{o.l}</span>
+</button>
+))}
+</div>
+</div>
+)}
+{ccfg.pre?.pa && (
+<div style={{ marginBottom:20 }}>
+<div style={{ fontWeight:700,fontSize:13,color:"#475569",marginBottom:10 }}>❤️ Pressão arterial / FC</div>
+<div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8 }}>
+<input value={presPre.pas} onChange={e=>setPresPre(c=>({...c,pas:e.target.value}))} placeholder="PAS" inputMode="numeric" style={{ padding:"9px 10px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box" }}/>
+<input value={presPre.pad} onChange={e=>setPresPre(c=>({...c,pad:e.target.value}))} placeholder="PAD" inputMode="numeric" style={{ padding:"9px 10px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box" }}/>
+<input value={presPre.fc} onChange={e=>setPresPre(c=>({...c,fc:e.target.value}))} placeholder="FC" inputMode="numeric" style={{ padding:"9px 10px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box" }}/>
+</div>
+</div>
+)}
+{ccfg.pre?.glicemia && (
+<div style={{ marginBottom:20 }}>
+<div style={{ fontWeight:700,fontSize:13,color:"#475569",marginBottom:10 }}>🩸 Glicemia (mg/dL)</div>
+<input value={presPre.glicemia} onChange={e=>setPresPre(c=>({...c,glicemia:e.target.value}))} placeholder="100" inputMode="numeric" style={{ width:"100%",padding:"9px 10px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box" }}/>
+</div>
+)}
+<Btn full onClick={salvarPresPre} disabled={presSaving||(ccfg.pre?.disposicao&&presPre.disposicao===null)||(ccfg.pre?.hidratacao&&presPre.hidratacao===null)||(ccfg.pre?.alimentacao&&presPre.alimentacao===null)||(ccfg.pre?.sono&&presPre.sono===null)}>{presSaving?"Salvando...":"Registrar check-in"}</Btn>
+</>}
+{presTab==="pos" && <>
+{ccfg.post?.esforco && (
+<div style={{ marginBottom:20 }}>
+<div style={{ fontWeight:700,fontSize:13,color:"#475569",marginBottom:10 }}>Esforço do treino</div>
+<div style={{ display:"flex",gap:6 }}>
+{[{v:1,e:"😌",l:"Tranquilo"},{v:2,e:"🙂",l:"Moderado"},{v:3,e:"😅",l:"Puxado"},{v:4,e:"😓",l:"Muito puxado"},{v:5,e:"🥵",l:"No limite"}].map(o=>(
+<button key={o.v} onClick={()=>setPresPos(c=>({...c,esforco:o.v}))} style={{ flex:1,padding:"10px 2px",borderRadius:10,border:presPos.esforco===o.v?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:presPos.esforco===o.v?"#fff4ee":"#fff",cursor:"pointer",textAlign:"center",fontFamily:"inherit" }}>
+<div style={{ fontSize:20 }}>{o.e}</div>
+<div style={{ fontSize:8,fontWeight:700,color:presPos.esforco===o.v?"#FF5603":"#94a3b8",marginTop:2 }}>{o.l}</div>
+</button>
+))}
+</div>
+</div>
+)}
+{ccfg.post?.completude && (
+<div style={{ marginBottom:20 }}>
+<div style={{ fontWeight:700,fontSize:13,color:"#475569",marginBottom:10 }}>Conseguiu completar o treino como planejado?</div>
+<div style={{ display:"flex",gap:8 }}>
+{[{v:"sim",e:"✅",l:"Sim, completo"},{v:"parcial",e:"⚠️",l:"Parcialmente"},{v:"nao",e:"❌",l:"Não consegui"}].map(o=>(
+<button key={o.v} onClick={()=>setPresPos(c=>({...c,completude:o.v}))} style={{ flex:1,padding:"12px 4px",borderRadius:10,border:presPos.completude===o.v?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:presPos.completude===o.v?"#fff4ee":"#fff",cursor:"pointer",textAlign:"center",fontFamily:"inherit" }}>
+<div style={{ fontSize:22 }}>{o.e}</div>
+<div style={{ fontSize:10,fontWeight:700,color:presPos.completude===o.v?"#FF5603":"#94a3b8",marginTop:3 }}>{o.l}</div>
+</button>
+))}
+</div>
+</div>
+)}
+{ccfg.post?.dor && (
+<div style={{ marginBottom:20 }}>
+<div style={{ fontWeight:700,fontSize:13,color:"#475569",marginBottom:10 }}>Dor ou desconforto</div>
+<div style={{ display:"flex",gap:6 }}>
+{[{v:"nenhuma",e:"😊",l:"Nenhuma"},{v:"leve",e:"😕",l:"Leve"},{v:"moderada",e:"😣",l:"Moderada"},{v:"alta",e:"😖",l:"Alta"}].map(o=>(
+<button key={o.v} onClick={()=>setPresPos(c=>({...c,dor:o.v}))} style={{ flex:1,padding:"10px 2px",borderRadius:10,border:presPos.dor===o.v?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:presPos.dor===o.v?"#fff4ee":"#fff",cursor:"pointer",textAlign:"center",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:2 }}>
+<span style={{ fontSize:19 }}>{o.e}</span>
+<span style={{ fontSize:9,fontWeight:700,color:presPos.dor===o.v?"#FF5603":"#94a3b8" }}>{o.l}</span>
+</button>
+))}
+</div>
+</div>
+)}
+{ccfg.post?.obs && (
+<div style={{ marginBottom:20 }}>
+<div style={{ fontWeight:700,fontSize:13,color:"#475569",marginBottom:4 }}>Teve dificuldade em algum exercício específico?</div>
+<div style={{ fontSize:11,color:"#94a3b8",marginBottom:8 }}>Pode ser bem curto — ajuda a ajustar o próximo treino.</div>
+<textarea value={presPos.obs} onChange={e=>setPresPos(c=>({...c,obs:e.target.value}))} placeholder="Ex: sentiu dificuldade no agachamento, reduzimos o peso do supino..." style={{ width:"100%",minHeight:70,padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box",resize:"vertical" }}/>
+</div>
+)}
+<Btn full onClick={salvarPresPos} disabled={presSaving||(ccfg.post?.esforco&&presPos.esforco===null)||(ccfg.post?.completude&&presPos.completude===null)||(ccfg.post?.obs&&!presPos.obs.trim())}>{presSaving?"Salvando...":"Registrar check-out"}</Btn>
+</>}
+{presMsg && <div style={{ marginTop:14,textAlign:"center",fontSize:12,fontWeight:700,color:presMsg.startsWith("Erro")?"#dc2626":"#16a34a" }}>{presMsg}</div>}
 </div>
 )}
 {tab==="mon"&&(
