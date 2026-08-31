@@ -788,6 +788,15 @@ const allKeysPres = [];
 MOMENTOS.forEach(([mk])=>{ (sessaoPres[mk]||[]).forEach((_,idx)=>allKeysPres.push(mk+"-"+idx)); });
 const togglePresDone = (k) => setPresDone(prev=>{ const n=new Set(prev); if(n.has(k))n.delete(k); else n.add(k); return n; });
 const setPresCarga = (k, val) => setPresCargasTreino(prev=>({ ...prev, [k]:val }));
+const getLastCargaPres = (exId) => {
+if(!exId) return null;
+for(const s of stSessions){
+if(!s.cargas) continue;
+const found = Object.values(s.cargas).find(c=>c && c.exId===exId && c.carga);
+if(found) return found.carga;
+}
+return null;
+};
 const salvarTreinoPresencial = () => {
 const cargasPreenchidas = {};
 allKeysPres.forEach(k=>{
@@ -1207,59 +1216,116 @@ Exatamente as mesmas perguntas que aparecem no app de {(st.name||"").split(" ")[
 </>}
 {presTab==="treino" && <>
 {!currentProgram ? <Card style={{ textAlign:"center",padding:32 }}><I n="clip" c="#cbd5e1" s={32}/><div style={{ color:"#94a3b8",marginTop:10 }}>Este aluno ainda não tem um programa montado.</div></Card> : <>
-<div style={{ fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:0.5,marginBottom:8 }}>Bloco</div>
-<div style={{ display:"flex",gap:6,marginBottom:16,flexWrap:"wrap" }}>
-{BLOCOS.map((b,i)=>(
-<button key={b.key} onClick={()=>setPresBlocoIdx(i)} style={{ flex:"1 1 40%",border:presBlocoIdx===i?`1.5px solid ${b.cor.dot}`:"1.5px solid #e2e8f0",background:presBlocoIdx===i?b.cor.bg:"#f8fafc",color:presBlocoIdx===i?b.cor.texto:"#64748b",borderRadius:9,padding:"8px 6px",fontSize:11,fontWeight:700,cursor:"pointer" }}>{b.label}</button>
-))}
+<div style={{ display:"flex",gap:0,marginBottom:10,background:"#f1f5f9",borderRadius:10,padding:3 }}>
+{BLOCOS.map((b,i)=>{
+const locked = i>maxUnlockedIdx;
+return (
+<button key={b.key} onClick={()=>{ if(!locked){ setPresBlocoIdx(i); } }} disabled={locked} style={{ flex:1,border:"none",borderRadius:8,padding:"6px 3px",fontSize:10,fontWeight:700,cursor:locked?"default":"pointer",background:presBlocoIdx===i?b.cor.bg:"transparent",color:locked?"#cbd5e1":(presBlocoIdx===i?b.cor.texto:"#94a3b8"),lineHeight:1.3 }}>
+<div>{locked?"🔒":"B"+(i+1)}</div>
+<div style={{ fontSize:8,marginTop:1 }}>{b.semanas}</div>
+</button>
+);
+})}
 </div>
-<div style={{ fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:0.5,marginBottom:8 }}>Treino de hoje</div>
-<div style={{ fontSize:11,color:"#94a3b8",marginBottom:8,marginTop:-4 }}>{treinosUnicos.length>0 ? `Sugestão automática: ${treinoDeHojeCalc}. Se o aluno vai fazer outro, é só escolher abaixo.` : "Programa sem sequência de treinos definida."}</div>
-<div style={{ display:"flex",gap:6,marginBottom:18,flexWrap:"wrap" }}>
-{treinosUnicos.map((t,i)=>{ const td=TREINO_DEFS[t]||{label:"Treino "+t,cor:"#64748b",bg:"#f1f5f9"}; return (
-<button key={t} onClick={()=>setPresTreinoIdx(i)} style={{ flex:"1 1 30%",border:presTreinoIdx===i?`1.5px solid ${td.cor}`:"1.5px solid #e2e8f0",background:presTreinoIdx===i?td.bg:"#f8fafc",color:presTreinoIdx===i?td.cor:"#64748b",borderRadius:9,padding:"10px 6px",fontSize:12,fontWeight:800,cursor:"pointer" }}>{td.label}</button>
-); })}
+
+{treinoDeHojeCalc && TREINO_DEFS[treinoDeHojeCalc] && (
+<div style={{ background:TREINO_DEFS[treinoDeHojeCalc].bg,border:`2px solid ${TREINO_DEFS[treinoDeHojeCalc].cor}`,borderRadius:10,padding:"10px 12px",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+<div>
+<div style={{ fontSize:10,fontWeight:700,color:TREINO_DEFS[treinoDeHojeCalc].cor,textTransform:"uppercase",letterSpacing:0.3 }}>📅 Treino de hoje</div>
+<div style={{ fontSize:15,fontWeight:800,color:TREINO_DEFS[treinoDeHojeCalc].cor }}>{TREINO_DEFS[treinoDeHojeCalc].label}</div>
 </div>
+{treinoAtivoPres!==treinoDeHojeCalc && (
+<Btn sm onClick={()=>{ const idx=treinosUnicos.indexOf(treinoDeHojeCalc); if(idx!==-1) setPresTreinoIdx(idx); }}>Ir para hoje</Btn>
+)}
+</div>
+)}
+
+<div style={{ background:blocoAtivoPres.cor.bg,border:`1.5px solid ${blocoAtivoPres.cor.border}`,borderRadius:9,padding:"10px 12px",marginBottom:10 }}>
+<div style={{ fontWeight:700,fontSize:12,color:blocoAtivoPres.cor.texto }}>{blocoAtivoPres.label} · sem. {blocoAtivoPres.semanas}</div>
+{presBlocoIdx<BLOCOS.length-1 && (
+<div style={{ marginTop:8 }}>
+<div style={{ display:"flex",justifyContent:"space-between",fontSize:11,color:blocoAtivoPres.cor.texto,marginBottom:4,fontWeight:700 }}>
+<span>🔒 Progresso do bloco (libera o próximo)</span>
+<span>{sessionsPerBloco(blocoAtivoPres.key)}/{requiredPerBlock}</span>
+</div>
+<div style={{ height:8,background:"rgba(255,255,255,0.6)",borderRadius:99,overflow:"hidden" }}>
+<div style={{ height:"100%",width:Math.min(100,Math.round(sessionsPerBloco(blocoAtivoPres.key)/requiredPerBlock*100))+"%",background:blocoAtivoPres.cor.dot,borderRadius:99,transition:"width 0.3s" }}/>
+</div>
+</div>
+)}
+</div>
+
+<div style={{ display:"flex",gap:6,marginBottom:14,flexWrap:"wrap" }}>
+{treinosUnicos.map((t,i)=>{
+const d = TREINO_DEFS[t]||{label:"Treino "+t,cor:"#64748b",bg:"#f1f5f9",border:"#e2e8f0"};
+return (
+<button key={t+i} onClick={()=>setPresTreinoIdx(i)} style={{ flex:1,minWidth:70,border:`1.5px solid ${presTreinoIdx===i?d.cor:d.border}`,borderRadius:9,padding:"8px 6px",fontSize:11,fontWeight:700,cursor:"pointer",background:presTreinoIdx===i?d.bg:"#fff",color:presTreinoIdx===i?d.cor:"#64748b",textAlign:"center",boxShadow:presTreinoIdx===i?"0 2px 6px rgba(15,23,42,0.08)":"none" }}>{d.label}</button>
+);
+})}
+</div>
+
+<div style={{ background:tdPres?.bg,border:`1.5px solid ${tdPres?.border}`,borderRadius:9,padding:"8px 12px",marginBottom:10 }}>
+<div style={{ fontWeight:700,fontSize:12,color:tdPres?.cor }}>{tdPres?.desc}</div>
+</div>
+
+{allKeysPres.length>0 && (
+<div style={{ marginBottom:16 }}>
+<div style={{ display:"flex",justifyContent:"space-between",fontSize:11,color:"#64748b",marginBottom:5,fontWeight:700 }}>
+<span>Progresso</span>
+<span>{presDone.size}/{allKeysPres.length}</span>
+</div>
+<div style={{ height:8,background:"#f1f5f9",borderRadius:99,overflow:"hidden" }}>
+<div style={{ height:"100%",width:(allKeysPres.length?Math.round(presDone.size/allKeysPres.length*100):0)+"%",background:O,borderRadius:99,transition:"width 0.2s" }}/>
+</div>
+</div>
+)}
+
 {MOMENTOS.map(([mk,mlabel,mcor])=>{
 const itens = sessaoPres[mk]||[];
 if(itens.length===0) return null;
 return (
 <div key={mk} style={{ marginBottom:18 }}>
-<div style={{ fontSize:12,fontWeight:800,color:mcor,marginBottom:8 }}>{mlabel}</div>
-<div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+<div style={{ display:"flex",alignItems:"center",gap:7,fontSize:12,fontWeight:800,color:"#64748b",marginBottom:8,textTransform:"uppercase",letterSpacing:0.3 }}>
+<span style={{ width:8,height:8,borderRadius:99,background:mcor,flexShrink:0 }}/>{mlabel}
+</div>
 {itens.map((it,idx)=>{
 const key = mk+"-"+idx;
 const isCog = it.isCognitivo || it.exId==="cognitivo";
 const ex = !isCog ? EXERCISES.find(e=>e.id===it.exId) : null;
 const nome = isCog ? "Atividade Cognitiva" : (ex?.nome||"Exercício");
 const done = presDone.has(key);
+const lastCarga = !isCog ? getLastCargaPres(it.exId) : null;
 return (
-<Card key={key} style={{ padding:"12px 14px",background:done?"#f0fdf4":"#fff",borderColor:done?"#bbf7d0":"#e2e8f0" }}>
+<Card key={key} style={{ padding:"12px 14px",marginBottom:8,background:done?"#f0fdf4":"#fff",borderColor:done?"#bbf7d0":"#e2e8f0" }}>
 <div style={{ display:"flex",alignItems:"center",gap:10 }}>
 <button onClick={()=>togglePresDone(key)} style={{ width:26,height:26,borderRadius:8,border:done?"none":"1.5px solid #cbd5e1",background:done?"#16a34a":"#fff",color:"#fff",cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14 }}>{done?"✓":""}</button>
-<div style={{ width:34,height:34,borderRadius:9,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0 }}>{isCog?"🧠":(ex?.icone||"🏋️")}</div>
+<div style={{ width:38,height:38,borderRadius:10,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0 }}>{isCog?"🧠":(ex?.icone||"🏋️")}</div>
 <div style={{ flex:1,minWidth:0 }}>
 <div style={{ fontWeight:700,fontSize:13,textDecoration:done?"line-through":"none",opacity:done?0.7:1 }}>{nome}</div>
-{!isCog && <div style={{ display:"flex",gap:10,marginTop:2,fontSize:11,color:"#94a3b8",flexWrap:"wrap",rowGap:4 }}>
+{!isCog ? (
+<div style={{ display:"flex",gap:10,marginTop:2,fontSize:11,color:"#94a3b8",flexWrap:"wrap",rowGap:5 }}>
 <span>Séries: <b style={{ color:"#475569" }}>{it.series}</b></span>
 <span>Reps: <b style={{ color:"#475569" }}>{it.reps}</b></span>
 <span>Descanso: <b style={{ color:"#475569" }}>{it.descanso}</b></span>
-</div>}
+</div>
+) : (
+<div style={{ display:"flex",alignItems:"center",gap:4,fontSize:11,color:"#94a3b8",marginTop:2 }}>⏱ {it.reps}</div>
+)}
 </div>
 </div>
-{!isCog && <div style={{ marginTop:8,marginLeft:44 }}>
-<input value={presCargasTreino[key]||""} onChange={e=>setPresCarga(key,e.target.value)} placeholder="Carga usada hoje (kg)" style={{ width:"100%",padding:"8px 10px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:12,fontFamily:"inherit",boxSizing:"border-box" }}/>
+{!isCog && <div style={{ marginTop:8,marginLeft:48,display:"flex",alignItems:"center",gap:6 }}>
+<span style={{ fontSize:11,color:"#94a3b8" }}>Carga:</span>
+<input type="text" inputMode="decimal" value={presCargasTreino[key]||""} onChange={e=>setPresCarga(key,e.target.value)} placeholder={lastCarga?lastCarga+"kg":"kg"} style={{ width:56,padding:"5px 7px",borderRadius:7,border:"1.5px solid #e2e8f0",fontSize:12,fontWeight:700,color:"#0f172a",fontFamily:"inherit",textAlign:"center",background:"#f8fafc" }}/>
+<span style={{ fontSize:11,color:"#94a3b8" }}>kg</span>
 </div>}
-{it.obs && <div style={{ marginTop:8,marginLeft:44,fontSize:11,color:"#64748b",fontStyle:"italic" }}>{it.obs}</div>}
+{it.obs && <div style={{ marginTop:8,marginLeft:48,fontSize:11,color:"#64748b",fontStyle:"italic" }}>{it.obs}</div>}
 </Card>
 );
 })}
 </div>
-</div>
 );
 })}
 {allKeysPres.length===0 && <div style={{ textAlign:"center",color:"#cbd5e1",fontSize:12,padding:"20px 0" }}>Não há exercícios prescritos para este bloco/treino.</div>}
-<div style={{ fontSize:12,color:"#94a3b8",marginBottom:10,textAlign:"center" }}>{presDone.size}/{allKeysPres.length} concluídos</div>
 <Btn full onClick={salvarTreinoPresencial} disabled={allKeysPres.length===0}>Concluir treino de hoje</Btn>
 {presTreinoSalvo && <div style={{ marginTop:14,textAlign:"center",fontSize:12,fontWeight:700,color:"#16a34a" }}>Treino registrado! Já aparece na aba Evolução.</div>}
 </>}
