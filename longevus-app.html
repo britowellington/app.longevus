@@ -170,6 +170,11 @@ const BLOCOS = [
 {key:"b4",label:"Bloco 4 — Consolidação",semanas:"19–24",cor:{bg:"#f0fdf4",border:"#bbf7d0",texto:"#15803d",dot:"#22c55e"}},
 ];
 const MOMENTOS = [["inicial","Aquecimento","#22c55e"],["principal","Principal","#3b82f6"],["final","Volta à calma","#a855f7"]];
+const getYtId = (url) => {
+if(!url) return null;
+const m = url.match(/(?:youtu\.be\/|v\/|v=|embed\/|shorts\/|live\/)([\w-]{11})/);
+return m ? m[1] : null;
+};
 const classifyAHA = (s) => s <= 1 ? { label:"Baixo Risco", color:"#16a34a", bg:"#dcfce7" } : s <= 4 ? { label:"Risco Moderado", color:"#d97706", bg:"#fef9c3" } : { label:"Alto Risco", color:"#dc2626", bg:"#fee2e2" };
 const classifyCV = (pct) => pct >= 92 ? { label:"Baixo Risco", color:"#16a34a", bg:"#dcfce7" } : pct >= 69 ? { label:"Risco Moderado", color:"#d97706", bg:"#fef9c3" } : { label:"Alto Risco", color:"#dc2626", bg:"#fee2e2" };
 const classifyFunctional = (s) => s >= 80 ? { label:"Fisicamente Elite", color:"#16a34a", bg:"#dcfce7" } : s >= 60 ? { label:"Fisicamente Ativo", color:"#65a30d", bg:"#ecfccb" } : s >= 40 ? { label:"Fisicamente Independente", color:"#d97706", bg:"#fef9c3" } : s >= 20 ? { label:"Fisicamente Frágil", color:"#ea580c", bg:"#ffedd5" } : { label:"Fisicamente Dependente", color:"#dc2626", bg:"#fee2e2" };
@@ -708,7 +713,7 @@ return (
 </div>
 );
 };
-const StudentDetail = ({ studentId, students, setStudents, assessments, setAssessments, programs, setPrograms, dailyLogs, documents, checkins, sessions, setSessions, professorFeedbacks, setProfessorFeedbacks, agendaEntries, setAgendaEntries, initialTab, nav }) => {
+const StudentDetail = ({ studentId, students, setStudents, assessments, setAssessments, programs, setPrograms, dailyLogs, documents, checkins, sessions, setSessions, exerciciosBiblioteca, professorFeedbacks, setProfessorFeedbacks, agendaEntries, setAgendaEntries, initialTab, nav }) => {
 const st = students.find(s=>s.id===studentId);
 const [tab,setTab] = useState(initialTab||"aval");
 const [editModal,setEditModal] = useState(false);
@@ -757,7 +762,7 @@ Object.values(currentProgram.prescricao).forEach(porTreino=>{
 Object.values(porTreino).forEach(sessaoB=>{
 MOMENTOS.forEach(([mk])=>{
 (sessaoB[mk]||[]).forEach(it=>{
-if(it && it.exId && it.exId!=="cognitivo"){ const ex=EXERCISES.find(e=>e.id===it.exId); if(ex) exerciciosDoPrograma.add(ex.nome); }
+if(it && it.exId && it.exId!=="cognitivo"){ const ex=(exerciciosBiblioteca||[]).find(e=>e.id===it.exId) || EXERCISES.find(e=>e.id===it.exId); if(ex) exerciciosDoPrograma.add(ex.nome); }
 });
 });
 });
@@ -805,7 +810,7 @@ if(!v) return;
 const [mk, idxStr] = k.split("-");
 const it = (sessaoPres[mk]||[])[parseInt(idxStr,10)];
 if(!it || it.exId==="cognitivo") return;
-const ex = EXERCISES.find(e=>e.id===it.exId);
+const ex = (exerciciosBiblioteca||[]).find(e=>e.id===it.exId) || EXERCISES.find(e=>e.id===it.exId);
 cargasPreenchidas[k] = { exId:it.exId, nome:ex?.nome||"Exercício", carga:v };
 });
 const novaSessao = { id:uid(), studentId, programId:currentProgram?.id, blocoKey:blocoAtivoPres.key, treinoKey:treinoAtivoPres, date:todayStr(), totalEx:allKeysPres.length, completedEx:presDone.size, cargas:cargasPreenchidas, source:"professor_presencial", createdAt:new Date().toISOString() };
@@ -1291,10 +1296,36 @@ return (
 {itens.map((it,idx)=>{
 const key = mk+"-"+idx;
 const isCog = it.isCognitivo || it.exId==="cognitivo";
-const ex = !isCog ? EXERCISES.find(e=>e.id===it.exId) : null;
+const ex = !isCog ? ((exerciciosBiblioteca||[]).find(e=>e.id===it.exId) || EXERCISES.find(e=>e.id===it.exId)) : null;
 const nome = isCog ? "Atividade Cognitiva" : (ex?.nome||"Exercício");
 const done = presDone.has(key);
 const lastCarga = !isCog ? getLastCargaPres(it.exId) : null;
+const ytId = ex && getYtId(ex.video);
+const capaImg = !isCog ? (ytId ? ("https://img.youtube.com/vi/"+ytId+"/hqdefault.jpg") : (ex?.foto || null)) : null;
+if(capaImg){
+return (
+<Card key={key} style={{ padding:0,marginBottom:8,overflow:"hidden",background:done?"#f0fdf4":"#fff",borderColor:done?"#bbf7d0":"#e2e8f0" }}>
+<div style={{ position:"relative",background:"#0f172a" }}>
+<img src={capaImg} alt={nome} style={{ width:"100%",aspectRatio:"4/3",objectFit:"cover",display:"block",opacity:done?0.65:1 }}/>
+<button onClick={()=>togglePresDone(key)} style={{ position:"absolute",top:10,left:10,width:32,height:32,borderRadius:9,border:"none",background:done?"#16a34a":"rgba(255,255,255,0.92)",color:done?"#fff":"#0f172a",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 1px 6px rgba(0,0,0,0.3)",fontSize:15,fontWeight:800 }}>{done?"✓":""}</button>
+</div>
+<div style={{ padding:"14px 16px" }}>
+<div style={{ fontWeight:800,fontSize:15,lineHeight:1.3,textDecoration:done?"line-through":"none",opacity:done?0.7:1,marginBottom:8 }}>{nome}</div>
+<div style={{ display:"flex",gap:14,fontSize:12,color:"#94a3b8",flexWrap:"wrap",rowGap:6 }}>
+<span>Séries: <b style={{ color:"#475569" }}>{it.series}</b></span>
+<span>Reps: <b style={{ color:"#475569" }}>{it.reps}</b></span>
+<span>Descanso: <b style={{ color:"#475569" }}>{it.descanso}</b></span>
+</div>
+<div style={{ marginTop:10,display:"flex",alignItems:"center",gap:6 }}>
+<span style={{ fontSize:11,color:"#94a3b8" }}>Carga:</span>
+<input type="text" inputMode="decimal" value={presCargasTreino[key]||""} onChange={e=>setPresCarga(key,e.target.value)} placeholder={lastCarga?lastCarga+"kg":"kg"} style={{ width:56,padding:"5px 7px",borderRadius:7,border:"1.5px solid #e2e8f0",fontSize:12,fontWeight:700,color:"#0f172a",fontFamily:"inherit",textAlign:"center",background:"#f8fafc" }}/>
+<span style={{ fontSize:11,color:"#94a3b8" }}>kg</span>
+</div>
+{it.obs && <div style={{ marginTop:10,fontSize:12,color:"#64748b",fontStyle:"italic",padding:"8px 10px",background:"#f8fafc",borderRadius:8 }}>{it.obs}</div>}
+</div>
+</Card>
+);
+}
 return (
 <Card key={key} style={{ padding:"12px 14px",marginBottom:8,background:done?"#f0fdf4":"#fff",borderColor:done?"#bbf7d0":"#e2e8f0" }}>
 <div style={{ display:"flex",alignItems:"center",gap:10 }}>
@@ -7691,6 +7722,7 @@ const [atividadesExtras,setAtividadesExtras]=useState(()=>LS.get("longevus_ativi
 const [professorFeedbacks,setProfessorFeedbacks]=useState(()=>LS.get("longevus_professor_feedbacks",[]));
 const [agendaEntries,setAgendaEntries]=useState(()=>LS.get("longevus_agenda",[]));
 const [leads,setLeads]=useState(()=>LS.get("longevus_leads",[]).map(migrateLead));
+const [exerciciosBiblioteca,setExerciciosBiblioteca]=useState(()=>LS.get("longevus_exercicios_biblioteca",[]));
 const [dbReady,setDbReady]=useState(false);
 const [hubResults,setHubResults]=useState(()=>LS.get("longevus_hub_results",[]));
 useEffect(()=>{LS.set("longevus_hub_results",hubResults);},[hubResults]);
@@ -7702,10 +7734,10 @@ setDbReady(false);
 (async()=>{
 setSyncing(true);
 try {
-const [s,a,d,docs,c,p,sess,ae,ck,pf,ag,ld] = await Promise.all([
+const [s,a,d,docs,c,p,sess,ae,ck,pf,ag,ld,exb] = await Promise.all([
 DB.load("students"), DB.load("assessments"), DB.load("daily_logs"),
 DB.load("documents"), DB.load("cardio_records"), DB.load("programs"), DB.load("sessions"),
-DB.load("atividades_extras"), DB.loadRaw("checkins"), DB.load("professor_feedbacks"), DB.load("agenda"), DB.load("leads")
+DB.load("atividades_extras"), DB.loadRaw("checkins"), DB.load("professor_feedbacks"), DB.load("agenda"), DB.load("leads"), DB.loadRaw("exercises","select=*")
 ]);
 if(s!==null){ setStudents(s); LS.set("longevus_students",s); }
 if(a!==null){ setAssessments(a); LS.set("longevus_assessments",a); }
@@ -7719,6 +7751,7 @@ if(ck!==null){ setCheckins(ck); LS.set("longevus_checkins",ck); }
 if(pf!==null){ setProfessorFeedbacks(pf); LS.set("longevus_professor_feedbacks",pf); }
 if(ag!==null){ setAgendaEntries(ag); LS.set("longevus_agenda",ag); }
 if(ld!==null){ const ldMigrado=ld.map(migrateLead); setLeads(ldMigrado); LS.set("longevus_leads",ldMigrado); }
+if(exb!==null){ setExerciciosBiblioteca(exb); LS.set("longevus_exercicios_biblioteca",exb); }
 setDbReady(true);
 } catch(e){ setDbReady(true); }
 setSyncing(false);
@@ -7881,7 +7914,7 @@ return (
 <div style={{ padding:"20px 16px",maxWidth:640,margin:"0 auto" }}>
 {page==="dashboard"&&<Dashboard students={students} assessments={assessments} dailyLogs={dailyLogs} nav={nav}/>}
 {page==="students"&&<Students students={students} setStudents={setStudents} nav={nav}/>}
-{page==="studentDetail"&&<StudentDetail studentId={pageProps.studentId} students={students} setStudents={setStudents} assessments={assessments} setAssessments={setAssessments} programs={programs} setPrograms={setPrograms} dailyLogs={dailyLogs} documents={documents} checkins={checkins} sessions={sessions} setSessions={setSessions} professorFeedbacks={professorFeedbacks} setProfessorFeedbacks={setProfessorFeedbacks} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} initialTab={pageProps.initialTab} nav={nav}/>}
+{page==="studentDetail"&&<StudentDetail studentId={pageProps.studentId} students={students} setStudents={setStudents} assessments={assessments} setAssessments={setAssessments} programs={programs} setPrograms={setPrograms} dailyLogs={dailyLogs} documents={documents} checkins={checkins} sessions={sessions} setSessions={setSessions} exerciciosBiblioteca={exerciciosBiblioteca} professorFeedbacks={professorFeedbacks} setProfessorFeedbacks={setProfessorFeedbacks} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} initialTab={pageProps.initialTab} nav={nav}/>}
 {page==="assessments"&&<AssessmentsList assessments={assessments} students={students} setAssessments={setAssessments} nav={nav}/>}
 {page==="newAssessment"&&<NewAssessment students={students} setAssessments={setAssessments} nav={nav} prefillStudentId={pageProps.studentId}/>}
 {page==="result"&&<Result assessmentId={pageProps.id} assessments={assessments} setAssessments={setAssessments} students={students} nav={nav}/>}
