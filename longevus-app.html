@@ -789,8 +789,9 @@ const blocoAtivoPres = BLOCOS[presBlocoIdx] || BLOCOS[0];
 const treinoAtivoPres = treinosUnicos[presTreinoIdx] || treinosUnicos[0] || "A";
 const tdPres = TREINO_DEFS[treinoAtivoPres];
 const sessaoPres = ((currentProgram?.prescricao||{})[blocoAtivoPres.key]||{})[treinoAtivoPres] || {inicial:[],principal:[],final:[]};
+const chavePrefixoPres = blocoAtivoPres.key+"-"+treinoAtivoPres+"-";
 const allKeysPres = [];
-MOMENTOS.forEach(([mk])=>{ (sessaoPres[mk]||[]).forEach((_,idx)=>allKeysPres.push(mk+"-"+idx)); });
+MOMENTOS.forEach(([mk])=>{ (sessaoPres[mk]||[]).forEach((_,idx)=>allKeysPres.push(chavePrefixoPres+mk+"-"+idx)); });
 const togglePresDone = (k) => setPresDone(prev=>{ const n=new Set(prev); if(n.has(k))n.delete(k); else n.add(k); return n; });
 const setPresCarga = (k, val) => setPresCargasTreino(prev=>({ ...prev, [k]:val }));
 const getLastCargaPres = (exId) => {
@@ -807,7 +808,7 @@ const cargasPreenchidas = {};
 allKeysPres.forEach(k=>{
 const v = presCargasTreino[k];
 if(!v) return;
-const [mk, idxStr] = k.split("-");
+const [ , , mk, idxStr] = k.split("-");
 const it = (sessaoPres[mk]||[])[parseInt(idxStr,10)];
 if(!it || it.exId==="cognitivo") return;
 const ex = (exerciciosBiblioteca||[]).find(e=>e.id===it.exId) || EXERCISES.find(e=>e.id===it.exId);
@@ -1294,7 +1295,7 @@ return (
 <span style={{ width:8,height:8,borderRadius:99,background:mcor,flexShrink:0 }}/>{mlabel}
 </div>
 {itens.map((it,idx)=>{
-const key = mk+"-"+idx;
+const key = chavePrefixoPres+mk+"-"+idx;
 const isCog = it.isCognitivo || it.exId==="cognitivo";
 const ex = !isCog ? ((exerciciosBiblioteca||[]).find(e=>e.id===it.exId) || EXERCISES.find(e=>e.id===it.exId)) : null;
 const nome = isCog ? "Atividade Cognitiva" : (ex?.nome||"Exercício");
