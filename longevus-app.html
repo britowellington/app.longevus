@@ -790,6 +790,7 @@ const treinoAtivoPres = treinosUnicos[presTreinoIdx] || treinosUnicos[0] || "A";
 const tdPres = TREINO_DEFS[treinoAtivoPres];
 const sessaoPres = ((currentProgram?.prescricao||{})[blocoAtivoPres.key]||{})[treinoAtivoPres] || {inicial:[],principal:[],final:[]};
 const chavePrefixoPres = blocoAtivoPres.key+"-"+treinoAtivoPres+"-";
+const presDoneAtual = [...presDone].filter(k=>k.startsWith(chavePrefixoPres)).length;
 const allKeysPres = [];
 MOMENTOS.forEach(([mk])=>{ (sessaoPres[mk]||[]).forEach((_,idx)=>allKeysPres.push(chavePrefixoPres+mk+"-"+idx)); });
 const togglePresDone = (k) => setPresDone(prev=>{ const n=new Set(prev); if(n.has(k))n.delete(k); else n.add(k); return n; });
@@ -814,46 +815,82 @@ if(!it || it.exId==="cognitivo") return;
 const ex = (exerciciosBiblioteca||[]).find(e=>e.id===it.exId) || EXERCISES.find(e=>e.id===it.exId);
 cargasPreenchidas[k] = { exId:it.exId, nome:ex?.nome||"Exercício", carga:v };
 });
-const novaSessao = { id:uid(), studentId, programId:currentProgram?.id, blocoKey:blocoAtivoPres.key, treinoKey:treinoAtivoPres, date:todayStr(), totalEx:allKeysPres.length, completedEx:presDone.size, cargas:cargasPreenchidas, source:"professor_presencial", createdAt:new Date().toISOString() };
+const novaSessao = { id:uid(), studentId, programId:currentProgram?.id, blocoKey:blocoAtivoPres.key, treinoKey:treinoAtivoPres, date:todayStr(), totalEx:allKeysPres.length, completedEx:presDoneAtual, cargas:cargasPreenchidas, source:"professor_presencial", createdAt:new Date().toISOString() };
 setSessions(prev=>[...prev, novaSessao]);
 setPresTreinoSalvo(true);
-setPresDone(new Set());
-setPresCargasTreino({});
+setPresDone(prev=>new Set([...prev].filter(k=>!k.startsWith(chavePrefixoPres))));
+setPresCargasTreino(prev=>{ const n={...prev}; Object.keys(n).forEach(k=>{ if(k.startsWith(chavePrefixoPres)) delete n[k]; }); return n; });
 };
 const stEvolAssessments = [...stAssessments].sort((a,b)=>(a.date||"").localeCompare(b.date||""));
 const TESTES_METRICAS = [
-{ id:"global", label:"Índice Global", get:a=>a.globalScore, max:100 },
-{ id:"aha", label:"Cardiovascular (AHA)", get:a=>a.aha?.score, max:100 },
-{ id:"functional", label:"Funcional", get:a=>a.functional?.score, max:100 },
-{ id:"physical", label:"Aptidão Física", get:a=>a.physical?.score, max:100 },
+{ id:"sppbChair", label:"Sentar e Levantar (seg)", get:a=>a.physical?.sppbChair?parseFloat(a.physical.sppbChair):undefined },
+{ id:"grip", label:"Preensão Manual (kg)", get:a=>a.physical?.grip?parseFloat(a.physical.grip):undefined },
+{ id:"tug", label:"Timed Up and Go (seg)", get:a=>a.physical?.tug?parseFloat(a.physical.tug):undefined },
+{ id:"sitreach", label:"Flexibilidade (cm)", get:a=>a.physical?.sitreach!==undefined&&a.physical?.sitreach!==""?parseFloat(a.physical.sitreach):undefined },
+{ id:"sppbBalance", label:"Equilíbrio (SPPB)", get:a=>a.physical?.sppbBalanceScore },
+{ id:"global", label:"Índice Global", get:a=>a.globalScore },
+{ id:"aha", label:"Cardiovascular (AHA)", get:a=>a.aha?.score },
+{ id:"functional", label:"Funcional", get:a=>a.functional?.score },
+{ id:"physical", label:"Aptidão Física", get:a=>a.physical?.score },
 ];
-const MiniLineChart = ({ data, color=O }) => {
-if(!data || data.length===0) return <div style={{ textAlign:"center",color:"#cbd5e1",fontSize:12,padding:"28px 0" }}>Sem dados suficientes ainda.</div>;
-const w=300, h=110, pad=18;
-const vals = data.map(d=>d.y);
-const min = Math.min(...vals), max = Math.max(...vals);
-const range = (max-min)||1;
-const stepX = data.length>1 ? (w-pad*2)/(data.length-1) : 0;
-const pts = data.map((d,i)=>({ ...d, px:pad+i*stepX, py:h-pad-((d.y-min)/range)*(h-pad*2) }));
-const pathD = pts.map((p,i)=>(i===0?"M":"L")+p.px.toFixed(1)+","+p.py.toFixed(1)).join(" ");
+const MultiLineChart = ({ series }) => {
+const valid = (series||[]).filter(s=>s.data && s.data.length>0);
+if(valid.length===0) return <div style={{ textAlign:"center",color:"#cbd5e1",fontSize:12,padding:"28px 0" }}>Sem dados suficientes ainda.</div>;
+const w=300, laneH=54, gap=22, padX=18;
+const h = valid.length*laneH + (valid.length-1)*gap + 6;
 return (
 <div>
 <svg width="100%" viewBox={`0 0 ${w} ${h}`} style={{ overflow:"visible" }}>
-<path d={pathD} fill="none" stroke={color} strokeWidth="2.5"/>
-{pts.map((p,i)=>(<circle key={i} cx={p.px} cy={p.py} r="3.5" fill={color}/>))}
+{valid.map((s,si)=>{
+const laneY0 = si*(laneH+gap)+3;
+const vals = s.data.map(d=>d.y);
+const min=Math.min(...vals), max=Math.max(...vals);
+const range=(max-min)||1;
+const stepX = s.data.length>1 ? (w-padX*2)/(s.data.length-1) : 0;
+const pts = s.data.map((d,i)=>({ ...d, px:padX+i*stepX, py:laneY0+laneH-((d.y-min)/range)*laneH }));
+const pathD = pts.map((p,i)=>(i===0?"M":"L")+p.px.toFixed(1)+","+p.py.toFixed(1)).join(" ");
+return (
+<g key={si}>
+<line x1={padX} y1={laneY0+laneH+gap/2} x2={w-padX} y2={laneY0+laneH+gap/2} stroke="#f1f5f9" strokeWidth="1"/>
+<path d={pathD} fill="none" stroke={s.color} strokeWidth="2.2"/>
+{pts.map((p,i)=>(<circle key={i} cx={p.px} cy={p.py} r="2.8" fill={s.color}/>))}
+</g>
+);
+})}
 </svg>
-<div style={{ display:"flex",justifyContent:"space-between",fontSize:9,color:"#94a3b8",marginTop:2 }}>
-<span>{fmt(data[0].x)} · {data[0].y}</span>
-<span>{fmt(data[data.length-1].x)} · {data[data.length-1].y}</span>
+<div style={{ display:"flex",flexDirection:"column",gap:7,marginTop:12 }}>
+{valid.map((s,si)=>{
+const first=s.data[0], last=s.data[s.data.length-1];
+return (
+<div key={si} style={{ display:"flex",alignItems:"center",gap:6,fontSize:11 }}>
+<span style={{ width:8,height:8,borderRadius:99,background:s.color,flexShrink:0 }}/>
+<span style={{ fontWeight:700,color:"#334155",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{s.label}</span>
+<span style={{ color:"#94a3b8",flexShrink:0 }}>{fmt(first.x)} · {first.y} → {fmt(last.x)} · {last.y}</span>
+</div>
+);
+})}
 </div>
 </div>
 );
 };
 const [evolSubTab,setEvolSubTab] = useState("bemestar");
-const [evolMetrica,setEvolMetrica] = useState("disposicao");
-const [evolTesteMetrica,setEvolTesteMetrica] = useState("global");
-const [evolExercicios,setEvolExercicios] = useState([]);
-const toggleEvolExercicio = (nome) => setEvolExercicios(p=>p.includes(nome)?p.filter(n=>n!==nome):[...p,nome]);
+const [evolMetricasSel,setEvolMetricasSel] = useState(["sono"]);
+const toggleEvolMetrica = (id) => setEvolMetricasSel(p=>p.includes(id)?p.filter(n=>n!==id):[...p,id]);
+const [evolTestesSel,setEvolTestesSel] = useState(["global"]);
+const toggleEvolTeste = (id) => setEvolTestesSel(p=>p.includes(id)?p.filter(n=>n!==id):[...p,id]);
+const exerciciosBenchmark = new Set();
+if(currentProgram?.prescricao){
+Object.values(currentProgram.prescricao).forEach(porTreino=>{
+Object.values(porTreino).forEach(sessaoB=>{
+MOMENTOS.forEach(([mk])=>{
+(sessaoB[mk]||[]).forEach(it=>{
+if(it && it.benchmark && it.exId && it.exId!=="cognitivo"){ const ex=(exerciciosBiblioteca||[]).find(e=>e.id===it.exId)||EXERCISES.find(e=>e.id===it.exId); if(ex) exerciciosBenchmark.add(ex.nome); }
+});
+});
+});
+});
+}
+const exerciciosCargaExibir = exerciciosBenchmark.size>0 ? [...exerciciosBenchmark] : exerciciosComCarga;
 const [feedbackModal,setFeedbackModal] = useState(false);
 const [feedbackForm,setFeedbackForm] = useState(null);
 const openNewFeedback = ()=>{setFeedbackForm({date:new Date().toISOString().slice(0,10),text:""});setFeedbackModal(true);};
@@ -1278,10 +1315,10 @@ return (
 <div style={{ marginBottom:16 }}>
 <div style={{ display:"flex",justifyContent:"space-between",fontSize:11,color:"#64748b",marginBottom:5,fontWeight:700 }}>
 <span>Progresso</span>
-<span>{presDone.size}/{allKeysPres.length}</span>
+<span>{presDoneAtual}/{allKeysPres.length}</span>
 </div>
 <div style={{ height:8,background:"#f1f5f9",borderRadius:99,overflow:"hidden" }}>
-<div style={{ height:"100%",width:(allKeysPres.length?Math.round(presDone.size/allKeysPres.length*100):0)+"%",background:O,borderRadius:99,transition:"width 0.2s" }}/>
+<div style={{ height:"100%",width:(allKeysPres.length?Math.round(presDoneAtual/allKeysPres.length*100):0)+"%",background:O,borderRadius:99,transition:"width 0.2s" }}/>
 </div>
 </div>
 )}
@@ -1425,54 +1462,57 @@ return (
 
 {evolSubTab==="bemestar" && <>
 <div style={{ fontSize:12,color:"#94a3b8",marginBottom:14,lineHeight:1.5 }}>
-Evolução baseada nas respostas de check-in (antes do treino) e check-out (depois do treino).
+Evolução baseada nas respostas de check-in (antes do treino) e check-out (depois do treino). Escolha um ou mais indicadores pra comparar.
 </div>
-<select value={evolMetrica} onChange={e=>setEvolMetrica(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,marginBottom:16 }}>
-{BEMESTAR_METRICAS.map(m=><option key={m.id} value={m.id}>{m.label}</option>)}
-</select>
-{(() => {
-const m = BEMESTAR_METRICAS.find(x=>x.id===evolMetrica);
+<div style={{ display:"flex",gap:6,flexWrap:"wrap",marginBottom:16 }}>
+{BEMESTAR_METRICAS.map((m,i)=>(
+<button key={m.id} onClick={()=>toggleEvolMetrica(m.id)} style={{ border:evolMetricasSel.includes(m.id)?`1.5px solid ${O}`:"1.5px solid #e2e8f0",background:evolMetricasSel.includes(m.id)?"#fff4ee":"#f8fafc",color:evolMetricasSel.includes(m.id)?O:"#64748b",borderRadius:99,padding:"7px 12px",fontSize:12,fontWeight:700,cursor:"pointer" }}>{m.label}</button>
+))}
+</div>
+{evolMetricasSel.length===0 ? <div style={{ textAlign:"center",color:"#cbd5e1",fontSize:12,padding:"20px 0" }}>Escolha ao menos um indicador acima.</div> :
+(() => {
+const CORES=["#FF5603","#2563eb","#16a34a","#7c3aed","#d97706","#dc2626"];
+const seriesData = evolMetricasSel.map((id,i)=>{
+const m = BEMESTAR_METRICAS.find(x=>x.id===id);
 const dados = m.fonte.map(c=>({ x:c.date, y:m.get(c) })).filter(d=>d.y!==undefined && d.y!==null && !isNaN(d.y));
-return <Card style={{ padding:"16px 14px" }}><MiniLineChart data={dados}/></Card>;
+return { label:m.label, color:CORES[i%CORES.length], data:dados };
+});
+return <Card style={{ padding:"16px 14px" }}><MultiLineChart series={seriesData}/></Card>;
 })()}
 </>}
 
 {evolSubTab==="carga" && <>
 <div style={{ fontSize:12,color:"#94a3b8",marginBottom:14,lineHeight:1.5 }}>
-Selecione um ou mais exercícios pra acompanhar a progressão de carga ao longo do tempo.
+{exerciciosBenchmark.size>0
+? "Evolução dos exercícios marcados como teste de referência na prescrição do treino."
+: "Nenhum exercício foi marcado como teste de referência ainda — mostrando todos os que já têm carga registrada. Marque um ⭐ na prescrição do treino pra deixar essa lista mais objetiva."}
 </div>
-{exerciciosComCarga.length===0 ? <Card style={{ textAlign:"center",padding:32 }}><I n="bar" c="#cbd5e1" s={32}/><div style={{ color:"#94a3b8",marginTop:10 }}>Nenhum registro de carga ainda.</div></Card> : <>
-<div style={{ display:"flex",gap:6,flexWrap:"wrap",marginBottom:16 }}>
-{exerciciosComCarga.map(nome=>(
-<button key={nome} onClick={()=>toggleEvolExercicio(nome)} style={{ border:evolExercicios.includes(nome)?`1.5px solid ${O}`:"1.5px solid #e2e8f0",background:evolExercicios.includes(nome)?"#fff4ee":"#f8fafc",color:evolExercicios.includes(nome)?O:"#64748b",borderRadius:99,padding:"7px 12px",fontSize:12,fontWeight:700,cursor:"pointer" }}>{nome}</button>
-))}
-</div>
-{evolExercicios.length===0 ? <div style={{ textAlign:"center",color:"#cbd5e1",fontSize:12,padding:"20px 0" }}>Escolha ao menos um exercício acima.</div> :
-<div style={{ display:"flex",flexDirection:"column",gap:14 }}>
-{evolExercicios.map(nome=>{
-const dados = stCargas.filter(c=>c.name===nome).map(c=>({ x:c.date, y:c.load }));
-return (
-<Card key={nome} style={{ padding:"16px 14px" }}>
-<div style={{ fontWeight:700,fontSize:13,marginBottom:10 }}>{nome}</div>
-<MiniLineChart data={dados} color="#2563eb"/>
-</Card>
-);
-})}
-</div>}
-</>}
+{exerciciosCargaExibir.length===0 ? <Card style={{ textAlign:"center",padding:32 }}><I n="bar" c="#cbd5e1" s={32}/><div style={{ color:"#94a3b8",marginTop:10 }}>Nenhum registro de carga ainda.</div></Card> :
+(() => {
+const CORES=["#FF5603","#2563eb","#16a34a","#7c3aed","#d97706","#dc2626"];
+const seriesData = exerciciosCargaExibir.map((nome,i)=>({ label:nome, color:CORES[i%CORES.length], data:stCargas.filter(c=>c.name===nome).map(c=>({ x:c.date, y:c.load })) }));
+return <Card style={{ padding:"16px 14px" }}><MultiLineChart series={seriesData}/></Card>;
+})()}
 </>}
 
 {evolSubTab==="testes" && <>
 <div style={{ fontSize:12,color:"#94a3b8",marginBottom:14,lineHeight:1.5 }}>
-Evolução dos índices calculados a cada avaliação física registrada.
+Evolução dos testes físicos e índices calculados a cada avaliação. Escolha um ou mais pra comparar.
 </div>
-<select value={evolTesteMetrica} onChange={e=>setEvolTesteMetrica(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,marginBottom:16 }}>
-{TESTES_METRICAS.map(m=><option key={m.id} value={m.id}>{m.label}</option>)}
-</select>
-{(() => {
-const m = TESTES_METRICAS.find(x=>x.id===evolTesteMetrica);
-const dados = stEvolAssessments.map(a=>({ x:a.date, y:m.get(a) })).filter(d=>d.y!==undefined && d.y!==null && !isNaN(d.y) && d.y>0);
-return <Card style={{ padding:"16px 14px" }}><MiniLineChart data={dados} color="#7c3aed"/></Card>;
+<div style={{ display:"flex",gap:6,flexWrap:"wrap",marginBottom:16 }}>
+{TESTES_METRICAS.map(m=>(
+<button key={m.id} onClick={()=>toggleEvolTeste(m.id)} style={{ border:evolTestesSel.includes(m.id)?"1.5px solid #7c3aed":"1.5px solid #e2e8f0",background:evolTestesSel.includes(m.id)?"#f5f3ff":"#f8fafc",color:evolTestesSel.includes(m.id)?"#7c3aed":"#64748b",borderRadius:99,padding:"7px 12px",fontSize:12,fontWeight:700,cursor:"pointer" }}>{m.label}</button>
+))}
+</div>
+{evolTestesSel.length===0 ? <div style={{ textAlign:"center",color:"#cbd5e1",fontSize:12,padding:"20px 0" }}>Escolha ao menos um teste acima.</div> :
+(() => {
+const CORES=["#7c3aed","#FF5603","#2563eb","#16a34a","#d97706","#dc2626","#0891b2","#db2777","#65a30d"];
+const seriesData = evolTestesSel.map((id,i)=>{
+const m = TESTES_METRICAS.find(x=>x.id===id);
+const dados = stEvolAssessments.map(a=>({ x:a.date, y:m.get(a) })).filter(d=>d.y!==undefined && d.y!==null && !isNaN(d.y));
+return { label:m.label, color:CORES[i%CORES.length], data:dados };
+});
+return <Card style={{ padding:"16px 14px" }}><MultiLineChart series={seriesData}/></Card>;
 })()}
 </>}
 </div>

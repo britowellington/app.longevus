@@ -696,6 +696,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom})=>{
                     {isCog?(cogEx?.nome||"Exercício Cognitivo"):ex?.nome||"Exercício"}
                   </div>
                   <div style={{display:"flex",gap:4}}>
+                    <button onClick={()=>updateItem(idx,"benchmark",!item.benchmark)} title="Usar como teste de referência (evolução de carga)" style={{border:`1.5px solid ${item.benchmark?"#f59e0b":"#e2e8f0"}`,background:item.benchmark?"#fffbeb":"#f8fafc",borderRadius:7,padding:"3px 8px",fontSize:11,fontWeight:700,color:item.benchmark?"#b45309":"#94a3b8",cursor:"pointer"}}>{item.benchmark?"⭐":"☆"}</button>
                     <button onClick={()=>setEditIdx(isEdit?null:idx)} style={{border:`1.5px solid ${isEdit?m.cor:"#e2e8f0"}`,background:isEdit?m.bg:"#f8fafc",borderRadius:7,padding:"3px 8px",fontSize:11,fontWeight:700,color:isEdit?m.cor:"#64748b",cursor:"pointer"}}>{isEdit?"✕":"✏️"}</button>
                     <button onClick={()=>removeItem(idx)} style={{border:"1.5px solid #fecaca",background:"#fff",borderRadius:7,padding:"3px 7px",fontSize:11,color:"#dc2626",cursor:"pointer"}}>🗑</button>
                   </div>
@@ -716,6 +717,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom})=>{
                   ))}
                 </div>
                 {!isCog&&ex&&(ex.descricao||ex.execucao||ex.video)&&<button onClick={()=>setVerExEdit(ex)} style={{fontSize:11,fontWeight:700,color:"#FF5603",background:"transparent",border:"1.5px solid #FF5603",borderRadius:7,padding:"3px 10px",cursor:"pointer",marginTop:4}}>Ver detalhes</button>}
+                {item.benchmark&&<div style={{marginTop:5,fontSize:11,color:"#b45309",fontWeight:700}}>⭐ Teste de referência — aparece na Evolução</div>}
                 {item.obs&&<div style={{marginTop:5,fontSize:11,color:"#64748b",fontStyle:"italic",padding:"4px 8px",background:"#f8fafc",borderRadius:6}}>📝 {item.obs}</div>}
               </div>
             </div>
