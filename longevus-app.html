@@ -6633,6 +6633,63 @@ Quais canais trazem mais leads — e, principalmente, quais trazem leads que rea
 </div>
 );
 };
+const Contrato = ({ students, contratoModelo, setContratoModelo, contratoAssinaturas, nav }) => {
+const [texto,setTexto] = useState(contratoModelo.texto||"");
+const [prazoDias,setPrazoDias] = useState(contratoModelo.prazoDias||7);
+const [salvo,setSalvo] = useState(false);
+const [verAssinatura,setVerAssinatura] = useState(null);
+useEffect(()=>{ setTexto(contratoModelo.texto||""); setPrazoDias(contratoModelo.prazoDias||7); },[contratoModelo]);
+const salvar = () => { setContratoModelo({ texto, prazoDias:parseInt(prazoDias)||7 }); setSalvo(true); setTimeout(()=>setSalvo(false),2000); };
+const assinaturaDoAluno = (studentId) => [...(contratoAssinaturas||[])].filter(c=>c.student_id===studentId).sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||""))[0];
+const agora = new Date();
+return (
+<div>
+<div style={{ fontWeight:800,fontSize:20,marginBottom:4 }}>📋 Contrato</div>
+<div style={{ fontSize:13,color:"#94a3b8",marginBottom:18 }}>Defina o modelo da sua prestação de serviços e acompanhe quem já assinou.</div>
+<Card style={{ padding:"16px 16px",marginBottom:20 }}>
+<div style={{ fontWeight:700,fontSize:14,marginBottom:8 }}>Modelo do contrato</div>
+<div style={{ fontSize:11,color:"#94a3b8",marginBottom:10,lineHeight:1.5 }}>Use {"{nome}"}, {"{plano}"}, {"{valor}"} e {"{data}"} — são preenchidos automaticamente pra cada aluno.</div>
+<textarea value={texto} onChange={e=>setTexto(e.target.value)} rows={10} placeholder="Escreva aqui os termos da sua prestação de serviços..." style={{ width:"100%",padding:"12px 14px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:13,color:"#0f172a",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical",lineHeight:1.5,marginBottom:12 }}/>
+<Inp label="Prazo para assinatura (dias após o cadastro do aluno)" type="number" value={prazoDias} onChange={setPrazoDias}/>
+<Btn full onClick={salvar}>{salvo?"Salvo!":"Salvar modelo"}</Btn>
+</Card>
+<div style={{ fontSize:12,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",marginBottom:10 }}>Status dos alunos</div>
+{students.length===0 ? <Card style={{ textAlign:"center",padding:32 }}><I n="clip" c="#cbd5e1" s={32}/><div style={{ color:"#94a3b8",marginTop:10 }}>Nenhum aluno cadastrado ainda.</div></Card> :
+<div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+{students.map(s=>{
+const assin = assinaturaDoAluno(s.id);
+let statusNode;
+if(assin){
+statusNode = <Badge color="#16a34a" bg="#dcfce7">Assinado em {fmt((assin.created_at||"").slice(0,10))}</Badge>;
+} else if(!texto.trim()){
+statusNode = <Badge color="#64748b" bg="#f1f5f9">Sem modelo definido</Badge>;
+} else {
+const criado = s.createdAt ? new Date(s.createdAt+"T00:00:00") : null;
+const prazoVenceEm = criado ? new Date(criado.getTime()+(parseInt(prazoDias)||7)*86400000) : null;
+const diasRestantes = prazoVenceEm ? Math.ceil((prazoVenceEm-agora)/86400000) : null;
+if(diasRestantes===null) statusNode = <Badge color="#64748b" bg="#f1f5f9">Sem data de cadastro</Badge>;
+else if(diasRestantes<0) statusNode = <Badge color="#dc2626" bg="#fee2e2">Vencido — acesso bloqueado</Badge>;
+else statusNode = <Badge color="#d97706" bg="#fef9c3">Pendente — {diasRestantes} dia(s)</Badge>;
+}
+return (
+<Card key={s.id} onClick={()=>assin&&setVerAssinatura({s,assin})} style={{ padding:"12px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,cursor:assin?"pointer":"default" }}>
+<div style={{ fontWeight:700,fontSize:13 }}>{s.name}</div>
+{statusNode}
+</Card>
+);
+})}
+</div>}
+{verAssinatura && <Modal title="Contrato assinado" onClose={()=>setVerAssinatura(null)}>
+<div style={{ fontSize:12,color:"#94a3b8",marginBottom:4 }}>Assinado por</div>
+<div style={{ fontWeight:700,fontSize:15,marginBottom:4 }}>{verAssinatura.assin.data?.nomeDigitado}</div>
+<div style={{ fontSize:12,color:"#94a3b8",marginBottom:14 }}>{verAssinatura.assin.created_at?new Date(verAssinatura.assin.created_at).toLocaleString("pt-BR"):""}</div>
+{verAssinatura.assin.data?.assinaturaImg && <img src={verAssinatura.assin.data.assinaturaImg} alt="Assinatura" style={{ width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,background:"#fff",marginBottom:14 }}/>}
+<div style={{ fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",marginBottom:6 }}>Texto assinado</div>
+<div style={{ fontSize:12,color:"#334155",whiteSpace:"pre-wrap",background:"#f8fafc",borderRadius:9,padding:"12px 14px",lineHeight:1.5,maxHeight:280,overflowY:"auto" }}>{verAssinatura.assin.data?.textoAssinado}</div>
+</Modal>}
+</div>
+);
+};
 const ProgramGenerator = ({ students, assessments, programs, setPrograms, nav }) => {
 return <div/>;
 const [selSt, setSelSt] = useState("");
@@ -7837,6 +7894,8 @@ const [agendaEntries,setAgendaEntries]=useState(()=>LS.get("longevus_agenda",[])
 const [leads,setLeads]=useState(()=>LS.get("longevus_leads",[]).map(migrateLead));
 const [exerciciosBiblioteca,setExerciciosBiblioteca]=useState(()=>LS.get("longevus_exercicios_biblioteca",[]));
 const [planos,setPlanos]=useState(()=>LS.get("longevus_planos",[]));
+const [contratoModelo,setContratoModelo]=useState(()=>LS.get("longevus_contrato_modelo",{texto:"",prazoDias:7}));
+const [contratoAssinaturas,setContratoAssinaturas]=useState(()=>LS.get("longevus_contrato_assinaturas",[]));
 const [dbReady,setDbReady]=useState(false);
 const [hubResults,setHubResults]=useState(()=>LS.get("longevus_hub_results",[]));
 useEffect(()=>{LS.set("longevus_hub_results",hubResults);},[hubResults]);
@@ -7848,10 +7907,10 @@ setDbReady(false);
 (async()=>{
 setSyncing(true);
 try {
-const [s,a,d,docs,c,p,sess,ae,ck,pf,ag,ld,exb,pln] = await Promise.all([
+const [s,a,d,docs,c,p,sess,ae,ck,pf,ag,ld,exb,pln,cm,ca] = await Promise.all([
 DB.load("students"), DB.load("assessments"), DB.load("daily_logs"),
 DB.load("documents"), DB.load("cardio_records"), DB.load("programs"), DB.load("sessions"),
-DB.load("atividades_extras"), DB.loadRaw("checkins"), DB.load("professor_feedbacks"), DB.load("agenda"), DB.load("leads"), DB.loadRaw("exercises","select=*"), DB.load("planos")
+DB.load("atividades_extras"), DB.loadRaw("checkins"), DB.load("professor_feedbacks"), DB.load("agenda"), DB.load("leads"), DB.loadRaw("exercises","select=*"), DB.load("planos"), DB.load("contrato_modelo"), DB.loadRaw("contrato_assinaturas","select=*")
 ]);
 if(s!==null){ setStudents(s); LS.set("longevus_students",s); }
 if(a!==null){ setAssessments(a); LS.set("longevus_assessments",a); }
@@ -7867,6 +7926,8 @@ if(ag!==null){ setAgendaEntries(ag); LS.set("longevus_agenda",ag); }
 if(ld!==null){ const ldMigrado=ld.map(migrateLead); setLeads(ldMigrado); LS.set("longevus_leads",ldMigrado); }
 if(exb!==null){ setExerciciosBiblioteca(exb); LS.set("longevus_exercicios_biblioteca",exb); }
 if(pln!==null){ setPlanos(pln); LS.set("longevus_planos",pln); }
+if(cm!==null && cm.length>0){ setContratoModelo(cm[0]); LS.set("longevus_contrato_modelo",cm[0]); }
+if(ca!==null){ setContratoAssinaturas(ca); LS.set("longevus_contrato_assinaturas",ca); }
 setDbReady(true);
 } catch(e){ setDbReady(true); }
 setSyncing(false);
@@ -7887,6 +7948,7 @@ useEffect(()=>{LS.set("longevus_professor_feedbacks",professorFeedbacks);},[prof
 useEffect(()=>{LS.set("longevus_agenda",agendaEntries);},[agendaEntries]);
 useEffect(()=>{LS.set("longevus_leads",leads);},[leads]);
 useEffect(()=>{LS.set("longevus_planos",planos);},[planos]);
+useEffect(()=>{LS.set("longevus_contrato_modelo",contratoModelo);},[contratoModelo]);
 // Sync Supabase — salva cada item individualmente
 useEffect(()=>{ if(dbReady) students.forEach(s=>DB.save("students",s.id,s)); },[students,dbReady]);
 useEffect(()=>{ if(dbReady) assessments.forEach(a=>DB.save("assessments",a.id,a,a.studentId)); },[assessments,dbReady]);
@@ -7900,6 +7962,7 @@ useEffect(()=>{ if(dbReady) professorFeedbacks.forEach(f=>DB.save("professor_fee
 useEffect(()=>{ if(dbReady) agendaEntries.forEach(e=>DB.save("agenda",e.id,e,e.studentId)); },[agendaEntries,dbReady]);
 useEffect(()=>{ if(dbReady) leads.forEach(l=>DB.save("leads",l.id,l,l.studentId||null)); },[leads,dbReady]);
 useEffect(()=>{ if(dbReady) planos.forEach(pl=>DB.save("planos",pl.id,pl,null)); },[planos,dbReady]);
+useEffect(()=>{ if(dbReady && contratoModelo.texto) DB.save("contrato_modelo","principal",contratoModelo,null); },[contratoModelo,dbReady]);
 const nav=useCallback((p,props={})=>{setPage(p);setPageProps(props);window.scrollTo(0,0);},[]);
 const [pendingQCount,setPendingQCount]=useState(0);
 const refreshPendingCount=useCallback(async()=>{
@@ -7936,6 +7999,7 @@ const menuItems=[
 {id:"documents",label:"Documentos"},
 ]},
 {id:"financeiro",label:"Financeiro",icon:"money"},
+{id:"contrato",label:"Contrato",icon:"clip"},
 {group:"Conta",icon:"user",items:[
 {id:"vincular",label:"Vincular Alunos"},
 {id:"profile",label:"Meu Perfil"},
@@ -7945,7 +8009,7 @@ const ALL_MENU_IDS = menuItems.flatMap(m=>m.group?m.items.map(it=>it.id):[m.id])
 const [menuOpen, setMenuOpen] = useState(false);
 const [openGroup, setOpenGroup] = useState(null);
 const [showSubscribe, setShowSubscribe] = useState(false);
-const activePage=page==="studentDetail"?"students":(["dashboard","students","assessments","daily","reports","documents","program","cognitivehub","profile","questionarios","vincular","extraatividades","financeiro","agenda","leads"].includes(page)?page:null);
+const activePage=page==="studentDetail"?"students":(["dashboard","students","assessments","daily","reports","documents","program","cognitivehub","profile","questionarios","vincular","extraatividades","financeiro","agenda","leads","contrato"].includes(page)?page:null);
 if (authLoading) {
 return <div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14 }}>Carregando...</div>;
 }
@@ -8044,6 +8108,7 @@ return (
 }{page==="financeiro"&&<Financeiro students={students} setStudents={setStudents} planos={planos} setPlanos={setPlanos} nav={nav}/>
 }{page==="agenda"&&<Agenda students={students} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} nav={nav}/>
 }{page==="leads"&&<Leads leads={leads} setLeads={setLeads} students={students} setStudents={setStudents} nav={nav}/>
+}{page==="contrato"&&<Contrato students={students} contratoModelo={contratoModelo} setContratoModelo={setContratoModelo} contratoAssinaturas={contratoAssinaturas} nav={nav}/>
 }{page==="profile"&&<Profile session={session} onLogoChange={setLogoUrl}/>}
 </div>
 </div>
