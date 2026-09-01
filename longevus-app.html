@@ -782,7 +782,7 @@ return (
 </div>
 );
 };
-const StudentDetail = ({ studentId, students, setStudents, assessments, setAssessments, programs, setPrograms, dailyLogs, documents, checkins, sessions, setSessions, exerciciosBiblioteca, professorFeedbacks, setProfessorFeedbacks, agendaEntries, setAgendaEntries, initialTab, nav }) => {
+const StudentDetail = ({ studentId, students, setStudents, assessments, setAssessments, programs, setPrograms, dailyLogs, documents, checkins, sessions, setSessions, exerciciosBiblioteca, planos, professorFeedbacks, setProfessorFeedbacks, agendaEntries, setAgendaEntries, initialTab, nav }) => {
 const st = students.find(s=>s.id===studentId);
 const [tab,setTab] = useState(initialTab||"aval");
 const [editModal,setEditModal] = useState(false);
@@ -1654,8 +1654,8 @@ return <Card style={{ padding:"16px 14px" }}><MultiLineChart series={seriesData}
 </div>
 {form.billing.ativo&&(
 <>
-{planos.filter(pl=>pl.ativo!==false).length>0 &&
-<Inp label="Escolher de um plano salvo" value="" onChange={v=>{ const pl=planos.find(p=>p.id===v); if(pl) setForm(f=>({...f,billing:{...f.billing,plano:pl.nome,valor:pl.valor}})); }} opts={[{v:"",l:"Selecionar..."},...planos.filter(pl=>pl.ativo!==false).map(pl=>({v:pl.id,l:pl.nome+" · R$ "+Number(pl.valor||0).toFixed(2).replace(".",",")}))]}/>
+{(planos||[]).filter(pl=>pl.ativo!==false).length>0 &&
+<Inp label="Escolher de um plano salvo" value="" onChange={v=>{ const pl=(planos||[]).find(p=>p.id===v); if(pl) setForm(f=>({...f,billing:{...f.billing,plano:pl.nome,valor:pl.valor}})); }} opts={[{v:"",l:"Selecionar..."},...(planos||[]).filter(pl=>pl.ativo!==false).map(pl=>({v:pl.id,l:pl.nome+" · R$ "+Number(pl.valor||0).toFixed(2).replace(".",",")}))]}/>
 }
 <Inp label="Plano" value={form.billing.plano} onChange={v=>setForm(f=>({...f,billing:{...f.billing,plano:v}}))} placeholder="Ex: Mensal - 3x/semana"/>
 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
@@ -8031,7 +8031,7 @@ return (
 <div style={{ padding:"20px 16px",maxWidth:640,margin:"0 auto" }}>
 {page==="dashboard"&&<Dashboard students={students} assessments={assessments} dailyLogs={dailyLogs} nav={nav}/>}
 {page==="students"&&<Students students={students} setStudents={setStudents} planos={planos} nav={nav}/>}
-{page==="studentDetail"&&<StudentDetail studentId={pageProps.studentId} students={students} setStudents={setStudents} assessments={assessments} setAssessments={setAssessments} programs={programs} setPrograms={setPrograms} dailyLogs={dailyLogs} documents={documents} checkins={checkins} sessions={sessions} setSessions={setSessions} exerciciosBiblioteca={exerciciosBiblioteca} professorFeedbacks={professorFeedbacks} setProfessorFeedbacks={setProfessorFeedbacks} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} initialTab={pageProps.initialTab} nav={nav}/>}
+{page==="studentDetail"&&<StudentDetail studentId={pageProps.studentId} students={students} setStudents={setStudents} assessments={assessments} setAssessments={setAssessments} programs={programs} setPrograms={setPrograms} dailyLogs={dailyLogs} documents={documents} checkins={checkins} sessions={sessions} setSessions={setSessions} exerciciosBiblioteca={exerciciosBiblioteca} planos={planos} professorFeedbacks={professorFeedbacks} setProfessorFeedbacks={setProfessorFeedbacks} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} initialTab={pageProps.initialTab} nav={nav}/>}
 {page==="assessments"&&<AssessmentsList assessments={assessments} students={students} setAssessments={setAssessments} nav={nav}/>}
 {page==="newAssessment"&&<NewAssessment students={students} setAssessments={setAssessments} nav={nav} prefillStudentId={pageProps.studentId}/>}
 {page==="result"&&<Result assessmentId={pageProps.id} assessments={assessments} setAssessments={setAssessments} students={students} nav={nav}/>}
