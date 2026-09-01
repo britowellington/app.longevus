@@ -6633,27 +6633,35 @@ Quais canais trazem mais leads — e, principalmente, quais trazem leads que rea
 </div>
 );
 };
-const Contrato = ({ students, contratoModelo, setContratoModelo, contratoAssinaturas, nav }) => {
+const Contrato = ({ students, setStudents, contratoModelo, setContratoModelo, contratoAssinaturas, nav }) => {
 const [texto,setTexto] = useState(contratoModelo.texto||"");
 const [prazoDias,setPrazoDias] = useState(contratoModelo.prazoDias||7);
 const [salvo,setSalvo] = useState(false);
 const [verAssinatura,setVerAssinatura] = useState(null);
+const [personalizarSt,setPersonalizarSt] = useState(null);
+const [textoPersonalizado,setTextoPersonalizado] = useState("");
 useEffect(()=>{ setTexto(contratoModelo.texto||""); setPrazoDias(contratoModelo.prazoDias||7); },[contratoModelo]);
 const salvar = () => { setContratoModelo({ texto, prazoDias:parseInt(prazoDias)||7 }); setSalvo(true); setTimeout(()=>setSalvo(false),2000); };
 const assinaturaDoAluno = (studentId) => [...(contratoAssinaturas||[])].filter(c=>c.student_id===studentId).sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||""))[0];
 const agora = new Date();
+const abrirPersonalizar = (s) => { setPersonalizarSt(s); setTextoPersonalizado(s.contratoTextoPersonalizado||""); };
+const salvarPersonalizado = () => {
+setStudents(p=>p.map(s=>s.id===personalizarSt.id?{...s,contratoTextoPersonalizado:textoPersonalizado.trim()}:s));
+setPersonalizarSt(null);
+};
 return (
 <div>
 <div style={{ fontWeight:800,fontSize:20,marginBottom:4 }}>📋 Contrato</div>
 <div style={{ fontSize:13,color:"#94a3b8",marginBottom:18 }}>Defina o modelo da sua prestação de serviços e acompanhe quem já assinou.</div>
 <Card style={{ padding:"16px 16px",marginBottom:20 }}>
 <div style={{ fontWeight:700,fontSize:14,marginBottom:8 }}>Modelo do contrato</div>
-<div style={{ fontSize:11,color:"#94a3b8",marginBottom:10,lineHeight:1.5 }}>Use {"{nome}"}, {"{plano}"}, {"{valor}"} e {"{data}"} — são preenchidos automaticamente pra cada aluno.</div>
+<div style={{ fontSize:11,color:"#94a3b8",marginBottom:10,lineHeight:1.5 }}>Use {"{nome}"}, {"{cpf}"}, {"{plano}"}, {"{valor}"} e {"{data}"} — são preenchidos automaticamente pra cada aluno. {"{nome}"} e {"{cpf}"} são preenchidos por ele mesmo na hora de assinar.</div>
 <textarea value={texto} onChange={e=>setTexto(e.target.value)} rows={10} placeholder="Escreva aqui os termos da sua prestação de serviços..." style={{ width:"100%",padding:"12px 14px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:13,color:"#0f172a",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical",lineHeight:1.5,marginBottom:12 }}/>
 <Inp label="Prazo para assinatura (dias após o cadastro do aluno)" type="number" value={prazoDias} onChange={setPrazoDias}/>
 <Btn full onClick={salvar}>{salvo?"Salvo!":"Salvar modelo"}</Btn>
 </Card>
 <div style={{ fontSize:12,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",marginBottom:10 }}>Status dos alunos</div>
+<div style={{ fontSize:11,color:"#94a3b8",marginBottom:10,marginTop:-4 }}>Toque num aluno pendente pra ver a assinatura (se já assinou) ou personalizar o texto dele, caso tenha alguma particularidade.</div>
 {students.length===0 ? <Card style={{ textAlign:"center",padding:32 }}><I n="clip" c="#cbd5e1" s={32}/><div style={{ color:"#94a3b8",marginTop:10 }}>Nenhum aluno cadastrado ainda.</div></Card> :
 <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
 {students.map(s=>{
@@ -6672,8 +6680,11 @@ else if(diasRestantes<0) statusNode = <Badge color="#dc2626" bg="#fee2e2">Vencid
 else statusNode = <Badge color="#d97706" bg="#fef9c3">Pendente — {diasRestantes} dia(s)</Badge>;
 }
 return (
-<Card key={s.id} onClick={()=>assin&&setVerAssinatura({s,assin})} style={{ padding:"12px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,cursor:assin?"pointer":"default" }}>
+<Card key={s.id} onClick={()=>assin?setVerAssinatura({s,assin}):abrirPersonalizar(s)} style={{ padding:"12px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,cursor:"pointer" }}>
+<div>
 <div style={{ fontWeight:700,fontSize:13 }}>{s.name}</div>
+{!assin && s.contratoTextoPersonalizado && <div style={{ fontSize:10,color:"#7c3aed",fontWeight:700,marginTop:2 }}>✏️ Texto personalizado</div>}
+</div>
 {statusNode}
 </Card>
 );
@@ -6681,11 +6692,18 @@ return (
 </div>}
 {verAssinatura && <Modal title="Contrato assinado" onClose={()=>setVerAssinatura(null)}>
 <div style={{ fontSize:12,color:"#94a3b8",marginBottom:4 }}>Assinado por</div>
-<div style={{ fontWeight:700,fontSize:15,marginBottom:4 }}>{verAssinatura.assin.data?.nomeDigitado}</div>
+<div style={{ fontWeight:700,fontSize:15,marginBottom:2 }}>{verAssinatura.assin.data?.nomeDigitado}</div>
+{verAssinatura.assin.data?.cpf && <div style={{ fontSize:12,color:"#94a3b8",marginBottom:4 }}>CPF: {verAssinatura.assin.data.cpf}</div>}
 <div style={{ fontSize:12,color:"#94a3b8",marginBottom:14 }}>{verAssinatura.assin.created_at?new Date(verAssinatura.assin.created_at).toLocaleString("pt-BR"):""}</div>
 {verAssinatura.assin.data?.assinaturaImg && <img src={verAssinatura.assin.data.assinaturaImg} alt="Assinatura" style={{ width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,background:"#fff",marginBottom:14 }}/>}
 <div style={{ fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",marginBottom:6 }}>Texto assinado</div>
 <div style={{ fontSize:12,color:"#334155",whiteSpace:"pre-wrap",background:"#f8fafc",borderRadius:9,padding:"12px 14px",lineHeight:1.5,maxHeight:280,overflowY:"auto" }}>{verAssinatura.assin.data?.textoAssinado}</div>
+</Modal>}
+{personalizarSt && <Modal title={"Personalizar — "+personalizarSt.name} onClose={()=>setPersonalizarSt(null)}>
+<div style={{ fontSize:12,color:"#94a3b8",marginBottom:14,lineHeight:1.5 }}>Deixe em branco pra esse aluno usar o modelo padrão. Preencha só se ele tiver alguma condição diferente (outro plano, cláusula extra etc.) — pode reaproveitar o modelo padrão e ajustar só o que precisa.</div>
+<textarea value={textoPersonalizado} onChange={e=>setTextoPersonalizado(e.target.value)} rows={12} placeholder={texto||"Cole aqui o texto personalizado pra esse aluno..."} style={{ width:"100%",padding:"12px 14px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:13,color:"#0f172a",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical",lineHeight:1.5,marginBottom:14 }}/>
+{textoPersonalizado.trim() && texto.trim() && <Btn variant="secondary" onClick={()=>setTextoPersonalizado(texto)} style={{ marginBottom:10 }}>Copiar o modelo padrão pra editar</Btn>}
+<Btn full onClick={salvarPersonalizado}>Salvar</Btn>
 </Modal>}
 </div>
 );
@@ -8108,7 +8126,7 @@ return (
 }{page==="financeiro"&&<Financeiro students={students} setStudents={setStudents} planos={planos} setPlanos={setPlanos} nav={nav}/>
 }{page==="agenda"&&<Agenda students={students} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} nav={nav}/>
 }{page==="leads"&&<Leads leads={leads} setLeads={setLeads} students={students} setStudents={setStudents} nav={nav}/>
-}{page==="contrato"&&<Contrato students={students} contratoModelo={contratoModelo} setContratoModelo={setContratoModelo} contratoAssinaturas={contratoAssinaturas} nav={nav}/>
+}{page==="contrato"&&<Contrato students={students} setStudents={setStudents} contratoModelo={contratoModelo} setContratoModelo={setContratoModelo} contratoAssinaturas={contratoAssinaturas} nav={nav}/>
 }{page==="profile"&&<Profile session={session} onLogoChange={setLogoUrl}/>}
 </div>
 </div>

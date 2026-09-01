@@ -2027,14 +2027,17 @@ const AssinaturaCanvas = ({ onChange }) => {
   );
 };
 
-const TelaContrato = ({ studentId, ownerId, studentName, contratoTexto, diasRestantes, onSigned, onLogout }) => {
+const TelaContrato = ({ studentId, ownerId, studentName, contratoTextoBase, diasRestantes, onSigned, onLogout }) => {
   const [nome,setNome] = useState(studentName||"");
+  const [cpf,setCpf] = useState("");
   const [concordo,setConcordo] = useState(false);
   const [assinaturaImg,setAssinaturaImg] = useState(null);
   const [assinaturaVazia,setAssinaturaVazia] = useState(true);
   const [enviando,setEnviando] = useState(false);
   const [erro,setErro] = useState("");
-  const podeAssinar = nome.trim().length>2 && concordo && !assinaturaVazia && !enviando;
+  const precisaCpf = contratoTextoBase.indexOf("{cpf}")>=0;
+  const contratoTexto = contratoTextoBase.split("{nome}").join(nome.trim()||"________").split("{cpf}").join(cpf.trim()||"________");
+  const podeAssinar = nome.trim().length>2 && (!precisaCpf || cpf.trim().length>=11) && concordo && !assinaturaVazia && !enviando;
   const assinar = async () => {
     if(!podeAssinar) return;
     setEnviando(true); setErro("");
@@ -2044,7 +2047,7 @@ const TelaContrato = ({ studentId, ownerId, studentName, contratoTexto, diasRest
       const headers = { "apikey": SUPA_KEY, "Authorization":"Bearer "+token, "Content-Type":"application/json" };
       const body = {
         id: uid2(), student_id: studentId, owner_id: ownerId, created_at: new Date().toISOString(),
-        data: { nomeDigitado: nome.trim(), assinaturaImg, textoAssinado: contratoTexto, dataAssinatura: new Date().toISOString() }
+        data: { nomeDigitado: nome.trim(), cpf: cpf.trim(), assinaturaImg, textoAssinado: contratoTexto, dataAssinatura: new Date().toISOString() }
       };
       const r = await fetch(SUPA_URL+"/rest/v1/contrato_assinaturas", { method:"POST", headers, body: JSON.stringify(body) });
       if(!r.ok) throw new Error("falha");
@@ -2067,6 +2070,10 @@ const TelaContrato = ({ studentId, ownerId, studentName, contratoTexto, diasRest
         </Card>
         <div style={{fontSize:12,fontWeight:700,color:"#475569",marginBottom:6}}>Seu nome completo</div>
         <input value={nome} onChange={e=>setNome(e.target.value)} placeholder="Digite seu nome completo" style={{width:"100%",padding:"11px 13px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#fff",fontSize:14,fontFamily:"inherit",boxSizing:"border-box",marginBottom:16}}/>
+        {precisaCpf && <>
+          <div style={{fontSize:12,fontWeight:700,color:"#475569",marginBottom:6}}>Seu CPF</div>
+          <input value={cpf} onChange={e=>setCpf(e.target.value)} placeholder="000.000.000-00" inputMode="numeric" style={{width:"100%",padding:"11px 13px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#fff",fontSize:14,fontFamily:"inherit",boxSizing:"border-box",marginBottom:16}}/>
+        </>}
         <div style={{fontSize:12,fontWeight:700,color:"#475569",marginBottom:6}}>Sua assinatura</div>
         <AssinaturaCanvas onChange={(img,vazia)=>{setAssinaturaImg(img);setAssinaturaVazia(vazia);}}/>
         <div onClick={()=>setConcordo(c=>!c)} style={{display:"flex",alignItems:"flex-start",gap:10,marginTop:18,marginBottom:16,cursor:"pointer"}}>
@@ -2078,6 +2085,7 @@ const TelaContrato = ({ studentId, ownerId, studentName, contratoTexto, diasRest
         <button onClick={onLogout} style={{marginTop:16,background:"none",border:"none",color:"#94a3b8",fontSize:12,textDecoration:"underline",cursor:"pointer",display:"block",margin:"16px auto 0"}}>Sair</button>
       </div>
     </div>
+
   );
 };
 
@@ -2386,12 +2394,14 @@ function App(){
     if(diasRestantes<0){
       return <TelaContratoVencido onLogout={onLogout}/>;
     }
-    const textoSubstituido = (contratoModelo.texto||"")
-      .split("{nome}").join(studentName||"")
+    const modeloBase = (studentData?.contratoTextoPersonalizado && studentData.contratoTextoPersonalizado.trim())
+      ? studentData.contratoTextoPersonalizado
+      : (contratoModelo.texto||"");
+    const textoBase = modeloBase
       .split("{plano}").join(studentData?.billing?.plano||"")
       .split("{valor}").join(studentData?.billing?.valor?("R$ "+Number(studentData.billing.valor).toFixed(2).replace(".",",")):"")
       .split("{data}").join(new Date().toLocaleDateString("pt-BR"));
-    return <TelaContrato studentId={studentId} ownerId={ownerId} studentName={studentName} contratoTexto={textoSubstituido} diasRestantes={diasRestantes} onSigned={()=>setContratoAssinatura({id:"local",created_at:new Date().toISOString()})} onLogout={onLogout}/>;
+    return <TelaContrato studentId={studentId} ownerId={ownerId} studentName={studentName} contratoTextoBase={textoBase} diasRestantes={diasRestantes} onSigned={()=>setContratoAssinatura({id:"local",created_at:new Date().toISOString()})} onLogout={onLogout}/>;
   }
 
   const hoje = new Date().toISOString().slice(0,10);
