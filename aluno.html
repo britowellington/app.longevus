@@ -2115,6 +2115,27 @@ const PrimeiroPagamento = ({billing, profPix, studentName, onLogout}) => {
   );
 };
 
+const OnboardingQuestionario = ({ token, onLogout }) => {
+  const base = window.location.origin + window.location.pathname.replace(/[^/]+$/,"");
+  const url = base + "longevus-questionario.html?token=" + token;
+  return (
+    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",background:"#f8fafc"}}>
+      <div style={{padding:"14px 18px",background:"#fff",borderBottom:"1px solid #e2e8f0",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+        <div>
+          <div style={{fontWeight:800,fontSize:15,color:"#0f172a"}}>Antes de começar</div>
+          <div style={{fontSize:12,color:"#64748b"}}>Responda o questionário inicial pra liberar seu acesso</div>
+        </div>
+        <button onClick={onLogout} style={{background:"none",border:"none",color:"#94a3b8",fontSize:12,cursor:"pointer",flexShrink:0,marginLeft:10}}>Sair</button>
+      </div>
+      {token ? (
+        <iframe src={url} title="Questionário inicial" style={{flex:1,border:"none",width:"100%"}}/>
+      ) : (
+        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14}}>Carregando questionário...</div>
+      )}
+    </div>
+  );
+};
+
 function App(){
   const [session,setSession]=useState(null);
   const [authLoading,setAuthLoading]=useState(true);
@@ -2127,6 +2148,9 @@ function App(){
   const [bibCustom,setBibCustom]=useState([]);
   const [profPix,setProfPix]=useState(null);
   const [avisoFechado,setAvisoFechado]=useState(false);
+  const [onboardingChecked,setOnboardingChecked]=useState(false);
+  const [onboardingDone,setOnboardingDone]=useState(true);
+  const [onboardingToken,setOnboardingToken]=useState(null);
   const urlParams = new URLSearchParams(window.location.search);
   const cadastroMode = urlParams.get("cadastro")==="1";
   const planoParam = urlParams.get("plano");
@@ -2216,6 +2240,31 @@ function App(){
     })();
   },[session,ownerId]);
 
+  useEffect(()=>{
+    if(!session || !linkChecked || !studentId){ return; }
+    let alive = true;
+    let timer = null;
+    const check = async () => {
+      try{
+        const token = session.access_token || SUPA_KEY;
+        const headers = { "apikey": SUPA_KEY, "Authorization": "Bearer "+token, "Content-Type": "application/json" };
+        const r = await fetch(SUPA_URL+"/rest/v1/rpc/rpc_onboarding_questionario", { method:"POST", headers, body:"{}" });
+        if(!r.ok || !alive) return;
+        const rows = await r.json();
+        const row = rows && rows[0];
+        if(!row || !alive) return;
+        setOnboardingDone(!!row.done);
+        setOnboardingToken(row.token || null);
+        setOnboardingChecked(true);
+        // Enquanto não terminou, checa de novo daqui a pouco — assim
+        // que o aluno enviar as respostas no iframe, libera sozinho.
+        if(!row.done){ timer = setTimeout(check, 5000); }
+      } catch(e){ if(alive) setOnboardingChecked(true); }
+    };
+    check();
+    return () => { alive = false; if(timer) clearTimeout(timer); };
+  },[session,linkChecked,studentId]);
+
   const onLogout = () => { supa.auth.signOut(); };
 
   if(authLoading){
@@ -2261,6 +2310,14 @@ function App(){
 
   if(billingBloqueado){
     return <TelaBloqueada billing={billing} profPix={profPix} studentName={studentName} onLogout={onLogout}/>;
+  }
+
+  if(!onboardingChecked){
+    return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14}}>Carregando...</div>;
+  }
+
+  if(!onboardingDone){
+    return <OnboardingQuestionario token={onboardingToken} onLogout={onLogout}/>;
   }
 
   return (
