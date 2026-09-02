@@ -175,6 +175,107 @@ if(!url) return null;
 const m = url.match(/(?:youtu\.be\/|v\/|v=|embed\/|shorts\/|live\/)([\w-]{11})/);
 return m ? m[1] : null;
 };
+const CONTRATO_MODELO_PADRAO_TEXTO = `CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE PERSONAL TRAINER
+
+Pelo presente instrumento, de um lado:
+
+CONTRATADO: Wellington Fabiano Brito, Personal Trainer, CREF nº ____________, CPF nº ____________;
+
+e, de outro:
+
+CONTRATANTE: {nome}, CPF nº {cpf};
+
+têm entre si justo e contratado o presente Contrato de Prestação de Serviços de Personal Trainer, mediante as condições abaixo.
+
+1. OBJETO
+
+1.1. O presente contrato tem como objeto a prestação de serviços de Personal Trainer, incluindo planejamento, orientação, acompanhamento e supervisão individualizada de exercícios físicos, de acordo com os objetivos e características do(a) CONTRATANTE.
+
+1.2. O(A) CONTRATANTE compromete-se a fornecer informações verdadeiras sobre seu estado de saúde, limitações, lesões, medicamentos e demais condições relevantes para a prática de exercícios físicos.
+
+2. PLANO, FREQUÊNCIA E HORÁRIOS
+
+2.1. O plano contratado corresponde a: {plano}, em dias e horários previamente acordados entre as partes.
+
+2.2. Os horários definidos ficam reservados ao(à) CONTRATANTE durante a vigência do contrato.
+
+2.3. A contratação corresponde a uma mensalidade fixa de acompanhamento, não se caracterizando como aquisição de quantidade determinada de aulas ou sessões mensais.
+
+2.4. A quantidade de sessões realizadas poderá variar de um mês para outro em razão do calendário, feriados, quantidade de semanas ou outros fatores, sem alteração automática do valor da mensalidade.
+
+2.5. Dessa forma, poderão existir meses com quantidade inferior ou superior à média mensal do plano contratado, mantendo-se o mesmo valor mensal contratado.
+
+3. VALOR E PAGAMENTO
+
+3.1. Pela prestação dos serviços, o(a) CONTRATANTE pagará ao CONTRATADO o valor mensal de: {valor}.
+
+3.2. O pagamento será realizado até o dia ______ de cada mês, por meio de __________________________________.
+
+3.3. A mensalidade contempla o acompanhamento profissional, planejamento dos treinamentos e a reserva dos horários contratados.
+
+3.4. Não haverá cobrança adicional caso a quantidade de sessões realizadas em determinado mês seja superior à média do plano contratado.
+
+3.5. Da mesma forma, não haverá redução automática da mensalidade em razão de feriados ou de quantidade inferior de sessões decorrente do calendário.
+
+4. AUSÊNCIAS E REPOSIÇÕES
+
+4.1. A ausência do(a) CONTRATANTE em sessão previamente agendada não gera desconto ou abatimento proporcional da mensalidade, uma vez que o horário permanece reservado e disponível.
+
+4.2. Viagens, férias, compromissos pessoais ou outras ausências do(a) CONTRATANTE não implicam, por si só, suspensão ou redução da mensalidade.
+
+4.3. Eventuais reposições poderão ser realizadas mediante disponibilidade de horário do CONTRATADO, não constituindo obrigação de reposição em caso de ausência do(a) CONTRATANTE.
+
+4.4. Caso o CONTRATADO não possa realizar uma sessão previamente agendada, deverá, sempre que possível, comunicar o(a) CONTRATANTE e realizar a reposição em horário previamente acordado entre as partes.
+
+5. SAÚDE E SEGURANÇA
+
+5.1. O(A) CONTRATANTE declara estar ciente dos riscos inerentes à prática de exercícios físicos e compromete-se a comunicar ao CONTRATADO qualquer alteração em seu estado de saúde.
+
+5.2. O CONTRATADO poderá adaptar, interromper ou modificar o treinamento sempre que identificar necessidade relacionada à segurança ou às condições apresentadas pelo(a) CONTRATANTE.
+
+5.3. Quando necessário, o CONTRATADO poderá recomendar avaliação médica ou de outro profissional de saúde antes da continuidade ou progressão do treinamento.
+
+6. RESPONSABILIDADES DO(A) CONTRATANTE
+
+6.1. O(A) CONTRATANTE compromete-se a seguir as orientações fornecidas pelo CONTRATADO e comunicar imediatamente qualquer dor, desconforto, tontura, mal-estar ou outro sintoma apresentado durante a atividade.
+
+6.2. O(A) CONTRATANTE é responsável pela veracidade e atualização das informações fornecidas ao CONTRATADO.
+
+7. USO DE IMAGEM
+
+7.1. O(A) CONTRATANTE autoriza expressamente e gratuitamente o CONTRATADO a utilizar sua imagem, voz e depoimentos eventualmente registrados durante a prestação dos serviços, para fins de divulgação profissional, institucional, publicitária e de conteúdo relacionado ao trabalho do CONTRATADO.
+
+7.2. A autorização compreende a utilização das imagens e conteúdos em redes sociais, site, materiais digitais, materiais impressos, apresentações, portfólio e demais canais de divulgação profissional do CONTRATADO.
+
+7.3. O uso da imagem deverá estar relacionado à divulgação do trabalho profissional do CONTRATADO, não podendo ser utilizado de forma que possa causar constrangimento, exposição indevida ou prejuízo à imagem do(a) CONTRATANTE.
+
+8. DADOS E CONFIDENCIALIDADE
+
+8.1. Os dados pessoais fornecidos pelo(a) CONTRATANTE serão utilizados para fins relacionados à prestação, acompanhamento e gestão dos serviços contratados, observada a legislação aplicável.
+
+8.2. O CONTRATADO compromete-se a manter sigilo sobre informações pessoais e informações relacionadas ao acompanhamento do(a) CONTRATANTE, ressalvadas as hipóteses previstas em lei.
+
+9. CANCELAMENTO E RESCISÃO
+
+9.1. O presente contrato poderá ser encerrado por qualquer das partes mediante comunicação prévia de ______ dias.
+
+9.2. O encerramento do contrato não elimina eventuais valores já vencidos ou obrigações constituídas durante sua vigência.
+
+9.3. Em caso de inadimplência, o CONTRATADO poderá suspender a prestação dos serviços até a regularização dos valores pendentes.
+
+10. DISPOSIÇÕES GERAIS
+
+10.1. Eventuais concessões ou flexibilizações realizadas pelo CONTRATADO em situações específicas não implicam alteração permanente das condições deste contrato.
+
+10.2. Qualquer alteração nas condições contratadas deverá ser previamente acordada entre as partes.
+
+10.3. A prestação dos serviços possui caráter individualizado e constitui obrigação de meio, não havendo garantia de resultado específico, uma vez que os resultados dependem também da adesão do(a) CONTRATANTE aos treinamentos e de outros fatores individuais.
+
+11. FORO
+
+11.1. Fica eleito o foro da comarca de ________________________________, respeitadas as regras legais de competência aplicáveis, para dirimir eventuais questões decorrentes deste contrato.
+
+Ao assinar eletronicamente este documento em {data}, o(a) CONTRATANTE declara ter lido, compreendido e concordado com todos os termos acima descritos, valendo esta assinatura eletrônica (nome digitado + assinatura manuscrita capturada em tela) como manifestação de vontade válida entre as partes.`;
 const classifyAHA = (s) => s <= 1 ? { label:"Baixo Risco", color:"#16a34a", bg:"#dcfce7" } : s <= 4 ? { label:"Risco Moderado", color:"#d97706", bg:"#fef9c3" } : { label:"Alto Risco", color:"#dc2626", bg:"#fee2e2" };
 const classifyCV = (pct) => pct >= 92 ? { label:"Baixo Risco", color:"#16a34a", bg:"#dcfce7" } : pct >= 69 ? { label:"Risco Moderado", color:"#d97706", bg:"#fef9c3" } : { label:"Alto Risco", color:"#dc2626", bg:"#fee2e2" };
 const classifyFunctional = (s) => s >= 80 ? { label:"Fisicamente Elite", color:"#16a34a", bg:"#dcfce7" } : s >= 60 ? { label:"Fisicamente Ativo", color:"#65a30d", bg:"#ecfccb" } : s >= 40 ? { label:"Fisicamente Independente", color:"#d97706", bg:"#fef9c3" } : s >= 20 ? { label:"Fisicamente Frágil", color:"#ea580c", bg:"#ffedd5" } : { label:"Fisicamente Dependente", color:"#dc2626", bg:"#fee2e2" };
@@ -6633,63 +6734,144 @@ Quais canais trazem mais leads — e, principalmente, quais trazem leads que rea
 </div>
 );
 };
-const Contrato = ({ students, setStudents, contratoModelo, setContratoModelo, contratoAssinaturas, nav }) => {
-const [texto,setTexto] = useState(contratoModelo.texto||"");
-const [prazoDias,setPrazoDias] = useState(contratoModelo.prazoDias||7);
-const [salvo,setSalvo] = useState(false);
+const Contrato = ({ students, setStudents, contratoModelos, setContratoModelos, contratoAssinaturas, nav }) => {
+const [viewCat,setViewCat] = useState("alunos");
+const [modeloModal,setModeloModal] = useState(false);
+const [modeloEditId,setModeloEditId] = useState(null);
+const emptyModelo = () => ({ nome:"", texto:"", prazoDias:7, padrao:contratoModelos.length===0 });
+const [modeloForm,setModeloForm] = useState(emptyModelo());
 const [verAssinatura,setVerAssinatura] = useState(null);
-const [personalizarSt,setPersonalizarSt] = useState(null);
-const [textoPersonalizado,setTextoPersonalizado] = useState("");
-useEffect(()=>{ setTexto(contratoModelo.texto||""); setPrazoDias(contratoModelo.prazoDias||7); },[contratoModelo]);
-const salvar = () => { setContratoModelo({ texto, prazoDias:parseInt(prazoDias)||7 }); setSalvo(true); setTimeout(()=>setSalvo(false),2000); };
+const [assignSt,setAssignSt] = useState(null);
+const [assignModo,setAssignModo] = useState("modelo");
+const [assignModeloId,setAssignModeloId] = useState("");
+const [assignTexto,setAssignTexto] = useState("");
+const modeloPadrao = contratoModelos.find(m=>m.padrao) || contratoModelos[0];
+const abrirNovoModelo = () => { setModeloEditId(null); setModeloForm(emptyModelo()); setModeloModal(true); };
+const abrirEditModelo = (m) => { setModeloEditId(m.id); setModeloForm({ nome:m.nome, texto:m.texto, prazoDias:m.prazoDias||7, padrao:!!m.padrao }); setModeloModal(true); };
+const salvarModelo = () => {
+if(!modeloForm.nome.trim()||!modeloForm.texto.trim()) return;
+const dados = { nome:modeloForm.nome.trim(), texto:modeloForm.texto, prazoDias:parseInt(modeloForm.prazoDias)||7, padrao:modeloForm.padrao };
+if(modeloEditId){
+setContratoModelos(p=>p.map(m=>{
+if(dados.padrao && m.id!==modeloEditId) return {...m,padrao:false};
+return m.id===modeloEditId?{...m,...dados}:m;
+}));
+} else {
+const novo = { id:uid(), ...dados, createdAt:todayStr() };
+setContratoModelos(p=>[...(dados.padrao?p.map(m=>({...m,padrao:false})):p),novo]);
+}
+setModeloModal(false);
+};
+const excluirModelo = async (id) => {
+if(!window.confirm("Excluir este modelo? Alunos já vinculados a ele continuam com o texto que já foi definido, mas não vão mais poder usar esse modelo pra novas atribuições.")) return;
+await DB.remove("contrato_modelo",id);
+setContratoModelos(p=>p.filter(m=>m.id!==id));
+};
+const definirPadrao = (id) => setContratoModelos(p=>p.map(m=>({...m,padrao:m.id===id})));
 const assinaturaDoAluno = (studentId) => [...(contratoAssinaturas||[])].filter(c=>c.student_id===studentId).sort((a,b)=>(b.created_at||"").localeCompare(a.created_at||""))[0];
+const modeloEfetivo = (s) => {
+if(s.contratoTextoPersonalizado) return { nome:"Personalizado", prazoDias:(contratoModelos.find(m=>m.id===s.contratoModeloId)||modeloPadrao)?.prazoDias||7 };
+if(s.contratoModeloId){ const m=contratoModelos.find(x=>x.id===s.contratoModeloId); if(m) return m; }
+return modeloPadrao;
+};
 const agora = new Date();
-const abrirPersonalizar = (s) => { setPersonalizarSt(s); setTextoPersonalizado(s.contratoTextoPersonalizado||""); };
-const salvarPersonalizado = () => {
-setStudents(p=>p.map(s=>s.id===personalizarSt.id?{...s,contratoTextoPersonalizado:textoPersonalizado.trim()}:s));
-setPersonalizarSt(null);
+const abrirAssign = (s) => {
+setAssignSt(s);
+setAssignModo(s.contratoTextoPersonalizado ? "personalizado" : "modelo");
+setAssignModeloId(s.contratoModeloId || modeloPadrao?.id || "");
+setAssignTexto(s.contratoTextoPersonalizado || (contratoModelos.find(m=>m.id===(s.contratoModeloId||modeloPadrao?.id))?.texto || ""));
+};
+const salvarAssign = () => {
+if(assignModo==="modelo"){
+setStudents(p=>p.map(s=>s.id===assignSt.id?{...s,contratoModeloId:assignModeloId,contratoTextoPersonalizado:""}:s));
+} else {
+setStudents(p=>p.map(s=>s.id===assignSt.id?{...s,contratoTextoPersonalizado:assignTexto,contratoModeloId:assignModeloId}:s));
+}
+setAssignSt(null);
 };
 return (
 <div>
 <div style={{ fontWeight:800,fontSize:20,marginBottom:4 }}>📋 Contrato</div>
-<div style={{ fontSize:13,color:"#94a3b8",marginBottom:18 }}>Defina o modelo da sua prestação de serviços e acompanhe quem já assinou.</div>
-<Card style={{ padding:"16px 16px",marginBottom:20 }}>
-<div style={{ fontWeight:700,fontSize:14,marginBottom:8 }}>Modelo do contrato</div>
-<div style={{ fontSize:11,color:"#94a3b8",marginBottom:10,lineHeight:1.5 }}>Use {"{nome}"}, {"{cpf}"}, {"{plano}"}, {"{valor}"} e {"{data}"} — são preenchidos automaticamente pra cada aluno. {"{nome}"} e {"{cpf}"} são preenchidos por ele mesmo na hora de assinar.</div>
-<textarea value={texto} onChange={e=>setTexto(e.target.value)} rows={10} placeholder="Escreva aqui os termos da sua prestação de serviços..." style={{ width:"100%",padding:"12px 14px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:13,color:"#0f172a",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical",lineHeight:1.5,marginBottom:12 }}/>
-<Inp label="Prazo para assinatura (dias após o cadastro do aluno)" type="number" value={prazoDias} onChange={setPrazoDias}/>
-<Btn full onClick={salvar}>{salvo?"Salvo!":"Salvar modelo"}</Btn>
+<div style={{ fontSize:13,color:"#94a3b8",marginBottom:18 }}>Seus modelos de contrato e quem já assinou.</div>
+<div style={{ display:"flex",gap:6,marginBottom:18 }}>
+<button onClick={()=>setViewCat("alunos")} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:viewCat==="alunos"?O:"#f1f5f9",color:viewCat==="alunos"?"#fff":"#64748b" }}>Alunos</button>
+<button onClick={()=>setViewCat("modelos")} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:viewCat==="modelos"?O:"#f1f5f9",color:viewCat==="modelos"?"#fff":"#64748b" }}>Modelos</button>
+</div>
+
+{viewCat==="modelos" && <>
+<Btn full icon="plus" onClick={abrirNovoModelo} style={{ marginBottom:16 }}>Novo Modelo</Btn>
+{contratoModelos.length===0 ? <Card style={{ textAlign:"center",padding:32 }}><I n="clip" c="#cbd5e1" s={32}/><div style={{ color:"#94a3b8",marginTop:10 }}>Nenhum modelo cadastrado ainda.</div></Card> :
+<div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+{contratoModelos.map(m=>(
+<Card key={m.id} onClick={()=>abrirEditModelo(m)} style={{ padding:"14px 16px" }}>
+<div style={{ display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10 }}>
+<div style={{ flex:1,minWidth:0 }}>
+<div style={{ display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:4 }}>
+<span style={{ fontWeight:700,fontSize:14 }}>{m.nome}</span>
+{m.padrao && <Badge color="#16a34a" bg="#dcfce7">Padrão</Badge>}
+</div>
+<div style={{ fontSize:11,color:"#94a3b8" }}>Prazo pra assinar: {m.prazoDias||7} dia(s) · {students.filter(s=>(s.contratoModeloId||modeloPadrao?.id)===m.id && !s.contratoTextoPersonalizado).length} aluno(s) neste modelo</div>
+</div>
+<button onClick={ev=>{ev.stopPropagation();excluirModelo(m.id);}} style={{ background:"none",border:"none",cursor:"pointer",color:"#e2e8f0",padding:4,flexShrink:0 }}><I n="trash" s={15}/></button>
+</div>
 </Card>
-<div style={{ fontSize:12,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",marginBottom:10 }}>Status dos alunos</div>
-<div style={{ fontSize:11,color:"#94a3b8",marginBottom:10,marginTop:-4 }}>Toque num aluno pendente pra ver a assinatura (se já assinou) ou personalizar o texto dele, caso tenha alguma particularidade.</div>
+))}
+</div>}
+</>}
+
+{viewCat==="alunos" && <>
+<div style={{ fontSize:11,color:"#94a3b8",marginBottom:10 }}>Toque num aluno pendente pra escolher o modelo dele (ou personalizar). Toque num aluno que já assinou pra ver a assinatura.</div>
 {students.length===0 ? <Card style={{ textAlign:"center",padding:32 }}><I n="clip" c="#cbd5e1" s={32}/><div style={{ color:"#94a3b8",marginTop:10 }}>Nenhum aluno cadastrado ainda.</div></Card> :
 <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
 {students.map(s=>{
 const assin = assinaturaDoAluno(s.id);
+const modeloUsado = modeloEfetivo(s);
 let statusNode;
 if(assin){
 statusNode = <Badge color="#16a34a" bg="#dcfce7">Assinado em {fmt((assin.created_at||"").slice(0,10))}</Badge>;
-} else if(!texto.trim()){
+} else if(!modeloUsado){
 statusNode = <Badge color="#64748b" bg="#f1f5f9">Sem modelo definido</Badge>;
 } else {
 const criado = s.createdAt ? new Date(s.createdAt+"T00:00:00") : null;
-const prazoVenceEm = criado ? new Date(criado.getTime()+(parseInt(prazoDias)||7)*86400000) : null;
+const prazoVenceEm = criado ? new Date(criado.getTime()+(modeloUsado.prazoDias||7)*86400000) : null;
 const diasRestantes = prazoVenceEm ? Math.ceil((prazoVenceEm-agora)/86400000) : null;
 if(diasRestantes===null) statusNode = <Badge color="#64748b" bg="#f1f5f9">Sem data de cadastro</Badge>;
 else if(diasRestantes<0) statusNode = <Badge color="#dc2626" bg="#fee2e2">Vencido — acesso bloqueado</Badge>;
 else statusNode = <Badge color="#d97706" bg="#fef9c3">Pendente — {diasRestantes} dia(s)</Badge>;
 }
 return (
-<Card key={s.id} onClick={()=>assin?setVerAssinatura({s,assin}):abrirPersonalizar(s)} style={{ padding:"12px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,cursor:"pointer" }}>
+<Card key={s.id} onClick={()=>assin?setVerAssinatura({s,assin}):abrirAssign(s)} style={{ padding:"12px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,cursor:"pointer" }}>
 <div>
 <div style={{ fontWeight:700,fontSize:13 }}>{s.name}</div>
-{!assin && s.contratoTextoPersonalizado && <div style={{ fontSize:10,color:"#7c3aed",fontWeight:700,marginTop:2 }}>✏️ Texto personalizado</div>}
+{!assin && <div style={{ fontSize:10,color:"#94a3b8",marginTop:2 }}>{modeloUsado?(s.contratoTextoPersonalizado?"✏️ Personalizado":modeloUsado.nome):"—"}</div>}
 </div>
 {statusNode}
 </Card>
 );
 })}
 </div>}
+</>}
+
+{modeloModal && <Modal title={modeloEditId?"Editar Modelo":"Novo Modelo"} onClose={()=>setModeloModal(false)}>
+<Inp label="Nome do modelo *" value={modeloForm.nome} onChange={v=>setModeloForm(f=>({...f,nome:v}))} placeholder="Ex: Presencial, Online, Consultoria"/>
+<Inp label="Prazo para assinatura (dias após o cadastro do aluno)" type="number" value={modeloForm.prazoDias} onChange={v=>setModeloForm(f=>({...f,prazoDias:v}))}/>
+<div style={{ marginBottom:8 }}>
+<div style={{ fontSize:12,fontWeight:600,color:"#475569",marginBottom:5 }}>Texto do contrato</div>
+<div style={{ fontSize:11,color:"#94a3b8",marginBottom:8,lineHeight:1.5 }}>Use {"{nome}"}, {"{cpf}"}, {"{plano}"}, {"{valor}"} e {"{data}"} — são preenchidos automaticamente. {"{nome}"} e {"{cpf}"} são preenchidos pelo próprio aluno na hora de assinar.</div>
+<textarea value={modeloForm.texto} onChange={e=>setModeloForm(f=>({...f,texto:e.target.value}))} rows={12} placeholder="Escreva aqui os termos da sua prestação de serviços..." style={{ width:"100%",padding:"12px 14px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:13,color:"#0f172a",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical",lineHeight:1.5 }}/>
+</div>
+<div onClick={()=>setModeloForm(f=>({...f,padrao:!f.padrao}))} style={{ display:"flex",alignItems:"center",gap:10,marginBottom:16,cursor:"pointer",background:"#f8fafc",borderRadius:9,padding:"10px 12px" }}>
+<div style={{ width:38,height:22,borderRadius:99,background:modeloForm.padrao?"#FF5603":"#cbd5e1",position:"relative",transition:"background 0.15s",flexShrink:0 }}>
+<div style={{ width:18,height:18,borderRadius:99,background:"#fff",position:"absolute",top:2,left:modeloForm.padrao?18:2,transition:"left 0.15s" }}/>
+</div>
+<div style={{ fontSize:13,fontWeight:600,color:"#334155" }}>Modelo padrão (usado pra quem não tem um modelo específico atribuído)</div>
+</div>
+<div style={{ display:"flex",gap:8 }}>
+{modeloEditId && <Btn variant="danger" onClick={()=>{excluirModelo(modeloEditId);setModeloModal(false);}}>Excluir</Btn>}
+<Btn full onClick={salvarModelo} disabled={!modeloForm.nome.trim()||!modeloForm.texto.trim()}>Salvar</Btn>
+</div>
+</Modal>}
+
 {verAssinatura && <Modal title="Contrato assinado" onClose={()=>setVerAssinatura(null)}>
 <div style={{ fontSize:12,color:"#94a3b8",marginBottom:4 }}>Assinado por</div>
 <div style={{ fontWeight:700,fontSize:15,marginBottom:2 }}>{verAssinatura.assin.data?.nomeDigitado}</div>
@@ -6699,11 +6881,25 @@ return (
 <div style={{ fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",marginBottom:6 }}>Texto assinado</div>
 <div style={{ fontSize:12,color:"#334155",whiteSpace:"pre-wrap",background:"#f8fafc",borderRadius:9,padding:"12px 14px",lineHeight:1.5,maxHeight:280,overflowY:"auto" }}>{verAssinatura.assin.data?.textoAssinado}</div>
 </Modal>}
-{personalizarSt && <Modal title={"Personalizar — "+personalizarSt.name} onClose={()=>setPersonalizarSt(null)}>
-<div style={{ fontSize:12,color:"#94a3b8",marginBottom:14,lineHeight:1.5 }}>Deixe em branco pra esse aluno usar o modelo padrão. Preencha só se ele tiver alguma condição diferente (outro plano, cláusula extra etc.) — pode reaproveitar o modelo padrão e ajustar só o que precisa.</div>
-<textarea value={textoPersonalizado} onChange={e=>setTextoPersonalizado(e.target.value)} rows={12} placeholder={texto||"Cole aqui o texto personalizado pra esse aluno..."} style={{ width:"100%",padding:"12px 14px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:13,color:"#0f172a",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical",lineHeight:1.5,marginBottom:14 }}/>
-{textoPersonalizado.trim() && texto.trim() && <Btn variant="secondary" onClick={()=>setTextoPersonalizado(texto)} style={{ marginBottom:10 }}>Copiar o modelo padrão pra editar</Btn>}
-<Btn full onClick={salvarPersonalizado}>Salvar</Btn>
+
+{assignSt && <Modal title={"Contrato — "+assignSt.name} onClose={()=>setAssignSt(null)}>
+<div style={{ display:"flex",gap:6,marginBottom:16 }}>
+<button onClick={()=>setAssignModo("modelo")} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:assignModo==="modelo"?O:"#f1f5f9",color:assignModo==="modelo"?"#fff":"#64748b" }}>Usar um modelo</button>
+<button onClick={()=>setAssignModo("personalizado")} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:assignModo==="personalizado"?O:"#f1f5f9",color:assignModo==="personalizado"?"#fff":"#64748b" }}>Personalizar</button>
+</div>
+{assignModo==="modelo" ? <>
+<Inp label="Qual modelo esse aluno vai assinar" value={assignModeloId} onChange={setAssignModeloId} opts={contratoModelos.map(m=>({v:m.id,l:m.nome+(m.padrao?" (padrão)":"")}))}/>
+<div style={{ fontSize:11,color:"#94a3b8",marginTop:-6,marginBottom:14,lineHeight:1.5 }}>{"{nome}"}, {"{cpf}"}, {"{plano}"}, {"{valor}"} e {"{data}"} são preenchidos automaticamente pra esse aluno.</div>
+</> : <>
+<div style={{ fontSize:11,color:"#94a3b8",marginBottom:8,lineHeight:1.5 }}>Escreva um contrato só pra esse aluno. Pode começar de um modelo pronto e ajustar.</div>
+<div style={{ display:"flex",gap:6,flexWrap:"wrap",marginBottom:10 }}>
+{contratoModelos.map(m=>(
+<button key={m.id} onClick={()=>setAssignTexto(m.texto)} style={{ border:"1.5px solid #e2e8f0",background:"#f8fafc",color:"#64748b",borderRadius:99,padding:"6px 10px",fontSize:11,fontWeight:700,cursor:"pointer" }}>Copiar "{m.nome}"</button>
+))}
+</div>
+<textarea value={assignTexto} onChange={e=>setAssignTexto(e.target.value)} rows={12} placeholder="Cole ou escreva o texto do contrato desse aluno..." style={{ width:"100%",padding:"12px 14px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:13,color:"#0f172a",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical",lineHeight:1.5,marginBottom:14 }}/>
+</>}
+<Btn full onClick={salvarAssign} disabled={assignModo==="modelo"?!assignModeloId:!assignTexto.trim()}>Salvar</Btn>
 </Modal>}
 </div>
 );
@@ -7912,7 +8108,13 @@ const [agendaEntries,setAgendaEntries]=useState(()=>LS.get("longevus_agenda",[])
 const [leads,setLeads]=useState(()=>LS.get("longevus_leads",[]).map(migrateLead));
 const [exerciciosBiblioteca,setExerciciosBiblioteca]=useState(()=>LS.get("longevus_exercicios_biblioteca",[]));
 const [planos,setPlanos]=useState(()=>LS.get("longevus_planos",[]));
-const [contratoModelo,setContratoModelo]=useState(()=>LS.get("longevus_contrato_modelo",{texto:"",prazoDias:7}));
+const [contratoModelos,setContratoModelos]=useState(()=>{
+const salvos = LS.get("longevus_contrato_modelos", null);
+if(salvos && salvos.length>0) return salvos;
+const legado = LS.get("longevus_contrato_modelo", null);
+if(legado && legado.texto) return [{ id:uid(), nome:"Modelo padrão", texto:legado.texto, prazoDias:legado.prazoDias||7, padrao:true, createdAt:todayStr() }];
+return [{ id:uid(), nome:"Presencial (padrão)", texto:CONTRATO_MODELO_PADRAO_TEXTO, prazoDias:7, padrao:true, createdAt:todayStr() }];
+});
 const [contratoAssinaturas,setContratoAssinaturas]=useState(()=>LS.get("longevus_contrato_assinaturas",[]));
 const [dbReady,setDbReady]=useState(false);
 const [hubResults,setHubResults]=useState(()=>LS.get("longevus_hub_results",[]));
@@ -7944,7 +8146,7 @@ if(ag!==null){ setAgendaEntries(ag); LS.set("longevus_agenda",ag); }
 if(ld!==null){ const ldMigrado=ld.map(migrateLead); setLeads(ldMigrado); LS.set("longevus_leads",ldMigrado); }
 if(exb!==null){ setExerciciosBiblioteca(exb); LS.set("longevus_exercicios_biblioteca",exb); }
 if(pln!==null){ setPlanos(pln); LS.set("longevus_planos",pln); }
-if(cm!==null && cm.length>0){ setContratoModelo(cm[0]); LS.set("longevus_contrato_modelo",cm[0]); }
+if(cm!==null && cm.length>0){ setContratoModelos(cm); LS.set("longevus_contrato_modelos",cm); }
 if(ca!==null){ setContratoAssinaturas(ca); LS.set("longevus_contrato_assinaturas",ca); }
 setDbReady(true);
 } catch(e){ setDbReady(true); }
@@ -7966,7 +8168,7 @@ useEffect(()=>{LS.set("longevus_professor_feedbacks",professorFeedbacks);},[prof
 useEffect(()=>{LS.set("longevus_agenda",agendaEntries);},[agendaEntries]);
 useEffect(()=>{LS.set("longevus_leads",leads);},[leads]);
 useEffect(()=>{LS.set("longevus_planos",planos);},[planos]);
-useEffect(()=>{LS.set("longevus_contrato_modelo",contratoModelo);},[contratoModelo]);
+useEffect(()=>{LS.set("longevus_contrato_modelos",contratoModelos);},[contratoModelos]);
 // Sync Supabase — salva cada item individualmente
 useEffect(()=>{ if(dbReady) students.forEach(s=>DB.save("students",s.id,s)); },[students,dbReady]);
 useEffect(()=>{ if(dbReady) assessments.forEach(a=>DB.save("assessments",a.id,a,a.studentId)); },[assessments,dbReady]);
@@ -7980,7 +8182,7 @@ useEffect(()=>{ if(dbReady) professorFeedbacks.forEach(f=>DB.save("professor_fee
 useEffect(()=>{ if(dbReady) agendaEntries.forEach(e=>DB.save("agenda",e.id,e,e.studentId)); },[agendaEntries,dbReady]);
 useEffect(()=>{ if(dbReady) leads.forEach(l=>DB.save("leads",l.id,l,l.studentId||null)); },[leads,dbReady]);
 useEffect(()=>{ if(dbReady) planos.forEach(pl=>DB.save("planos",pl.id,pl,null)); },[planos,dbReady]);
-useEffect(()=>{ if(dbReady && contratoModelo.texto) DB.save("contrato_modelo","principal",contratoModelo,null); },[contratoModelo,dbReady]);
+useEffect(()=>{ if(dbReady) contratoModelos.forEach(m=>DB.save("contrato_modelo",m.id,m,null)); },[contratoModelos,dbReady]);
 const nav=useCallback((p,props={})=>{setPage(p);setPageProps(props);window.scrollTo(0,0);},[]);
 const [pendingQCount,setPendingQCount]=useState(0);
 const refreshPendingCount=useCallback(async()=>{
@@ -8126,7 +8328,7 @@ return (
 }{page==="financeiro"&&<Financeiro students={students} setStudents={setStudents} planos={planos} setPlanos={setPlanos} nav={nav}/>
 }{page==="agenda"&&<Agenda students={students} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} nav={nav}/>
 }{page==="leads"&&<Leads leads={leads} setLeads={setLeads} students={students} setStudents={setStudents} nav={nav}/>
-}{page==="contrato"&&<Contrato students={students} setStudents={setStudents} contratoModelo={contratoModelo} setContratoModelo={setContratoModelo} contratoAssinaturas={contratoAssinaturas} nav={nav}/>
+}{page==="contrato"&&<Contrato students={students} setStudents={setStudents} contratoModelos={contratoModelos} setContratoModelos={setContratoModelos} contratoAssinaturas={contratoAssinaturas} nav={nav}/>
 }{page==="profile"&&<Profile session={session} onLogoChange={setLogoUrl}/>}
 </div>
 </div>

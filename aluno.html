@@ -2230,7 +2230,7 @@ function App(){
   const [bibCustom,setBibCustom]=useState([]);
   const [profPix,setProfPix]=useState(null);
   const [avisoFechado,setAvisoFechado]=useState(false);
-  const [contratoModelo,setContratoModelo]=useState(undefined);
+  const [contratoModelos,setContratoModelos]=useState(undefined);
   const [contratoAssinatura,setContratoAssinatura]=useState(undefined);
   const urlParams = new URLSearchParams(window.location.search);
   const cadastroMode = urlParams.get("cadastro")==="1";
@@ -2327,12 +2327,12 @@ function App(){
       try{
         const token = session.access_token || SUPA_KEY;
         const headers = { "apikey": SUPA_KEY, "Authorization": "Bearer "+token, "Content-Type": "application/json" };
-        const r = await fetch(SUPA_URL+"/rest/v1/rpc/get_contrato_modelo", { method:"POST", headers, body: JSON.stringify({ prof_id: ownerId }) });
+        const r = await fetch(SUPA_URL+"/rest/v1/rpc/get_contratos_modelos", { method:"POST", headers, body: JSON.stringify({ prof_id: ownerId }) });
         if(r.ok){
           const rows = await r.json();
-          setContratoModelo(rows && rows.length>0 ? rows[0].data : null);
-        } else setContratoModelo(null);
-      } catch(e){ setContratoModelo(null); }
+          setContratoModelos(rows || []);
+        } else setContratoModelos([]);
+      } catch(e){ setContratoModelos([]); }
     })();
   },[session,ownerId]);
 
@@ -2382,21 +2382,28 @@ function App(){
     );
   }
 
-  if(contratoModelo===undefined || (contratoModelo?.texto && contratoAssinatura===undefined)){
+  if(contratoModelos===undefined){
     return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14}}>Carregando...</div>;
   }
 
-  if(contratoModelo?.texto && contratoAssinatura===null){
+  const modeloPadraoAluno = contratoModelos.find(m=>m.data?.padrao) || contratoModelos[0];
+  const modeloAtribuido = studentData?.contratoModeloId ? contratoModelos.find(m=>m.id===studentData.contratoModeloId) : null;
+  const modeloEfetivo = modeloAtribuido || modeloPadraoAluno;
+  const temTextoPersonalizado = !!(studentData?.contratoTextoPersonalizado && studentData.contratoTextoPersonalizado.trim());
+
+  if(contratoAssinatura===undefined && (temTextoPersonalizado || modeloEfetivo?.data?.texto)){
+    return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14}}>Carregando...</div>;
+  }
+
+  if((temTextoPersonalizado || modeloEfetivo?.data?.texto) && contratoAssinatura===null){
     const criado = studentData?.createdAt ? new Date(studentData.createdAt+"T00:00:00") : new Date();
-    const prazoDias = contratoModelo.prazoDias || 7;
+    const prazoDias = modeloEfetivo?.data?.prazoDias || 7;
     const prazoVenceEm = new Date(criado.getTime()+prazoDias*86400000);
     const diasRestantes = Math.ceil((prazoVenceEm - new Date())/86400000);
     if(diasRestantes<0){
       return <TelaContratoVencido onLogout={onLogout}/>;
     }
-    const modeloBase = (studentData?.contratoTextoPersonalizado && studentData.contratoTextoPersonalizado.trim())
-      ? studentData.contratoTextoPersonalizado
-      : (contratoModelo.texto||"");
+    const modeloBase = temTextoPersonalizado ? studentData.contratoTextoPersonalizado : (modeloEfetivo?.data?.texto||"");
     const textoBase = modeloBase
       .split("{plano}").join(studentData?.billing?.plano||"")
       .split("{valor}").join(studentData?.billing?.valor?("R$ "+Number(studentData.billing.valor).toFixed(2).replace(".",",")):"")
