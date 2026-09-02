@@ -6775,6 +6775,10 @@ if(s.contratoModeloId){ const m=contratoModelos.find(x=>x.id===s.contratoModeloI
 return modeloPadrao;
 };
 const agora = new Date();
+const renovarPrazo = (s) => {
+if(!window.confirm(`Renovar o prazo de assinatura de ${s.name}? Ele(a) vai ter mais ${modeloEfetivo(s)?.prazoDias||7} dia(s) a partir de agora pra assinar.`)) return;
+setStudents(p=>p.map(x=>x.id===s.id?{...x,contratoPrazoLiberadoEm:todayStr()}:x));
+};
 const abrirAssign = (s) => {
 setAssignSt(s);
 setAssignModo(s.contratoTextoPersonalizado ? "personalizado" : "modelo");
@@ -6827,25 +6831,30 @@ return (
 const assin = assinaturaDoAluno(s.id);
 const modeloUsado = modeloEfetivo(s);
 let statusNode;
+let vencido = false;
 if(assin){
 statusNode = <Badge color="#16a34a" bg="#dcfce7">Assinado em {fmt((assin.created_at||"").slice(0,10))}</Badge>;
 } else if(!modeloUsado){
 statusNode = <Badge color="#64748b" bg="#f1f5f9">Sem modelo definido</Badge>;
 } else {
-const criado = s.createdAt ? new Date(s.createdAt+"T00:00:00") : null;
+const base = s.contratoPrazoLiberadoEm || s.createdAt;
+const criado = base ? new Date(base+"T00:00:00") : null;
 const prazoVenceEm = criado ? new Date(criado.getTime()+(modeloUsado.prazoDias||7)*86400000) : null;
 const diasRestantes = prazoVenceEm ? Math.ceil((prazoVenceEm-agora)/86400000) : null;
 if(diasRestantes===null) statusNode = <Badge color="#64748b" bg="#f1f5f9">Sem data de cadastro</Badge>;
-else if(diasRestantes<0) statusNode = <Badge color="#dc2626" bg="#fee2e2">Vencido — acesso bloqueado</Badge>;
+else if(diasRestantes<0){ vencido=true; statusNode = <Badge color="#dc2626" bg="#fee2e2">Vencido — acesso bloqueado</Badge>; }
 else statusNode = <Badge color="#d97706" bg="#fef9c3">Pendente — {diasRestantes} dia(s)</Badge>;
 }
 return (
-<Card key={s.id} onClick={()=>assin?setVerAssinatura({s,assin}):abrirAssign(s)} style={{ padding:"12px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,cursor:"pointer" }}>
+<Card key={s.id} style={{ padding:"12px 14px" }}>
+<div onClick={()=>assin?setVerAssinatura({s,assin}):abrirAssign(s)} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,cursor:"pointer" }}>
 <div>
 <div style={{ fontWeight:700,fontSize:13 }}>{s.name}</div>
 {!assin && <div style={{ fontSize:10,color:"#94a3b8",marginTop:2 }}>{modeloUsado?(s.contratoTextoPersonalizado?"✏️ Personalizado":modeloUsado.nome):"—"}</div>}
 </div>
 {statusNode}
+</div>
+{vencido && <button onClick={ev=>{ev.stopPropagation();renovarPrazo(s);}} style={{ marginTop:10,width:"100%",border:"1.5px solid #FF5603",background:"#fff4ee",color:"#FF5603",borderRadius:8,padding:"7px 0",fontSize:12,fontWeight:700,cursor:"pointer" }}>Renovar prazo</button>}
 </Card>
 );
 })}

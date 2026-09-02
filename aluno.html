@@ -2396,7 +2396,8 @@ function App(){
   }
 
   if((temTextoPersonalizado || modeloEfetivo?.data?.texto) && contratoAssinatura===null){
-    const criado = studentData?.createdAt ? new Date(studentData.createdAt+"T00:00:00") : new Date();
+    const baseData = studentData?.contratoPrazoLiberadoEm || studentData?.createdAt;
+    const criado = baseData ? new Date(baseData+"T00:00:00") : new Date();
     const prazoDias = modeloEfetivo?.data?.prazoDias || 7;
     const prazoVenceEm = new Date(criado.getTime()+prazoDias*86400000);
     const diasRestantes = Math.ceil((prazoVenceEm - new Date())/86400000);
