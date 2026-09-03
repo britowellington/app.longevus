@@ -140,8 +140,9 @@ id: uid(), studentId: student.id, tipo:"avulso", plano:"Aula avulsa",
 dataPrevista, valorPrevisto: valor!=null&&valor!=="" ? Number(valor) : (Number(student.billing?.valorAula)||0),
 dataPagamento:null, valorPago:null, status:"previsto", origem: agendaEntryId?"agenda":"manual", agendaEntryId: agendaEntryId||null, obs:"", createdAt:todayStr()
 });
-// Chamado quando um compromisso da agenda muda de status.
-// - Aluno avulso: se virou "realizada", gera uma cobrança prevista pra essa aula (se ainda não existir).
+// Chamado quando um compromisso da agenda é criado ou muda de status.
+// - Aluno avulso: assim que a aula é agendada (qualquer status), gera a cobrança prevista pra ela
+//   (se ainda não existir uma pra esse compromisso). A baixa é feita depois, quando o pagamento entra.
 // - Aluno mensal "por sessão": recalcula quantas aulas "realizadas" caem dentro do ciclo aberto
 //   e atualiza o valor previsto (sessões x valor da sessão) automaticamente.
 const atualizarFinanceiroPelaAgenda = (entry, students, agendaEntries, setPagamentos) => {
@@ -150,7 +151,6 @@ const st = students.find(s=>s.id===entry.studentId);
 if(!st || !st.billing?.ativo) return;
 const mergedEntries = agendaEntries.some(e=>e.id===entry.id) ? agendaEntries.map(e=>e.id===entry.id?entry:e) : [...agendaEntries, entry];
 if(st.billing?.tipo==="avulso"){
-if(entry.status!=="realizada") return;
 setPagamentos(p => p.some(x=>x.agendaEntryId===entry.id) ? p : [...p, novoPagamentoAvulso(st, entry.date, entry.id)]);
 return;
 }
@@ -165,6 +165,11 @@ const count = mergedEntries.filter(e=>e.studentId===st.id && e.status==="realiza
 return p.map(x=>x.id===pg.id?{...x, sessoes:count, valorPrevisto: count*valorSessao}:x);
 });
 }
+};
+// Chamado quando um compromisso é excluído da agenda: remove a cobrança prevista vinculada a ele,
+// desde que ainda não tenha sido paga (pagamentos já baixados nunca são apagados por aqui).
+const removerPagamentoDaAgenda = (entryId, setPagamentos) => {
+setPagamentos(p => p.filter(pg => !(pg.agendaEntryId===entryId && pg.status==="previsto")));
 };
 const EXERCISES = [
 {id:"ex01",nome:"Sentar e Levantar da Cadeira",cat:"Fortalecimento",grupo:"MMII",foco:"Pernas e Glúteos",nivel:"Basico",icone:"🪑",momento:"principal"},
@@ -1293,7 +1298,7 @@ const saveAgendaEdit = () => {
   atualizarFinanceiroPelaAgenda(atualizado, students, agendaEntries, setPagamentos);
   setAgendaEditId(null);
 };
-const delAgendaEntry = async (id) => { if(window.confirm("Remover este compromisso da agenda?")){ await DB.remove("agenda",id); setAgendaEntries(p=>p.filter(e=>e.id!==id)); setAgendaEditId(null); } };
+const delAgendaEntry = async (id) => { if(window.confirm("Remover este compromisso da agenda?")){ await DB.remove("agenda",id); setAgendaEntries(p=>p.filter(e=>e.id!==id)); removerPagamentoDaAgenda(id, setPagamentos); setAgendaEditId(null); } };
 if(!st) return <div style={{ textAlign:"center",padding:40,color:"#94a3b8" }}>Aluno não encontrado.</div>;
 const stAssessments = assessments.filter(a=>a.studentId===studentId).sort((a,b)=>b.date?.localeCompare(a.date));
 const stPrograms = programs.filter(p=>p.studentId===studentId).sort((a,b)=>(b.criadoEm||"").localeCompare(a.criadoEm||""));
@@ -6639,7 +6644,7 @@ atualizarFinanceiroPelaAgenda(nova, students, agendaEntries, setPagamentos);
 }
 setEntryModal(false);
 };
-const delEntry = async (id) => { if(window.confirm("Remover este compromisso da agenda?")){ await DB.remove("agenda",id); setAgendaEntries(p=>p.filter(e=>e.id!==id)); } };
+const delEntry = async (id) => { if(window.confirm("Remover este compromisso da agenda?")){ await DB.remove("agenda",id); setAgendaEntries(p=>p.filter(e=>e.id!==id)); removerPagamentoDaAgenda(id, setPagamentos); } };
 const entriesFiltradas = [...agendaEntries].filter(e=>!filterSt||e.studentId===filterSt);
 const entriesPorDia = (iso) => entriesFiltradas.filter(e=>e.date===iso).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
 const listaOrdenada = [...entriesFiltradas].sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(a.time||"").localeCompare(b.time||""));
@@ -8612,6 +8617,21 @@ if(!dbReady) return;
 setContratoModelos(p=>{
 if(p.some(m=>m.tipo==="avulso")) return p;
 return [...p, { id:uid(), nome:"Presencial — Aula Avulsa", tipo:"avulso", texto:CONTRATO_MODELO_AVULSO_TEXTO, prazoDias:7, padrao:false, createdAt:todayStr() }];
+});
+},[dbReady]);
+// Preenche retroativamente o previsto de aulas avulsas que já estavam agendadas antes desse ajuste
+useEffect(()=>{
+if(!dbReady) return;
+setPagamentos(p=>{
+const existentes = new Set(p.map(x=>x.agendaEntryId).filter(Boolean));
+const novos = [];
+agendaEntries.forEach(entry=>{
+if(existentes.has(entry.id)) return;
+const st = students.find(s=>s.id===entry.studentId);
+if(!st || st.billing?.tipo!=="avulso" || !st.billing?.ativo) return;
+novos.push(novoPagamentoAvulso(st, entry.date, entry.id));
+});
+return novos.length ? [...p, ...novos] : p;
 });
 },[dbReady]);
 const [page,setPage]=useState("dashboard");
