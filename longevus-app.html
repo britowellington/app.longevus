@@ -836,15 +836,20 @@ return (
 };
 const PagamentoModal = ({ student, pagamentos, setPagamentos, setStudents, onClose }) => {
 const abertos = pagamentos.filter(p=>p.studentId===student.id && p.status==="previsto").sort((a,b)=>(a.dataPrevista||"").localeCompare(b.dataPrevista||""));
+const abertosMensal = abertos.filter(p=>p.tipo==="mensal");
+const abertosAvulso = abertos.filter(p=>p.tipo==="avulso");
+// Se o aluno é mensal (fixo ou por sessão) mas tem cobranças avulsas antigas em aberto (de antes de virar mensal),
+// elas ficam visíveis mas NÃO entram automaticamente na soma — são lançamentos separados, o trainer decide se quer incluir.
+const tipoPrincipal = student.billing?.tipo==="avulso" ? "avulso" : "mensal";
 const [valores,setValores] = useState(()=>Object.fromEntries(abertos.map(p=>[p.id,p.valorPrevisto])));
 const [datas,setDatas] = useState(()=>Object.fromEntries(abertos.map(p=>[p.id,todayStr()])));
 const [sessoesMap,setSessoesMap] = useState(()=>Object.fromEntries(abertos.map(p=>[p.id,p.sessoes!=null?p.sessoes:""])));
-const [selecionados,setSelecionados] = useState(()=>new Set(abertos.map(p=>p.id)));
+const [selecionados,setSelecionados] = useState(()=>new Set(abertos.filter(p=>p.tipo===tipoPrincipal).map(p=>p.id)));
 useEffect(()=>{
 setValores(vs=>{ const n={...vs}; let mudou=false; abertos.forEach(p=>{ if(!(p.id in n)){ n[p.id]=p.valorPrevisto; mudou=true; } }); return mudou?n:vs; });
 setDatas(ds=>{ const n={...ds}; let mudou=false; abertos.forEach(p=>{ if(!(p.id in n)){ n[p.id]=todayStr(); mudou=true; } }); return mudou?n:ds; });
 setSessoesMap(sm=>{ const n={...sm}; let mudou=false; abertos.forEach(p=>{ if(!(p.id in n)){ n[p.id]=p.sessoes!=null?p.sessoes:""; mudou=true; } }); return mudou?n:sm; });
-setSelecionados(sel=>{ const n=new Set(sel); let mudou=false; abertos.forEach(p=>{ if(!n.has(p.id)){ n.add(p.id); mudou=true; } }); return mudou?n:sel; });
+setSelecionados(sel=>{ const n=new Set(sel); let mudou=false; abertos.filter(p=>p.tipo===tipoPrincipal).forEach(p=>{ if(!n.has(p.id)){ n.add(p.id); mudou=true; } }); return mudou?n:sel; });
 // eslint-disable-next-line
 },[pagamentos.length]);
 const alterarSessoes = (pg, qtd) => {
@@ -860,13 +865,15 @@ if(!novoValor) return;
 setPagamentos(p=>[...p, novoPagamentoAvulso(student, novaData, null, novoValor)]);
 setNovoValor("");
 };
+const totalSelecionado = abertos.filter(p=>selecionados.has(p.id)).reduce((a,p)=>a+(Number(valores[p.id])||0),0);
 const confirmarBaixa = () => {
 const hoje = todayStr();
 const pagos = abertos.filter(p=>selecionados.has(p.id));
 if(pagos.length===0) return;
 setPagamentos(p=>p.map(pg=>selecionados.has(pg.id)?{...pg,status:"pago",valorPago:Number(valores[pg.id])||0,dataPagamento:datas[pg.id]||hoje,sessoes:sessoesMap[pg.id]!==""&&sessoesMap[pg.id]!=null?Number(sessoesMap[pg.id]):pg.sessoes}:pg));
-if(student.billing?.tipo!=="avulso" && setStudents){
-const base = pagos[pagos.length-1].dataPrevista || hoje;
+const pagosMensais = pagos.filter(p=>p.tipo==="mensal");
+if(student.billing?.tipo!=="avulso" && setStudents && pagosMensais.length>0){
+const base = pagosMensais[pagosMensais.length-1].dataPrevista || hoje;
 const prox = new Date(base+"T00:00:00"); prox.setDate(prox.getDate()+30);
 const proxIso = toISODateLocal(prox);
 setPagamentos(p=>[...p, novoPagamentoMensal(student, proxIso, base)]);
@@ -874,13 +881,7 @@ setStudents(p=>p.map(s=>s.id===student.id?{...s,billing:{...(s.billing||{}),ulti
 }
 onClose();
 };
-return (
-<Modal title={"💰 "+student.name} onClose={onClose}>
-{abertos.length===0 ?
-<div style={{ fontSize:13,color:"#94a3b8",marginBottom:16 }}>Nenhuma cobrança em aberto no momento.</div>
-:
-<div style={{ display:"flex",flexDirection:"column",gap:10,marginBottom:16 }}>
-{abertos.map(pg=>{
+const renderLancamento = (pg) => {
 const vencido = pg.dataPrevista && pg.dataPrevista<todayStr();
 const sel = selecionados.has(pg.id);
 return (
@@ -905,7 +906,37 @@ return (
 </>}
 </div>
 );
-})}
+};
+return (
+<Modal title={"💰 "+student.name} onClose={onClose}>
+{abertos.length===0 ?
+<div style={{ fontSize:13,color:"#94a3b8",marginBottom:16 }}>Nenhuma cobrança em aberto no momento.</div>
+:
+<>
+{tipoPrincipal==="mensal" ?
+<>
+{abertosMensal.length>0 &&
+<div style={{ display:"flex",flexDirection:"column",gap:10,marginBottom:abertosAvulso.length>0?16:8 }}>
+{abertosMensal.map(renderLancamento)}
+</div>}
+{abertosAvulso.length>0 &&
+<div style={{ marginBottom:16 }}>
+<div style={{ fontSize:11,fontWeight:700,color:"#c2410c",textTransform:"uppercase",marginBottom:8 }}>Aulas avulsas — pendência de antes de virar mensal</div>
+<div style={{ fontSize:11,color:"#94a3b8",marginBottom:8 }}>Ficam separadas da mensalidade por padrão. Marque só se quiser quitar junto agora.</div>
+<div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+{abertosAvulso.map(renderLancamento)}
+</div>
+</div>}
+</>
+:
+<div style={{ display:"flex",flexDirection:"column",gap:10,marginBottom:16 }}>
+{abertos.map(renderLancamento)}
+</div>
+}
+</>}
+{abertos.length>0 &&
+<div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:13,fontWeight:700,color:"#0f172a",borderTop:"1px solid #f1f5f9",paddingTop:10,marginBottom:14 }}>
+<span>Total selecionado</span><span>{fmtR(totalSelecionado)}</span>
 </div>}
 {student.billing?.tipo==="avulso" &&
 <div style={{ borderTop:"1px solid #f1f5f9",paddingTop:12,marginBottom:14 }}>
