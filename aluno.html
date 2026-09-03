@@ -2473,9 +2473,16 @@ function App(){
       return <TelaContratoVencido onLogout={onLogout}/>;
     }
     const modeloBase = temTextoPersonalizado ? studentData.contratoTextoPersonalizado : (modeloEfetivo?.data?.texto||"");
+    const bl = studentData?.billing || {};
+    const valorTexto = bl.tipo==="avulso"
+      ? (bl.valorAula ? ("R$ "+Number(bl.valorAula).toFixed(2).replace(".",",")+" por aula") : "")
+      : bl.modoCobranca==="porSessao"
+        ? (bl.valorSessao ? ("R$ "+Number(bl.valorSessao).toFixed(2).replace(".",",")+" por sessão") : "")
+        : (bl.valor ? ("R$ "+Number(bl.valor).toFixed(2).replace(".",",")) : "");
+    const planoTexto = bl.plano || (bl.tipo==="avulso" ? "Aula avulsa" : "");
     const textoBase = modeloBase
-      .split("{plano}").join(studentData?.billing?.plano||"")
-      .split("{valor}").join(studentData?.billing?.valor?("R$ "+Number(studentData.billing.valor).toFixed(2).replace(".",",")):"")
+      .split("{plano}").join(planoTexto)
+      .split("{valor}").join(valorTexto)
       .split("{data}").join(new Date().toLocaleDateString("pt-BR"));
     return <TelaContrato studentId={studentId} ownerId={ownerId} studentName={studentName} contratoTextoBase={textoBase} diasRestantes={diasRestantes} onSigned={(body)=>setContratoAssinatura(body)} onLogout={onLogout}/>;
   }
