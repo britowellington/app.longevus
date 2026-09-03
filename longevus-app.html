@@ -124,6 +124,27 @@ return a;
 };
 const fmt = (d) => d ? new Date(d + "T00:00:00").toLocaleDateString("pt-BR") : "—";
 const O = "#FF5603";
+// ---- Financeiro: previsto x realizado ----
+const fmtR = (v) => "R$ "+Number(v||0).toFixed(2).replace(".",",");
+const mesChave = (d) => (d||"").slice(0,7);
+const novoPagamentoMensal = (student, dataPrevista) => ({
+id: uid(), studentId: student.id, tipo:"mensal", plano: student.billing?.plano||"",
+dataPrevista, valorPrevisto: Number(student.billing?.valor)||0,
+dataPagamento:null, valorPago:null, status:"previsto", origem:"ciclo", agendaEntryId:null, obs:"", createdAt:todayStr()
+});
+const novoPagamentoAvulso = (student, dataPrevista, agendaEntryId, valor) => ({
+id: uid(), studentId: student.id, tipo:"avulso", plano:"Aula avulsa",
+dataPrevista, valorPrevisto: valor!=null&&valor!=="" ? Number(valor) : (Number(student.billing?.valorAula)||0),
+dataPagamento:null, valorPago:null, status:"previsto", origem: agendaEntryId?"agenda":"manual", agendaEntryId: agendaEntryId||null, obs:"", createdAt:todayStr()
+});
+// Chamado quando um compromisso da agenda muda de status: se virou "realizada" e o aluno é avulso,
+// gera automaticamente uma cobrança prevista (se ainda não existir uma pra esse compromisso).
+const gerarPagamentoAgendaSeNecessario = (entry, students, setPagamentos) => {
+if(!entry || entry.status!=="realizada") return;
+const st = students.find(s=>s.id===entry.studentId);
+if(!st || st.billing?.tipo!=="avulso" || !st.billing?.ativo) return;
+setPagamentos(p => p.some(x=>x.agendaEntryId===entry.id) ? p : [...p, novoPagamentoAvulso(st, entry.date, entry.id)]);
+};
 const EXERCISES = [
 {id:"ex01",nome:"Sentar e Levantar da Cadeira",cat:"Fortalecimento",grupo:"MMII",foco:"Pernas e Glúteos",nivel:"Basico",icone:"🪑",momento:"principal"},
 {id:"ex02",nome:"Elevação de Calcanhares",cat:"Fortalecimento",grupo:"MMII",foco:"Panturrilha",nivel:"Basico",icone:"🦵",momento:"principal"},
@@ -672,7 +693,107 @@ return (
 </div>
 );
 };
-const Financeiro = ({ students, setStudents, planos, setPlanos, nav }) => {
+const ChartWrap = ({ series, labels }) => {
+const max = Math.max(1, ...series.flatMap(s=>s.values));
+return (
+<Card style={{ padding:"14px 12px" }}>
+<div style={{ display:"flex",alignItems:"flex-end",gap:10,height:120,marginBottom:8 }}>
+{labels.map((lbl,i)=>(
+<div key={i} style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",height:"100%" }}>
+<div style={{ display:"flex",alignItems:"flex-end",gap:3,height:"100%",width:"100%",justifyContent:"center" }}>
+{series.map((s,si)=>(
+<div key={si} title={s.name+": "+fmtR(s.values[i])} style={{ width:10,borderRadius:"3px 3px 0 0",height:Math.max(2,(s.values[i]/max)*100)+"%",background:s.color }}/>
+))}
+</div>
+<div style={{ fontSize:9,color:"#94a3b8",marginTop:4 }}>{lbl}</div>
+</div>
+))}
+</div>
+<div style={{ display:"flex",gap:14,justifyContent:"center" }}>
+{series.map((s,si)=>(
+<div key={si} style={{ display:"flex",alignItems:"center",gap:5,fontSize:11,color:"#64748b" }}><span style={{ width:8,height:8,borderRadius:2,background:s.color,display:"inline-block" }}/>{s.name}</div>
+))}
+</div>
+</Card>
+);
+};
+const PagamentoModal = ({ student, pagamentos, setPagamentos, setStudents, onClose }) => {
+const abertos = pagamentos.filter(p=>p.studentId===student.id && p.status==="previsto").sort((a,b)=>(a.dataPrevista||"").localeCompare(b.dataPrevista||""));
+const [valores,setValores] = useState(()=>Object.fromEntries(abertos.map(p=>[p.id,p.valorPrevisto])));
+const [datas,setDatas] = useState(()=>Object.fromEntries(abertos.map(p=>[p.id,todayStr()])));
+const [selecionados,setSelecionados] = useState(()=>new Set(abertos.map(p=>p.id)));
+useEffect(()=>{
+setValores(vs=>{ const n={...vs}; let mudou=false; abertos.forEach(p=>{ if(!(p.id in n)){ n[p.id]=p.valorPrevisto; mudou=true; } }); return mudou?n:vs; });
+setDatas(ds=>{ const n={...ds}; let mudou=false; abertos.forEach(p=>{ if(!(p.id in n)){ n[p.id]=todayStr(); mudou=true; } }); return mudou?n:ds; });
+setSelecionados(sel=>{ const n=new Set(sel); let mudou=false; abertos.forEach(p=>{ if(!n.has(p.id)){ n.add(p.id); mudou=true; } }); return mudou?n:sel; });
+// eslint-disable-next-line
+},[pagamentos.length]);
+const toggleSel = (id) => setSelecionados(prev=>{ const n=new Set(prev); if(n.has(id))n.delete(id); else n.add(id); return n; });
+const [novoValor,setNovoValor] = useState("");
+const [novaData,setNovaData] = useState(todayStr());
+const adicionarLancamento = () => {
+if(!novoValor) return;
+setPagamentos(p=>[...p, novoPagamentoAvulso(student, novaData, null, novoValor)]);
+setNovoValor("");
+};
+const confirmarBaixa = () => {
+const hoje = todayStr();
+const pagos = abertos.filter(p=>selecionados.has(p.id));
+if(pagos.length===0) return;
+setPagamentos(p=>p.map(pg=>selecionados.has(pg.id)?{...pg,status:"pago",valorPago:Number(valores[pg.id])||0,dataPagamento:datas[pg.id]||hoje}:pg));
+if(student.billing?.tipo!=="avulso" && setStudents){
+const base = pagos[pagos.length-1].dataPrevista || hoje;
+const prox = new Date(base+"T00:00:00"); prox.setDate(prox.getDate()+30);
+const proxIso = toISODateLocal(prox);
+setPagamentos(p=>[...p, novoPagamentoMensal(student, proxIso)]);
+setStudents(p=>p.map(s=>s.id===student.id?{...s,billing:{...(s.billing||{}),ultimoPagamento:hoje,vencimento:proxIso}}:s));
+}
+onClose();
+};
+return (
+<Modal title={"💰 "+student.name} onClose={onClose}>
+{abertos.length===0 ?
+<div style={{ fontSize:13,color:"#94a3b8",marginBottom:16 }}>Nenhuma cobrança em aberto no momento.</div>
+:
+<div style={{ display:"flex",flexDirection:"column",gap:10,marginBottom:16 }}>
+{abertos.map(pg=>{
+const vencido = pg.dataPrevista && pg.dataPrevista<todayStr();
+const sel = selecionados.has(pg.id);
+return (
+<div key={pg.id} style={{ border:"1.5px solid "+(sel?O:"#e2e8f0"),borderRadius:10,padding:"10px 12px",background:sel?"#fff7f2":"#fff" }}>
+<div onClick={()=>toggleSel(pg.id)} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,cursor:"pointer",marginBottom:sel?8:0 }}>
+<div>
+<div style={{ fontSize:13,fontWeight:700 }}>{pg.tipo==="mensal"?(pg.plano||"Mensalidade"):"Aula avulsa"}</div>
+<div style={{ fontSize:11,color:vencido?"#dc2626":"#94a3b8" }}>Previsto: {fmt(pg.dataPrevista)} · {fmtR(pg.valorPrevisto)}{vencido?" · vencido":""}</div>
+</div>
+<div style={{ width:20,height:20,borderRadius:6,border:"1.5px solid "+(sel?O:"#cbd5e1"),background:sel?O:"#fff",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,flexShrink:0 }}>{sel?"✓":""}</div>
+</div>
+{sel &&
+<div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
+<Inp label="Valor pago (R$)" type="number" value={valores[pg.id]} onChange={v=>setValores(vs=>({...vs,[pg.id]:v}))}/>
+<Inp label="Data pagto" type="date" value={datas[pg.id]} onChange={v=>setDatas(vs=>({...vs,[pg.id]:v}))}/>
+</div>}
+</div>
+);
+})}
+</div>}
+{student.billing?.tipo==="avulso" &&
+<div style={{ borderTop:"1px solid #f1f5f9",paddingTop:12,marginBottom:14 }}>
+<div style={{ fontSize:12,fontWeight:700,color:"#475569",marginBottom:8 }}>+ Nova cobrança avulsa</div>
+<div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8 }}>
+<Inp label="Valor (R$)" type="number" value={novoValor} onChange={setNovoValor} placeholder={String(student.billing?.valorAula||"")}/>
+<Inp label="Data" type="date" value={novaData} onChange={setNovaData}/>
+</div>
+<Btn variant="secondary" full onClick={adicionarLancamento} disabled={!novoValor}>Adicionar à lista</Btn>
+</div>}
+<div style={{ display:"flex",gap:10 }}>
+<Btn variant="secondary" full onClick={onClose}>Fechar</Btn>
+{abertos.length>0 && <Btn full onClick={confirmarBaixa} disabled={selecionados.size===0}>Confirmar pagamento{selecionados.size>1?"s":""}</Btn>}
+</div>
+</Modal>
+);
+};
+const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setPagamentos, nav }) => {
   const [finView,setFinView] = useState("alunos");
   const [planoModal,setPlanoModal] = useState(false);
   const [planoEditId,setPlanoEditId] = useState(null);
@@ -692,65 +813,149 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, nav }) => {
     setPlanos(p=>p.filter(pl=>pl.id!==id));
   };
   const alunosPorPlano = (nome) => students.filter(s=>s.billing?.ativo && s.billing?.plano===nome).length;
-  const hoje = new Date().toISOString().slice(0,10);
+  const hoje = todayStr();
   const comCobranca = students.filter(s=>s.billing?.ativo).map(s=>{
     const vencido = s.billing.vencimento && s.billing.vencimento < hoje;
     const diasDiff = s.billing.vencimento ? Math.round((new Date(s.billing.vencimento)-new Date(hoje))/86400000) : null;
     return { ...s, _vencido:vencido, _diasDiff:diasDiff };
   }).sort((a,b)=>(a.billing.vencimento||"").localeCompare(b.billing.vencimento||""));
+  const mensalistas = comCobranca.filter(s=>s.billing?.tipo!=="avulso");
+  const avulsos = comCobranca.filter(s=>s.billing?.tipo==="avulso");
   const aguardandoConfirmacao = students.filter(s=>!s.billing?.ativo && s.billing?.pendente);
   const semCobranca = students.filter(s=>!s.billing?.ativo && !s.billing?.pendente);
-  const marcarPago = (studentId) => {
-    const proxVenc = new Date(); proxVenc.setDate(proxVenc.getDate()+30);
-    setStudents(p=>p.map(s=>s.id===studentId?{...s,billing:{...(s.billing||{}),ultimoPagamento:hoje,vencimento:proxVenc.toISOString().slice(0,10)}}:s));
-  };
+  const [baixaStudentId,setBaixaStudentId] = useState(null);
+  const baixaStudent = baixaStudentId ? students.find(s=>s.id===baixaStudentId) : null;
+  const abertosDe = (studentId) => pagamentos.filter(p=>p.studentId===studentId && p.status==="previsto");
   const confirmarPagamentoInicial = (studentId) => {
+    const st = students.find(s=>s.id===studentId);
     const proxVenc = new Date(); proxVenc.setDate(proxVenc.getDate()+30);
-    setStudents(p=>p.map(s=>s.id===studentId?{...s,billing:{...(s.billing||{}),ativo:true,pendente:false,ultimoPagamento:hoje,vencimento:proxVenc.toISOString().slice(0,10)}}:s));
+    const proxIso = proxVenc.toISOString().slice(0,10);
+    setStudents(p=>p.map(s=>s.id===studentId?{...s,billing:{...(s.billing||{}),ativo:true,pendente:false,ultimoPagamento:hoje,vencimento:proxIso}}:s));
+    if(st) setPagamentos(p=>[...p,
+      {...novoPagamentoMensal(st,hoje),status:"pago",valorPago:Number(st.billing?.valor)||0,dataPagamento:hoje,origem:"manual"},
+      novoPagamentoMensal(st,proxIso)
+    ]);
   };
-  const totalMensal = comCobranca.reduce((acc,s)=>acc+(Number(s.billing.valor)||0),0);
-  const vencidos = comCobranca.filter(s=>s._vencido);
+  // Previsto x recebido do mês corrente
+  const mesAtual = mesChave(hoje);
+  const previstoMes = pagamentos.filter(p=>mesChave(p.dataPrevista)===mesAtual && p.status!=="cancelado").reduce((a,p)=>a+(Number(p.valorPrevisto)||0),0);
+  const recebidoMes = pagamentos.filter(p=>p.status==="pago" && mesChave(p.dataPagamento)===mesAtual).reduce((a,p)=>a+(Number(p.valorPago)||0),0);
+  const emAberto = pagamentos.filter(p=>p.status==="previsto").sort((a,b)=>(a.dataPrevista||"").localeCompare(b.dataPrevista||""));
+  const emAbertoVencidos = emAberto.filter(p=>p.dataPrevista && p.dataPrevista<hoje);
+  const emAbertoTotal = emAberto.reduce((a,p)=>a+(Number(p.valorPrevisto)||0),0);
+  const pctRealizado = previstoMes>0 ? Math.round((recebidoMes/previstoMes)*100) : (recebidoMes>0?100:0);
+  // Últimos 6 meses: previsto x pago
+  const ultimosMeses = Array.from({length:6},(_,i)=>{ const d=new Date(); d.setMonth(d.getMonth()-(5-i)); return mesChave(d.toISOString().slice(0,10)); });
+  const previstoPorMes = ultimosMeses.map(m=>pagamentos.filter(p=>mesChave(p.dataPrevista)===m && p.status!=="cancelado").reduce((a,p)=>a+(Number(p.valorPrevisto)||0),0));
+  const pagoPorMes = ultimosMeses.map(m=>pagamentos.filter(p=>p.status==="pago" && mesChave(p.dataPagamento)===m).reduce((a,p)=>a+(Number(p.valorPago)||0),0));
+  const labelsMeses = ultimosMeses.map(m=>{ const [y,mo]=m.split("-"); return MESES_NOME[parseInt(mo,10)-1].slice(0,3); });
   return (
     <div>
       <div style={{ fontWeight:800,fontSize:20,marginBottom:4 }}>💰 Financeiro</div>
-      <div style={{ fontSize:13,color:"#94a3b8",marginBottom:14 }}>Cobranças via Pix dos seus alunos</div>
+      <div style={{ fontSize:13,color:"#94a3b8",marginBottom:14 }}>Previsibilidade e cobranças via Pix dos seus alunos</div>
       <div style={{ display:"flex",gap:6,marginBottom:18 }}>
+        <button onClick={()=>setFinView("dashboard")} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:finView==="dashboard"?O:"#f1f5f9",color:finView==="dashboard"?"#fff":"#64748b" }}>Dashboard</button>
         <button onClick={()=>setFinView("alunos")} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:finView==="alunos"?O:"#f1f5f9",color:finView==="alunos"?"#fff":"#64748b" }}>Alunos</button>
         <button onClick={()=>setFinView("planos")} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:finView==="planos"?O:"#f1f5f9",color:finView==="planos"?"#fff":"#64748b" }}>Planos</button>
       </div>
-      {finView==="alunos" && <>
-      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:18 }}>
+      {finView==="dashboard" && <>
+      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10 }}>
         <Card style={{ padding:"14px 16px" }}>
-          <div style={{ fontSize:11,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:4 }}>Receita mensal</div>
-          <div style={{ fontWeight:900,fontSize:20,color:"#0f172a" }}>R$ {totalMensal.toFixed(2).replace(".",",")}</div>
+          <div style={{ fontSize:11,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:4 }}>Previsto do mês</div>
+          <div style={{ fontWeight:900,fontSize:20,color:"#0f172a" }}>{fmtR(previstoMes)}</div>
         </Card>
-        <Card style={{ padding:"14px 16px",background:vencidos.length>0?"#fef2f2":"#fff",borderColor:vencidos.length>0?"#fecaca":"#e2e8f0" }}>
-          <div style={{ fontSize:11,color:vencidos.length>0?"#dc2626":"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:4 }}>Vencidos</div>
-          <div style={{ fontWeight:900,fontSize:20,color:vencidos.length>0?"#dc2626":"#0f172a" }}>{vencidos.length}</div>
+        <Card style={{ padding:"14px 16px" }}>
+          <div style={{ fontSize:11,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:4 }}>Recebido real</div>
+          <div style={{ fontWeight:900,fontSize:20,color:"#16a34a" }}>{fmtR(recebidoMes)}</div>
         </Card>
       </div>
-      {comCobranca.length===0?
-        <Card style={{ textAlign:"center",padding:32 }}><I n="money" c="#cbd5e1" s={32}/><div style={{ color:"#94a3b8",marginTop:10 }}>Nenhum aluno com cobrança ativa ainda.</div><div style={{ fontSize:12,color:"#cbd5e1",marginTop:4 }}>Ative em "Editar Aluno" → Cobrança.</div></Card>
+      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:18 }}>
+        <Card style={{ padding:"14px 16px" }}>
+          <div style={{ fontSize:11,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:4 }}>% realizado no mês</div>
+          <div style={{ fontWeight:900,fontSize:20,color:"#0f172a" }}>{pctRealizado}%</div>
+        </Card>
+        <Card style={{ padding:"14px 16px",background:emAbertoVencidos.length>0?"#fef2f2":"#fff",borderColor:emAbertoVencidos.length>0?"#fecaca":"#e2e8f0" }}>
+          <div style={{ fontSize:11,color:emAbertoVencidos.length>0?"#dc2626":"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:4 }}>Em aberto</div>
+          <div style={{ fontWeight:900,fontSize:20,color:emAbertoVencidos.length>0?"#dc2626":"#0f172a" }}>{fmtR(emAbertoTotal)}</div>
+        </Card>
+      </div>
+      {(previstoPorMes.some(v=>v>0)||pagoPorMes.some(v=>v>0)) &&
+      <div style={{ marginBottom:18 }}>
+        <div style={{ fontSize:12,fontWeight:700,color:"#475569",marginBottom:8 }}>Previsto x Recebido — últimos 6 meses</div>
+        <ChartWrap series={[{name:"Previsto",values:previstoPorMes,color:"#cbd5e1"},{name:"Recebido",values:pagoPorMes,color:O}]} labels={labelsMeses}/>
+      </div>}
+      <div style={{ fontSize:12,fontWeight:700,color:"#475569",marginBottom:10,textTransform:"uppercase" }}>Em aberto {emAberto.length>0?`(${emAberto.length})`:""}</div>
+      {emAberto.length===0?
+        <Card style={{ textAlign:"center",padding:28 }}><I n="money" c="#cbd5e1" s={28}/><div style={{ color:"#94a3b8",marginTop:8,fontSize:13 }}>Nada em aberto no momento.</div></Card>
       :
+        <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+          {emAberto.map(pg=>{
+            const st = students.find(s=>s.id===pg.studentId);
+            const vencido = pg.dataPrevista && pg.dataPrevista<hoje;
+            return (
+              <Card key={pg.id} onClick={()=>setBaixaStudentId(pg.studentId)} style={{ padding:"11px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10 }}>
+                <div style={{ minWidth:0 }}>
+                  <div style={{ fontSize:13,fontWeight:700 }}>{st?.name||"Aluno"}</div>
+                  <div style={{ fontSize:11,color:vencido?"#dc2626":"#94a3b8" }}>{pg.tipo==="mensal"?"Mensalidade":"Aula avulsa"} · {fmt(pg.dataPrevista)} · {fmtR(pg.valorPrevisto)}{vencido?" · vencido":""}</div>
+                </div>
+                <div style={{ fontSize:11,color:"#cbd5e1",flexShrink:0 }}>Dar baixa →</div>
+              </Card>
+            );
+          })}
+        </div>
+      }
+      </>}
+      {finView==="alunos" && <>
+      {mensalistas.length===0&&avulsos.length===0?
+        <Card style={{ textAlign:"center",padding:32 }}><I n="money" c="#cbd5e1" s={32}/><div style={{ color:"#94a3b8",marginTop:10 }}>Nenhum aluno com cobrança ativa ainda.</div><div style={{ fontSize:12,color:"#cbd5e1",marginTop:4 }}>Ative em "Editar Aluno" → Cobrança.</div></Card>
+      :<>
+      {mensalistas.length>0&&<>
+        <div style={{ fontSize:12,fontWeight:700,color:"#475569",textTransform:"uppercase",marginBottom:10 }}>Mensalistas</div>
         <div style={{ display:"flex",flexDirection:"column",gap:10,marginBottom:20 }}>
-          {comCobranca.map(s=>(
+          {mensalistas.map(s=>(
             <Card key={s.id} style={{ padding:"14px 16px" }}>
               <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:10 }}>
                 <div onClick={()=>nav("studentDetail",{studentId:s.id})} style={{ flex:1,minWidth:0,cursor:"pointer" }}>
                   <div style={{ fontWeight:700,fontSize:14 }}>{s.name}</div>
-                  <div style={{ fontSize:11,color:"#94a3b8",marginTop:2 }}>{s.billing.plano||"Plano"}{s.billing.valor?" · R$ "+Number(s.billing.valor).toFixed(2).replace(".",","):""}</div>
+                  <div style={{ fontSize:11,color:"#94a3b8",marginTop:2 }}>{s.billing.plano||"Plano"}{s.billing.valor?" · "+fmtR(s.billing.valor):""}</div>
                   <div style={{ marginTop:5 }}>
                     <Badge color={s._vencido?"#dc2626":"#16a34a"} bg={s._vencido?"#fee2e2":"#dcfce7"}>
                       {s._vencido?"Vencido há "+Math.abs(s._diasDiff)+" dia(s)":s._diasDiff===0?"Vence hoje":"Vence em "+s._diasDiff+" dia(s)"}
                     </Badge>
                   </div>
                 </div>
-                <Btn sm onClick={()=>marcarPago(s.id)}>Marcar pago</Btn>
+                <Btn sm onClick={()=>setBaixaStudentId(s.id)}>Dar baixa</Btn>
               </div>
             </Card>
           ))}
         </div>
-      }
+      </>}
+      {avulsos.length>0&&<>
+        <div style={{ fontSize:12,fontWeight:700,color:"#475569",textTransform:"uppercase",marginBottom:10 }}>Avulsos / por aula</div>
+        <div style={{ display:"flex",flexDirection:"column",gap:10,marginBottom:20 }}>
+          {avulsos.map(s=>{
+            const abertosSt = abertosDe(s.id);
+            const totalAberto = abertosSt.reduce((a,p)=>a+(Number(p.valorPrevisto)||0),0);
+            return (
+              <Card key={s.id} style={{ padding:"14px 16px" }}>
+                <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:10 }}>
+                  <div onClick={()=>nav("studentDetail",{studentId:s.id})} style={{ flex:1,minWidth:0,cursor:"pointer" }}>
+                    <div style={{ fontWeight:700,fontSize:14 }}>{s.name}</div>
+                    <div style={{ fontSize:11,color:"#94a3b8",marginTop:2 }}>{s.billing.valorAula?fmtR(s.billing.valorAula)+" / aula":"Avulso"}</div>
+                    <div style={{ marginTop:5 }}>
+                      {abertosSt.length>0?
+                        <Badge color="#c2410c" bg="#fff7ed">{abertosSt.length} em aberto · {fmtR(totalAberto)}</Badge>
+                      :<Badge color="#16a34a" bg="#dcfce7">Em dia</Badge>}
+                    </div>
+                  </div>
+                  <Btn sm onClick={()=>setBaixaStudentId(s.id)}>Dar baixa</Btn>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      </>}
+      </>}
       {aguardandoConfirmacao.length>0&&(
         <>
           <div style={{ fontSize:12,fontWeight:700,color:"#c2410c",textTransform:"uppercase",marginBottom:10 }}>⏳ Aguardando confirmação de pagamento</div>
@@ -760,7 +965,7 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, nav }) => {
                 <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:10 }}>
                   <div onClick={()=>nav("studentDetail",{studentId:s.id})} style={{ flex:1,minWidth:0,cursor:"pointer" }}>
                     <div style={{ fontWeight:700,fontSize:14 }}>{s.name}</div>
-                    <div style={{ fontSize:11,color:"#9a3412",marginTop:2 }}>{s.billing.plano||"Plano"}{s.billing.valor?" · R$ "+Number(s.billing.valor).toFixed(2).replace(".",","):""} · cadastro público</div>
+                    <div style={{ fontSize:11,color:"#9a3412",marginTop:2 }}>{s.billing.plano||"Plano"}{s.billing.valor?" · "+fmtR(s.billing.valor):""} · cadastro público</div>
                   </div>
                   <Btn sm onClick={()=>confirmarPagamentoInicial(s.id)}>Confirmar pagamento</Btn>
                 </div>
@@ -782,6 +987,7 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, nav }) => {
           </div>
         </>
       )}
+      {baixaStudent && <PagamentoModal student={baixaStudent} pagamentos={pagamentos} setPagamentos={setPagamentos} setStudents={setStudents} onClose={()=>setBaixaStudentId(null)}/>}
       </>}
       {finView==="planos" && <>
         <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14 }}>
@@ -938,7 +1144,7 @@ return (
 </div>
 );
 };
-const StudentDetail = ({ studentId, students, setStudents, assessments, setAssessments, programs, setPrograms, dailyLogs, documents, checkins, sessions, setSessions, exerciciosBiblioteca, planos, professorFeedbacks, setProfessorFeedbacks, agendaEntries, setAgendaEntries, initialTab, nav }) => {
+const StudentDetail = ({ studentId, students, setStudents, assessments, setAssessments, programs, setPrograms, dailyLogs, documents, checkins, sessions, setSessions, exerciciosBiblioteca, planos, professorFeedbacks, setProfessorFeedbacks, agendaEntries, setAgendaEntries, pagamentos, setPagamentos, initialTab, nav }) => {
 const st = students.find(s=>s.id===studentId);
 const [tab,setTab] = useState(initialTab||"aval");
 const [editModal,setEditModal] = useState(false);
@@ -946,8 +1152,14 @@ const [form,setForm] = useState(null);
 const [agendaMonthRef,setAgendaMonthRef] = useState(()=>new Date());
 const [agendaEditId,setAgendaEditId] = useState(null);
 const [agendaEditForm,setAgendaEditForm] = useState(null);
+const [baixaAberta,setBaixaAberta] = useState(false);
 const openAgendaEdit = (entry) => { setAgendaEditId(entry.id); setAgendaEditForm({ date:entry.date, time:entry.time||"", status:entry.status, obs:entry.obs||"" }); };
-const saveAgendaEdit = () => { setAgendaEntries(p=>p.map(e=>e.id===agendaEditId?{...e,...agendaEditForm}:e)); setAgendaEditId(null); };
+const saveAgendaEdit = () => {
+  const atualizado = { ...(agendaEntries.find(e=>e.id===agendaEditId)||{}), ...agendaEditForm, id:agendaEditId };
+  setAgendaEntries(p=>p.map(e=>e.id===agendaEditId?atualizado:e));
+  gerarPagamentoAgendaSeNecessario(atualizado, students, setPagamentos);
+  setAgendaEditId(null);
+};
 const delAgendaEntry = async (id) => { if(window.confirm("Remover este compromisso da agenda?")){ await DB.remove("agenda",id); setAgendaEntries(p=>p.filter(e=>e.id!==id)); setAgendaEditId(null); } };
 if(!st) return <div style={{ textAlign:"center",padding:40,color:"#94a3b8" }}>Aluno não encontrado.</div>;
 const stAssessments = assessments.filter(a=>a.studentId===studentId).sort((a,b)=>b.date?.localeCompare(a.date));
@@ -1127,13 +1339,17 @@ setFeedbackModal(false);
 };
 const delFeedback = async id=>{if(window.confirm("Remover este feedback?")){await DB.remove("professor_feedbacks",id);setProfessorFeedbacks(p=>p.filter(f=>f.id!==id));}};
 const delAssessment = async id=>{if(window.confirm("Remover avaliação?")){await DB.remove("assessments",id);setAssessments(p=>p.filter(a=>a.id!==id));}};
-const openEdit = ()=>{setForm({name:st.name,dob:st.dob||"",sex:st.sex||"",phone:st.phone||"",email:st.email||"",whatsapp:st.whatsapp||"",responsibleName:st.responsibleName||"",responsiblePhone:st.responsiblePhone||"",doctorName:st.doctorName||"",doctorPhone:st.doctorPhone||"",billing:{ativo:st.billing?.ativo||false,plano:st.billing?.plano||"",valor:st.billing?.valor||"",vencimento:st.billing?.vencimento||""},checkinConfig:{pre:{disposicao:st.checkinConfig?.pre?.disposicao??true,hidratacao:st.checkinConfig?.pre?.hidratacao??true,alimentacao:st.checkinConfig?.pre?.alimentacao??true,sono:st.checkinConfig?.pre?.sono??true,dor:st.checkinConfig?.pre?.dor??false,pa:st.checkinConfig?.pre?.pa??false,glicemia:st.checkinConfig?.pre?.glicemia??false},post:{esforco:st.checkinConfig?.post?.esforco??true,completude:st.checkinConfig?.post?.completude??true,dor:st.checkinConfig?.post?.dor??true,obs:st.checkinConfig?.post?.obs??true}}});setEditModal(true);};
-const saveEdit = ()=>{if(!form.name.trim())return;setStudents(p=>p.map(s=>s.id===studentId?{...s,...form}:s));setEditModal(false);};
-const marcarPago = ()=>{
-  const proxVenc = new Date(); proxVenc.setDate(proxVenc.getDate()+30);
-  const novoBilling = { ...(st.billing||{}), ultimoPagamento: new Date().toISOString().slice(0,10), vencimento: proxVenc.toISOString().slice(0,10) };
-  setStudents(p=>p.map(s=>s.id===studentId?{...s,billing:novoBilling}:s));
+const openEdit = ()=>{setForm({name:st.name,dob:st.dob||"",sex:st.sex||"",phone:st.phone||"",email:st.email||"",whatsapp:st.whatsapp||"",responsibleName:st.responsibleName||"",responsiblePhone:st.responsiblePhone||"",doctorName:st.doctorName||"",doctorPhone:st.doctorPhone||"",billing:{ativo:st.billing?.ativo||false,tipo:st.billing?.tipo||"mensal",plano:st.billing?.plano||"",valor:st.billing?.valor||"",valorAula:st.billing?.valorAula||"",vencimento:st.billing?.vencimento||""},checkinConfig:{pre:{disposicao:st.checkinConfig?.pre?.disposicao??true,hidratacao:st.checkinConfig?.pre?.hidratacao??true,alimentacao:st.checkinConfig?.pre?.alimentacao??true,sono:st.checkinConfig?.pre?.sono??true,dor:st.checkinConfig?.pre?.dor??false,pa:st.checkinConfig?.pre?.pa??false,glicemia:st.checkinConfig?.pre?.glicemia??false},post:{esforco:st.checkinConfig?.post?.esforco??true,completude:st.checkinConfig?.post?.completude??true,dor:st.checkinConfig?.post?.dor??true,obs:st.checkinConfig?.post?.obs??true}}});setEditModal(true);};
+const saveEdit = ()=>{
+  if(!form.name.trim())return;
+  setStudents(p=>p.map(s=>s.id===studentId?{...s,...form}:s));
+  if(form.billing?.ativo && form.billing?.tipo!=="avulso" && form.billing?.vencimento){
+    const jaTem = pagamentos.some(pg=>pg.studentId===studentId && pg.status==="previsto" && pg.tipo==="mensal");
+    if(!jaTem) setPagamentos(p=>[...p, novoPagamentoMensal({...st,...form}, form.billing.vencimento)]);
+  }
+  setEditModal(false);
 };
+const stAbertos = pagamentos.filter(pg=>pg.studentId===studentId && pg.status==="previsto");
 const openNewProgram = () => {
 window.open("longevus-programa.html?novo="+encodeURIComponent(st.id),"_self");
 };
@@ -1196,20 +1412,27 @@ return (
 </div>
 </Card>}
 {st.billing?.ativo&&(()=>{
-  const hoje=new Date().toISOString().slice(0,10);
-  const vencido=st.billing.vencimento&&st.billing.vencimento<hoje;
+  const hoje=todayStr();
+  const isAvulso = st.billing?.tipo==="avulso";
+  const vencido = !isAvulso && st.billing.vencimento && st.billing.vencimento<hoje;
+  const alerta = isAvulso ? stAbertos.length>0 : vencido;
   return (
-    <Card style={{ padding:"12px 14px",marginBottom:16,background:vencido?"#fef2f2":"#f0fdf4",borderColor:vencido?"#fecaca":"#bbf7d0" }}>
+    <Card style={{ padding:"12px 14px",marginBottom:16,background:alerta?"#fef2f2":"#f0fdf4",borderColor:alerta?"#fecaca":"#bbf7d0" }}>
       <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:10 }}>
         <div>
-          <div style={{ fontSize:12,fontWeight:700,color:vencido?"#dc2626":"#16a34a" }}>{vencido?"⚠️ Mensalidade vencida":"✅ Mensalidade em dia"}</div>
-          <div style={{ fontSize:11,color:"#64748b",marginTop:2 }}>{st.billing.plano||"Plano"}{st.billing.valor?" · R$ "+Number(st.billing.valor).toFixed(2).replace(".",","):""} · vence {fmt(st.billing.vencimento)}</div>
+          <div style={{ fontSize:12,fontWeight:700,color:alerta?"#dc2626":"#16a34a" }}>
+            {isAvulso ? (stAbertos.length>0?"⚠️ "+stAbertos.length+" cobrança(s) em aberto":"✅ Sem pendências") : (vencido?"⚠️ Mensalidade vencida":"✅ Mensalidade em dia")}
+          </div>
+          <div style={{ fontSize:11,color:"#64748b",marginTop:2 }}>
+            {isAvulso ? (st.billing.valorAula?"R$ "+Number(st.billing.valorAula).toFixed(2).replace(".",",")+" / aula":"Aula avulsa") : (st.billing.plano||"Plano")+(st.billing.valor?" · R$ "+Number(st.billing.valor).toFixed(2).replace(".",","):"")+" · vence "+fmt(st.billing.vencimento)}
+          </div>
         </div>
-        <Btn sm onClick={marcarPago}>Marcar como pago</Btn>
+        <Btn sm onClick={()=>setBaixaAberta(true)}>Dar baixa</Btn>
       </div>
     </Card>
   );
 })()}
+{baixaAberta && <PagamentoModal student={st} pagamentos={pagamentos} setPagamentos={setPagamentos} setStudents={setStudents} onClose={()=>setBaixaAberta(false)}/>}
 <div style={{ display:"flex",gap:6,marginBottom:16,overflowX:"auto" }}>
 {TABS.map(t=>(
 <button key={t.id} onClick={()=>setTab(t.id)} style={{ flex:"1 0 auto",padding:"9px 10px",borderRadius:10,border:"1.5px solid",borderColor:tab===t.id?"#FF5603":"#e2e8f0",background:tab===t.id?"#FF5603":"#f8fafc",color:tab===t.id?"#fff":"#64748b",fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap" }}>{t.label}</button>
@@ -1810,6 +2033,14 @@ return <Card style={{ padding:"16px 14px" }}><MultiLineChart series={seriesData}
 </div>
 {form.billing.ativo&&(
 <>
+<div style={{ display:"flex",gap:6,marginBottom:12 }}>
+<button onClick={()=>setForm(f=>({...f,billing:{...f.billing,tipo:"mensal"}}))} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:form.billing.tipo!=="avulso"?"#FF5603":"#f1f5f9",color:form.billing.tipo!=="avulso"?"#fff":"#64748b" }}>Mensal fixo</button>
+<button onClick={()=>setForm(f=>({...f,billing:{...f.billing,tipo:"avulso"}}))} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:form.billing.tipo==="avulso"?"#FF5603":"#f1f5f9",color:form.billing.tipo==="avulso"?"#fff":"#64748b" }}>Avulso / por aula</button>
+</div>
+{form.billing.tipo==="avulso" ? (
+<Inp label="Valor por aula (R$)" type="number" value={form.billing.valorAula} onChange={v=>setForm(f=>({...f,billing:{...f.billing,valorAula:v}}))} placeholder="60.00"/>
+) : (
+<>
 {(planos||[]).filter(pl=>pl.ativo!==false).length>0 &&
 <Inp label="Escolher de um plano salvo" value="" onChange={v=>{ const pl=(planos||[]).find(p=>p.id===v); if(pl) setForm(f=>({...f,billing:{...f.billing,plano:pl.nome,valor:pl.valor}})); }} opts={[{v:"",l:"Selecionar..."},...(planos||[]).filter(pl=>pl.ativo!==false).map(pl=>({v:pl.id,l:pl.nome+" · R$ "+Number(pl.valor||0).toFixed(2).replace(".",",")}))]}/>
 }
@@ -1818,6 +2049,8 @@ return <Card style={{ padding:"16px 14px" }}><MultiLineChart series={seriesData}
 <Inp label="Valor mensal (R$)" type="number" value={form.billing.valor} onChange={v=>setForm(f=>({...f,billing:{...f.billing,valor:v}}))} placeholder="150.00"/>
 <Inp label="Próximo vencimento" type="date" value={form.billing.vencimento} onChange={v=>setForm(f=>({...f,billing:{...f.billing,vencimento:v}}))}/>
 </div>
+</>
+)}
 </>
 )}
 <div style={{ fontWeight:700,fontSize:12,color:"#FF5603",marginBottom:8,marginTop:4,paddingTop:10,borderTop:"1px solid #f1f5f9" }}>📋 Check-in do Aluno (App)</div>
@@ -6210,7 +6443,7 @@ const dom = new Date(d.getFullYear(), d.getMonth(), d.getDate()-d.getDay());
 return Array.from({length:7},(_,i)=>new Date(dom.getFullYear(), dom.getMonth(), dom.getDate()+i));
 };
 const cap1 = (s) => s ? s.charAt(0).toUpperCase()+s.slice(1) : s;
-const Agenda = ({ students, agendaEntries, setAgendaEntries, nav }) => {
+const Agenda = ({ students, agendaEntries, setAgendaEntries, pagamentos, setPagamentos, nav }) => {
 const [viewMode,setViewMode]=useState("dia");
 const [filterSt,setFilterSt]=useState("");
 const [refDate,setRefDate]=useState(()=>new Date());
@@ -6249,8 +6482,16 @@ setEntryModal(true);
 };
 const saveEntry = () => {
 if(!entryForm.studentId||!entryForm.date) return;
-if(entryEditId){ setAgendaEntries(p=>p.map(e=>e.id===entryEditId?{...e,...entryForm}:e)); }
-else { setAgendaEntries(p=>[...p,{ id:uid(), ...entryForm }]); }
+if(entryEditId){
+const atualizado = { id:entryEditId, ...entryForm };
+setAgendaEntries(p=>p.map(e=>e.id===entryEditId?atualizado:e));
+gerarPagamentoAgendaSeNecessario(atualizado, students, setPagamentos);
+}
+else {
+const nova = { id:uid(), ...entryForm };
+setAgendaEntries(p=>[...p,nova]);
+gerarPagamentoAgendaSeNecessario(nova, students, setPagamentos);
+}
 setEntryModal(false);
 };
 const delEntry = async (id) => { if(window.confirm("Remover este compromisso da agenda?")){ await DB.remove("agenda",id); setAgendaEntries(p=>p.filter(e=>e.id!==id)); } };
@@ -8170,6 +8411,7 @@ const [checkinsSeenAt,setCheckinsSeenAt]=useState(()=>LS.get("longevus_checkins_
 const [atividadesExtras,setAtividadesExtras]=useState(()=>LS.get("longevus_atividades_extras",[]));
 const [professorFeedbacks,setProfessorFeedbacks]=useState(()=>LS.get("longevus_professor_feedbacks",[]));
 const [agendaEntries,setAgendaEntries]=useState(()=>LS.get("longevus_agenda",[]));
+const [pagamentos,setPagamentos]=useState(()=>LS.get("longevus_pagamentos",[]));
 const [leads,setLeads]=useState(()=>LS.get("longevus_leads",[]).map(migrateLead));
 const [exerciciosBiblioteca,setExerciciosBiblioteca]=useState(()=>LS.get("longevus_exercicios_biblioteca",[]));
 const [planos,setPlanos]=useState(()=>LS.get("longevus_planos",[]));
@@ -8192,10 +8434,10 @@ setDbReady(false);
 (async()=>{
 setSyncing(true);
 try {
-const [s,a,d,docs,c,p,sess,ae,ck,pf,ag,ld,exb,pln,cm,ca] = await Promise.all([
+const [s,a,d,docs,c,p,sess,ae,ck,pf,ag,ld,exb,pln,cm,ca,pg] = await Promise.all([
 DB.load("students"), DB.load("assessments"), DB.load("daily_logs"),
 DB.load("documents"), DB.load("cardio_records"), DB.load("programs"), DB.load("sessions"),
-DB.load("atividades_extras"), DB.loadRaw("checkins"), DB.load("professor_feedbacks"), DB.load("agenda"), DB.load("leads"), DB.loadRaw("exercises","select=*"), DB.load("planos"), DB.load("contrato_modelo"), DB.loadRaw("contrato_assinaturas","select=*")
+DB.load("atividades_extras"), DB.loadRaw("checkins"), DB.load("professor_feedbacks"), DB.load("agenda"), DB.load("leads"), DB.loadRaw("exercises","select=*"), DB.load("planos"), DB.load("contrato_modelo"), DB.loadRaw("contrato_assinaturas","select=*"), DB.load("pagamentos")
 ]);
 if(s!==null){ setStudents(s); LS.set("longevus_students",s); }
 if(a!==null){ setAssessments(a); LS.set("longevus_assessments",a); }
@@ -8208,6 +8450,7 @@ if(ae!==null){ setAtividadesExtras(ae); LS.set("longevus_atividades_extras",ae);
 if(ck!==null){ setCheckins(ck); LS.set("longevus_checkins",ck); }
 if(pf!==null){ setProfessorFeedbacks(pf); LS.set("longevus_professor_feedbacks",pf); }
 if(ag!==null){ setAgendaEntries(ag); LS.set("longevus_agenda",ag); }
+if(pg!==null){ setPagamentos(pg); LS.set("longevus_pagamentos",pg); }
 if(ld!==null){ const ldMigrado=ld.map(migrateLead); setLeads(ldMigrado); LS.set("longevus_leads",ldMigrado); }
 if(exb!==null){ setExerciciosBiblioteca(exb); LS.set("longevus_exercicios_biblioteca",exb); }
 if(pln!==null){ setPlanos(pln); LS.set("longevus_planos",pln); }
@@ -8231,6 +8474,7 @@ useEffect(()=>{LS.set("longevus_sessions",sessions);},[sessions]);
 useEffect(()=>{LS.set("longevus_atividades_extras",atividadesExtras);},[atividadesExtras]);
 useEffect(()=>{LS.set("longevus_professor_feedbacks",professorFeedbacks);},[professorFeedbacks]);
 useEffect(()=>{LS.set("longevus_agenda",agendaEntries);},[agendaEntries]);
+useEffect(()=>{LS.set("longevus_pagamentos",pagamentos);},[pagamentos]);
 useEffect(()=>{LS.set("longevus_leads",leads);},[leads]);
 useEffect(()=>{LS.set("longevus_planos",planos);},[planos]);
 useEffect(()=>{LS.set("longevus_contrato_modelos",contratoModelos);},[contratoModelos]);
@@ -8245,6 +8489,7 @@ useEffect(()=>{ if(dbReady) sessions.forEach(s=>DB.save("sessions",s.id,s,s.stud
 useEffect(()=>{ if(dbReady) atividadesExtras.forEach(a=>DB.save("atividades_extras",a.id,a,a.studentId)); },[atividadesExtras,dbReady]);
 useEffect(()=>{ if(dbReady) professorFeedbacks.forEach(f=>DB.save("professor_feedbacks",f.id,f,f.studentId)); },[professorFeedbacks,dbReady]);
 useEffect(()=>{ if(dbReady) agendaEntries.forEach(e=>DB.save("agenda",e.id,e,e.studentId)); },[agendaEntries,dbReady]);
+useEffect(()=>{ if(dbReady) pagamentos.forEach(pg=>DB.save("pagamentos",pg.id,pg,pg.studentId)); },[pagamentos,dbReady]);
 useEffect(()=>{ if(dbReady) leads.forEach(l=>DB.save("leads",l.id,l,l.studentId||null)); },[leads,dbReady]);
 useEffect(()=>{ if(dbReady) planos.forEach(pl=>DB.save("planos",pl.id,pl,null)); },[planos,dbReady]);
 useEffect(()=>{ if(dbReady) contratoModelos.forEach(m=>DB.save("contrato_modelo",m.id,m,null)); },[contratoModelos,dbReady]);
@@ -8380,7 +8625,7 @@ return (
 <div style={{ padding:"20px 16px",maxWidth:640,margin:"0 auto" }}>
 {page==="dashboard"&&<Dashboard students={students} assessments={assessments} dailyLogs={dailyLogs} nav={nav}/>}
 {page==="students"&&<Students students={students} setStudents={setStudents} planos={planos} nav={nav}/>}
-{page==="studentDetail"&&<StudentDetail studentId={pageProps.studentId} students={students} setStudents={setStudents} assessments={assessments} setAssessments={setAssessments} programs={programs} setPrograms={setPrograms} dailyLogs={dailyLogs} documents={documents} checkins={checkins} sessions={sessions} setSessions={setSessions} exerciciosBiblioteca={exerciciosBiblioteca} planos={planos} professorFeedbacks={professorFeedbacks} setProfessorFeedbacks={setProfessorFeedbacks} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} initialTab={pageProps.initialTab} nav={nav}/>}
+{page==="studentDetail"&&<StudentDetail studentId={pageProps.studentId} students={students} setStudents={setStudents} assessments={assessments} setAssessments={setAssessments} programs={programs} setPrograms={setPrograms} dailyLogs={dailyLogs} documents={documents} checkins={checkins} sessions={sessions} setSessions={setSessions} exerciciosBiblioteca={exerciciosBiblioteca} planos={planos} professorFeedbacks={professorFeedbacks} setProfessorFeedbacks={setProfessorFeedbacks} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} pagamentos={pagamentos} setPagamentos={setPagamentos} initialTab={pageProps.initialTab} nav={nav}/>}
 {page==="assessments"&&<AssessmentsList assessments={assessments} students={students} setAssessments={setAssessments} nav={nav}/>}
 {page==="newAssessment"&&<NewAssessment students={students} setAssessments={setAssessments} nav={nav} prefillStudentId={pageProps.studentId}/>}
 {page==="result"&&<Result assessmentId={pageProps.id} assessments={assessments} setAssessments={setAssessments} students={students} nav={nav}/>}
@@ -8390,8 +8635,8 @@ return (
 }{page==="questionarios"&&<Questionarios students={students} nav={nav} onRefreshCount={refreshPendingCount}/>
 }{page==="extprograma"&&(()=>{window.open("longevus-programa.html","_self");return null;})()}{page==="cognitivehub"&&<CognitiveHub students={students} hubResults={hubResults} setHubResults={setHubResults}/>}{page==="sessions"&&<SessionTracker students={students} programs={programs} sessions={sessions} setSessions={setSessions} nav={nav}/>}{page==="vincular"&&<VincularAlunos students={students} setStudents={setStudents}/>
 }{page==="extraatividades"&&<AtividadesExtras students={students} atividadesExtras={atividadesExtras} setAtividadesExtras={setAtividadesExtras} prefillStudentId={pageProps.studentId} assessments={assessments} checkins={checkins}/>
-}{page==="financeiro"&&<Financeiro students={students} setStudents={setStudents} planos={planos} setPlanos={setPlanos} nav={nav}/>
-}{page==="agenda"&&<Agenda students={students} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} nav={nav}/>
+}{page==="financeiro"&&<Financeiro students={students} setStudents={setStudents} planos={planos} setPlanos={setPlanos} pagamentos={pagamentos} setPagamentos={setPagamentos} nav={nav}/>
+}{page==="agenda"&&<Agenda students={students} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} pagamentos={pagamentos} setPagamentos={setPagamentos} nav={nav}/>
 }{page==="leads"&&<Leads leads={leads} setLeads={setLeads} students={students} setStudents={setStudents} nav={nav}/>
 }{page==="contrato"&&<Contrato students={students} setStudents={setStudents} contratoModelos={contratoModelos} setContratoModelos={setContratoModelos} contratoAssinaturas={contratoAssinaturas} nav={nav}/>
 }{page==="profile"&&<Profile session={session} onLogoChange={setLogoUrl}/>}
