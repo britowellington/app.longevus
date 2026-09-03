@@ -997,11 +997,22 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
       novoPagamentoMensal(st,proxIso,hoje)
     ]);
   };
-  // Previsto x recebido do mês corrente
-  const mesAtual = mesChave(hoje);
-  const previstoMes = pagamentos.filter(p=>mesChave(p.dataPrevista)===mesAtual && p.status!=="cancelado").reduce((a,p)=>a+(Number(p.valorPrevisto)||0),0);
-  const recebidoMes = pagamentos.filter(p=>p.status==="pago" && mesChave(p.dataPagamento)===mesAtual).reduce((a,p)=>a+(Number(p.valorPago)||0),0);
-  const emAberto = pagamentos.filter(p=>p.status==="previsto").sort((a,b)=>(a.dataPrevista||"").localeCompare(b.dataPrevista||""));
+  // Previsto x recebido — período selecionável
+  const PERIODOS = [{id:"mes",label:"Este mês"},{id:"15d",label:"15 dias"},{id:"2m",label:"2 meses"},{id:"3m",label:"3 meses"},{id:"6m",label:"6 meses"}];
+  const [periodo,setPeriodo] = useState("mes");
+  const [periodoInicio,periodoFimSel] = (()=>{
+    const fimD = new Date(hoje+"T00:00:00");
+    if(periodo==="mes"){
+      const y=fimD.getFullYear(), m=fimD.getMonth();
+      return [toISODateLocal(new Date(y,m,1)), toISODateLocal(new Date(y,m+1,0))];
+    }
+    const dias = {"15d":15,"2m":60,"3m":90,"6m":180}[periodo] || 30;
+    const inicioD = new Date(fimD); inicioD.setDate(inicioD.getDate()-dias);
+    return [toISODateLocal(inicioD), hoje];
+  })();
+  const previstoMes = pagamentos.filter(p=>p.dataPrevista && p.dataPrevista>=periodoInicio && p.dataPrevista<=periodoFimSel && p.status!=="cancelado").reduce((a,p)=>a+(Number(p.valorPrevisto)||0),0);
+  const recebidoMes = pagamentos.filter(p=>p.status==="pago" && p.dataPagamento && p.dataPagamento>=periodoInicio && p.dataPagamento<=periodoFimSel).reduce((a,p)=>a+(Number(p.valorPago)||0),0);
+  const emAberto = pagamentos.filter(p=>p.status==="previsto" && p.dataPrevista && p.dataPrevista>=periodoInicio && p.dataPrevista<=periodoFimSel).sort((a,b)=>(a.dataPrevista||"").localeCompare(b.dataPrevista||""));
   const emAbertoVencidos = emAberto.filter(p=>p.dataPrevista && p.dataPrevista<hoje);
   const emAbertoTotal = emAberto.reduce((a,p)=>a+(Number(p.valorPrevisto)||0),0);
   const pctRealizado = previstoMes>0 ? Math.round((recebidoMes/previstoMes)*100) : (recebidoMes>0?100:0);
@@ -1020,9 +1031,14 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
         <button onClick={()=>setFinView("planos")} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:finView==="planos"?O:"#f1f5f9",color:finView==="planos"?"#fff":"#64748b" }}>Planos</button>
       </div>
       {finView==="dashboard" && <>
+      <div style={{ display:"flex",gap:6,marginBottom:14,overflowX:"auto",paddingBottom:2 }}>
+        {PERIODOS.map(pr=>(
+          <button key={pr.id} onClick={()=>setPeriodo(pr.id)} style={{ flexShrink:0,border:"none",borderRadius:99,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",background:periodo===pr.id?"#0f172a":"#f1f5f9",color:periodo===pr.id?"#fff":"#64748b" }}>{pr.label}</button>
+        ))}
+      </div>
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10 }}>
         <Card style={{ padding:"14px 16px" }}>
-          <div style={{ fontSize:11,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:4 }}>Previsto do mês</div>
+          <div style={{ fontSize:11,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:4 }}>Previsto no período</div>
           <div style={{ fontWeight:900,fontSize:20,color:"#0f172a" }}>{fmtR(previstoMes)}</div>
         </Card>
         <Card style={{ padding:"14px 16px" }}>
@@ -1032,7 +1048,7 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
       </div>
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:18 }}>
         <Card style={{ padding:"14px 16px" }}>
-          <div style={{ fontSize:11,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:4 }}>% realizado no mês</div>
+          <div style={{ fontSize:11,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:4 }}>% realizado no período</div>
           <div style={{ fontWeight:900,fontSize:20,color:"#0f172a" }}>{pctRealizado}%</div>
         </Card>
         <Card style={{ padding:"14px 16px",background:emAbertoVencidos.length>0?"#fef2f2":"#fff",borderColor:emAbertoVencidos.length>0?"#fecaca":"#e2e8f0" }}>
@@ -1045,9 +1061,9 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
         <div style={{ fontSize:12,fontWeight:700,color:"#475569",marginBottom:8 }}>Previsto x Recebido — últimos 6 meses</div>
         <ChartWrap series={[{name:"Previsto",values:previstoPorMes,color:"#cbd5e1"},{name:"Recebido",values:pagoPorMes,color:O}]} labels={labelsMeses}/>
       </div>}
-      <div style={{ fontSize:12,fontWeight:700,color:"#475569",marginBottom:10,textTransform:"uppercase" }}>Em aberto {emAberto.length>0?`(${emAberto.length})`:""}</div>
+      <div style={{ fontSize:12,fontWeight:700,color:"#475569",marginBottom:10,textTransform:"uppercase" }}>Em aberto no período {emAberto.length>0?`(${emAberto.length})`:""}</div>
       {emAberto.length===0?
-        <Card style={{ textAlign:"center",padding:28 }}><I n="money" c="#cbd5e1" s={28}/><div style={{ color:"#94a3b8",marginTop:8,fontSize:13 }}>Nada em aberto no momento.</div></Card>
+        <Card style={{ textAlign:"center",padding:28 }}><I n="money" c="#cbd5e1" s={28}/><div style={{ color:"#94a3b8",marginTop:8,fontSize:13 }}>Nada em aberto nesse período.</div></Card>
       :
         <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
           {emAberto.map(pg=>{
@@ -8665,6 +8681,17 @@ novos.push(novoPagamentoAvulso(st, entry.date, entry.id));
 return novos.length ? [...p, ...novos] : p;
 });
 },[dbReady]);
+// Limpeza: remove cobranças previstas vinculadas a compromissos que não existem mais na agenda
+// (cobre exclusões feitas antes dessa correção, ou qualquer edição que tenha acontecido fora do app).
+// Pagamentos já baixados (pagos) nunca são apagados por aqui.
+useEffect(()=>{
+if(!dbReady) return;
+const idsAgenda = new Set(agendaEntries.map(e=>e.id));
+setPagamentos(p=>{
+const limpo = p.filter(pg => !(pg.agendaEntryId && pg.status==="previsto" && !idsAgenda.has(pg.agendaEntryId)));
+return limpo.length!==p.length ? limpo : p;
+});
+},[agendaEntries, dbReady]);
 const [page,setPage]=useState("dashboard");
 const [pageProps,setPageProps]=useState({});
 // Sync local
