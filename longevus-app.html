@@ -127,9 +127,12 @@ const O = "#FF5603";
 // ---- Financeiro: previsto x realizado ----
 const fmtR = (v) => "R$ "+Number(v||0).toFixed(2).replace(".",",");
 const mesChave = (d) => (d||"").slice(0,7);
-const novoPagamentoMensal = (student, dataPrevista) => ({
+const novoPagamentoMensal = (student, dataPrevista, periodoInicio) => ({
 id: uid(), studentId: student.id, tipo:"mensal", plano: student.billing?.plano||"",
-dataPrevista, valorPrevisto: Number(student.billing?.valor)||0,
+modoCobranca: student.billing?.modoCobranca||"fixo", valorSessao: Number(student.billing?.valorSessao)||0, sessoes:null,
+periodoInicio: periodoInicio || (()=>{ const d=new Date(dataPrevista+"T00:00:00"); d.setDate(d.getDate()-30); return toISODateLocal(d); })(),
+periodoFim: dataPrevista,
+dataPrevista, valorPrevisto: student.billing?.modoCobranca==="porSessao" ? 0 : (Number(student.billing?.valor)||0),
 dataPagamento:null, valorPago:null, status:"previsto", origem:"ciclo", agendaEntryId:null, obs:"", createdAt:todayStr()
 });
 const novoPagamentoAvulso = (student, dataPrevista, agendaEntryId, valor) => ({
@@ -137,13 +140,31 @@ id: uid(), studentId: student.id, tipo:"avulso", plano:"Aula avulsa",
 dataPrevista, valorPrevisto: valor!=null&&valor!=="" ? Number(valor) : (Number(student.billing?.valorAula)||0),
 dataPagamento:null, valorPago:null, status:"previsto", origem: agendaEntryId?"agenda":"manual", agendaEntryId: agendaEntryId||null, obs:"", createdAt:todayStr()
 });
-// Chamado quando um compromisso da agenda muda de status: se virou "realizada" e o aluno é avulso,
-// gera automaticamente uma cobrança prevista (se ainda não existir uma pra esse compromisso).
-const gerarPagamentoAgendaSeNecessario = (entry, students, setPagamentos) => {
-if(!entry || entry.status!=="realizada") return;
+// Chamado quando um compromisso da agenda muda de status.
+// - Aluno avulso: se virou "realizada", gera uma cobrança prevista pra essa aula (se ainda não existir).
+// - Aluno mensal "por sessão": recalcula quantas aulas "realizadas" caem dentro do ciclo aberto
+//   e atualiza o valor previsto (sessões x valor da sessão) automaticamente.
+const atualizarFinanceiroPelaAgenda = (entry, students, agendaEntries, setPagamentos) => {
+if(!entry) return;
 const st = students.find(s=>s.id===entry.studentId);
-if(!st || st.billing?.tipo!=="avulso" || !st.billing?.ativo) return;
+if(!st || !st.billing?.ativo) return;
+const mergedEntries = agendaEntries.some(e=>e.id===entry.id) ? agendaEntries.map(e=>e.id===entry.id?entry:e) : [...agendaEntries, entry];
+if(st.billing?.tipo==="avulso"){
+if(entry.status!=="realizada") return;
 setPagamentos(p => p.some(x=>x.agendaEntryId===entry.id) ? p : [...p, novoPagamentoAvulso(st, entry.date, entry.id)]);
+return;
+}
+if(st.billing?.modoCobranca==="porSessao"){
+setPagamentos(p=>{
+const pg = p.find(x=>x.studentId===st.id && x.status==="previsto" && x.tipo==="mensal");
+if(!pg) return p;
+const inicio = pg.periodoInicio || "0000-00-00";
+const fim = pg.periodoFim || pg.dataPrevista || "9999-99-99";
+const valorSessao = Number(pg.valorSessao || st.billing?.valorSessao || 0);
+const count = mergedEntries.filter(e=>e.studentId===st.id && e.status==="realizada" && e.date>=inicio && e.date<=fim).length;
+return p.map(x=>x.id===pg.id?{...x, sessoes:count, valorPrevisto: count*valorSessao}:x);
+});
+}
 };
 const EXERCISES = [
 {id:"ex01",nome:"Sentar e Levantar da Cadeira",cat:"Fortalecimento",grupo:"MMII",foco:"Pernas e Glúteos",nivel:"Basico",icone:"🪑",momento:"principal"},
@@ -721,13 +742,20 @@ const PagamentoModal = ({ student, pagamentos, setPagamentos, setStudents, onClo
 const abertos = pagamentos.filter(p=>p.studentId===student.id && p.status==="previsto").sort((a,b)=>(a.dataPrevista||"").localeCompare(b.dataPrevista||""));
 const [valores,setValores] = useState(()=>Object.fromEntries(abertos.map(p=>[p.id,p.valorPrevisto])));
 const [datas,setDatas] = useState(()=>Object.fromEntries(abertos.map(p=>[p.id,todayStr()])));
+const [sessoesMap,setSessoesMap] = useState(()=>Object.fromEntries(abertos.map(p=>[p.id,p.sessoes!=null?p.sessoes:""])));
 const [selecionados,setSelecionados] = useState(()=>new Set(abertos.map(p=>p.id)));
 useEffect(()=>{
 setValores(vs=>{ const n={...vs}; let mudou=false; abertos.forEach(p=>{ if(!(p.id in n)){ n[p.id]=p.valorPrevisto; mudou=true; } }); return mudou?n:vs; });
 setDatas(ds=>{ const n={...ds}; let mudou=false; abertos.forEach(p=>{ if(!(p.id in n)){ n[p.id]=todayStr(); mudou=true; } }); return mudou?n:ds; });
+setSessoesMap(sm=>{ const n={...sm}; let mudou=false; abertos.forEach(p=>{ if(!(p.id in n)){ n[p.id]=p.sessoes!=null?p.sessoes:""; mudou=true; } }); return mudou?n:sm; });
 setSelecionados(sel=>{ const n=new Set(sel); let mudou=false; abertos.forEach(p=>{ if(!n.has(p.id)){ n.add(p.id); mudou=true; } }); return mudou?n:sel; });
 // eslint-disable-next-line
 },[pagamentos.length]);
+const alterarSessoes = (pg, qtd) => {
+setSessoesMap(sm=>({...sm,[pg.id]:qtd}));
+const valorSessao = pg.valorSessao || student.billing?.valorSessao || 0;
+if(qtd!=="" && !isNaN(Number(qtd))) setValores(vs=>({...vs,[pg.id]: Number(qtd)*Number(valorSessao)}));
+};
 const toggleSel = (id) => setSelecionados(prev=>{ const n=new Set(prev); if(n.has(id))n.delete(id); else n.add(id); return n; });
 const [novoValor,setNovoValor] = useState("");
 const [novaData,setNovaData] = useState(todayStr());
@@ -740,12 +768,12 @@ const confirmarBaixa = () => {
 const hoje = todayStr();
 const pagos = abertos.filter(p=>selecionados.has(p.id));
 if(pagos.length===0) return;
-setPagamentos(p=>p.map(pg=>selecionados.has(pg.id)?{...pg,status:"pago",valorPago:Number(valores[pg.id])||0,dataPagamento:datas[pg.id]||hoje}:pg));
+setPagamentos(p=>p.map(pg=>selecionados.has(pg.id)?{...pg,status:"pago",valorPago:Number(valores[pg.id])||0,dataPagamento:datas[pg.id]||hoje,sessoes:sessoesMap[pg.id]!==""&&sessoesMap[pg.id]!=null?Number(sessoesMap[pg.id]):pg.sessoes}:pg));
 if(student.billing?.tipo!=="avulso" && setStudents){
 const base = pagos[pagos.length-1].dataPrevista || hoje;
 const prox = new Date(base+"T00:00:00"); prox.setDate(prox.getDate()+30);
 const proxIso = toISODateLocal(prox);
-setPagamentos(p=>[...p, novoPagamentoMensal(student, proxIso)]);
+setPagamentos(p=>[...p, novoPagamentoMensal(student, proxIso, base)]);
 setStudents(p=>p.map(s=>s.id===student.id?{...s,billing:{...(s.billing||{}),ultimoPagamento:hoje,vencimento:proxIso}}:s));
 }
 onClose();
@@ -764,15 +792,21 @@ return (
 <div onClick={()=>toggleSel(pg.id)} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,cursor:"pointer",marginBottom:sel?8:0 }}>
 <div>
 <div style={{ fontSize:13,fontWeight:700 }}>{pg.tipo==="mensal"?(pg.plano||"Mensalidade"):"Aula avulsa"}</div>
-<div style={{ fontSize:11,color:vencido?"#dc2626":"#94a3b8" }}>Previsto: {fmt(pg.dataPrevista)} · {fmtR(pg.valorPrevisto)}{vencido?" · vencido":""}</div>
+<div style={{ fontSize:11,color:vencido?"#dc2626":"#94a3b8" }}>Previsto: {fmt(pg.dataPrevista)} · {(pg.modoCobranca==="porSessao"&&!pg.valorPrevisto)?"a calcular":fmtR(pg.valorPrevisto)}{vencido?" · vencido":""}</div>
 </div>
 <div style={{ width:20,height:20,borderRadius:6,border:"1.5px solid "+(sel?O:"#cbd5e1"),background:sel?O:"#fff",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,flexShrink:0 }}>{sel?"✓":""}</div>
 </div>
 {sel &&
+<>
+{(pg.modoCobranca==="porSessao"||(!pg.modoCobranca && student.billing?.modoCobranca==="porSessao"&&pg.tipo==="mensal")) &&
+<div style={{ marginBottom:8 }}>
+<Inp label={"Sessões no mês — contadas da agenda (R$ "+Number(pg.valorSessao||student.billing?.valorSessao||0).toFixed(2).replace(".",",")+"/sessão)"} type="number" value={sessoesMap[pg.id]} onChange={v=>alterarSessoes(pg,v)} placeholder="Ex: 12"/>
+</div>}
 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
 <Inp label="Valor pago (R$)" type="number" value={valores[pg.id]} onChange={v=>setValores(vs=>({...vs,[pg.id]:v}))}/>
 <Inp label="Data pagto" type="date" value={datas[pg.id]} onChange={v=>setDatas(vs=>({...vs,[pg.id]:v}))}/>
-</div>}
+</div>
+</>}
 </div>
 );
 })}
@@ -797,10 +831,10 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
   const [finView,setFinView] = useState("alunos");
   const [planoModal,setPlanoModal] = useState(false);
   const [planoEditId,setPlanoEditId] = useState(null);
-  const emptyPlano = () => ({ nome:"", valor:"", frequencia:"", descricao:"", ativo:true });
+  const emptyPlano = () => ({ nome:"", modoCobranca:"fixo", valor:"", valorSessao:"", frequencia:"", descricao:"", ativo:true });
   const [planoForm,setPlanoForm] = useState(emptyPlano());
   const openNovoPlano = () => { setPlanoEditId(null); setPlanoForm(emptyPlano()); setPlanoModal(true); };
-  const openEditPlano = (pl) => { setPlanoEditId(pl.id); setPlanoForm({ nome:pl.nome, valor:pl.valor, frequencia:pl.frequencia||"", descricao:pl.descricao||"", ativo:pl.ativo!==false }); setPlanoModal(true); };
+  const openEditPlano = (pl) => { setPlanoEditId(pl.id); setPlanoForm({ nome:pl.nome, modoCobranca:pl.modoCobranca||"fixo", valor:pl.valor, valorSessao:pl.valorSessao||"", frequencia:pl.frequencia||"", descricao:pl.descricao||"", ativo:pl.ativo!==false }); setPlanoModal(true); };
   const salvarPlano = () => {
     if(!planoForm.nome.trim()) return;
     if(planoEditId) setPlanos(p=>p.map(pl=>pl.id===planoEditId?{...pl,...planoForm,nome:planoForm.nome.trim()}:pl));
@@ -833,7 +867,7 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
     setStudents(p=>p.map(s=>s.id===studentId?{...s,billing:{...(s.billing||{}),ativo:true,pendente:false,ultimoPagamento:hoje,vencimento:proxIso}}:s));
     if(st) setPagamentos(p=>[...p,
       {...novoPagamentoMensal(st,hoje),status:"pago",valorPago:Number(st.billing?.valor)||0,dataPagamento:hoje,origem:"manual"},
-      novoPagamentoMensal(st,proxIso)
+      novoPagamentoMensal(st,proxIso,hoje)
     ]);
   };
   // Previsto x recebido do mês corrente
@@ -896,7 +930,7 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
               <Card key={pg.id} onClick={()=>setBaixaStudentId(pg.studentId)} style={{ padding:"11px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10 }}>
                 <div style={{ minWidth:0 }}>
                   <div style={{ fontSize:13,fontWeight:700 }}>{st?.name||"Aluno"}</div>
-                  <div style={{ fontSize:11,color:vencido?"#dc2626":"#94a3b8" }}>{pg.tipo==="mensal"?"Mensalidade":"Aula avulsa"} · {fmt(pg.dataPrevista)} · {fmtR(pg.valorPrevisto)}{vencido?" · vencido":""}</div>
+                  <div style={{ fontSize:11,color:vencido?"#dc2626":"#94a3b8" }}>{pg.tipo==="mensal"?"Mensalidade":"Aula avulsa"} · {fmt(pg.dataPrevista)} · {(pg.modoCobranca==="porSessao"&&!pg.valorPrevisto)?"a calcular":fmtR(pg.valorPrevisto)}{vencido?" · vencido":""}</div>
                 </div>
                 <div style={{ fontSize:11,color:"#cbd5e1",flexShrink:0 }}>Dar baixa →</div>
               </Card>
@@ -917,7 +951,7 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
               <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:10 }}>
                 <div onClick={()=>nav("studentDetail",{studentId:s.id})} style={{ flex:1,minWidth:0,cursor:"pointer" }}>
                   <div style={{ fontWeight:700,fontSize:14 }}>{s.name}</div>
-                  <div style={{ fontSize:11,color:"#94a3b8",marginTop:2 }}>{s.billing.plano||"Plano"}{s.billing.valor?" · "+fmtR(s.billing.valor):""}</div>
+                  <div style={{ fontSize:11,color:"#94a3b8",marginTop:2 }}>{s.billing.plano||"Plano"}{s.billing.modoCobranca==="porSessao"?(s.billing.valorSessao?" · R$ "+Number(s.billing.valorSessao).toFixed(2).replace(".",",")+"/sessão":""):(s.billing.valor?" · "+fmtR(s.billing.valor):"")}</div>
                   <div style={{ marginTop:5 }}>
                     <Badge color={s._vencido?"#dc2626":"#16a34a"} bg={s._vencido?"#fee2e2":"#dcfce7"}>
                       {s._vencido?"Vencido há "+Math.abs(s._diasDiff)+" dia(s)":s._diasDiff===0?"Vence hoje":"Vence em "+s._diasDiff+" dia(s)"}
@@ -1004,7 +1038,7 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
                     <span style={{ fontWeight:700,fontSize:14 }}>{pl.nome}</span>
                     {pl.ativo===false && <Badge color="#64748b" bg="#f1f5f9">Inativo</Badge>}
                   </div>
-                  <div style={{ fontSize:13,fontWeight:800,color:O,marginBottom:2 }}>R$ {Number(pl.valor||0).toFixed(2).replace(".",",")}{pl.frequencia?" · "+pl.frequencia:""}</div>
+                  <div style={{ fontSize:13,fontWeight:800,color:O,marginBottom:2 }}>{pl.modoCobranca==="porSessao"?"R$ "+Number(pl.valorSessao||0).toFixed(2).replace(".",",")+" / sessão":"R$ "+Number(pl.valor||0).toFixed(2).replace(".",",")}{pl.frequencia?" · "+pl.frequencia:""}</div>
                   {pl.descricao && <div style={{ fontSize:12,color:"#64748b",marginTop:2 }}>{pl.descricao}</div>}
                   <div style={{ fontSize:11,color:"#94a3b8",marginTop:6 }}>{alunosPorPlano(pl.nome)} aluno(s) neste plano</div>
                 </div>
@@ -1015,7 +1049,15 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
         </div>}
         {planoModal && <Modal title={planoEditId?"Editar Plano":"Novo Plano"} onClose={()=>setPlanoModal(false)}>
           <Inp label="Nome do plano *" value={planoForm.nome} onChange={v=>setPlanoForm(f=>({...f,nome:v}))} placeholder="Ex: 3x por semana"/>
-          <Inp label="Valor mensal (R$)" type="number" value={planoForm.valor} onChange={v=>setPlanoForm(f=>({...f,valor:v}))} placeholder="250.00"/>
+          <div style={{ display:"flex",gap:6,marginBottom:13 }}>
+            <button onClick={()=>setPlanoForm(f=>({...f,modoCobranca:"fixo"}))} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:planoForm.modoCobranca!=="porSessao"?O:"#f1f5f9",color:planoForm.modoCobranca!=="porSessao"?"#fff":"#64748b" }}>Valor fixo mensal</button>
+            <button onClick={()=>setPlanoForm(f=>({...f,modoCobranca:"porSessao"}))} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:planoForm.modoCobranca==="porSessao"?O:"#f1f5f9",color:planoForm.modoCobranca==="porSessao"?"#fff":"#64748b" }}>Por sessão</button>
+          </div>
+          {planoForm.modoCobranca==="porSessao" ? (
+            <Inp label="Valor por sessão (R$)" type="number" value={planoForm.valorSessao} onChange={v=>setPlanoForm(f=>({...f,valorSessao:v}))} placeholder="60.00"/>
+          ) : (
+            <Inp label="Valor mensal (R$)" type="number" value={planoForm.valor} onChange={v=>setPlanoForm(f=>({...f,valor:v}))} placeholder="250.00"/>
+          )}
           <Inp label="Frequência" value={planoForm.frequencia} onChange={v=>setPlanoForm(f=>({...f,frequencia:v}))} placeholder="Ex: 3x/semana, 2x/mês, Consultoria"/>
           <div style={{ marginBottom:13 }}>
             <div style={{ fontSize:12,fontWeight:600,color:"#475569",marginBottom:5 }}>Descrição (opcional)</div>
@@ -1157,7 +1199,7 @@ const openAgendaEdit = (entry) => { setAgendaEditId(entry.id); setAgendaEditForm
 const saveAgendaEdit = () => {
   const atualizado = { ...(agendaEntries.find(e=>e.id===agendaEditId)||{}), ...agendaEditForm, id:agendaEditId };
   setAgendaEntries(p=>p.map(e=>e.id===agendaEditId?atualizado:e));
-  gerarPagamentoAgendaSeNecessario(atualizado, students, setPagamentos);
+  atualizarFinanceiroPelaAgenda(atualizado, students, agendaEntries, setPagamentos);
   setAgendaEditId(null);
 };
 const delAgendaEntry = async (id) => { if(window.confirm("Remover este compromisso da agenda?")){ await DB.remove("agenda",id); setAgendaEntries(p=>p.filter(e=>e.id!==id)); setAgendaEditId(null); } };
@@ -1339,13 +1381,13 @@ setFeedbackModal(false);
 };
 const delFeedback = async id=>{if(window.confirm("Remover este feedback?")){await DB.remove("professor_feedbacks",id);setProfessorFeedbacks(p=>p.filter(f=>f.id!==id));}};
 const delAssessment = async id=>{if(window.confirm("Remover avaliação?")){await DB.remove("assessments",id);setAssessments(p=>p.filter(a=>a.id!==id));}};
-const openEdit = ()=>{setForm({name:st.name,dob:st.dob||"",sex:st.sex||"",phone:st.phone||"",email:st.email||"",whatsapp:st.whatsapp||"",responsibleName:st.responsibleName||"",responsiblePhone:st.responsiblePhone||"",doctorName:st.doctorName||"",doctorPhone:st.doctorPhone||"",billing:{ativo:st.billing?.ativo||false,tipo:st.billing?.tipo||"mensal",plano:st.billing?.plano||"",valor:st.billing?.valor||"",valorAula:st.billing?.valorAula||"",vencimento:st.billing?.vencimento||""},checkinConfig:{pre:{disposicao:st.checkinConfig?.pre?.disposicao??true,hidratacao:st.checkinConfig?.pre?.hidratacao??true,alimentacao:st.checkinConfig?.pre?.alimentacao??true,sono:st.checkinConfig?.pre?.sono??true,dor:st.checkinConfig?.pre?.dor??false,pa:st.checkinConfig?.pre?.pa??false,glicemia:st.checkinConfig?.pre?.glicemia??false},post:{esforco:st.checkinConfig?.post?.esforco??true,completude:st.checkinConfig?.post?.completude??true,dor:st.checkinConfig?.post?.dor??true,obs:st.checkinConfig?.post?.obs??true}}});setEditModal(true);};
+const openEdit = ()=>{setForm({name:st.name,dob:st.dob||"",sex:st.sex||"",phone:st.phone||"",email:st.email||"",whatsapp:st.whatsapp||"",responsibleName:st.responsibleName||"",responsiblePhone:st.responsiblePhone||"",doctorName:st.doctorName||"",doctorPhone:st.doctorPhone||"",billing:{ativo:st.billing?.ativo||false,tipo:st.billing?.tipo||"mensal",modoCobranca:st.billing?.modoCobranca||"fixo",plano:st.billing?.plano||"",valor:st.billing?.valor||"",valorSessao:st.billing?.valorSessao||"",valorAula:st.billing?.valorAula||"",vencimento:st.billing?.vencimento||""},checkinConfig:{pre:{disposicao:st.checkinConfig?.pre?.disposicao??true,hidratacao:st.checkinConfig?.pre?.hidratacao??true,alimentacao:st.checkinConfig?.pre?.alimentacao??true,sono:st.checkinConfig?.pre?.sono??true,dor:st.checkinConfig?.pre?.dor??false,pa:st.checkinConfig?.pre?.pa??false,glicemia:st.checkinConfig?.pre?.glicemia??false},post:{esforco:st.checkinConfig?.post?.esforco??true,completude:st.checkinConfig?.post?.completude??true,dor:st.checkinConfig?.post?.dor??true,obs:st.checkinConfig?.post?.obs??true}}});setEditModal(true);};
 const saveEdit = ()=>{
   if(!form.name.trim())return;
   setStudents(p=>p.map(s=>s.id===studentId?{...s,...form}:s));
   if(form.billing?.ativo && form.billing?.tipo!=="avulso" && form.billing?.vencimento){
     const jaTem = pagamentos.some(pg=>pg.studentId===studentId && pg.status==="previsto" && pg.tipo==="mensal");
-    if(!jaTem) setPagamentos(p=>[...p, novoPagamentoMensal({...st,...form}, form.billing.vencimento)]);
+    if(!jaTem) setPagamentos(p=>[...p, novoPagamentoMensal({...st,...form}, form.billing.vencimento, todayStr())]);
   }
   setEditModal(false);
 };
@@ -1424,7 +1466,7 @@ return (
             {isAvulso ? (stAbertos.length>0?"⚠️ "+stAbertos.length+" cobrança(s) em aberto":"✅ Sem pendências") : (vencido?"⚠️ Mensalidade vencida":"✅ Mensalidade em dia")}
           </div>
           <div style={{ fontSize:11,color:"#64748b",marginTop:2 }}>
-            {isAvulso ? (st.billing.valorAula?"R$ "+Number(st.billing.valorAula).toFixed(2).replace(".",",")+" / aula":"Aula avulsa") : (st.billing.plano||"Plano")+(st.billing.valor?" · R$ "+Number(st.billing.valor).toFixed(2).replace(".",","):"")+" · vence "+fmt(st.billing.vencimento)}
+            {isAvulso ? (st.billing.valorAula?"R$ "+Number(st.billing.valorAula).toFixed(2).replace(".",",")+" / aula":"Aula avulsa") : (st.billing.plano||"Plano")+(st.billing.modoCobranca==="porSessao"?(st.billing.valorSessao?" · R$ "+Number(st.billing.valorSessao).toFixed(2).replace(".",",")+"/sessão":""):(st.billing.valor?" · R$ "+Number(st.billing.valor).toFixed(2).replace(".",","):""))+" · vence "+fmt(st.billing.vencimento)}
           </div>
         </div>
         <Btn sm onClick={()=>setBaixaAberta(true)}>Dar baixa</Btn>
@@ -2042,13 +2084,25 @@ return <Card style={{ padding:"16px 14px" }}><MultiLineChart series={seriesData}
 ) : (
 <>
 {(planos||[]).filter(pl=>pl.ativo!==false).length>0 &&
-<Inp label="Escolher de um plano salvo" value="" onChange={v=>{ const pl=(planos||[]).find(p=>p.id===v); if(pl) setForm(f=>({...f,billing:{...f.billing,plano:pl.nome,valor:pl.valor}})); }} opts={[{v:"",l:"Selecionar..."},...(planos||[]).filter(pl=>pl.ativo!==false).map(pl=>({v:pl.id,l:pl.nome+" · R$ "+Number(pl.valor||0).toFixed(2).replace(".",",")}))]}/>
+<Inp label="Escolher de um plano salvo" value="" onChange={v=>{ const pl=(planos||[]).find(p=>p.id===v); if(pl) setForm(f=>({...f,billing:{...f.billing,plano:pl.nome,modoCobranca:pl.modoCobranca||"fixo",valor:pl.valor,valorSessao:pl.valorSessao||""}})); }} opts={[{v:"",l:"Selecionar..."},...(planos||[]).filter(pl=>pl.ativo!==false).map(pl=>({v:pl.id,l:pl.nome+" · "+(pl.modoCobranca==="porSessao"?"R$ "+Number(pl.valorSessao||0).toFixed(2).replace(".",",")+"/sessão":"R$ "+Number(pl.valor||0).toFixed(2).replace(".",","))}))]}/>
 }
 <Inp label="Plano" value={form.billing.plano} onChange={v=>setForm(f=>({...f,billing:{...f.billing,plano:v}}))} placeholder="Ex: Mensal - 3x/semana"/>
+<div style={{ display:"flex",gap:6,marginBottom:12 }}>
+<button onClick={()=>setForm(f=>({...f,billing:{...f.billing,modoCobranca:"fixo"}}))} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:form.billing.modoCobranca!=="porSessao"?"#FF5603":"#f1f5f9",color:form.billing.modoCobranca!=="porSessao"?"#fff":"#64748b" }}>Valor fixo</button>
+<button onClick={()=>setForm(f=>({...f,billing:{...f.billing,modoCobranca:"porSessao"}}))} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:form.billing.modoCobranca==="porSessao"?"#FF5603":"#f1f5f9",color:form.billing.modoCobranca==="porSessao"?"#fff":"#64748b" }}>Por sessão</button>
+</div>
+{form.billing.modoCobranca==="porSessao" ? (
+<div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
+<Inp label="Valor por sessão (R$)" type="number" value={form.billing.valorSessao} onChange={v=>setForm(f=>({...f,billing:{...f.billing,valorSessao:v}}))} placeholder="60.00"/>
+<Inp label="Próximo vencimento" type="date" value={form.billing.vencimento} onChange={v=>setForm(f=>({...f,billing:{...f.billing,vencimento:v}}))}/>
+</div>
+) : (
 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
 <Inp label="Valor mensal (R$)" type="number" value={form.billing.valor} onChange={v=>setForm(f=>({...f,billing:{...f.billing,valor:v}}))} placeholder="150.00"/>
 <Inp label="Próximo vencimento" type="date" value={form.billing.vencimento} onChange={v=>setForm(f=>({...f,billing:{...f.billing,vencimento:v}}))}/>
 </div>
+)}
+{form.billing.modoCobranca==="porSessao" && <div style={{ fontSize:11,color:"#94a3b8",marginTop:-6,marginBottom:13 }}>Na hora de dar baixa, você informa quantas sessões teve no mês e o valor é calculado.</div>}
 </>
 )}
 </>
@@ -6485,12 +6539,12 @@ if(!entryForm.studentId||!entryForm.date) return;
 if(entryEditId){
 const atualizado = { id:entryEditId, ...entryForm };
 setAgendaEntries(p=>p.map(e=>e.id===entryEditId?atualizado:e));
-gerarPagamentoAgendaSeNecessario(atualizado, students, setPagamentos);
+atualizarFinanceiroPelaAgenda(atualizado, students, agendaEntries, setPagamentos);
 }
 else {
 const nova = { id:uid(), ...entryForm };
 setAgendaEntries(p=>[...p,nova]);
-gerarPagamentoAgendaSeNecessario(nova, students, setPagamentos);
+atualizarFinanceiroPelaAgenda(nova, students, agendaEntries, setPagamentos);
 }
 setEntryModal(false);
 };
