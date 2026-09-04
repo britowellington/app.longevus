@@ -906,6 +906,30 @@ setStudents(p=>p.map(s=>s.id===student.id?{...s,billing:{...(s.billing||{}),cred
 setAdiantQtd(""); setAdiantValor("");
 };
 const totalSelecionado = abertos.filter(p=>selecionados.has(p.id)).reduce((a,p)=>a+(Number(valores[p.id])||0),0);
+const totalCheioSelecionado = abertos.filter(p=>selecionados.has(p.id)).reduce((a,p)=>a+(Number(p.valorPrevisto)||0),0);
+const [descontoTipo,setDescontoTipo] = useState("pct");
+const [descontoValor,setDescontoValor] = useState("");
+const aplicarDesconto = () => {
+const selArr = abertos.filter(p=>selecionados.has(p.id));
+if(selArr.length===0 || !descontoValor) return;
+const totalAtual = selArr.reduce((a,p)=>a+(Number(valores[p.id])||0),0);
+if(totalAtual<=0) return;
+let descontoTotal = descontoTipo==="pct" ? totalAtual*(Number(descontoValor)/100) : Number(descontoValor);
+descontoTotal = Math.min(Math.max(descontoTotal,0), totalAtual);
+setValores(vs=>{
+const n={...vs};
+selArr.forEach(p=>{
+const proporcao = (Number(vs[p.id])||0)/totalAtual;
+n[p.id] = Math.max(0, Number((Number(vs[p.id])-descontoTotal*proporcao).toFixed(2)));
+});
+return n;
+});
+};
+const limparDesconto = () => {
+const selArr = abertos.filter(p=>selecionados.has(p.id));
+setValores(vs=>{ const n={...vs}; selArr.forEach(p=>{ n[p.id]=p.valorPrevisto; }); return n; });
+setDescontoValor("");
+};
 const confirmarBaixa = () => {
 const hoje = todayStr();
 const pagos = abertos.filter(p=>selecionados.has(p.id));
@@ -988,9 +1012,30 @@ return (
 {selecionados.size===abertos.length ? "Limpar seleção" : "Marcar todos ("+abertos.length+")"}
 </button>
 </div>}
+{selecionados.size>0 &&
+<div style={{ marginBottom:12 }}>
+<div style={{ fontSize:11,fontWeight:700,color:"#475569",marginBottom:6,textTransform:"uppercase" }}>Aplicar desconto ({selecionados.size} selecionada{selecionados.size>1?"s":""})</div>
+<div style={{ display:"flex",gap:6,marginBottom:6 }}>
+<button onClick={()=>setDescontoTipo("pct")} style={{ flex:1,border:"none",borderRadius:8,padding:"7px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:descontoTipo==="pct"?"#0f172a":"#f1f5f9",color:descontoTipo==="pct"?"#fff":"#64748b" }}>%</button>
+<button onClick={()=>setDescontoTipo("valor")} style={{ flex:1,border:"none",borderRadius:8,padding:"7px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:descontoTipo==="valor"?"#0f172a":"#f1f5f9",color:descontoTipo==="valor"?"#fff":"#64748b" }}>R$</button>
+</div>
+<div style={{ display:"flex",gap:8 }}>
+<Inp label={descontoTipo==="pct"?"Desconto (%)":"Desconto (R$)"} type="number" value={descontoValor} onChange={setDescontoValor} placeholder={descontoTipo==="pct"?"10":"50.00"}/>
+</div>
+<div style={{ display:"flex",gap:8,marginTop:6 }}>
+<Btn variant="secondary" full onClick={aplicarDesconto} disabled={!descontoValor}>Aplicar</Btn>
+{totalSelecionado<totalCheioSelecionado && <Btn variant="secondary" full onClick={limparDesconto}>Remover desconto</Btn>}
+</div>
+</div>}
 {abertos.length>0 &&
-<div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:13,fontWeight:700,color:"#0f172a",borderTop:"1px solid #f1f5f9",paddingTop:10,marginBottom:14 }}>
+<div style={{ marginBottom:14 }}>
+{totalSelecionado<totalCheioSelecionado &&
+<div style={{ display:"flex",justifyContent:"space-between",fontSize:12,color:"#94a3b8",textDecoration:"line-through",marginBottom:2 }}>
+<span>Valor cheio</span><span>{fmtR(totalCheioSelecionado)}</span>
+</div>}
+<div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:13,fontWeight:700,color:"#0f172a",borderTop:"1px solid #f1f5f9",paddingTop:10 }}>
 <span>Total selecionado ({selecionados.size})</span><span>{fmtR(totalSelecionado)}</span>
+</div>
 </div>}
 {student.billing?.tipo==="avulso" &&
 <div style={{ borderTop:"1px solid #f1f5f9",paddingTop:12,marginBottom:14 }}>
