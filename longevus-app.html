@@ -867,15 +867,17 @@ const abertosAvulso = abertos.filter(p=>p.tipo==="avulso");
 // Se o aluno é mensal (fixo ou por sessão) mas tem cobranças avulsas antigas em aberto (de antes de virar mensal),
 // elas ficam visíveis mas NÃO entram automaticamente na soma — são lançamentos separados, o trainer decide se quer incluir.
 const tipoPrincipal = student.billing?.tipo==="avulso" ? "avulso" : "mensal";
+const grupoPrincipal = abertos.filter(p=>p.tipo===tipoPrincipal);
 const [valores,setValores] = useState(()=>Object.fromEntries(abertos.map(p=>[p.id,p.valorPrevisto])));
 const [datas,setDatas] = useState(()=>Object.fromEntries(abertos.map(p=>[p.id,todayStr()])));
 const [sessoesMap,setSessoesMap] = useState(()=>Object.fromEntries(abertos.map(p=>[p.id,p.sessoes!=null?p.sessoes:""])));
-const [selecionados,setSelecionados] = useState(()=>new Set(abertos.filter(p=>p.tipo===tipoPrincipal).map(p=>p.id)));
+// Só marca sozinho quando existe UM único lançamento em aberto (caso trivial, sem risco).
+// Havendo mais de um, o trainer escolhe manualmente quais quer quitar — evita marcar tudo sem querer.
+const [selecionados,setSelecionados] = useState(()=> grupoPrincipal.length===1 ? new Set([grupoPrincipal[0].id]) : new Set());
 useEffect(()=>{
 setValores(vs=>{ const n={...vs}; let mudou=false; abertos.forEach(p=>{ if(!(p.id in n)){ n[p.id]=p.valorPrevisto; mudou=true; } }); return mudou?n:vs; });
 setDatas(ds=>{ const n={...ds}; let mudou=false; abertos.forEach(p=>{ if(!(p.id in n)){ n[p.id]=todayStr(); mudou=true; } }); return mudou?n:ds; });
 setSessoesMap(sm=>{ const n={...sm}; let mudou=false; abertos.forEach(p=>{ if(!(p.id in n)){ n[p.id]=p.sessoes!=null?p.sessoes:""; mudou=true; } }); return mudou?n:sm; });
-setSelecionados(sel=>{ const n=new Set(sel); let mudou=false; abertos.filter(p=>p.tipo===tipoPrincipal).forEach(p=>{ if(!n.has(p.id)){ n.add(p.id); mudou=true; } }); return mudou?n:sel; });
 // eslint-disable-next-line
 },[pagamentos.length]);
 const alterarSessoes = (pg, qtd) => {
@@ -898,7 +900,7 @@ const registrarAdiantamento = () => {
 const qtd = Number(adiantQtd), valor = Number(adiantValor);
 if(!qtd || qtd<=0 || !valor || valor<=0 || !setStudents) return;
 setPagamentos(p=>[...p, { id:uid(), studentId:student.id, tipo:"avulso", plano:qtd+" aula(s) pagas adiantado",
-dataPrevista:adiantData, valorPrevisto:valor, dataPagamento:adiantData, valorPago:valor,
+dataPrevista:adiantData, valorPrevisto:valor, dataPagamento:adiantData, valorPago:valor, qtdCreditos:qtd,
 status:"pago", origem:"adiantamento", agendaEntryId:null, obs:"", createdAt:todayStr() }]);
 setStudents(p=>p.map(s=>s.id===student.id?{...s,billing:{...(s.billing||{}),creditosAvulso:(s.billing?.creditosAvulso||0)+qtd,creditoValorUnitario:valor/qtd}}:s));
 setAdiantQtd(""); setAdiantValor("");
@@ -908,6 +910,10 @@ const confirmarBaixa = () => {
 const hoje = todayStr();
 const pagos = abertos.filter(p=>selecionados.has(p.id));
 if(pagos.length===0) return;
+if(pagos.length>1){
+const ok = window.confirm("Confirmar baixa de "+pagos.length+" lançamento(s), totalizando "+fmtR(totalSelecionado)+"?");
+if(!ok) return;
+}
 setPagamentos(p=>p.map(pg=>selecionados.has(pg.id)?{...pg,status:"pago",valorPago:Number(valores[pg.id])||0,dataPagamento:datas[pg.id]||hoje,sessoes:sessoesMap[pg.id]!==""&&sessoesMap[pg.id]!=null?Number(sessoesMap[pg.id]):pg.sessoes}:pg));
 const pagosMensais = pagos.filter(p=>p.tipo==="mensal");
 if(student.billing?.tipo!=="avulso" && setStudents && pagosMensais.length>0){
@@ -976,9 +982,15 @@ return (
 </div>
 }
 </>}
+{abertos.length>1 &&
+<div style={{ display:"flex",justifyContent:"flex-end",marginBottom:10 }}>
+<button onClick={()=>setSelecionados(selecionados.size===abertos.length ? new Set() : new Set(abertos.map(p=>p.id)))} style={{ border:"none",background:"none",color:O,fontSize:12,fontWeight:700,cursor:"pointer",padding:0 }}>
+{selecionados.size===abertos.length ? "Limpar seleção" : "Marcar todos ("+abertos.length+")"}
+</button>
+</div>}
 {abertos.length>0 &&
 <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:13,fontWeight:700,color:"#0f172a",borderTop:"1px solid #f1f5f9",paddingTop:10,marginBottom:14 }}>
-<span>Total selecionado</span><span>{fmtR(totalSelecionado)}</span>
+<span>Total selecionado ({selecionados.size})</span><span>{fmtR(totalSelecionado)}</span>
 </div>}
 {student.billing?.tipo==="avulso" &&
 <div style={{ borderTop:"1px solid #f1f5f9",paddingTop:12,marginBottom:14 }}>
@@ -1069,6 +1081,17 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
   const emAbertoVencidos = emAberto.filter(p=>p.dataPrevista && p.dataPrevista<hoje);
   const emAbertoTotal = emAberto.reduce((a,p)=>a+(Number(p.valorPrevisto)||0),0);
   const pctRealizado = previstoMes>0 ? Math.round((recebidoMes/previstoMes)*100) : (recebidoMes>0?100:0);
+  const pagosRecentes = pagamentos.filter(p=>p.status==="pago" && p.origem!=="credito").sort((a,b)=>(b.dataPagamento||"").localeCompare(a.dataPagamento||"")||(b.createdAt||"").localeCompare(a.createdAt||"")).slice(0,8);
+  const desfazerBaixa = (pg) => {
+    const st = students.find(s=>s.id===pg.studentId);
+    if(!window.confirm("Desfazer o pagamento de "+(st?.name||"aluno")+" ("+fmtR(pg.valorPago)+")? O lançamento volta pra em aberto.")) return;
+    if(pg.origem==="adiantamento"){
+      setStudents(p=>p.map(s=>s.id===pg.studentId?{...s,billing:{...(s.billing||{}),creditosAvulso:Math.max(0,(s.billing?.creditosAvulso||0)-(pg.qtdCreditos||0))}}:s));
+      setPagamentos(p=>p.filter(x=>x.id!==pg.id));
+    } else {
+      setPagamentos(p=>p.map(x=>x.id===pg.id?{...x,status:"previsto",valorPago:null,dataPagamento:null}:x));
+    }
+  };
   // Últimos 6 meses: previsto x pago
   const ultimosMeses = Array.from({length:6},(_,i)=>{ const d=new Date(); d.setMonth(d.getMonth()-(5-i)); return mesChave(d.toISOString().slice(0,10)); });
   const previstoPorMes = ultimosMeses.map(m=>pagamentos.filter(p=>mesChave(p.dataPrevista)===m && p.status!=="cancelado").reduce((a,p)=>a+(Number(p.valorPrevisto)||0),0));
@@ -1134,6 +1157,24 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
           })}
         </div>
       }
+      {pagosRecentes.length>0 &&
+      <>
+      <div style={{ fontSize:12,fontWeight:700,color:"#475569",marginTop:20,marginBottom:10,textTransform:"uppercase" }}>Pagamentos recentes</div>
+      <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+        {pagosRecentes.map(pg=>{
+          const st = students.find(s=>s.id===pg.studentId);
+          return (
+            <Card key={pg.id} style={{ padding:"11px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10 }}>
+              <div style={{ minWidth:0 }}>
+                <div style={{ fontSize:13,fontWeight:700 }}>{st?.name||"Aluno"}</div>
+                <div style={{ fontSize:11,color:"#94a3b8" }}>{pg.plano||(pg.tipo==="mensal"?"Mensalidade":"Aula avulsa")} · pago em {fmt(pg.dataPagamento)} · {fmtR(pg.valorPago)}</div>
+              </div>
+              <button onClick={()=>desfazerBaixa(pg)} style={{ border:"none",background:"none",color:"#dc2626",fontSize:11,fontWeight:700,cursor:"pointer",flexShrink:0 }}>↩ Desfazer</button>
+            </Card>
+          );
+        })}
+      </div>
+      </>}
       </>}
       {finView==="alunos" && <>
       {mensalistas.length===0&&avulsos.length===0?
