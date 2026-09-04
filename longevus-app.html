@@ -129,10 +129,10 @@ const fmtR = (v) => "R$ "+Number(v||0).toFixed(2).replace(".",",");
 const mesChave = (d) => (d||"").slice(0,7);
 const novoPagamentoMensal = (student, dataPrevista, periodoInicio) => ({
 id: uid(), studentId: student.id, tipo:"mensal", plano: student.billing?.plano||"",
-modoCobranca: student.billing?.modoCobranca||"fixo", valorSessao: Number(student.billing?.valorSessao)||0, sessoes:null,
+modoCobranca:"fixo", valorSessao:0, sessoes:null,
 periodoInicio: periodoInicio || (()=>{ const d=new Date(dataPrevista+"T00:00:00"); d.setDate(d.getDate()-30); return toISODateLocal(d); })(),
 periodoFim: dataPrevista,
-dataPrevista, valorPrevisto: student.billing?.modoCobranca==="porSessao" ? 0 : (Number(student.billing?.valor)||0),
+dataPrevista, valorPrevisto: Number(student.billing?.valor)||0,
 dataPagamento:null, valorPago:null, status:"previsto", origem:"ciclo", agendaEntryId:null, obs:"", createdAt:todayStr()
 });
 const novoPagamentoAvulso = (student, dataPrevista, agendaEntryId, valor) => ({
@@ -140,28 +140,47 @@ id: uid(), studentId: student.id, tipo:"avulso", plano:"Aula avulsa",
 dataPrevista, valorPrevisto: valor!=null&&valor!=="" ? Number(valor) : (Number(student.billing?.valorAula)||0),
 dataPagamento:null, valorPago:null, status:"previsto", origem: agendaEntryId?"agenda":"manual", agendaEntryId: agendaEntryId||null, obs:"", createdAt:todayStr()
 });
+// Dado um vencimento-âncora (o dia fixo de referência do aluno) e a data de uma aula, acha o
+// próximo vencimento (múltiplo de 30 dias a partir da âncora) em que essa aula deve ser cobrada.
+// É isso que faz várias cobranças por-sessão se agruparem visualmente num mesmo "ciclo de 30 dias",
+// mesmo sendo lançamentos individuais por aula.
+const vencimentoDoCiclo = (anchorISO, dataAula) => {
+if(!anchorISO) return dataAula;
+let d = new Date(anchorISO+"T00:00:00");
+const alvo = new Date(dataAula+"T00:00:00");
+let guard = 0;
+while(d < alvo && guard<600){ d.setDate(d.getDate()+30); guard++; }
+return toISODateLocal(d);
+};
+const novoPagamentoPorSessao = (student, entryDate, agendaEntryId) => ({
+id: uid(), studentId: student.id, tipo:"mensal", plano: student.billing?.plano||"",
+modoCobranca:"porSessao", valorSessao: Number(student.billing?.valorSessao)||0, sessoes:1,
+dataPrevista: vencimentoDoCiclo(student.billing?.vencimento, entryDate), valorPrevisto: Number(student.billing?.valorSessao)||0,
+dataPagamento:null, valorPago:null, status:"previsto", origem: agendaEntryId?"agenda":"manual", agendaEntryId: agendaEntryId||null, obs:"", createdAt:todayStr()
+});
 // Status que NUNCA geram cobrança (cancelamento sem culpa do aluno) — se já existia previsto, remove.
 const STATUS_NAO_COBRAM = ["cancelada_professor","cancelada_aluno_prazo"];
 // Status que "contam" pra valer (aula de fato aconteceu, ou o aluno furou a regra de cancelamento).
 const STATUS_CONTAM = ["realizada","falta","cancelada_aluno_sem_prazo"];
 // Chamado quando um compromisso da agenda é criado ou muda de status.
-// - Aluno avulso: ao agendar, gera a previsão de cobrança. Se o aluno tem créditos de aulas pagas
-//   adiantado, a cobrança é quitada sozinha (sem gerar cobrança nova) assim que a aula "conta"
-//   (realizada, falta, ou cancelamento do aluno fora do prazo). Cancelamento do professor ou do
-//   aluno dentro do prazo nunca cobra e nunca consome crédito.
-// - Aluno mensal "por sessão": recalcula quantas aulas "realizadas" caem dentro do ciclo aberto
-//   e atualiza o valor previsto (sessões x valor da sessão) automaticamente.
+// Cobrança por-aula: cobre tanto o aluno Avulso quanto o Mensal "Por sessão" — as duas funcionam
+// com a mesma mecânica (uma cobrança prevista por aula agendada). A diferença entre elas é só de
+// onde vem o valor (valorAula x valorSessao) e a data prevista (a data da aula x o vencimento do
+// ciclo em que ela cai). Cancelamento do professor ou do aluno dentro do prazo nunca cobra.
+// Realizada/Falta/Cancelamento fora do prazo sempre cobra. Só o Avulso tem créditos de adiantamento.
 const atualizarFinanceiroPelaAgenda = (entry, students, agendaEntries, setPagamentos, setStudents) => {
 if(!entry) return;
 const st = students.find(s=>s.id===entry.studentId);
 if(!st || !st.billing?.ativo) return;
-const mergedEntries = agendaEntries.some(e=>e.id===entry.id) ? agendaEntries.map(e=>e.id===entry.id?entry:e) : [...agendaEntries, entry];
-if(st.billing?.tipo==="avulso"){
+const ehAvulso = st.billing?.tipo==="avulso";
+const ehPorSessao = !ehAvulso && st.billing?.modoCobranca==="porSessao";
+if(!ehAvulso && !ehPorSessao) return;
+const criarRegistro = () => ehAvulso ? novoPagamentoAvulso(st, entry.date, entry.id) : novoPagamentoPorSessao(st, entry.date, entry.id);
 if(STATUS_NAO_COBRAM.includes(entry.status)){
 setPagamentos(p=>p.filter(pg=>!(pg.agendaEntryId===entry.id && pg.status==="previsto")));
 return;
 }
-if(STATUS_CONTAM.includes(entry.status)){
+if(STATUS_CONTAM.includes(entry.status) && ehAvulso){
 let consumiuCredito = false;
 setPagamentos(p=>{
 const existente = p.find(x=>x.agendaEntryId===entry.id);
@@ -171,26 +190,13 @@ if(existente.status==="pago") return p;
 if(temCredito){ consumiuCredito=true; return p.map(x=>x.id===existente.id?{...x,status:"pago",valorPago:0,dataPagamento:entry.date,origem:"credito",obs:"Coberta por aula paga adiantado"}:x); }
 return p;
 }
-if(temCredito){ consumiuCredito=true; return [...p, {...novoPagamentoAvulso(st, entry.date, entry.id), status:"pago", valorPago:0, dataPagamento:entry.date, origem:"credito", obs:"Coberta por aula paga adiantado"}]; }
-return [...p, novoPagamentoAvulso(st, entry.date, entry.id)];
+if(temCredito){ consumiuCredito=true; return [...p, {...criarRegistro(), status:"pago", valorPago:0, dataPagamento:entry.date, origem:"credito", obs:"Coberta por aula paga adiantado"}]; }
+return [...p, criarRegistro()];
 });
 if(consumiuCredito && setStudents) setStudents(p=>p.map(s=>s.id===st.id?{...s,billing:{...(s.billing||{}),creditosAvulso:Math.max(0,(s.billing?.creditosAvulso||0)-1)}}:s));
 return;
 }
-setPagamentos(p => p.some(x=>x.agendaEntryId===entry.id) ? p : [...p, novoPagamentoAvulso(st, entry.date, entry.id)]);
-return;
-}
-if(st.billing?.modoCobranca==="porSessao"){
-setPagamentos(p=>{
-const pg = p.find(x=>x.studentId===st.id && x.status==="previsto" && x.tipo==="mensal");
-if(!pg) return p;
-const inicio = pg.periodoInicio || "0000-00-00";
-const fim = pg.periodoFim || pg.dataPrevista || "9999-99-99";
-const valorSessao = Number(pg.valorSessao || st.billing?.valorSessao || 0);
-const count = mergedEntries.filter(e=>e.studentId===st.id && e.status==="realizada" && e.date>=inicio && e.date<=fim).length;
-return p.map(x=>x.id===pg.id?{...x, sessoes:count, valorPrevisto: count*valorSessao}:x);
-});
-}
+setPagamentos(p => p.some(x=>x.agendaEntryId===entry.id) ? p : [...p, criarRegistro()]);
 };
 // Chamado quando um compromisso é excluído da agenda: remove a cobrança prevista vinculada a ele,
 // desde que ainda não tenha sido paga (pagamentos já baixados nunca são apagados por aqui).
@@ -941,11 +947,17 @@ if(!ok) return;
 setPagamentos(p=>p.map(pg=>selecionados.has(pg.id)?{...pg,status:"pago",valorPago:Number(valores[pg.id])||0,dataPagamento:datas[pg.id]||hoje,sessoes:sessoesMap[pg.id]!==""&&sessoesMap[pg.id]!=null?Number(sessoesMap[pg.id]):pg.sessoes}:pg));
 const pagosMensais = pagos.filter(p=>p.tipo==="mensal");
 if(student.billing?.tipo!=="avulso" && setStudents && pagosMensais.length>0){
+if(student.billing?.modoCobranca==="porSessao"){
+// Por sessão: não cria "próximo ciclo" — as cobranças futuras já nascem sozinhas conforme
+// você agenda aulas. O vencimento fica fixo como âncora do ciclo, só o "último pagamento" atualiza.
+setStudents(p=>p.map(s=>s.id===student.id?{...s,billing:{...(s.billing||{}),ultimoPagamento:hoje}}:s));
+} else {
 const base = pagosMensais[pagosMensais.length-1].dataPrevista || hoje;
 const prox = new Date(base+"T00:00:00"); prox.setDate(prox.getDate()+30);
 const proxIso = toISODateLocal(prox);
 setPagamentos(p=>[...p, novoPagamentoMensal(student, proxIso, base)]);
 setStudents(p=>p.map(s=>s.id===student.id?{...s,billing:{...(s.billing||{}),ultimoPagamento:hoje,vencimento:proxIso}}:s));
+}
 }
 onClose();
 };
@@ -1841,7 +1853,7 @@ const openEdit = ()=>{setForm({name:st.name,dob:st.dob||"",sex:st.sex||"",phone:
 const saveEdit = ()=>{
   if(!form.name.trim())return;
   setStudents(p=>p.map(s=>s.id===studentId?{...s,...form}:s));
-  if(form.billing?.ativo && form.billing?.tipo!=="avulso" && form.billing?.vencimento){
+  if(form.billing?.ativo && form.billing?.tipo!=="avulso" && form.billing?.modoCobranca!=="porSessao" && form.billing?.vencimento){
     const jaTem = pagamentos.some(pg=>pg.studentId===studentId && pg.status==="previsto" && pg.tipo==="mensal");
     if(!jaTem) setPagamentos(p=>[...p, novoPagamentoMensal({...st,...form}, form.billing.vencimento, todayStr())]);
   }
@@ -2561,7 +2573,7 @@ return <Card style={{ padding:"16px 14px" }}><MultiLineChart series={seriesData}
 <Inp label="Próximo vencimento" type="date" value={form.billing.vencimento} onChange={v=>setForm(f=>({...f,billing:{...f.billing,vencimento:v}}))}/>
 </div>
 )}
-{form.billing.modoCobranca==="porSessao" && <div style={{ fontSize:11,color:"#94a3b8",marginTop:-6,marginBottom:13 }}>Na hora de dar baixa, você informa quantas sessões teve no mês e o valor é calculado.</div>}
+{form.billing.modoCobranca==="porSessao" && <div style={{ fontSize:11,color:"#94a3b8",marginTop:-6,marginBottom:13 }}>Cada aula agendada já gera a cobrança dela sozinha (igual avulso). A data acima é só a âncora do ciclo de 30 dias — as cobranças de cada ciclo se agrupam nela.</div>}
 </>
 )}
 </>
