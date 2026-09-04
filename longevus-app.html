@@ -140,17 +140,43 @@ id: uid(), studentId: student.id, tipo:"avulso", plano:"Aula avulsa",
 dataPrevista, valorPrevisto: valor!=null&&valor!=="" ? Number(valor) : (Number(student.billing?.valorAula)||0),
 dataPagamento:null, valorPago:null, status:"previsto", origem: agendaEntryId?"agenda":"manual", agendaEntryId: agendaEntryId||null, obs:"", createdAt:todayStr()
 });
+// Status que NUNCA geram cobrança (cancelamento sem culpa do aluno) — se já existia previsto, remove.
+const STATUS_NAO_COBRAM = ["cancelada_professor","cancelada_aluno_prazo"];
+// Status que "contam" pra valer (aula de fato aconteceu, ou o aluno furou a regra de cancelamento).
+const STATUS_CONTAM = ["realizada","falta","cancelada_aluno_sem_prazo"];
 // Chamado quando um compromisso da agenda é criado ou muda de status.
-// - Aluno avulso: assim que a aula é agendada (qualquer status), gera a cobrança prevista pra ela
-//   (se ainda não existir uma pra esse compromisso). A baixa é feita depois, quando o pagamento entra.
+// - Aluno avulso: ao agendar, gera a previsão de cobrança. Se o aluno tem créditos de aulas pagas
+//   adiantado, a cobrança é quitada sozinha (sem gerar cobrança nova) assim que a aula "conta"
+//   (realizada, falta, ou cancelamento do aluno fora do prazo). Cancelamento do professor ou do
+//   aluno dentro do prazo nunca cobra e nunca consome crédito.
 // - Aluno mensal "por sessão": recalcula quantas aulas "realizadas" caem dentro do ciclo aberto
 //   e atualiza o valor previsto (sessões x valor da sessão) automaticamente.
-const atualizarFinanceiroPelaAgenda = (entry, students, agendaEntries, setPagamentos) => {
+const atualizarFinanceiroPelaAgenda = (entry, students, agendaEntries, setPagamentos, setStudents) => {
 if(!entry) return;
 const st = students.find(s=>s.id===entry.studentId);
 if(!st || !st.billing?.ativo) return;
 const mergedEntries = agendaEntries.some(e=>e.id===entry.id) ? agendaEntries.map(e=>e.id===entry.id?entry:e) : [...agendaEntries, entry];
 if(st.billing?.tipo==="avulso"){
+if(STATUS_NAO_COBRAM.includes(entry.status)){
+setPagamentos(p=>p.filter(pg=>!(pg.agendaEntryId===entry.id && pg.status==="previsto")));
+return;
+}
+if(STATUS_CONTAM.includes(entry.status)){
+let consumiuCredito = false;
+setPagamentos(p=>{
+const existente = p.find(x=>x.agendaEntryId===entry.id);
+const temCredito = (st.billing?.creditosAvulso||0) > 0;
+if(existente){
+if(existente.status==="pago") return p;
+if(temCredito){ consumiuCredito=true; return p.map(x=>x.id===existente.id?{...x,status:"pago",valorPago:0,dataPagamento:entry.date,origem:"credito",obs:"Coberta por aula paga adiantado"}:x); }
+return p;
+}
+if(temCredito){ consumiuCredito=true; return [...p, {...novoPagamentoAvulso(st, entry.date, entry.id), status:"pago", valorPago:0, dataPagamento:entry.date, origem:"credito", obs:"Coberta por aula paga adiantado"}]; }
+return [...p, novoPagamentoAvulso(st, entry.date, entry.id)];
+});
+if(consumiuCredito && setStudents) setStudents(p=>p.map(s=>s.id===st.id?{...s,billing:{...(s.billing||{}),creditosAvulso:Math.max(0,(s.billing?.creditosAvulso||0)-1)}}:s));
+return;
+}
 setPagamentos(p => p.some(x=>x.agendaEntryId===entry.id) ? p : [...p, novoPagamentoAvulso(st, entry.date, entry.id)]);
 return;
 }
@@ -865,6 +891,18 @@ if(!novoValor) return;
 setPagamentos(p=>[...p, novoPagamentoAvulso(student, novaData, null, novoValor)]);
 setNovoValor("");
 };
+const [adiantQtd,setAdiantQtd] = useState("");
+const [adiantValor,setAdiantValor] = useState("");
+const [adiantData,setAdiantData] = useState(todayStr());
+const registrarAdiantamento = () => {
+const qtd = Number(adiantQtd), valor = Number(adiantValor);
+if(!qtd || qtd<=0 || !valor || valor<=0 || !setStudents) return;
+setPagamentos(p=>[...p, { id:uid(), studentId:student.id, tipo:"avulso", plano:qtd+" aula(s) pagas adiantado",
+dataPrevista:adiantData, valorPrevisto:valor, dataPagamento:adiantData, valorPago:valor,
+status:"pago", origem:"adiantamento", agendaEntryId:null, obs:"", createdAt:todayStr() }]);
+setStudents(p=>p.map(s=>s.id===student.id?{...s,billing:{...(s.billing||{}),creditosAvulso:(s.billing?.creditosAvulso||0)+qtd,creditoValorUnitario:valor/qtd}}:s));
+setAdiantQtd(""); setAdiantValor("");
+};
 const totalSelecionado = abertos.filter(p=>selecionados.has(p.id)).reduce((a,p)=>a+(Number(valores[p.id])||0),0);
 const confirmarBaixa = () => {
 const hoje = todayStr();
@@ -909,6 +947,10 @@ return (
 };
 return (
 <Modal title={"💰 "+student.name} onClose={onClose}>
+{student.billing?.tipo==="avulso" && (student.billing?.creditosAvulso||0)>0 &&
+<div style={{ background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"10px 12px",marginBottom:14,fontSize:12,color:"#166534",fontWeight:700 }}>
+✅ {student.billing.creditosAvulso} aula(s) já paga(s) adiantado, disponíveis pra abater
+</div>}
 {abertos.length===0 ?
 <div style={{ fontSize:13,color:"#94a3b8",marginBottom:16 }}>Nenhuma cobrança em aberto no momento.</div>
 :
@@ -946,6 +988,17 @@ return (
 <Inp label="Data" type="date" value={novaData} onChange={setNovaData}/>
 </div>
 <Btn variant="secondary" full onClick={adicionarLancamento} disabled={!novoValor}>Adicionar à lista</Btn>
+</div>}
+{student.billing?.tipo==="avulso" &&
+<div style={{ borderTop:"1px solid #f1f5f9",paddingTop:12,marginBottom:14 }}>
+<div style={{ fontSize:12,fontWeight:700,color:"#475569",marginBottom:4 }}>💳 Registrar aulas pagas adiantado</div>
+<div style={{ fontSize:11,color:"#94a3b8",marginBottom:8 }}>Aluno pagou antes de acontecer. Conforme as aulas forem realizadas, elas são quitadas sozinhas — sem gerar cobrança nova.</div>
+<div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8 }}>
+<Inp label="Aulas" type="number" value={adiantQtd} onChange={setAdiantQtd} placeholder="4"/>
+<Inp label="Valor total (R$)" type="number" value={adiantValor} onChange={setAdiantValor} placeholder="260.00"/>
+<Inp label="Data pagto" type="date" value={adiantData} onChange={setAdiantData}/>
+</div>
+<Btn variant="secondary" full onClick={registrarAdiantamento} disabled={!adiantQtd||!adiantValor}>Registrar adiantamento</Btn>
 </div>}
 <div style={{ display:"flex",gap:10 }}>
 <Btn variant="secondary" full onClick={onClose}>Fechar</Btn>
@@ -1119,10 +1172,12 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
                   <div onClick={()=>nav("studentDetail",{studentId:s.id})} style={{ flex:1,minWidth:0,cursor:"pointer" }}>
                     <div style={{ fontWeight:700,fontSize:14 }}>{s.name}</div>
                     <div style={{ fontSize:11,color:"#94a3b8",marginTop:2 }}>{s.billing.valorAula?fmtR(s.billing.valorAula)+" / aula":"Avulso"}</div>
-                    <div style={{ marginTop:5 }}>
+                    <div style={{ marginTop:5,display:"flex",gap:6,flexWrap:"wrap" }}>
                       {abertosSt.length>0?
                         <Badge color="#c2410c" bg="#fff7ed">{abertosSt.length} em aberto · {fmtR(totalAberto)}</Badge>
                       :<Badge color="#16a34a" bg="#dcfce7">Em dia</Badge>}
+                      {(s.billing?.creditosAvulso||0)>0 &&
+                        <Badge color="#166534" bg="#f0fdf4">💳 {s.billing.creditosAvulso} paga(s) adiantado</Badge>}
                     </div>
                   </div>
                   <Btn sm onClick={()=>setBaixaStudentId(s.id)}>Dar baixa</Btn>
@@ -1342,7 +1397,7 @@ const openAgendaEdit = (entry) => { setAgendaEditId(entry.id); setAgendaEditForm
 const saveAgendaEdit = () => {
   const atualizado = { ...(agendaEntries.find(e=>e.id===agendaEditId)||{}), ...agendaEditForm, id:agendaEditId };
   setAgendaEntries(p=>p.map(e=>e.id===agendaEditId?atualizado:e));
-  atualizarFinanceiroPelaAgenda(atualizado, students, agendaEntries, setPagamentos);
+  atualizarFinanceiroPelaAgenda(atualizado, students, agendaEntries, setPagamentos, setStudents);
   setAgendaEditId(null);
 };
 const delAgendaEntry = async (id) => { if(window.confirm("Remover este compromisso da agenda?")){ await DB.remove("agenda",id); setAgendaEntries(p=>p.filter(e=>e.id!==id)); removerPagamentoDaAgenda(id, setPagamentos); setAgendaEditId(null); } };
@@ -1611,6 +1666,8 @@ return (
           <div style={{ fontSize:11,color:"#64748b",marginTop:2 }}>
             {isAvulso ? (st.billing.valorAula?"R$ "+Number(st.billing.valorAula).toFixed(2).replace(".",",")+" / aula":"Aula avulsa") : (st.billing.plano||"Plano")+(st.billing.modoCobranca==="porSessao"?(st.billing.valorSessao?" · R$ "+Number(st.billing.valorSessao).toFixed(2).replace(".",",")+"/sessão":""):(st.billing.valor?" · R$ "+Number(st.billing.valor).toFixed(2).replace(".",","):""))+" · vence "+fmt(st.billing.vencimento)}
           </div>
+          {isAvulso && (st.billing?.creditosAvulso||0)>0 &&
+            <div style={{ fontSize:11,color:"#166534",fontWeight:700,marginTop:3 }}>💳 {st.billing.creditosAvulso} aula(s) já paga(s) adiantado</div>}
         </div>
         <Btn sm onClick={()=>setBaixaAberta(true)}>Dar baixa</Btn>
       </div>
@@ -6633,6 +6690,9 @@ agendado: { label:"Agendado", color:"#64748b", bg:"#f1f5f9", dot:"#94a3b8" },
 confirmada: { label:"Confirmada", color:"#2563eb", bg:"#dbeafe", dot:"#2563eb" },
 realizada: { label:"Realizada", color:"#16a34a", bg:"#dcfce7", dot:"#16a34a" },
 falta: { label:"Falta", color:"#dc2626", bg:"#fee2e2", dot:"#dc2626" },
+cancelada_professor: { label:"Cancelada pelo professor", color:"#64748b", bg:"#f1f5f9", dot:"#94a3b8" },
+cancelada_aluno_prazo: { label:"Cancelada pelo aluno (no prazo)", color:"#2563eb", bg:"#dbeafe", dot:"#2563eb" },
+cancelada_aluno_sem_prazo: { label:"Cancelada pelo aluno (fora do prazo)", color:"#dc2626", bg:"#fee2e2", dot:"#dc2626" },
 };
 const getWeekDates = (date) => {
 const d = new Date(date);
@@ -6640,7 +6700,7 @@ const dom = new Date(d.getFullYear(), d.getMonth(), d.getDate()-d.getDay());
 return Array.from({length:7},(_,i)=>new Date(dom.getFullYear(), dom.getMonth(), dom.getDate()+i));
 };
 const cap1 = (s) => s ? s.charAt(0).toUpperCase()+s.slice(1) : s;
-const Agenda = ({ students, agendaEntries, setAgendaEntries, pagamentos, setPagamentos, nav }) => {
+const Agenda = ({ students, setStudents, agendaEntries, setAgendaEntries, pagamentos, setPagamentos, nav }) => {
 const [viewMode,setViewMode]=useState("dia");
 const [filterSt,setFilterSt]=useState("");
 const [refDate,setRefDate]=useState(()=>new Date());
@@ -6682,12 +6742,12 @@ if(!entryForm.studentId||!entryForm.date) return;
 if(entryEditId){
 const atualizado = { id:entryEditId, ...entryForm };
 setAgendaEntries(p=>p.map(e=>e.id===entryEditId?atualizado:e));
-atualizarFinanceiroPelaAgenda(atualizado, students, agendaEntries, setPagamentos);
+atualizarFinanceiroPelaAgenda(atualizado, students, agendaEntries, setPagamentos, setStudents);
 }
 else {
 const nova = { id:uid(), ...entryForm };
 setAgendaEntries(p=>[...p,nova]);
-atualizarFinanceiroPelaAgenda(nova, students, agendaEntries, setPagamentos);
+atualizarFinanceiroPelaAgenda(nova, students, agendaEntries, setPagamentos, setStudents);
 }
 setEntryModal(false);
 };
@@ -8867,7 +8927,7 @@ return (
 }{page==="extprograma"&&(()=>{window.open("longevus-programa.html","_self");return null;})()}{page==="cognitivehub"&&<CognitiveHub students={students} hubResults={hubResults} setHubResults={setHubResults}/>}{page==="sessions"&&<SessionTracker students={students} programs={programs} sessions={sessions} setSessions={setSessions} nav={nav}/>}{page==="vincular"&&<VincularAlunos students={students} setStudents={setStudents}/>
 }{page==="extraatividades"&&<AtividadesExtras students={students} atividadesExtras={atividadesExtras} setAtividadesExtras={setAtividadesExtras} prefillStudentId={pageProps.studentId} assessments={assessments} checkins={checkins}/>
 }{page==="financeiro"&&<Financeiro students={students} setStudents={setStudents} planos={planos} setPlanos={setPlanos} pagamentos={pagamentos} setPagamentos={setPagamentos} nav={nav}/>
-}{page==="agenda"&&<Agenda students={students} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} pagamentos={pagamentos} setPagamentos={setPagamentos} nav={nav}/>
+}{page==="agenda"&&<Agenda students={students} setStudents={setStudents} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} pagamentos={pagamentos} setPagamentos={setPagamentos} nav={nav}/>
 }{page==="leads"&&<Leads leads={leads} setLeads={setLeads} students={students} setStudents={setStudents} nav={nav}/>
 }{page==="contrato"&&<Contrato students={students} setStudents={setStudents} contratoModelos={contratoModelos} setContratoModelos={setContratoModelos} contratoAssinaturas={contratoAssinaturas} nav={nav}/>
 }{page==="profile"&&<Profile session={session} onLogoChange={setLogoUrl}/>}
