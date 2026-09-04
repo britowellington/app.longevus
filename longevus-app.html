@@ -1148,6 +1148,7 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
   const aguardandoConfirmacao = students.filter(s=>!s.billing?.ativo && s.billing?.pendente);
   const semCobranca = students.filter(s=>!s.billing?.ativo && !s.billing?.pendente);
   const [baixaStudentId,setBaixaStudentId] = useState(null);
+  const [detalheCard,setDetalheCard] = useState(null); // null | "previsto" | "recebido" | "aberto"
   const baixaStudent = baixaStudentId ? students.find(s=>s.id===baixaStudentId) : null;
   const abertosDe = (studentId) => pagamentos.filter(p=>p.studentId===studentId && p.status==="previsto");
   const confirmarPagamentoInicial = (studentId) => {
@@ -1184,6 +1185,27 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
   const emAbertoTotal = emAberto.reduce((a,p)=>a+(Number(p.valorPrevisto)||0),0);
   const pctRealizado = previstoMes>0 ? Math.round((recebidoMes/previstoMes)*100) : (recebidoMes>0?100:0);
   const pagosRecentes = pagamentos.filter(p=>p.status==="pago" && p.origem!=="credito").sort((a,b)=>(b.dataPagamento||"").localeCompare(a.dataPagamento||"")||(b.createdAt||"").localeCompare(a.createdAt||"")).slice(0,8);
+  const TITULOS_DETALHE = { previsto:"Previsto no período", recebido:"Recebido no período", aberto:"Em aberto no período" };
+  const agruparPorAluno = (tipo) => {
+    const mapa = {};
+    if(tipo==="previsto"){
+      pagamentos.filter(p=>p.dataPrevista && p.dataPrevista>=periodoInicio && p.dataPrevista<=periodoFimSel && p.status!=="cancelado")
+        .forEach(p=>{ mapa[p.studentId] = (mapa[p.studentId]||0) + (Number(p.valorPrevisto)||0); });
+    } else if(tipo==="recebido"){
+      pagamentos.filter(p=>p.status==="pago" && p.dataPagamento && p.dataPagamento>=periodoInicio && p.dataPagamento<=periodoFimSel)
+        .forEach(p=>{ mapa[p.studentId] = (mapa[p.studentId]||0) + (Number(p.valorPago)||0); });
+    } else if(tipo==="aberto"){
+      pagamentos.filter(p=>p.status==="previsto" && p.dataPrevista && p.dataPrevista>=periodoInicio && p.dataPrevista<=periodoFimSel)
+        .forEach(p=>{ mapa[p.studentId] = (mapa[p.studentId]||0) + (Number(p.valorPrevisto)||0); });
+    }
+    const linhas = Object.entries(mapa).map(([sid,total])=>({ studentId:sid, nome: students.find(s=>s.id===sid)?.name||"Aluno", total })).sort((a,b)=>b.total-a.total);
+    let extrasTotal = 0;
+    if(tipo==="previsto") extrasTotal = receitasExtras.filter(r=>r.dataPrevista>=periodoInicio && r.dataPrevista<=periodoFimSel).reduce((a,r)=>a+(Number(r.valorPrevisto)||0),0);
+    if(tipo==="recebido") extrasTotal = receitasExtras.filter(r=>r.status==="recebido" && r.dataPagamento>=periodoInicio && r.dataPagamento<=periodoFimSel).reduce((a,r)=>a+(Number(r.valorPago)||0),0);
+    if(tipo==="aberto") extrasTotal = receitasExtras.filter(r=>r.status==="previsto" && r.dataPrevista>=periodoInicio && r.dataPrevista<=periodoFimSel).reduce((a,r)=>a+(Number(r.valorPrevisto)||0),0);
+    if(extrasTotal>0) linhas.push({ studentId:null, nome:"Outras receitas (extras)", total:extrasTotal });
+    return linhas;
+  };
   const desfazerBaixa = (pg) => {
     const st = students.find(s=>s.id===pg.studentId);
     if(!window.confirm("Desfazer o pagamento de "+(st?.name||"aluno")+" ("+fmtR(pg.valorPago)+")? O lançamento volta pra em aberto.")) return;
@@ -1216,18 +1238,37 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
         <button onClick={()=>setFinView("extras")} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:finView==="extras"?O:"#f1f5f9",color:finView==="extras"?"#fff":"#64748b" }}>Extras</button>
       </div>
       {finView==="dashboard" && <>
+      {detalheCard ? (
+        <div>
+          <button onClick={()=>setDetalheCard(null)} style={{ border:"none",background:"none",color:"#64748b",fontSize:13,fontWeight:700,cursor:"pointer",padding:0,marginBottom:14,display:"flex",alignItems:"center",gap:4 }}>← Voltar</button>
+          <div style={{ fontSize:12,fontWeight:700,color:"#475569",textTransform:"uppercase",marginBottom:4 }}>{TITULOS_DETALHE[detalheCard]}</div>
+          <div style={{ fontWeight:900,fontSize:22,color:"#0f172a",marginBottom:16 }}>{fmtR(agruparPorAluno(detalheCard).reduce((a,l)=>a+l.total,0))}</div>
+          {agruparPorAluno(detalheCard).length===0 ?
+            <Card style={{ textAlign:"center",padding:28 }}><div style={{ color:"#94a3b8",fontSize:13 }}>Nada aqui nesse período.</div></Card>
+          :
+            <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+              {agruparPorAluno(detalheCard).map(l=>(
+                <Card key={l.studentId||"extras"} onClick={()=>l.studentId?nav("studentDetail",{studentId:l.studentId}):setFinView("extras")} style={{ padding:"12px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10 }}>
+                  <span style={{ fontSize:13,fontWeight:700 }}>{l.nome}</span>
+                  <span style={{ fontSize:14,fontWeight:800,color:"#0f172a" }}>{fmtR(l.total)}</span>
+                </Card>
+              ))}
+            </div>
+          }
+        </div>
+      ) : <>
       <div style={{ display:"flex",gap:6,marginBottom:14,overflowX:"auto",paddingBottom:2 }}>
         {PERIODOS.map(pr=>(
           <button key={pr.id} onClick={()=>setPeriodo(pr.id)} style={{ flexShrink:0,border:"none",borderRadius:99,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",background:periodo===pr.id?"#0f172a":"#f1f5f9",color:periodo===pr.id?"#fff":"#64748b" }}>{pr.label}</button>
         ))}
       </div>
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10 }}>
-        <Card style={{ padding:"14px 16px" }}>
+        <Card onClick={()=>setDetalheCard("previsto")} style={{ padding:"14px 16px",cursor:"pointer" }}>
           <div style={{ fontSize:11,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:4 }}>Previsto no período</div>
           <div style={{ fontWeight:900,fontSize:20,color:"#0f172a" }}>{fmtR(previstoMes)}</div>
           {previstoExtrasMes>0 && <div style={{ fontSize:10,color:"#94a3b8",marginTop:3 }}>Alunos {fmtR(previstoAlunosMes)} · Extras {fmtR(previstoExtrasMes)}</div>}
         </Card>
-        <Card style={{ padding:"14px 16px" }}>
+        <Card onClick={()=>setDetalheCard("recebido")} style={{ padding:"14px 16px",cursor:"pointer" }}>
           <div style={{ fontSize:11,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:4 }}>Recebido real</div>
           <div style={{ fontWeight:900,fontSize:20,color:"#16a34a" }}>{fmtR(recebidoMes)}</div>
           {recebidoExtrasMes>0 && <div style={{ fontSize:10,color:"#94a3b8",marginTop:3 }}>Alunos {fmtR(recebidoAlunosMes)} · Extras {fmtR(recebidoExtrasMes)}</div>}
@@ -1238,7 +1279,7 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
           <div style={{ fontSize:11,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:4 }}>% realizado no período</div>
           <div style={{ fontWeight:900,fontSize:20,color:"#0f172a" }}>{pctRealizado}%</div>
         </Card>
-        <Card style={{ padding:"14px 16px",background:emAbertoVencidos.length>0?"#fef2f2":"#fff",borderColor:emAbertoVencidos.length>0?"#fecaca":"#e2e8f0" }}>
+        <Card onClick={()=>setDetalheCard("aberto")} style={{ padding:"14px 16px",cursor:"pointer",background:emAbertoVencidos.length>0?"#fef2f2":"#fff",borderColor:emAbertoVencidos.length>0?"#fecaca":"#e2e8f0" }}>
           <div style={{ fontSize:11,color:emAbertoVencidos.length>0?"#dc2626":"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:4 }}>Em aberto</div>
           <div style={{ fontWeight:900,fontSize:20,color:emAbertoVencidos.length>0?"#dc2626":"#0f172a" }}>{fmtR(emAbertoTotal)}</div>
         </Card>
@@ -1285,6 +1326,7 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
           );
         })}
       </div>
+      </>}
       </>}
       </>}
       {finView==="alunos" && <>
