@@ -2534,9 +2534,10 @@ return <Card style={{ padding:"16px 14px" }}><MultiLineChart series={seriesData}
 {form.billing.ativo&&(
 <>
 <div style={{ display:"flex",gap:6,marginBottom:12 }}>
-<button onClick={()=>setForm(f=>({...f,billing:{...f.billing,tipo:"mensal"}}))} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:form.billing.tipo!=="avulso"?"#FF5603":"#f1f5f9",color:form.billing.tipo!=="avulso"?"#fff":"#64748b" }}>Mensal fixo</button>
+<button onClick={()=>setForm(f=>({...f,billing:{...f.billing,tipo:"mensal"}}))} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:form.billing.tipo!=="avulso"?"#FF5603":"#f1f5f9",color:form.billing.tipo!=="avulso"?"#fff":"#64748b" }}>Mensal</button>
 <button onClick={()=>setForm(f=>({...f,billing:{...f.billing,tipo:"avulso"}}))} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:form.billing.tipo==="avulso"?"#FF5603":"#f1f5f9",color:form.billing.tipo==="avulso"?"#fff":"#64748b" }}>Avulso / por aula</button>
 </div>
+{form.billing.tipo!=="avulso" && <div style={{ fontSize:11,color:"#94a3b8",marginTop:-6,marginBottom:12 }}>Escolha embaixo se a mensalidade é valor fixo ou calculada por sessão.</div>}
 {form.billing.tipo==="avulso" ? (
 <Inp label="Valor por aula (R$)" type="number" value={form.billing.valorAula} onChange={v=>setForm(f=>({...f,billing:{...f.billing,valorAula:v}}))} placeholder="60.00"/>
 ) : (
