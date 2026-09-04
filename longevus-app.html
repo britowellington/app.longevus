@@ -8999,7 +8999,8 @@ if(p.some(m=>m.tipo==="avulso")) return p;
 return [...p, { id:uid(), nome:"Presencial — Aula Avulsa", tipo:"avulso", texto:CONTRATO_MODELO_AVULSO_TEXTO, prazoDias:7, padrao:false, createdAt:todayStr() }];
 });
 },[dbReady]);
-// Preenche retroativamente o previsto de aulas avulsas que já estavam agendadas antes desse ajuste
+// Preenche retroativamente o previsto de aulas (avulso e mensal por sessão) que já estavam
+// agendadas antes desse mecanismo existir, ou antes de virar por-aula
 useEffect(()=>{
 if(!dbReady) return;
 setPagamentos(p=>{
@@ -9007,9 +9008,13 @@ const existentes = new Set(p.map(x=>x.agendaEntryId).filter(Boolean));
 const novos = [];
 agendaEntries.forEach(entry=>{
 if(existentes.has(entry.id)) return;
+if(STATUS_NAO_COBRAM.includes(entry.status)) return;
 const st = students.find(s=>s.id===entry.studentId);
-if(!st || st.billing?.tipo!=="avulso" || !st.billing?.ativo) return;
-novos.push(novoPagamentoAvulso(st, entry.date, entry.id));
+if(!st || !st.billing?.ativo) return;
+const ehAvulso = st.billing?.tipo==="avulso";
+const ehPorSessao = !ehAvulso && st.billing?.modoCobranca==="porSessao";
+if(!ehAvulso && !ehPorSessao) return;
+novos.push(ehAvulso ? novoPagamentoAvulso(st, entry.date, entry.id) : novoPagamentoPorSessao(st, entry.date, entry.id));
 });
 return novos.length ? [...p, ...novos] : p;
 });
