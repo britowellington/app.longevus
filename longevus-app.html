@@ -1064,7 +1064,7 @@ return (
 </Modal>
 );
 };
-const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setPagamentos, nav }) => {
+const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setPagamentos, receitasExtras, setReceitasExtras, nav }) => {
   const [finView,setFinView] = useState("alunos");
   const [planoModal,setPlanoModal] = useState(false);
   const [planoEditId,setPlanoEditId] = useState(null);
@@ -1082,6 +1082,24 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
     if(!window.confirm("Excluir este plano? Alunos já vinculados a ele não são afetados.")) return;
     await DB.remove("planos",id);
     setPlanos(p=>p.filter(pl=>pl.id!==id));
+  };
+  const CATEGORIAS_EXTRA = [{v:"produto",l:"Produto"},{v:"servico",l:"Serviço"},{v:"outro",l:"Outro"}];
+  const [extraModal,setExtraModal] = useState(false);
+  const [extraEditId,setExtraEditId] = useState(null);
+  const emptyExtra = () => ({ descricao:"", categoria:"produto", valor:"", data:todayStr(), obs:"" });
+  const [extraForm,setExtraForm] = useState(emptyExtra());
+  const openNovaExtra = () => { setExtraEditId(null); setExtraForm(emptyExtra()); setExtraModal(true); };
+  const openEditExtra = (r) => { setExtraEditId(r.id); setExtraForm({ descricao:r.descricao, categoria:r.categoria||"outro", valor:r.valor, data:r.data||todayStr(), obs:r.obs||"" }); setExtraModal(true); };
+  const salvarExtra = () => {
+    if(!extraForm.descricao.trim() || !extraForm.valor) return;
+    if(extraEditId) setReceitasExtras(p=>p.map(r=>r.id===extraEditId?{...r,...extraForm,valor:Number(extraForm.valor)}:r));
+    else setReceitasExtras(p=>[...p,{ id:uid(), ...extraForm, valor:Number(extraForm.valor), createdAt:todayStr() }]);
+    setExtraModal(false);
+  };
+  const excluirExtra = async (id) => {
+    if(!window.confirm("Excluir essa receita extra?")) return;
+    await DB.remove("receitas_extras",id);
+    setReceitasExtras(p=>p.filter(r=>r.id!==id));
   };
   const alunosPorPlano = (nome) => students.filter(s=>s.billing?.ativo && s.billing?.plano===nome).length;
   const hoje = todayStr();
@@ -1121,7 +1139,9 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
     return [toISODateLocal(inicioD), hoje];
   })();
   const previstoMes = pagamentos.filter(p=>p.dataPrevista && p.dataPrevista>=periodoInicio && p.dataPrevista<=periodoFimSel && p.status!=="cancelado").reduce((a,p)=>a+(Number(p.valorPrevisto)||0),0);
-  const recebidoMes = pagamentos.filter(p=>p.status==="pago" && p.dataPagamento && p.dataPagamento>=periodoInicio && p.dataPagamento<=periodoFimSel).reduce((a,p)=>a+(Number(p.valorPago)||0),0);
+  const recebidoAlunosMes = pagamentos.filter(p=>p.status==="pago" && p.dataPagamento && p.dataPagamento>=periodoInicio && p.dataPagamento<=periodoFimSel).reduce((a,p)=>a+(Number(p.valorPago)||0),0);
+  const recebidoExtrasMes = receitasExtras.filter(r=>r.data && r.data>=periodoInicio && r.data<=periodoFimSel).reduce((a,r)=>a+(Number(r.valor)||0),0);
+  const recebidoMes = recebidoAlunosMes + recebidoExtrasMes;
   const emAberto = pagamentos.filter(p=>p.status==="previsto" && p.dataPrevista && p.dataPrevista>=periodoInicio && p.dataPrevista<=periodoFimSel).sort((a,b)=>(a.dataPrevista||"").localeCompare(b.dataPrevista||""));
   const emAbertoVencidos = emAberto.filter(p=>p.dataPrevista && p.dataPrevista<hoje);
   const emAbertoTotal = emAberto.reduce((a,p)=>a+(Number(p.valorPrevisto)||0),0);
@@ -1137,10 +1157,13 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
       setPagamentos(p=>p.map(x=>x.id===pg.id?{...x,status:"previsto",valorPago:null,dataPagamento:null}:x));
     }
   };
-  // Últimos 6 meses: previsto x pago
+  // Últimos 6 meses: previsto x pago (pago inclui receitas extras)
   const ultimosMeses = Array.from({length:6},(_,i)=>{ const d=new Date(); d.setMonth(d.getMonth()-(5-i)); return mesChave(d.toISOString().slice(0,10)); });
   const previstoPorMes = ultimosMeses.map(m=>pagamentos.filter(p=>mesChave(p.dataPrevista)===m && p.status!=="cancelado").reduce((a,p)=>a+(Number(p.valorPrevisto)||0),0));
-  const pagoPorMes = ultimosMeses.map(m=>pagamentos.filter(p=>p.status==="pago" && mesChave(p.dataPagamento)===m).reduce((a,p)=>a+(Number(p.valorPago)||0),0));
+  const pagoPorMes = ultimosMeses.map(m=>
+    pagamentos.filter(p=>p.status==="pago" && mesChave(p.dataPagamento)===m).reduce((a,p)=>a+(Number(p.valorPago)||0),0) +
+    receitasExtras.filter(r=>mesChave(r.data)===m).reduce((a,r)=>a+(Number(r.valor)||0),0)
+  );
   const labelsMeses = ultimosMeses.map(m=>{ const [y,mo]=m.split("-"); return MESES_NOME[parseInt(mo,10)-1].slice(0,3); });
   return (
     <div>
@@ -1150,6 +1173,7 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
         <button onClick={()=>setFinView("dashboard")} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:finView==="dashboard"?O:"#f1f5f9",color:finView==="dashboard"?"#fff":"#64748b" }}>Dashboard</button>
         <button onClick={()=>setFinView("alunos")} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:finView==="alunos"?O:"#f1f5f9",color:finView==="alunos"?"#fff":"#64748b" }}>Alunos</button>
         <button onClick={()=>setFinView("planos")} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:finView==="planos"?O:"#f1f5f9",color:finView==="planos"?"#fff":"#64748b" }}>Planos</button>
+        <button onClick={()=>setFinView("extras")} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:finView==="extras"?O:"#f1f5f9",color:finView==="extras"?"#fff":"#64748b" }}>Extras</button>
       </div>
       {finView==="dashboard" && <>
       <div style={{ display:"flex",gap:6,marginBottom:14,overflowX:"auto",paddingBottom:2 }}>
@@ -1165,6 +1189,7 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
         <Card style={{ padding:"14px 16px" }}>
           <div style={{ fontSize:11,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:4 }}>Recebido real</div>
           <div style={{ fontWeight:900,fontSize:20,color:"#16a34a" }}>{fmtR(recebidoMes)}</div>
+          {recebidoExtrasMes>0 && <div style={{ fontSize:10,color:"#94a3b8",marginTop:3 }}>Alunos {fmtR(recebidoAlunosMes)} · Extras {fmtR(recebidoExtrasMes)}</div>}
         </Card>
       </div>
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:18 }}>
@@ -1356,6 +1381,50 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
           <div style={{ display:"flex",gap:8 }}>
             {planoEditId && <Btn variant="danger" onClick={()=>{excluirPlano(planoEditId);setPlanoModal(false);}}>Excluir</Btn>}
             <Btn full onClick={salvarPlano} disabled={!planoForm.nome.trim()}>Salvar</Btn>
+          </div>
+        </Modal>}
+      </>}
+      {finView==="extras" && <>
+        <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14 }}>
+          <div style={{ fontSize:13,color:"#94a3b8" }}>Vendas de produtos, serviços avulsos ou qualquer outra fonte de renda — separado da mensalidade dos alunos.</div>
+        </div>
+        <Btn full icon="plus" onClick={openNovaExtra} style={{ marginBottom:16 }}>Nova Receita Extra</Btn>
+        {receitasExtras.length===0 ? <Card style={{ textAlign:"center",padding:32 }}><I n="money" c="#cbd5e1" s={32}/><div style={{ color:"#94a3b8",marginTop:10 }}>Nenhuma receita extra registrada ainda.</div></Card> :
+        <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+          {[...receitasExtras].sort((a,b)=>(b.data||"").localeCompare(a.data||"")).map(r=>(
+            <Card key={r.id} onClick={()=>openEditExtra(r)} style={{ padding:"14px 16px" }}>
+              <div style={{ display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10 }}>
+                <div style={{ flex:1,minWidth:0 }}>
+                  <div style={{ display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:4 }}>
+                    <span style={{ fontWeight:700,fontSize:14 }}>{r.descricao}</span>
+                    <Badge color="#6366f1" bg="#eef2ff">{CATEGORIAS_EXTRA.find(c=>c.v===r.categoria)?.l||"Outro"}</Badge>
+                  </div>
+                  <div style={{ fontSize:13,fontWeight:800,color:"#16a34a" }}>{fmtR(r.valor)}</div>
+                  <div style={{ fontSize:11,color:"#94a3b8",marginTop:4 }}>{fmt(r.data)}{r.obs?" · "+r.obs:""}</div>
+                </div>
+                <button onClick={ev=>{ev.stopPropagation();excluirExtra(r.id);}} style={{ background:"none",border:"none",cursor:"pointer",color:"#e2e8f0",padding:4,flexShrink:0 }}><I n="trash" s={15}/></button>
+              </div>
+            </Card>
+          ))}
+        </div>}
+        {extraModal && <Modal title={extraEditId?"Editar Receita Extra":"Nova Receita Extra"} onClose={()=>setExtraModal(false)}>
+          <Inp label="Descrição *" value={extraForm.descricao} onChange={v=>setExtraForm(f=>({...f,descricao:v}))} placeholder="Ex: Venda de whey, Consultoria online..."/>
+          <div style={{ display:"flex",gap:6,marginBottom:13 }}>
+            {CATEGORIAS_EXTRA.map(c=>(
+              <button key={c.v} onClick={()=>setExtraForm(f=>({...f,categoria:c.v}))} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:extraForm.categoria===c.v?O:"#f1f5f9",color:extraForm.categoria===c.v?"#fff":"#64748b" }}>{c.l}</button>
+            ))}
+          </div>
+          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
+            <Inp label="Valor (R$) *" type="number" value={extraForm.valor} onChange={v=>setExtraForm(f=>({...f,valor:v}))} placeholder="50.00"/>
+            <Inp label="Data" type="date" value={extraForm.data} onChange={v=>setExtraForm(f=>({...f,data:v}))}/>
+          </div>
+          <div style={{ marginBottom:13 }}>
+            <div style={{ fontSize:12,fontWeight:600,color:"#475569",marginBottom:5 }}>Observação (opcional)</div>
+            <textarea value={extraForm.obs} onChange={e=>setExtraForm(f=>({...f,obs:e.target.value}))} placeholder="Detalhes adicionais..." rows={2} style={{ width:"100%",padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,color:"#0f172a",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical" }}/>
+          </div>
+          <div style={{ display:"flex",gap:8 }}>
+            {extraEditId && <Btn variant="danger" onClick={()=>{excluirExtra(extraEditId);setExtraModal(false);}}>Excluir</Btn>}
+            <Btn full onClick={salvarExtra} disabled={!extraForm.descricao.trim()||!extraForm.valor}>Salvar</Btn>
           </div>
         </Modal>}
       </>}
@@ -8755,6 +8824,7 @@ const [atividadesExtras,setAtividadesExtras]=useState(()=>LS.get("longevus_ativi
 const [professorFeedbacks,setProfessorFeedbacks]=useState(()=>LS.get("longevus_professor_feedbacks",[]));
 const [agendaEntries,setAgendaEntries]=useState(()=>LS.get("longevus_agenda",[]));
 const [pagamentos,setPagamentos]=useState(()=>LS.get("longevus_pagamentos",[]));
+const [receitasExtras,setReceitasExtras]=useState(()=>LS.get("longevus_receitas_extras",[]));
 const [leads,setLeads]=useState(()=>LS.get("longevus_leads",[]).map(migrateLead));
 const [exerciciosBiblioteca,setExerciciosBiblioteca]=useState(()=>LS.get("longevus_exercicios_biblioteca",[]));
 const [planos,setPlanos]=useState(()=>LS.get("longevus_planos",[]));
@@ -8777,10 +8847,10 @@ setDbReady(false);
 (async()=>{
 setSyncing(true);
 try {
-const [s,a,d,docs,c,p,sess,ae,ck,pf,ag,ld,exb,pln,cm,ca,pg] = await Promise.all([
+const [s,a,d,docs,c,p,sess,ae,ck,pf,ag,ld,exb,pln,cm,ca,pg,rex] = await Promise.all([
 DB.load("students"), DB.load("assessments"), DB.load("daily_logs"),
 DB.load("documents"), DB.load("cardio_records"), DB.load("programs"), DB.load("sessions"),
-DB.load("atividades_extras"), DB.loadRaw("checkins"), DB.load("professor_feedbacks"), DB.load("agenda"), DB.load("leads"), DB.loadRaw("exercises","select=*"), DB.load("planos"), DB.load("contrato_modelo"), DB.loadRaw("contrato_assinaturas","select=*"), DB.load("pagamentos")
+DB.load("atividades_extras"), DB.loadRaw("checkins"), DB.load("professor_feedbacks"), DB.load("agenda"), DB.load("leads"), DB.loadRaw("exercises","select=*"), DB.load("planos"), DB.load("contrato_modelo"), DB.loadRaw("contrato_assinaturas","select=*"), DB.load("pagamentos"), DB.load("receitas_extras")
 ]);
 if(s!==null){ setStudents(s); LS.set("longevus_students",s); }
 if(a!==null){ setAssessments(a); LS.set("longevus_assessments",a); }
@@ -8794,6 +8864,7 @@ if(ck!==null){ setCheckins(ck); LS.set("longevus_checkins",ck); }
 if(pf!==null){ setProfessorFeedbacks(pf); LS.set("longevus_professor_feedbacks",pf); }
 if(ag!==null){ setAgendaEntries(ag); LS.set("longevus_agenda",ag); }
 if(pg!==null){ setPagamentos(pg); LS.set("longevus_pagamentos",pg); }
+if(rex!==null){ setReceitasExtras(rex); LS.set("longevus_receitas_extras",rex); }
 if(ld!==null){ const ldMigrado=ld.map(migrateLead); setLeads(ldMigrado); LS.set("longevus_leads",ldMigrado); }
 if(exb!==null){ setExerciciosBiblioteca(exb); LS.set("longevus_exercicios_biblioteca",exb); }
 if(pln!==null){ setPlanos(pln); LS.set("longevus_planos",pln); }
@@ -8852,6 +8923,7 @@ useEffect(()=>{LS.set("longevus_atividades_extras",atividadesExtras);},[atividad
 useEffect(()=>{LS.set("longevus_professor_feedbacks",professorFeedbacks);},[professorFeedbacks]);
 useEffect(()=>{LS.set("longevus_agenda",agendaEntries);},[agendaEntries]);
 useEffect(()=>{LS.set("longevus_pagamentos",pagamentos);},[pagamentos]);
+useEffect(()=>{LS.set("longevus_receitas_extras",receitasExtras);},[receitasExtras]);
 useEffect(()=>{LS.set("longevus_leads",leads);},[leads]);
 useEffect(()=>{LS.set("longevus_planos",planos);},[planos]);
 useEffect(()=>{LS.set("longevus_contrato_modelos",contratoModelos);},[contratoModelos]);
@@ -8867,6 +8939,7 @@ useEffect(()=>{ if(dbReady) atividadesExtras.forEach(a=>DB.save("atividades_extr
 useEffect(()=>{ if(dbReady) professorFeedbacks.forEach(f=>DB.save("professor_feedbacks",f.id,f,f.studentId)); },[professorFeedbacks,dbReady]);
 useEffect(()=>{ if(dbReady) agendaEntries.forEach(e=>DB.save("agenda",e.id,e,e.studentId)); },[agendaEntries,dbReady]);
 useEffect(()=>{ if(dbReady) pagamentos.forEach(pg=>DB.save("pagamentos",pg.id,pg,pg.studentId)); },[pagamentos,dbReady]);
+useEffect(()=>{ if(dbReady) receitasExtras.forEach(r=>DB.save("receitas_extras",r.id,r)); },[receitasExtras,dbReady]);
 useEffect(()=>{ if(dbReady) leads.forEach(l=>DB.save("leads",l.id,l,l.studentId||null)); },[leads,dbReady]);
 useEffect(()=>{ if(dbReady) planos.forEach(pl=>DB.save("planos",pl.id,pl,null)); },[planos,dbReady]);
 useEffect(()=>{ if(dbReady) contratoModelos.forEach(m=>DB.save("contrato_modelo",m.id,m,null)); },[contratoModelos,dbReady]);
@@ -9012,7 +9085,7 @@ return (
 }{page==="questionarios"&&<Questionarios students={students} nav={nav} onRefreshCount={refreshPendingCount}/>
 }{page==="extprograma"&&(()=>{window.open("longevus-programa.html","_self");return null;})()}{page==="cognitivehub"&&<CognitiveHub students={students} hubResults={hubResults} setHubResults={setHubResults}/>}{page==="sessions"&&<SessionTracker students={students} programs={programs} sessions={sessions} setSessions={setSessions} nav={nav}/>}{page==="vincular"&&<VincularAlunos students={students} setStudents={setStudents}/>
 }{page==="extraatividades"&&<AtividadesExtras students={students} atividadesExtras={atividadesExtras} setAtividadesExtras={setAtividadesExtras} prefillStudentId={pageProps.studentId} assessments={assessments} checkins={checkins}/>
-}{page==="financeiro"&&<Financeiro students={students} setStudents={setStudents} planos={planos} setPlanos={setPlanos} pagamentos={pagamentos} setPagamentos={setPagamentos} nav={nav}/>
+}{page==="financeiro"&&<Financeiro students={students} setStudents={setStudents} planos={planos} setPlanos={setPlanos} pagamentos={pagamentos} setPagamentos={setPagamentos} receitasExtras={receitasExtras} setReceitasExtras={setReceitasExtras} nav={nav}/>
 }{page==="agenda"&&<Agenda students={students} setStudents={setStudents} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} pagamentos={pagamentos} setPagamentos={setPagamentos} nav={nav}/>
 }{page==="leads"&&<Leads leads={leads} setLeads={setLeads} students={students} setStudents={setStudents} nav={nav}/>
 }{page==="contrato"&&<Contrato students={students} setStudents={setStudents} contratoModelos={contratoModelos} setContratoModelos={setContratoModelos} contratoAssinaturas={contratoAssinaturas} nav={nav}/>
