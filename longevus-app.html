@@ -1084,17 +1084,52 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
     setPlanos(p=>p.filter(pl=>pl.id!==id));
   };
   const CATEGORIAS_EXTRA = [{v:"produto",l:"Produto"},{v:"servico",l:"Serviço"},{v:"outro",l:"Outro"}];
+  const FREQ_EXTRA = [{v:"semanal",l:"Semanal",dias:7},{v:"quinzenal",l:"Quinzenal",dias:15},{v:"mensal",l:"Mensal",dias:30}];
+  const proximaDataRecorrente = (dataStr, frequencia) => {
+    const dias = (FREQ_EXTRA.find(f=>f.v===frequencia)||FREQ_EXTRA[2]).dias;
+    const d = new Date((dataStr||todayStr())+"T00:00:00"); d.setDate(d.getDate()+dias);
+    return toISODateLocal(d);
+  };
   const [extraModal,setExtraModal] = useState(false);
   const [extraEditId,setExtraEditId] = useState(null);
-  const emptyExtra = () => ({ descricao:"", categoria:"produto", valor:"", data:todayStr(), obs:"" });
+  const emptyExtra = () => ({ descricao:"", categoria:"produto", recorrente:false, frequencia:"mensal", valor:"", data:todayStr(), obs:"" });
   const [extraForm,setExtraForm] = useState(emptyExtra());
   const openNovaExtra = () => { setExtraEditId(null); setExtraForm(emptyExtra()); setExtraModal(true); };
-  const openEditExtra = (r) => { setExtraEditId(r.id); setExtraForm({ descricao:r.descricao, categoria:r.categoria||"outro", valor:r.valor, data:r.data||todayStr(), obs:r.obs||"" }); setExtraModal(true); };
+  const openEditExtra = (r) => {
+    setExtraEditId(r.id);
+    setExtraForm({ descricao:r.descricao, categoria:r.categoria||"outro", recorrente:!!r.recorrente, frequencia:r.frequencia||"mensal",
+      valor: r.status==="previsto" ? r.valorPrevisto : r.valorPago,
+      data: r.status==="previsto" ? r.dataPrevista : r.dataPagamento,
+      obs:r.obs||"" });
+    setExtraModal(true);
+  };
   const salvarExtra = () => {
     if(!extraForm.descricao.trim() || !extraForm.valor) return;
-    if(extraEditId) setReceitasExtras(p=>p.map(r=>r.id===extraEditId?{...r,...extraForm,valor:Number(extraForm.valor)}:r));
-    else setReceitasExtras(p=>[...p,{ id:uid(), ...extraForm, valor:Number(extraForm.valor), createdAt:todayStr() }]);
+    const valor = Number(extraForm.valor);
+    if(extraEditId){
+      setReceitasExtras(p=>p.map(r=>{
+        if(r.id!==extraEditId) return r;
+        const base = { ...r, descricao:extraForm.descricao, categoria:extraForm.categoria, recorrente:extraForm.recorrente, frequencia:extraForm.recorrente?extraForm.frequencia:null, obs:extraForm.obs };
+        return r.status==="previsto" ? {...base, dataPrevista:extraForm.data, valorPrevisto:valor} : {...base, dataPagamento:extraForm.data, valorPago:valor, dataPrevista:extraForm.data, valorPrevisto:valor};
+      }));
+    } else if(extraForm.recorrente){
+      setReceitasExtras(p=>[...p,{ id:uid(), descricao:extraForm.descricao, categoria:extraForm.categoria, recorrente:true, frequencia:extraForm.frequencia,
+        status:"previsto", dataPrevista:extraForm.data, valorPrevisto:valor, dataPagamento:null, valorPago:null, obs:extraForm.obs, createdAt:todayStr() }]);
+    } else {
+      setReceitasExtras(p=>[...p,{ id:uid(), descricao:extraForm.descricao, categoria:extraForm.categoria, recorrente:false, frequencia:null,
+        status:"recebido", dataPrevista:extraForm.data, valorPrevisto:valor, dataPagamento:extraForm.data, valorPago:valor, obs:extraForm.obs, createdAt:todayStr() }]);
+    }
     setExtraModal(false);
+  };
+  const confirmarRecebimentoExtra = (r) => {
+    const hoje = todayStr();
+    setReceitasExtras(p=>{
+      const atualizado = p.map(x=>x.id===r.id?{...x,status:"recebido",valorPago:x.valorPrevisto,dataPagamento:hoje}:x);
+      if(!r.recorrente) return atualizado;
+      const proxima = proximaDataRecorrente(r.dataPrevista, r.frequencia);
+      return [...atualizado, { id:uid(), descricao:r.descricao, categoria:r.categoria, recorrente:true, frequencia:r.frequencia,
+        status:"previsto", dataPrevista:proxima, valorPrevisto:r.valorPrevisto, dataPagamento:null, valorPago:null, obs:r.obs, createdAt:todayStr() }];
+    });
   };
   const excluirExtra = async (id) => {
     if(!window.confirm("Excluir essa receita extra?")) return;
@@ -1138,9 +1173,11 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
     const inicioD = new Date(fimD); inicioD.setDate(inicioD.getDate()-dias);
     return [toISODateLocal(inicioD), hoje];
   })();
-  const previstoMes = pagamentos.filter(p=>p.dataPrevista && p.dataPrevista>=periodoInicio && p.dataPrevista<=periodoFimSel && p.status!=="cancelado").reduce((a,p)=>a+(Number(p.valorPrevisto)||0),0);
+  const previstoAlunosMes = pagamentos.filter(p=>p.dataPrevista && p.dataPrevista>=periodoInicio && p.dataPrevista<=periodoFimSel && p.status!=="cancelado").reduce((a,p)=>a+(Number(p.valorPrevisto)||0),0);
+  const previstoExtrasMes = receitasExtras.filter(r=>r.dataPrevista && r.dataPrevista>=periodoInicio && r.dataPrevista<=periodoFimSel).reduce((a,r)=>a+(Number(r.valorPrevisto)||0),0);
+  const previstoMes = previstoAlunosMes + previstoExtrasMes;
   const recebidoAlunosMes = pagamentos.filter(p=>p.status==="pago" && p.dataPagamento && p.dataPagamento>=periodoInicio && p.dataPagamento<=periodoFimSel).reduce((a,p)=>a+(Number(p.valorPago)||0),0);
-  const recebidoExtrasMes = receitasExtras.filter(r=>r.data && r.data>=periodoInicio && r.data<=periodoFimSel).reduce((a,r)=>a+(Number(r.valor)||0),0);
+  const recebidoExtrasMes = receitasExtras.filter(r=>r.status==="recebido" && r.dataPagamento && r.dataPagamento>=periodoInicio && r.dataPagamento<=periodoFimSel).reduce((a,r)=>a+(Number(r.valorPago)||0),0);
   const recebidoMes = recebidoAlunosMes + recebidoExtrasMes;
   const emAberto = pagamentos.filter(p=>p.status==="previsto" && p.dataPrevista && p.dataPrevista>=periodoInicio && p.dataPrevista<=periodoFimSel).sort((a,b)=>(a.dataPrevista||"").localeCompare(b.dataPrevista||""));
   const emAbertoVencidos = emAberto.filter(p=>p.dataPrevista && p.dataPrevista<hoje);
@@ -1157,12 +1194,15 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
       setPagamentos(p=>p.map(x=>x.id===pg.id?{...x,status:"previsto",valorPago:null,dataPagamento:null}:x));
     }
   };
-  // Últimos 6 meses: previsto x pago (pago inclui receitas extras)
+  // Últimos 6 meses: previsto x recebido (ambos incluem alunos + receitas extras)
   const ultimosMeses = Array.from({length:6},(_,i)=>{ const d=new Date(); d.setMonth(d.getMonth()-(5-i)); return mesChave(d.toISOString().slice(0,10)); });
-  const previstoPorMes = ultimosMeses.map(m=>pagamentos.filter(p=>mesChave(p.dataPrevista)===m && p.status!=="cancelado").reduce((a,p)=>a+(Number(p.valorPrevisto)||0),0));
+  const previstoPorMes = ultimosMeses.map(m=>
+    pagamentos.filter(p=>mesChave(p.dataPrevista)===m && p.status!=="cancelado").reduce((a,p)=>a+(Number(p.valorPrevisto)||0),0) +
+    receitasExtras.filter(r=>mesChave(r.dataPrevista)===m).reduce((a,r)=>a+(Number(r.valorPrevisto)||0),0)
+  );
   const pagoPorMes = ultimosMeses.map(m=>
     pagamentos.filter(p=>p.status==="pago" && mesChave(p.dataPagamento)===m).reduce((a,p)=>a+(Number(p.valorPago)||0),0) +
-    receitasExtras.filter(r=>mesChave(r.data)===m).reduce((a,r)=>a+(Number(r.valor)||0),0)
+    receitasExtras.filter(r=>r.status==="recebido" && mesChave(r.dataPagamento)===m).reduce((a,r)=>a+(Number(r.valorPago)||0),0)
   );
   const labelsMeses = ultimosMeses.map(m=>{ const [y,mo]=m.split("-"); return MESES_NOME[parseInt(mo,10)-1].slice(0,3); });
   return (
@@ -1185,6 +1225,7 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
         <Card style={{ padding:"14px 16px" }}>
           <div style={{ fontSize:11,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:4 }}>Previsto no período</div>
           <div style={{ fontWeight:900,fontSize:20,color:"#0f172a" }}>{fmtR(previstoMes)}</div>
+          {previstoExtrasMes>0 && <div style={{ fontSize:10,color:"#94a3b8",marginTop:3 }}>Alunos {fmtR(previstoAlunosMes)} · Extras {fmtR(previstoExtrasMes)}</div>}
         </Card>
         <Card style={{ padding:"14px 16px" }}>
           <div style={{ fontSize:11,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:4 }}>Recebido real</div>
@@ -1386,38 +1427,58 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
       </>}
       {finView==="extras" && <>
         <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14 }}>
-          <div style={{ fontSize:13,color:"#94a3b8" }}>Vendas de produtos, serviços avulsos ou qualquer outra fonte de renda — separado da mensalidade dos alunos.</div>
+          <div style={{ fontSize:13,color:"#94a3b8" }}>Vendas de produtos, serviços avulsos, ou receitas recorrentes (aluguel, assinaturas etc.) — separado da mensalidade dos alunos.</div>
         </div>
         <Btn full icon="plus" onClick={openNovaExtra} style={{ marginBottom:16 }}>Nova Receita Extra</Btn>
         {receitasExtras.length===0 ? <Card style={{ textAlign:"center",padding:32 }}><I n="money" c="#cbd5e1" s={32}/><div style={{ color:"#94a3b8",marginTop:10 }}>Nenhuma receita extra registrada ainda.</div></Card> :
         <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
-          {[...receitasExtras].sort((a,b)=>(b.data||"").localeCompare(a.data||"")).map(r=>(
-            <Card key={r.id} onClick={()=>openEditExtra(r)} style={{ padding:"14px 16px" }}>
+          {[...receitasExtras].sort((a,b)=>((b.status==="previsto"?b.dataPrevista:b.dataPagamento)||"").localeCompare((a.status==="previsto"?a.dataPrevista:a.dataPagamento)||"")).map(r=>{
+            const previsto = r.status==="previsto";
+            const vencido = previsto && r.dataPrevista && r.dataPrevista<hoje;
+            return (
+            <Card key={r.id} style={{ padding:"14px 16px" }}>
               <div style={{ display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10 }}>
-                <div style={{ flex:1,minWidth:0 }}>
-                  <div style={{ display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:4 }}>
+                <div onClick={()=>openEditExtra(r)} style={{ flex:1,minWidth:0,cursor:"pointer" }}>
+                  <div style={{ display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:4 }}>
                     <span style={{ fontWeight:700,fontSize:14 }}>{r.descricao}</span>
                     <Badge color="#6366f1" bg="#eef2ff">{CATEGORIAS_EXTRA.find(c=>c.v===r.categoria)?.l||"Outro"}</Badge>
+                    {r.recorrente && <Badge color="#7c3aed" bg="#f3e8ff">↻ {FREQ_EXTRA.find(f=>f.v===r.frequencia)?.l||"Recorrente"}</Badge>}
+                    {previsto && <Badge color={vencido?"#dc2626":"#c2410c"} bg={vencido?"#fee2e2":"#fff7ed"}>{vencido?"Vencido":"Previsto"}</Badge>}
                   </div>
-                  <div style={{ fontSize:13,fontWeight:800,color:"#16a34a" }}>{fmtR(r.valor)}</div>
-                  <div style={{ fontSize:11,color:"#94a3b8",marginTop:4 }}>{fmt(r.data)}{r.obs?" · "+r.obs:""}</div>
+                  <div style={{ fontSize:13,fontWeight:800,color:previsto?"#0f172a":"#16a34a" }}>{fmtR(previsto?r.valorPrevisto:r.valorPago)}</div>
+                  <div style={{ fontSize:11,color:"#94a3b8",marginTop:4 }}>{previsto?"Previsto: "+fmt(r.dataPrevista):"Recebido: "+fmt(r.dataPagamento)}{r.obs?" · "+r.obs:""}</div>
                 </div>
                 <button onClick={ev=>{ev.stopPropagation();excluirExtra(r.id);}} style={{ background:"none",border:"none",cursor:"pointer",color:"#e2e8f0",padding:4,flexShrink:0 }}><I n="trash" s={15}/></button>
               </div>
+              {previsto && <Btn sm full onClick={()=>confirmarRecebimentoExtra(r)} style={{ marginTop:10 }}>Confirmar recebimento</Btn>}
             </Card>
-          ))}
+            );
+          })}
         </div>}
         {extraModal && <Modal title={extraEditId?"Editar Receita Extra":"Nova Receita Extra"} onClose={()=>setExtraModal(false)}>
-          <Inp label="Descrição *" value={extraForm.descricao} onChange={v=>setExtraForm(f=>({...f,descricao:v}))} placeholder="Ex: Venda de whey, Consultoria online..."/>
+          <Inp label="Descrição *" value={extraForm.descricao} onChange={v=>setExtraForm(f=>({...f,descricao:v}))} placeholder="Ex: Venda de whey, Aluguel de sala..."/>
           <div style={{ display:"flex",gap:6,marginBottom:13 }}>
             {CATEGORIAS_EXTRA.map(c=>(
               <button key={c.v} onClick={()=>setExtraForm(f=>({...f,categoria:c.v}))} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:extraForm.categoria===c.v?O:"#f1f5f9",color:extraForm.categoria===c.v?"#fff":"#64748b" }}>{c.l}</button>
             ))}
           </div>
-          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
-            <Inp label="Valor (R$) *" type="number" value={extraForm.valor} onChange={v=>setExtraForm(f=>({...f,valor:v}))} placeholder="50.00"/>
-            <Inp label="Data" type="date" value={extraForm.data} onChange={v=>setExtraForm(f=>({...f,data:v}))}/>
+          <div onClick={()=>setExtraForm(f=>({...f,recorrente:!f.recorrente}))} style={{ display:"flex",alignItems:"center",gap:10,marginBottom:13,cursor:"pointer",background:"#f8fafc",borderRadius:9,padding:"10px 12px" }}>
+            <div style={{ width:38,height:22,borderRadius:99,background:extraForm.recorrente?"#FF5603":"#cbd5e1",position:"relative",transition:"background 0.15s",flexShrink:0 }}>
+              <div style={{ width:18,height:18,borderRadius:99,background:"#fff",position:"absolute",top:2,left:extraForm.recorrente?18:2,transition:"left 0.15s" }}/>
+            </div>
+            <div style={{ fontSize:13,fontWeight:600,color:"#334155" }}>É uma receita recorrente</div>
           </div>
+          {extraForm.recorrente &&
+          <div style={{ display:"flex",gap:6,marginBottom:13 }}>
+            {FREQ_EXTRA.map(f=>(
+              <button key={f.v} onClick={()=>setExtraForm(ff=>({...ff,frequencia:f.v}))} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:12,fontWeight:700,cursor:"pointer",background:extraForm.frequencia===f.v?"#0f172a":"#f1f5f9",color:extraForm.frequencia===f.v?"#fff":"#64748b" }}>{f.l}</button>
+            ))}
+          </div>}
+          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
+            <Inp label={extraForm.recorrente?"Valor esperado (R$) *":"Valor (R$) *"} type="number" value={extraForm.valor} onChange={v=>setExtraForm(f=>({...f,valor:v}))} placeholder="50.00"/>
+            <Inp label={extraForm.recorrente?"Próxima cobrança prevista":"Data do recebimento"} type="date" value={extraForm.data} onChange={v=>setExtraForm(f=>({...f,data:v}))}/>
+          </div>
+          {extraForm.recorrente && <div style={{ fontSize:11,color:"#94a3b8",marginTop:-6,marginBottom:13 }}>Entra como previsto. Quando você confirmar o recebimento, a próxima ocorrência já é criada sozinha.</div>}
           <div style={{ marginBottom:13 }}>
             <div style={{ fontSize:12,fontWeight:600,color:"#475569",marginBottom:5 }}>Observação (opcional)</div>
             <textarea value={extraForm.obs} onChange={e=>setExtraForm(f=>({...f,obs:e.target.value}))} placeholder="Detalhes adicionais..." rows={2} style={{ width:"100%",padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,color:"#0f172a",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical" }}/>
