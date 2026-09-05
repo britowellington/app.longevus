@@ -7009,6 +7009,7 @@ const saveSchedule = () => {
 if(!scheduleForm.studentId||!scheduleForm.time||selDates.size===0) return;
 const novas = [...selDates].sort().map(date=>({ id:uid(), studentId:scheduleForm.studentId, date, time:scheduleForm.time, status:"agendado", obs:scheduleForm.obs.trim() }));
 setAgendaEntries(p=>[...p,...novas]);
+novas.forEach(nova=>atualizarFinanceiroPelaAgenda(nova, students, agendaEntries, setPagamentos, setStudents));
 setScheduleModal(false);
 };
 const scheduleDiasDoMes = getMonthDates(scheduleCalRef.getFullYear(), scheduleCalRef.getMonth());
