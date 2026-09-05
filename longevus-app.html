@@ -830,7 +830,7 @@ return (
 <div style={{ fontSize:13,color:"#64748b",marginTop:3 }}>{new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"})}</div>
 </div>
 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:22 }}>
-{[["Alunos",students.length,"#6366f1"],["Aval.",assessments.length,O],["Hoje",assessments.filter(a=>a.date===todayStr()).length,"#16a34a"]].map(([l,v,c])=>(
+{[["Alunos",students.filter(s=>(s.status||"ativo")==="ativo").length,"#6366f1"],["Aval.",assessments.length,O],["Hoje",assessments.filter(a=>a.date===todayStr()).length,"#16a34a"]].map(([l,v,c])=>(
 <Card key={l} style={{ padding:"14px 10px",textAlign:"center" }}>
 <div style={{ fontSize:26,fontWeight:800,color:c }}>{v}</div>
 <div style={{ fontSize:12,color:"#64748b" }}>{l}</div>
@@ -1567,9 +1567,13 @@ const [form,setForm]=useState({name:"",dob:"",sex:"",phone:"",email:"",whatsapp:
 const [search,setSearch]=useState("");
 const [linkModal,setLinkModal]=useState(null);
 const [linkLoadingId,setLinkLoadingId]=useState(null);
+const [aba,setAba]=useState("ativo");
 const open=(s=null)=>{setForm(s?{name:s.name,dob:s.dob||"",sex:s.sex||"",phone:s.phone||"",notes:s.notes||""}:{name:"",dob:"",sex:"",phone:"",notes:""});setEditId(s?.id||null);setModal(true);};
-const save=()=>{if(!form.name.trim())return;if(editId)setStudents(p=>p.map(s=>s.id===editId?{...s,...form}:s));else setStudents(p=>[...p,{id:uid(),...form,createdAt:todayStr()}]);setModal(false);};
+const save=()=>{if(!form.name.trim())return;if(editId)setStudents(p=>p.map(s=>s.id===editId?{...s,...form}:s));else setStudents(p=>[...p,{id:uid(),...form,status:"ativo",createdAt:todayStr()}]);setModal(false);};
 const del=async id=>{if(window.confirm("Remover aluno?")){await DB.remove("students",id);setStudents(p=>p.filter(s=>s.id!==id));}};
+const toggleStatus=(s)=>{const novo=(s.status||"ativo")==="ativo"?"inativo":"ativo";if(!window.confirm(novo==="inativo"?`Marcar ${s.name} como inativo? Ele deixará de aparecer na lista de ativos, mas o histórico é mantido.`:`Reativar ${s.name}?`))return;setStudents(p=>p.map(x=>x.id===s.id?{...x,status:novo}:x));};
+const ativos=students.filter(s=>(s.status||"ativo")==="ativo");
+const inativos=students.filter(s=>(s.status||"ativo")==="inativo");
 const genLink=async(s)=>{
 setLinkLoadingId(s.id);
 try{
@@ -1595,15 +1599,20 @@ const copyLink=()=>{
 if(!linkModal)return;
 navigator.clipboard?.writeText(linkModal.url).then(()=>window.alert("Link copiado!")).catch(()=>{});
 };
-const filtered=students.filter(s=>s.name?.toLowerCase().includes(search.toLowerCase()));
+const listaAba=aba==="ativo"?ativos:inativos;
+const filtered=listaAba.filter(s=>s.name?.toLowerCase().includes(search.toLowerCase()));
 return (
 <div>
 <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18 }}>
 <div style={{ fontWeight:800,fontSize:20 }}>Alunos</div>
 <Btn icon="plus" sm onClick={()=>open()}>Novo</Btn>
 </div>
+<div style={{ display:"flex",gap:8,marginBottom:14,background:"#f1f5f9",borderRadius:11,padding:4 }}>
+<button onClick={()=>setAba("ativo")} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:13,fontWeight:700,cursor:"pointer",background:aba==="ativo"?O:"transparent",color:aba==="ativo"?"#fff":"#64748b" }}>Ativos ({ativos.length})</button>
+<button onClick={()=>setAba("inativo")} style={{ flex:1,border:"none",borderRadius:9,padding:"9px 0",fontSize:13,fontWeight:700,cursor:"pointer",background:aba==="inativo"?O:"transparent",color:aba==="inativo"?"#fff":"#64748b" }}>Inativos ({inativos.length})</button>
+</div>
 <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar..." style={{ width:"100%",padding:"10px 14px",borderRadius:10,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,boxSizing:"border-box",marginBottom:14 }}/>
-{filtered.length===0?<Card style={{ textAlign:"center",padding:40 }}><I n="users" c="#cbd5e1" s={36}/><div style={{ color:"#94a3b8",marginTop:10 }}>Nenhum aluno.</div><div style={{ marginTop:14 }}><Btn icon="plus" onClick={()=>open()}>Cadastrar</Btn></div></Card>:
+{filtered.length===0?<Card style={{ textAlign:"center",padding:40 }}><I n="users" c="#cbd5e1" s={36}/><div style={{ color:"#94a3b8",marginTop:10 }}>{aba==="ativo"?"Nenhum aluno ativo.":"Nenhum aluno inativo."}</div>{aba==="ativo"&&<div style={{ marginTop:14 }}><Btn icon="plus" onClick={()=>open()}>Cadastrar</Btn></div>}</Card>:
 <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
 {filtered.map(s=>(
 <Card key={s.id} onClick={()=>nav("studentDetail",{studentId:s.id})} style={{ padding:"14px 16px" }}>
@@ -1614,12 +1623,14 @@ return (
 <div style={{ fontSize:12,color:"#94a3b8" }}>{calcAge(s.dob)} anos · {s.sex==="M"?"Masc":s.sex==="F"?"Fem":"—"}{s.phone?" · "+s.phone:""}</div>
 </div>
 <div style={{ display:"flex",gap:6 }} onClick={e=>e.stopPropagation()}>
-<Btn sm variant="primary" icon="clip" onClick={()=>nav("newAssessment",{studentId:s.id})}>Avaliar</Btn>
+{aba==="ativo"&&<Btn sm variant="primary" icon="clip" onClick={()=>nav("newAssessment",{studentId:s.id})}>Avaliar</Btn>}
 <Btn sm variant="ghost" icon="link" disabled={linkLoadingId===s.id} onClick={()=>genLink(s)}/>
 <Btn sm variant="ghost" icon="edit" onClick={()=>open(s)}/>
+<Btn sm variant="ghost" icon={aba==="ativo"?"x":"check"} onClick={()=>toggleStatus(s)} style={{color:aba==="ativo"?"#d97706":"#16a34a"}}/>
 <Btn sm variant="ghost" icon="trash" onClick={()=>del(s.id)} style={{color:"#dc2626"}}/>
 </div>
 </div>
+{aba==="inativo"&&<div style={{ marginTop:8 }}><Badge color="#d97706" bg="#fff7ed">Inativo</Badge></div>}
 {(s.email||s.whatsapp||s.responsibleName||s.doctorName)&&<div style={{ marginTop:8,paddingTop:8,borderTop:"1px solid #f1f5f9",display:"flex",flexWrap:"wrap",gap:6 }}>
 {s.email&&<span style={{ fontSize:11,color:"#64748b" }}>✉️ {s.email}</span>}
 {s.whatsapp&&<span style={{ fontSize:11,color:"#64748b" }}>💬 {s.whatsapp}</span>}
@@ -9160,7 +9171,7 @@ return (
 {profName && <span style={{ fontSize:13,fontWeight:700,color:"#0f172a" }}>{profName}</span>}
 </div>
 <div style={{ fontSize:12,color:"#94a3b8",display:"flex",alignItems:"center",gap:10 }}>
-<span>{syncing?"☁️ Sincronizando...":students.length+" aluno(s)"}</span>
+<span>{syncing?"☁️ Sincronizando...":students.filter(s=>(s.status||"ativo")==="ativo").length+" aluno(s)"}</span>
 <div style={{ position:"relative" }}>
 <button onClick={()=>{
   const opening=!notifOpen;
