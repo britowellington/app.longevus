@@ -155,7 +155,7 @@ return toISODateLocal(d);
 const novoPagamentoPorSessao = (student, entryDate, agendaEntryId) => ({
 id: uid(), studentId: student.id, tipo:"mensal", plano: student.billing?.plano||"",
 modoCobranca:"porSessao", valorSessao: Number(student.billing?.valorSessao)||0, sessoes:1,
-dataPrevista: vencimentoDoCiclo(student.billing?.vencimento, entryDate), valorPrevisto: Number(student.billing?.valorSessao)||0,
+dataPrevista: entryDate, valorPrevisto: Number(student.billing?.valorSessao)||0,
 dataPagamento:null, valorPago:null, status:"previsto", origem: agendaEntryId?"agenda":"manual", agendaEntryId: agendaEntryId||null, obs:"", createdAt:todayStr()
 });
 // Status que NUNCA geram cobrança (cancelamento sem culpa do aluno) — se já existia previsto, remove.
@@ -196,12 +196,24 @@ return [...p, criarRegistro()];
 if(consumiuCredito && setStudents) setStudents(p=>p.map(s=>s.id===st.id?{...s,billing:{...(s.billing||{}),creditosAvulso:Math.max(0,(s.billing?.creditosAvulso||0)-1)}}:s));
 return;
 }
-setPagamentos(p => p.some(x=>x.agendaEntryId===entry.id) ? p : [...p, criarRegistro()]);
+setPagamentos(p => {
+const existente = p.find(x=>x.agendaEntryId===entry.id);
+if(!existente) return [...p, criarRegistro()];
+if(existente.status==="previsto" && existente.dataPrevista!==entry.date) return p.map(x=>x.id===existente.id?{...x,dataPrevista:entry.date}:x);
+return p;
+});
 };
 // Chamado quando um compromisso é excluído da agenda: remove a cobrança prevista vinculada a ele,
 // desde que ainda não tenha sido paga (pagamentos já baixados nunca são apagados por aqui).
 const removerPagamentoDaAgenda = (entryId, setPagamentos) => {
 setPagamentos(p => p.filter(pg => !(pg.agendaEntryId===entryId && pg.status==="previsto")));
+};
+// Chamado ao salvar a edição de um compromisso: se a data mudou (remarcação), guarda a data
+// original — só na primeira vez que muda, pra manter sempre a data combinada de origem, mesmo
+// que a aula seja remarcada mais de uma vez.
+const marcarReagendamento = (original, atualizado) => {
+if(!original?.date || !atualizado?.date || original.date===atualizado.date) return atualizado;
+return { ...atualizado, dataOriginal: original.dataOriginal || original.date };
 };
 const EXERCISES = [
 {id:"ex01",nome:"Sentar e Levantar da Cadeira",cat:"Fortalecimento",grupo:"MMII",foco:"Pernas e Glúteos",nivel:"Basico",icone:"🪑",momento:"principal"},
@@ -1665,7 +1677,8 @@ const [agendaEditForm,setAgendaEditForm] = useState(null);
 const [baixaAberta,setBaixaAberta] = useState(false);
 const openAgendaEdit = (entry) => { setAgendaEditId(entry.id); setAgendaEditForm({ date:entry.date, time:entry.time||"", status:entry.status, obs:entry.obs||"" }); };
 const saveAgendaEdit = () => {
-  const atualizado = { ...(agendaEntries.find(e=>e.id===agendaEditId)||{}), ...agendaEditForm, id:agendaEditId };
+  const original = agendaEntries.find(e=>e.id===agendaEditId)||{};
+  const atualizado = marcarReagendamento(original, { ...original, ...agendaEditForm, id:agendaEditId });
   setAgendaEntries(p=>p.map(e=>e.id===agendaEditId?atualizado:e));
   atualizarFinanceiroPelaAgenda(atualizado, students, agendaEntries, setPagamentos, setStudents);
   setAgendaEditId(null);
@@ -2026,6 +2039,7 @@ return (
 <Badge color={cfg.color} bg={cfg.bg}>{cfg.label}</Badge>
 </div>
 {e.obs && <div style={{ fontSize:12,color:"#64748b",marginTop:2,whiteSpace:"pre-wrap" }}>{e.obs}</div>}
+{e.dataOriginal && <div style={{ fontSize:11,color:"#c2410c",marginTop:4 }}>↻ Remarcada — combinada originalmente pra {fmt(e.dataOriginal)}</div>}
 </div>
 <button onClick={ev=>{ev.stopPropagation();delAgendaEntry(e.id);}} style={{ background:"none",border:"none",cursor:"pointer",color:"#e2e8f0",padding:4,flexShrink:0 }}><I n="trash" s={15}/></button>
 </div>
@@ -7011,7 +7025,8 @@ setEntryModal(true);
 const saveEntry = () => {
 if(!entryForm.studentId||!entryForm.date) return;
 if(entryEditId){
-const atualizado = { id:entryEditId, ...entryForm };
+const original = agendaEntries.find(e=>e.id===entryEditId)||{};
+const atualizado = marcarReagendamento(original, { ...original, id:entryEditId, ...entryForm });
 setAgendaEntries(p=>p.map(e=>e.id===entryEditId?atualizado:e));
 atualizarFinanceiroPelaAgenda(atualizado, students, agendaEntries, setPagamentos, setStudents);
 }
@@ -7042,6 +7057,7 @@ return (
 <div style={{ flex:1,minWidth:0 }}>
 <div style={{ fontWeight:700,fontSize:13 }}>{e.time?e.time+" · ":""}{st?.name||"Aluno"}</div>
 {e.obs && <div style={{ fontSize:11,color:"#94a3b8",marginTop:2 }}>{e.obs}</div>}
+{e.dataOriginal && <div style={{ fontSize:10,color:"#c2410c",marginTop:2 }}>↻ Remarcada, era dia {fmt(e.dataOriginal)}</div>}
 </div>
 <Badge color={cfg.color} bg={cfg.bg}>{cfg.label}</Badge>
 </div>
@@ -7145,6 +7161,7 @@ return (
 <Badge color={cfg.color} bg={cfg.bg}>{cfg.label}</Badge>
 </div>
 {e.obs && <div style={{ fontSize:12,color:"#64748b",marginTop:2,whiteSpace:"pre-wrap" }}>{e.obs}</div>}
+{e.dataOriginal && <div style={{ fontSize:11,color:"#c2410c",marginTop:4 }}>↻ Remarcada — combinada originalmente pra {fmt(e.dataOriginal)}</div>}
 </div>
 <button onClick={ev=>{ev.stopPropagation();delEntry(e.id);}} style={{ background:"none",border:"none",cursor:"pointer",color:"#e2e8f0",padding:4,flexShrink:0 }}><I n="trash" s={15}/></button>
 </div>
