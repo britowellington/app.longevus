@@ -1618,15 +1618,18 @@ return (
 <Card key={s.id} onClick={()=>nav("studentDetail",{studentId:s.id})} style={{ padding:"14px 16px" }}>
 <div style={{ display:"flex",alignItems:"center",gap:12 }}>
 <div style={{ width:44,height:44,borderRadius:12,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:800,color:O,flexShrink:0 }}>{s.name?.[0]?.toUpperCase()}</div>
-<div style={{ flex:1 }}>
+<div style={{ flex:1,minWidth:0 }}>
 <div style={{ fontWeight:700,fontSize:15 }}>{s.name}</div>
 <div style={{ fontSize:12,color:"#94a3b8" }}>{calcAge(s.dob)} anos · {s.sex==="M"?"Masc":s.sex==="F"?"Fem":"—"}{s.phone?" · "+s.phone:""}</div>
 </div>
-<div style={{ display:"flex",gap:6 }} onClick={e=>e.stopPropagation()}>
-{aba==="ativo"&&<Btn sm variant="primary" icon="clip" onClick={()=>nav("newAssessment",{studentId:s.id})}>Avaliar</Btn>}
+</div>
+<div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginTop:10 }} onClick={e=>e.stopPropagation()}>
+{aba==="ativo"?<Btn sm variant="primary" icon="clip" onClick={()=>nav("newAssessment",{studentId:s.id})}>Avaliar</Btn>:<span/>}
+<div style={{ display:"flex",alignItems:"center",gap:2,background:"#f8fafc",border:"1px solid #f1f5f9",borderRadius:11,padding:2 }}>
 <Btn sm variant="ghost" icon="link" disabled={linkLoadingId===s.id} onClick={()=>genLink(s)}/>
 <Btn sm variant="ghost" icon="edit" onClick={()=>open(s)}/>
 <Btn sm variant="ghost" icon={aba==="ativo"?"x":"check"} onClick={()=>toggleStatus(s)} style={{color:aba==="ativo"?"#d97706":"#16a34a"}}/>
+<div style={{ width:1,height:20,background:"#e2e8f0",margin:"0 2px" }}/>
 <Btn sm variant="ghost" icon="trash" onClick={()=>del(s.id)} style={{color:"#dc2626"}}/>
 </div>
 </div>
