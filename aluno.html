@@ -33,9 +33,11 @@ const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 // "professionals" antes de publicar (SELECT id FROM professionals WHERE nome ILIKE 'Wellington%').
 const PROF_ID = "64f27a4b-4cba-450c-9e52-e799c3c0b8d8";
 
-// Planos oferecidos na página de vendas — precisa bater com os nomes/valores
-// mostrados em wellington-brito-planos.html
-const PLANOS_VENDA = {
+// Planos oferecidos na página de vendas — agora carregados dinamicamente
+// da tabela "planos" do trainer via rpc_obter_plano_venda, usando o campo
+// "Identificador de venda" configurado em cada plano no app Longevus.
+// Este objeto é usado só como fallback enquanto a busca não retorna.
+const PLANOS_VENDA_FALLBACK = {
   presencial: { nome: "Presencial", valor: 1440 },
   hibrido: { nome: "Híbrido", valor: 299.90 },
   consultoria: { nome: "Consultoria", valor: 180 },
@@ -2170,7 +2172,7 @@ const TelaContratoVencido = ({ onLogout }) => (
 
 // ── Cadastro público (lead vindo da página de vendas) ─────────────────────────
 const CadastroPublico = ({ planoParam }) => {
-  const plano = PLANOS_VENDA[planoParam] || null;
+  const [plano,setPlano]=useState(undefined); // undefined = carregando, null = não encontrado
   const [nome,setNome]=useState("");
   const [whatsapp,setWhatsapp]=useState("");
   const [email,setEmail]=useState("");
@@ -2178,6 +2180,26 @@ const CadastroPublico = ({ planoParam }) => {
   const [confirm,setConfirm]=useState("");
   const [loading,setLoading]=useState(false);
   const [err,setErr]=useState("");
+
+  useEffect(()=>{
+    let ativo=true;
+    (async()=>{
+      if(!planoParam){ setPlano(null); return; }
+      try{
+        const r = await fetch(SUPA_URL+"/rest/v1/rpc/rpc_obter_plano_venda", {
+          method:"POST",
+          headers:{ "apikey":SUPA_KEY, "Authorization":"Bearer "+SUPA_KEY, "Content-Type":"application/json" },
+          body: JSON.stringify({ p_prof_id: PROF_ID, p_slug: planoParam }),
+        });
+        const rows = r.ok ? await r.json() : [];
+        const found = rows && rows[0];
+        if(!ativo) return;
+        if(found && found.nome){ setPlano({ nome: found.nome, valor: Number(found.valor) }); }
+        else { setPlano(PLANOS_VENDA_FALLBACK[planoParam] || null); }
+      } catch(e){ if(ativo) setPlano(PLANOS_VENDA_FALLBACK[planoParam] || null); }
+    })();
+    return ()=>{ ativo=false; };
+  },[planoParam]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -2229,7 +2251,7 @@ const CadastroPublico = ({ planoParam }) => {
           <img src={__LOGO_ALUNO__} alt="Wellington Brito" style={{width:150,height:"auto",objectFit:"contain",marginBottom:10}}/>
           <div style={{fontSize:19,fontWeight:800,marginBottom:6}}>Criar minha conta</div>
           <div style={{fontSize:13,color:"#64748b",marginBottom:6,lineHeight:1.5,textAlign:"left"}}>
-            {plano ? <>Plano escolhido: <strong>{plano.nome}</strong> — R$ {plano.valor.toFixed(2).replace(".",",")}{plano.nome!=="Consultoria"?"/mês":""}</> : "Plano não identificado — volte para a página de planos."}
+            {plano===undefined ? "Carregando plano..." : plano ? <>Plano escolhido: <strong>{plano.nome}</strong> — R$ {plano.valor.toFixed(2).replace(".",",")}{plano.nome!=="Consultoria"?"/mês":""}</> : "Plano não identificado — volte para a página de planos."}
           </div>
           <div style={{fontSize:12,color:"#94a3b8",marginBottom:18,lineHeight:1.5,textAlign:"left"}}>
             Depois de criar sua conta, você já cai direto na tela de pagamento.
@@ -2258,7 +2280,7 @@ const CadastroPublico = ({ planoParam }) => {
 
           {err && <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:9,padding:"10px 12px",fontSize:12,color:"#dc2626",marginBottom:14,textAlign:"left"}}>{err}</div>}
 
-          <Btn full disabled={loading}>{loading?"Criando conta...":"Criar conta e continuar"}</Btn>
+          <Btn full disabled={loading||!plano}>{loading?"Criando conta...":"Criar conta e continuar"}</Btn>
         </Card>
       </form>
     </div>

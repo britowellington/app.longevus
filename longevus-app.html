@@ -1092,10 +1092,10 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
   const [finView,setFinView] = useState("alunos");
   const [planoModal,setPlanoModal] = useState(false);
   const [planoEditId,setPlanoEditId] = useState(null);
-  const emptyPlano = () => ({ nome:"", modoCobranca:"fixo", valor:"", valorSessao:"", frequencia:"", descricao:"", ativo:true });
+  const emptyPlano = () => ({ nome:"", modoCobranca:"fixo", valor:"", valorSessao:"", frequencia:"", descricao:"", ativo:true, slugVenda:"" });
   const [planoForm,setPlanoForm] = useState(emptyPlano());
   const openNovoPlano = () => { setPlanoEditId(null); setPlanoForm(emptyPlano()); setPlanoModal(true); };
-  const openEditPlano = (pl) => { setPlanoEditId(pl.id); setPlanoForm({ nome:pl.nome, modoCobranca:pl.modoCobranca||"fixo", valor:pl.valor, valorSessao:pl.valorSessao||"", frequencia:pl.frequencia||"", descricao:pl.descricao||"", ativo:pl.ativo!==false }); setPlanoModal(true); };
+  const openEditPlano = (pl) => { setPlanoEditId(pl.id); setPlanoForm({ nome:pl.nome, modoCobranca:pl.modoCobranca||"fixo", valor:pl.valor, valorSessao:pl.valorSessao||"", frequencia:pl.frequencia||"", descricao:pl.descricao||"", ativo:pl.ativo!==false, slugVenda:pl.slugVenda||"" }); setPlanoModal(true); };
   const salvarPlano = () => {
     if(!planoForm.nome.trim()) return;
     if(planoEditId) setPlanos(p=>p.map(pl=>pl.id===planoEditId?{...pl,...planoForm,nome:planoForm.nome.trim()}:pl));
@@ -1453,6 +1453,7 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
                   <div style={{ display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:4 }}>
                     <span style={{ fontWeight:700,fontSize:14 }}>{pl.nome}</span>
                     {pl.ativo===false && <Badge color="#64748b" bg="#f1f5f9">Inativo</Badge>}
+                    {pl.slugVenda && <Badge color="#0891b2" bg="#ecfeff">🔗 {pl.slugVenda}</Badge>}
                   </div>
                   <div style={{ fontSize:13,fontWeight:800,color:O,marginBottom:2 }}>{pl.modoCobranca==="porSessao"?"R$ "+Number(pl.valorSessao||0).toFixed(2).replace(".",",")+" / sessão":"R$ "+Number(pl.valor||0).toFixed(2).replace(".",",")}{pl.frequencia?" · "+pl.frequencia:""}</div>
                   {pl.descricao && <div style={{ fontSize:12,color:"#64748b",marginTop:2 }}>{pl.descricao}</div>}
@@ -1475,6 +1476,8 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
             <Inp label="Valor mensal (R$)" type="number" value={planoForm.valor} onChange={v=>setPlanoForm(f=>({...f,valor:v}))} placeholder="250.00"/>
           )}
           <Inp label="Frequência" value={planoForm.frequencia} onChange={v=>setPlanoForm(f=>({...f,frequencia:v}))} placeholder="Ex: 3x/semana, 2x/mês, Consultoria"/>
+          <Inp label="Identificador de venda (opcional)" value={planoForm.slugVenda} onChange={v=>setPlanoForm(f=>({...f,slugVenda:v.toLowerCase().replace(/[^a-z0-9]/g,"")}))} placeholder="Ex: presencial, hibrido, consultoria"/>
+          <div style={{ fontSize:11,color:"#94a3b8",marginTop:-8,marginBottom:13,lineHeight:1.4 }}>Use o mesmo valor do link da página de vendas (?plano=...). Assim o nome e o preço mostrados lá vêm direto deste plano.</div>
           <div style={{ marginBottom:13 }}>
             <div style={{ fontSize:12,fontWeight:600,color:"#475569",marginBottom:5 }}>Descrição (opcional)</div>
             <textarea value={planoForm.descricao} onChange={e=>setPlanoForm(f=>({...f,descricao:e.target.value}))} placeholder="O que está incluso nesse plano..." rows={3} style={{ width:"100%",padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,color:"#0f172a",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical" }}/>
@@ -1570,7 +1573,15 @@ const [linkLoadingId,setLinkLoadingId]=useState(null);
 const [aba,setAba]=useState("ativo");
 const open=(s=null)=>{setForm(s?{name:s.name,dob:s.dob||"",sex:s.sex||"",phone:s.phone||"",notes:s.notes||""}:{name:"",dob:"",sex:"",phone:"",notes:""});setEditId(s?.id||null);setModal(true);};
 const save=()=>{if(!form.name.trim())return;if(editId)setStudents(p=>p.map(s=>s.id===editId?{...s,...form}:s));else setStudents(p=>[...p,{id:uid(),...form,status:"ativo",createdAt:todayStr()}]);setModal(false);};
-const del=async id=>{if(window.confirm("Remover aluno?")){await DB.remove("students",id);setStudents(p=>p.filter(s=>s.id!==id));}};
+const del=async id=>{
+if(!window.confirm("Remover aluno? Isso apaga também avaliações, pagamentos, check-ins e todo o histórico dele."))return;
+try{
+const headers=await DB.authHeaders();
+const r=await fetch(SUPA_URL+"/rest/v1/rpc/rpc_excluir_aluno_completo",{method:"POST",headers,body:JSON.stringify({p_student_id:id})});
+if(!r.ok){const t=await r.text();alert("Não foi possível excluir esse aluno.\n\nDetalhe técnico: "+t.slice(0,300));return;}
+setStudents(p=>p.filter(s=>s.id!==id));
+}catch(e){alert("Erro de conexão ao excluir aluno.");}
+};
 const toggleStatus=(s)=>{const novo=(s.status||"ativo")==="ativo"?"inativo":"ativo";if(!window.confirm(novo==="inativo"?`Marcar ${s.name} como inativo? Ele deixará de aparecer na lista de ativos, mas o histórico é mantido.`:`Reativar ${s.name}?`))return;setStudents(p=>p.map(x=>x.id===s.id?{...x,status:novo}:x));};
 const ativos=students.filter(s=>(s.status||"ativo")==="ativo");
 const inativos=students.filter(s=>(s.status||"ativo")==="inativo");
