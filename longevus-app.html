@@ -29,7 +29,7 @@ const { useState, useEffect, useCallback, useRef } = React;
 // ── Supabase ─────────────────────────────────────────────────────────────────
 const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
 const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
-const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY, { auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: false } });
 const SUPPORT_WHATSAPP = "5511977431011";
 // ── Pix — geração do payload "Copia e Cola" (BR Code / EMV) ────────────────
 const pixAscii = (str, max) => {
@@ -67,8 +67,13 @@ const buildPixPayload = ({pixKey, merchantName, merchantCity, amount, txid}) => 
 
 const DB = {
 async authHeaders() {
-const { data } = await supa.auth.getSession();
+let { data } = await supa.auth.getSession();
+if (!data?.session?.access_token) {
+const refreshed = await supa.auth.refreshSession().catch(()=>null);
+if (refreshed?.data?.session) data = refreshed.data;
+}
 const token = data?.session?.access_token || SUPA_KEY;
+if (!data?.session?.access_token) console.error("DB.authHeaders: sem sessão válida, usando chave anônima — escritas serão bloqueadas pelo RLS.");
 return { "apikey": SUPA_KEY, "Authorization": "Bearer "+token, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates" };
 },
 async load(table) {
@@ -94,8 +99,10 @@ const headers = await this.authHeaders();
 const { data: sess } = await supa.auth.getSession();
 const ownerId = sess?.session?.user?.id;
 const body = { id, data, owner_id: ownerId, updated_at: new Date().toISOString(), ...(studentId ? { student_id: studentId } : {}) };
-await fetch(SUPA_URL+"/rest/v1/"+table, { method: "POST", headers, body: JSON.stringify(body) });
-} catch(e) {}
+const r = await fetch(SUPA_URL+"/rest/v1/"+table, { method: "POST", headers, body: JSON.stringify(body) });
+if (!r.ok) { const t = await r.text().catch(()=>""); console.error("DB.save falhou:", table, id, r.status, t); return false; }
+return true;
+} catch(e) { console.error("DB.save erro de rede:", table, id, e); return false; }
 },
 async remove(table, id) {
 try {
@@ -1582,7 +1589,7 @@ if(!r.ok){const t=await r.text();alert("Não foi possível excluir esse aluno.\n
 setStudents(p=>p.filter(s=>s.id!==id));
 }catch(e){alert("Erro de conexão ao excluir aluno.");}
 };
-const toggleStatus=(s)=>{const novo=(s.status||"ativo")==="ativo"?"inativo":"ativo";if(!window.confirm(novo==="inativo"?`Marcar ${s.name} como inativo? Ele deixará de aparecer na lista de ativos, mas o histórico é mantido.`:`Reativar ${s.name}?`))return;setStudents(p=>p.map(x=>x.id===s.id?{...x,status:novo}:x));};
+const toggleStatus=async(s)=>{const novo=(s.status||"ativo")==="ativo"?"inativo":"ativo";if(!window.confirm(novo==="inativo"?`Marcar ${s.name} como inativo? Ele deixará de aparecer na lista de ativos, mas o histórico é mantido.`:`Reativar ${s.name}?`))return;const atualizado={...s,status:novo};const ok=await DB.save("students",s.id,atualizado);if(!ok){alert("Não foi possível salvar essa alteração agora. Verifique sua conexão e tente de novo.");return;}setStudents(p=>p.map(x=>x.id===s.id?atualizado:x));};
 const ativos=students.filter(s=>(s.status||"ativo")==="ativo");
 const inativos=students.filter(s=>(s.status||"ativo")==="inativo");
 const genLink=async(s)=>{
