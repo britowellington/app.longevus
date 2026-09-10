@@ -660,6 +660,7 @@ const O = "#FF5603";
 const LS={get:(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}}};
 const uid=()=>Math.random().toString(36).slice(2)+Date.now().toString(36);
 const GRUPOS=["MMII","MMSS","Core","Equilíbrio","Mobilidade","Alongamento","Cardio","Funcional","Coordenação","Cognitivo","Respiração","Outro"];
+const MUSCULOS=[{k:"quadríceps",l:"Quadríceps"},{k:"posterior",l:"Posterior"},{k:"glúteos",l:"Glúteos"},{k:"panturrilha",l:"Panturrilha"},{k:"peito",l:"Peito"},{k:"costas",l:"Costas"},{k:"ombros",l:"Ombros"},{k:"bíceps",l:"Bíceps"},{k:"tríceps",l:"Tríceps"},{k:"core",l:"Abdômen"}];
 const NIVEIS=["Básico","Intermediário","Avançado"];
 const MOMENTOS=["Parte Inicial","Parte Principal","Parte Final"];
 const GC={MMII:{bg:"#eff6ff",c:"#1d4ed8"},MMSS:{bg:"#fff7ed",c:"#c2410c"},Core:{bg:"#fdf4ff",c:"#7e22ce"},Equilíbrio:{bg:"#f0fdf4",c:"#15803d"},Mobilidade:{bg:"#fefce8",c:"#a16207"},Alongamento:{bg:"#f0fdfa",c:"#0f766e"},Cardio:{bg:"#fff1f2",c:"#be123c"},Funcional:{bg:"#fff4ee",c:O},Coordenação:{bg:"#faf5ff",c:"#6d28d9"},Cognitivo:{bg:"#ecfdf5",c:"#065f46"},Respiração:{bg:"#f0f9ff",c:"#0369a1"},Outro:{bg:"#f8fafc",c:"#475569"}};
@@ -861,6 +862,7 @@ function AppInner({billing}){
   const [fg,setFg]=useState("Todos");
   const [fm,setFm]=useState("Todos");
   const [fn,setFn]=useState("Todos");
+  const [fms,setFms]=useState("Todos");
   const [modal,setModal]=useState(null);
   const [editEx,setEditEx]=useState(null);
   const [verEx,setVerEx]=useState(null);
@@ -919,7 +921,8 @@ function AppInner({billing}){
   };
   const filtered=biblioteca.filter(e=>{
     const ms=e.nome.toLowerCase().includes(search.toLowerCase())||(e.foco||"").toLowerCase().includes(search.toLowerCase())||(e.tags||"").toLowerCase().includes(search.toLowerCase());
-    return ms&&(fg==="Todos"||e.grupo===fg)&&(fm==="Todos"||e.momento===fm)&&(fn==="Todos"||e.nivel===fn);
+    const musOk=fms==="Todos"||(e.tags||"").toLowerCase().includes(fms.toLowerCase());
+    return ms&&(fg==="Todos"||e.grupo===fg)&&(fm==="Todos"||e.momento===fm)&&(fn==="Todos"||e.nivel===fn)&&musOk;
   });
   const grupos=["Todos",...GRUPOS];
   const momentos=["Todos",...MOMENTOS];
@@ -945,6 +948,11 @@ function AppInner({billing}){
         <div style={{marginBottom:6,overflowX:"auto",paddingBottom:3}}>
           <div style={{display:"flex",gap:4,minWidth:"max-content"}}>
             {grupos.map(g=>(<button key={g} onClick={()=>setFg(g)} style={{border:`1.5px solid ${fg===g?O:"#e2e8f0"}`,background:fg===g?O:"#fff",borderRadius:99,padding:"4px 9px",fontSize:10,fontWeight:700,color:fg===g?"#fff":"#64748b",cursor:"pointer",whiteSpace:"nowrap"}}>{g}</button>))}
+          </div>
+        </div>
+        <div style={{marginBottom:6,overflowX:"auto",paddingBottom:3}}>
+          <div style={{display:"flex",gap:4,minWidth:"max-content"}}>
+            {[{k:"Todos",l:"Todos"},...MUSCULOS].map(m=>(<button key={m.k} onClick={()=>setFms(m.k)} style={{border:`1.5px solid ${fms===m.k?"#0d9488":"#e2e8f0"}`,background:fms===m.k?"#0d9488":"#fff",borderRadius:99,padding:"4px 9px",fontSize:10,fontWeight:700,color:fms===m.k?"#fff":"#64748b",cursor:"pointer",whiteSpace:"nowrap"}}>{m.l}</button>))}
           </div>
         </div>
         <div style={{marginBottom:12,overflowX:"auto",paddingBottom:3}}>
