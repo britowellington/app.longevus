@@ -828,25 +828,68 @@ return (
 </div>
 );
 };
-const Dashboard = ({ students, assessments, dailyLogs, nav }) => {
+const Dashboard = ({ students, assessments, dailyLogs, pagamentos, receitasExtras, nav }) => {
 const recent = [...assessments].sort((a,b)=>b.date?.localeCompare(a.date)).slice(0,4);
+const hoje = todayStr();
+const anoMes = hoje.slice(0,7);
+const mesStart = anoMes+"-01";
+const mesLastDay = new Date(Number(anoMes.slice(0,4)),Number(anoMes.slice(5,7)),0).getDate();
+const mesEnd = anoMes+"-"+String(mesLastDay).padStart(2,"0");
+const pg = pagamentos||[], rx = receitasExtras||[];
+const previstoMes = pg.filter(p=>p.dataPrevista&&p.dataPrevista>=mesStart&&p.dataPrevista<=mesEnd&&p.status!=="cancelado").reduce((a,p)=>a+(Number(p.valorPrevisto)||0),0)
+  + rx.filter(r=>r.dataPrevista&&r.dataPrevista>=mesStart&&r.dataPrevista<=mesEnd).reduce((a,r)=>a+(Number(r.valorPrevisto)||0),0);
+const recebidoMes = pg.filter(p=>p.status==="pago"&&p.dataPagamento&&p.dataPagamento>=mesStart&&p.dataPagamento<=mesEnd).reduce((a,p)=>a+(Number(p.valorPago)||0),0)
+  + rx.filter(r=>r.status==="recebido"&&r.dataPagamento&&r.dataPagamento>=mesStart&&r.dataPagamento<=mesEnd).reduce((a,r)=>a+(Number(r.valorPago)||0),0);
+const abertosMes = pg.filter(p=>p.status==="previsto"&&p.dataPrevista&&p.dataPrevista>=mesStart&&p.dataPrevista<=mesEnd);
+const emAbertoMes = abertosMes.reduce((a,p)=>a+(Number(p.valorPrevisto)||0),0);
+const vencidosCount = pg.filter(p=>p.status==="previsto"&&p.dataPrevista&&p.dataPrevista<hoje).length;
+const ativos = students.filter(s=>(s.status||"ativo")==="ativo");
+const criticos = ativos.filter(s=>{
+  const ult = [...assessments].filter(a=>a.studentId===s.id).sort((a,b)=>b.date?.localeCompare(a.date))[0];
+  return ult && ult.globalScore>0 && classifyGlobal(ult.globalScore).label==="Crítico";
+});
+const temAlertas = criticos.length>0 || vencidosCount>0;
 return (
 <div>
 <div style={{ marginBottom:22 }}>
 <div style={{ fontSize:22,fontWeight:800,color:"#0f172a" }}>Olá, Professor 👋</div>
 <div style={{ fontSize:13,color:"#64748b",marginTop:3 }}>{new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"})}</div>
 </div>
-<div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:22 }}>
-{[["Alunos",students.filter(s=>(s.status||"ativo")==="ativo").length,"#6366f1"],["Aval.",assessments.length,O],["Hoje",assessments.filter(a=>a.date===todayStr()).length,"#16a34a"]].map(([l,v,c])=>(
+<div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:16 }}>
+{[["Alunos",ativos.length,"#6366f1"],["Aval.",assessments.length,O],["Reavaliar",ativos.filter(s=>{const ult=[...assessments].filter(a=>a.studentId===s.id).sort((a,b)=>b.date?.localeCompare(a.date))[0];if(!ult)return false;const dias=(new Date(hoje)-new Date(ult.date))/86400000;return dias>=75;}).length,"#d97706"]].map(([l,v,c])=>(
 <Card key={l} style={{ padding:"14px 10px",textAlign:"center" }}>
 <div style={{ fontSize:26,fontWeight:800,color:c }}>{v}</div>
 <div style={{ fontSize:12,color:"#64748b" }}>{l}</div>
 </Card>
 ))}
 </div>
+<div style={{ fontSize:12,fontWeight:700,color:"#64748b",marginBottom:8 }}>Financeiro · {new Date(mesStart).toLocaleDateString("pt-BR",{month:"long"})}</div>
+<div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:22 }}>
+{[["Previsto",previstoMes,"#6366f1","#eef2ff"],["Recebido",recebidoMes,"#16a34a","#dcfce7"],["Em aberto",emAbertoMes,"#d97706","#fef3c7"]].map(([l,v,c,bg])=>(
+<Card key={l} onClick={()=>nav("financeiro")} style={{ padding:"10px 8px",background:bg,border:"none" }}>
+<div style={{ fontSize:11,color:c,fontWeight:600,marginBottom:3 }}>{l}</div>
+<div style={{ fontSize:15,fontWeight:800,color:"#0f172a" }}>{fmtR(v)}</div>
+</Card>
+))}
+</div>
+{temAlertas&&<div style={{ marginBottom:22 }}>
+<div style={{ fontSize:12,fontWeight:700,color:"#64748b",marginBottom:8 }}>Precisa de atenção</div>
+<div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+{criticos.map(s=>(
+<Card key={"c"+s.id} onClick={()=>nav("studentDetail",{id:s.id})} style={{ display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#fee2e2",border:"none" }}>
+<span style={{ fontSize:16 }}>⚠️</span>
+<div style={{ fontSize:13,color:"#dc2626",fontWeight:600 }}>{s.name} — status crítico</div>
+</Card>
+))}
+{vencidosCount>0&&<Card onClick={()=>nav("financeiro")} style={{ display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#fef3c7",border:"none" }}>
+<span style={{ fontSize:16 }}>⏰</span>
+<div style={{ fontSize:13,color:"#d97706",fontWeight:600 }}>{vencidosCount} pagamento{vencidosCount>1?"s":""} em atraso</div>
+</Card>}
+</div>
+</div>}
 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:22 }}>
-{[{label:"Alunos",sub:"Gerenciar",icon:"users",color:O,page:"students"},{label:"Avaliações",sub:"Longevus completo",icon:"clip",color:"#6366f1",page:"assessments"},{label:"Monitoramento",sub:"PA, FC, SpO₂",icon:"act",color:"#16a34a",page:"daily"},{label:"Relatórios",sub:"Evolução",icon:"bar",color:"#d97706",page:"reports"}].map(m=>(
-<Card key={m.page} onClick={()=>nav(m.page)} style={{ display:"flex",alignItems:"center",gap:12,padding:"14px" }}>
+{[{label:"Alunos",sub:"Gerenciar",icon:"users",color:O,page:"students"},{label:"Avaliações",sub:"Longevus completo",icon:"clip",color:"#6366f1",page:"assessments"},{label:"Hub Cognitivo",sub:"Jogos e testes",icon:"act",color:"#8b5cf6",page:"cognitivehub"},{label:"Biblioteca",sub:"696 exercícios",icon:"bar",color:"#0ea5e9",page:"extbiblioteca"},{label:"Monitoramento",sub:"PA, FC, SpO₂",icon:"act",color:"#16a34a",page:"daily"},{label:"Relatórios",sub:"Evolução",icon:"bar",color:"#d97706",page:"reports"}].map(m=>(
+<Card key={m.page} onClick={()=>{ if(m.page==="cognitivehub"){window.open("longevus-hub.html","_self");return;} if(m.page==="extbiblioteca"){window.open("longevus-biblioteca.html","_self");return;} nav(m.page); }} style={{ display:"flex",alignItems:"center",gap:12,padding:"14px" }}>
 <div style={{ width:40,height:40,borderRadius:11,background:m.color+"18",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}><I n={m.icon} c={m.color} s={19}/></div>
 <div><div style={{ fontWeight:700,fontSize:14,color:"#0f172a" }}>{m.label}</div><div style={{ fontSize:12,color:"#94a3b8" }}>{m.sub}</div></div>
 </Card>
@@ -9244,7 +9287,7 @@ return (
 </div>
 )}
 <div style={{ padding:"20px 16px",maxWidth:640,margin:"0 auto" }}>
-{page==="dashboard"&&<Dashboard students={students} assessments={assessments} dailyLogs={dailyLogs} nav={nav}/>}
+{page==="dashboard"&&<Dashboard students={students} assessments={assessments} dailyLogs={dailyLogs} pagamentos={pagamentos} receitasExtras={receitasExtras} nav={nav}/>}
 {page==="students"&&<Students students={students} setStudents={setStudents} planos={planos} nav={nav}/>}
 {page==="studentDetail"&&<StudentDetail studentId={pageProps.studentId} students={students} setStudents={setStudents} assessments={assessments} setAssessments={setAssessments} programs={programs} setPrograms={setPrograms} dailyLogs={dailyLogs} documents={documents} checkins={checkins} sessions={sessions} setSessions={setSessions} exerciciosBiblioteca={exerciciosBiblioteca} planos={planos} professorFeedbacks={professorFeedbacks} setProfessorFeedbacks={setProfessorFeedbacks} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} pagamentos={pagamentos} setPagamentos={setPagamentos} initialTab={pageProps.initialTab} nav={nav}/>}
 {page==="assessments"&&<AssessmentsList assessments={assessments} students={students} setAssessments={setAssessments} nav={nav}/>}
