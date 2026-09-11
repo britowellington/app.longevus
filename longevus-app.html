@@ -1640,6 +1640,7 @@ const [form,setForm]=useState({name:"",dob:"",sex:"",phone:"",email:"",whatsapp:
 const [search,setSearch]=useState("");
 const [linkModal,setLinkModal]=useState(null);
 const [linkLoadingId,setLinkLoadingId]=useState(null);
+const [appLinkModal,setAppLinkModal]=useState(null);
 const [aba,setAba]=useState("ativo");
 const open=(s=null)=>{setForm(s?{name:s.name,dob:s.dob||"",sex:s.sex||"",phone:s.phone||"",notes:s.notes||"",planoId:""}:{name:"",dob:"",sex:"",phone:"",notes:"",planoId:""});setEditId(s?.id||null);setModal(true);};
 const save=()=>{
@@ -1691,6 +1692,14 @@ const copyLink=()=>{
 if(!linkModal)return;
 navigator.clipboard?.writeText(linkModal.url).then(()=>window.alert("Link copiado!")).catch(()=>{});
 };
+const genAppLink=(s)=>{
+const base=window.location.origin+window.location.pathname.replace(/[^/]+$/,"");
+setAppLinkModal({ name:s.name, url:base+"aluno.html" });
+};
+const copyAppLink=()=>{
+if(!appLinkModal)return;
+navigator.clipboard?.writeText(appLinkModal.url).then(()=>window.alert("Link copiado!")).catch(()=>{});
+};
 const listaAba=aba==="ativo"?ativos:inativos;
 const filtered=listaAba.filter(s=>s.name?.toLowerCase().includes(search.toLowerCase()));
 return (
@@ -1719,6 +1728,7 @@ return (
 {aba==="ativo"?<Btn sm variant="primary" icon="clip" onClick={()=>nav("newAssessment",{studentId:s.id})}>Avaliar</Btn>:<span/>}
 <div style={{ display:"flex",alignItems:"center",gap:2,background:"#f8fafc",border:"1px solid #f1f5f9",borderRadius:11,padding:2 }}>
 <Btn sm variant="ghost" icon="link" disabled={linkLoadingId===s.id} onClick={()=>genLink(s)}/>
+<Btn sm variant="ghost" icon="download" onClick={()=>genAppLink(s)}/>
 <Btn sm variant="ghost" icon="edit" onClick={()=>open(s)}/>
 <Btn sm variant="ghost" icon={aba==="ativo"?"x":"check"} onClick={()=>toggleStatus(s)} style={{color:aba==="ativo"?"#d97706":"#16a34a"}}/>
 <div style={{ width:1,height:20,background:"#e2e8f0",margin:"0 2px" }}/>
@@ -1768,6 +1778,14 @@ return (
 <div style={{ display:"flex",gap:10 }}>
 <Btn variant="secondary" full onClick={()=>setLinkModal(null)}>Fechar</Btn>
 <Btn full icon="link" onClick={copyLink}>Copiar Link</Btn>
+</div>
+</Modal>}
+{appLinkModal&&<Modal title="Link do Aplicativo" onClose={()=>setAppLinkModal(null)}>
+<div style={{ fontSize:13,color:"#475569",marginBottom:12 }}>Envie este link para <b>{appLinkModal.name}</b> baixar/abrir o aplicativo do aluno. No primeiro acesso ela cria a senha (com o e-mail que você cadastrou) e já cai direto no questionário — nenhuma etapa extra necessária.</div>
+<div style={{ background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 12px",fontSize:12,wordBreak:"break-all",color:"#334155",marginBottom:14 }}>{appLinkModal.url}</div>
+<div style={{ display:"flex",gap:10 }}>
+<Btn variant="secondary" full onClick={()=>setAppLinkModal(null)}>Fechar</Btn>
+<Btn full icon="download" onClick={copyAppLink}>Copiar Link</Btn>
 </div>
 </Modal>}
 </div>
