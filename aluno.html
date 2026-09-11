@@ -2322,6 +2322,8 @@ function App(){
   const [avisoFechado,setAvisoFechado]=useState(false);
   const [contratoModelos,setContratoModelos]=useState(undefined);
   const [contratoAssinatura,setContratoAssinatura]=useState(undefined);
+  const [questToken,setQuestToken]=useState(undefined); // undefined=carregando, string=token, null=erro
+  const [questStatus,setQuestStatus]=useState(undefined); // undefined=carregando, string=status atual
   const urlParams = new URLSearchParams(window.location.search);
   const cadastroMode = urlParams.get("cadastro")==="1";
   const planoParam = urlParams.get("plano");
@@ -2441,6 +2443,40 @@ function App(){
     })();
   },[session,studentId]);
 
+  useEffect(()=>{
+    if(!session || !studentId){ return; }
+    (async()=>{
+      try{
+        const token = session.access_token || SUPA_KEY;
+        const headers = { "apikey": SUPA_KEY, "Authorization": "Bearer "+token, "Content-Type": "application/json" };
+        const r = await fetch(SUPA_URL+"/rest/v1/rpc/rpc_criar_questionario_pendente", { method:"POST", headers, body: JSON.stringify({ p_aluno_id: studentId }) });
+        if(r.ok){
+          const raw = await r.json();
+          setQuestToken(typeof raw==="string" && raw ? raw : null);
+        } else setQuestToken(null);
+      } catch(e){ setQuestToken(null); }
+    })();
+  },[session,studentId]);
+
+  useEffect(()=>{
+    if(!session || !questToken) return;
+    let ativo = true;
+    const checar = async () => {
+      try{
+        const token = session.access_token || SUPA_KEY;
+        const headers = { "apikey": SUPA_KEY, "Authorization": "Bearer "+token, "Content-Type": "application/json" };
+        const r = await fetch(SUPA_URL+"/rest/v1/rpc/rpc_status_questionario", { method:"POST", headers, body: JSON.stringify({ p_token: questToken }) });
+        if(r.ok && ativo){
+          const raw = await r.json();
+          setQuestStatus(typeof raw==="string" ? raw : null);
+        }
+      } catch(e){}
+    };
+    checar();
+    const id = setInterval(checar, 4000);
+    return ()=>{ ativo=false; clearInterval(id); };
+  },[session,questToken]);
+
   const onLogout = () => { supa.auth.signOut(); };
 
   if(authLoading){
@@ -2468,6 +2504,39 @@ function App(){
           <div style={{fontSize:13,color:"#64748b",marginBottom:20,lineHeight:1.5}}>Sua conta foi criada, mas ainda não encontramos seu cadastro. Isso pode acontecer se o e-mail usado aqui for diferente do que o Wellington cadastrou pra você. Avise ele — a solicitação já está registrada pra ele aprovar.</div>
           <Btn variant="secondary" full onClick={onLogout}>Sair</Btn>
         </Card>
+      </div>
+    );
+  }
+
+  if(questToken===undefined || (questToken && questStatus===undefined)){
+    return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14}}>Carregando...</div>;
+  }
+
+  if(questToken===null){
+    return (
+      <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20,background:"#f8fafc"}}>
+        <Card style={{maxWidth:380,width:"100%",padding:"32px 26px",textAlign:"center"}}>
+          <div style={{width:56,height:56,borderRadius:16,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px"}}><Icon name="lock" size={26} color="#FF5603"/></div>
+          <div style={{fontWeight:700,fontSize:15,marginBottom:8}}>Não foi possível carregar seu questionário</div>
+          <div style={{fontSize:13,color:"#64748b",marginBottom:20,lineHeight:1.5}}>Verifique sua conexão e tente de novo.</div>
+          <Btn full onClick={()=>window.location.reload()}>Tentar novamente</Btn>
+          <button onClick={onLogout} style={{marginTop:14,background:"none",border:"none",color:"#94a3b8",fontSize:12,textDecoration:"underline",cursor:"pointer"}}>Sair</button>
+        </Card>
+      </div>
+    );
+  }
+
+  if(questStatus==="aguardando_preenchimento"){
+    const baseQ = window.location.origin+window.location.pathname.replace(/[^/]+$/,"");
+    const urlQuest = baseQ+"longevus-questionario.html?token="+questToken;
+    return (
+      <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",background:"#f8fafc"}}>
+        <div style={{padding:"14px 18px",background:"#fff",borderBottom:"1px solid #f1f5f9"}}>
+          <div style={{fontWeight:800,fontSize:15}}>Antes de começar</div>
+          <div style={{fontSize:12,color:"#64748b",marginTop:2}}>Responda o questionário abaixo — é a partir dele que o Wellington monta seu treino.</div>
+        </div>
+        <iframe src={urlQuest} style={{flex:1,width:"100%",border:"none"}} title="Questionário"/>
+        <button onClick={onLogout} style={{padding:"10px",background:"none",border:"none",color:"#94a3b8",fontSize:12,textDecoration:"underline",cursor:"pointer"}}>Sair</button>
       </div>
     );
   }

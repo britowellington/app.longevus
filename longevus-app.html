@@ -755,11 +755,31 @@ const Btn = ({ children, onClick, variant="primary", sm, icon, disabled, full, s
 const v = { primary:{background:O,color:"#fff",boxShadow:"0 3px 12px #FF560330"}, secondary:{background:"#f1f5f9",color:"#334155"}, ghost:{background:"transparent",color:"#64748b"}, outline:{background:"transparent",color:O,border:`1.5px solid ${O}`}, danger:{background:"#fee2e2",color:"#dc2626",border:"1px solid #fca5a5"} };
 return <button onClick={!disabled?onClick:undefined} style={{ display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,borderRadius:10,fontWeight:700,cursor:disabled?"not-allowed":"pointer",border:"none",fontSize:sm?12:14,padding:sm?"7px 13px":"11px 20px",opacity:disabled?.5:1,width:full?"100%":undefined,...v[variant],...style }}>{icon&&<I n={icon} s={sm?14:16} c={v[variant].color}/>}{children}</button>;
 };
+const HORAS_OPTS = Array.from({length:24},(_,i)=>String(i).padStart(2,"0"));
+const MINUTOS_OPTS = ["00","05","10","15","20","25","30","35","40","45","50","55"];
 const Inp = ({ label, value, onChange, type="text", placeholder, min, max, step, opts, note }) => (
 <div style={{ marginBottom:13 }}>
 {label&&<div style={{ fontSize:12,fontWeight:600,color:"#475569",marginBottom:5 }}>{label}</div>}
 {opts
 ? <select value={value} onChange={e=>onChange(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,color:"#0f172a" }}>{opts.map(o=><option key={o.v} value={o.v}>{o.l}</option>)}</select>
+: type==="time"
+? (() => {
+const [h,m] = (value||"").split(":");
+const selStyle = { flex:1,padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,color:"#0f172a" };
+return (
+<div style={{ display:"flex",alignItems:"center",gap:8 }}>
+<select value={h||""} onChange={e=>onChange(`${e.target.value}:${m||"00"}`)} style={selStyle}>
+<option value="">--</option>
+{HORAS_OPTS.map(hh=><option key={hh} value={hh}>{hh}</option>)}
+</select>
+<span style={{ fontWeight:800,color:"#94a3b8" }}>:</span>
+<select value={m&&MINUTOS_OPTS.includes(m)?m:(m||"")} onChange={e=>onChange(`${h||"00"}:${e.target.value}`)} style={selStyle}>
+<option value="">--</option>
+{MINUTOS_OPTS.map(mm=><option key={mm} value={mm}>{mm}</option>)}
+</select>
+</div>
+);
+})()
 : <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} min={min} max={max} step={step} style={{ width:"100%",padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,color:"#0f172a",boxSizing:"border-box" }}/>
 }
 {note&&<div style={{ fontSize:11,color:"#94a3b8",marginTop:4 }}>{note}</div>}
@@ -1616,13 +1636,24 @@ const [modal,setModal]=useState(false);
 const [cardioModal,setCardioModal]=useState(false);
 const [selCardioSt,setSelCardioSt]=useState("");
 const [editId,setEditId]=useState(null);
-const [form,setForm]=useState({name:"",dob:"",sex:"",phone:"",email:"",whatsapp:"",responsibleName:"",responsiblePhone:"",doctorName:"",doctorPhone:""});
+const [form,setForm]=useState({name:"",dob:"",sex:"",phone:"",email:"",whatsapp:"",responsibleName:"",responsiblePhone:"",doctorName:"",doctorPhone:"",planoId:""});
 const [search,setSearch]=useState("");
 const [linkModal,setLinkModal]=useState(null);
 const [linkLoadingId,setLinkLoadingId]=useState(null);
 const [aba,setAba]=useState("ativo");
-const open=(s=null)=>{setForm(s?{name:s.name,dob:s.dob||"",sex:s.sex||"",phone:s.phone||"",notes:s.notes||""}:{name:"",dob:"",sex:"",phone:"",notes:""});setEditId(s?.id||null);setModal(true);};
-const save=()=>{if(!form.name.trim())return;if(editId)setStudents(p=>p.map(s=>s.id===editId?{...s,...form}:s));else setStudents(p=>[...p,{id:uid(),...form,status:"ativo",createdAt:todayStr()}]);setModal(false);};
+const open=(s=null)=>{setForm(s?{name:s.name,dob:s.dob||"",sex:s.sex||"",phone:s.phone||"",notes:s.notes||"",planoId:""}:{name:"",dob:"",sex:"",phone:"",notes:"",planoId:""});setEditId(s?.id||null);setModal(true);};
+const save=()=>{
+if(!form.name.trim())return;
+const { planoId, ...dados } = form;
+if(editId){ setStudents(p=>p.map(s=>s.id===editId?{...s,...dados}:s)); }
+else {
+const pl = planoId ? (planos||[]).find(p=>p.id===planoId) : null;
+const novoAluno = { id:uid(), ...dados, status:"ativo", createdAt:todayStr() };
+if(pl) novoAluno.billing = { ativo:true, tipo:"mensal", modoCobranca:pl.modoCobranca||"fixo", plano:pl.nome, valor:pl.valor||"", valorSessao:pl.valorSessao||"" };
+setStudents(p=>[...p,novoAluno]);
+}
+setModal(false);
+};
 const del=async id=>{
 if(!window.confirm("Remover aluno? Isso apaga também avaliações, pagamentos, check-ins e todo o histórico dele."))return;
 try{
@@ -1706,6 +1737,7 @@ return (
 </div>}
 {modal&&<Modal title={editId?"Editar Aluno":"Novo Aluno"} onClose={()=>setModal(false)}>
 <Inp label="Nome completo *" value={form.name} onChange={v=>setForm(f=>({...f,name:v}))} placeholder="Nome do aluno"/>
+{!editId && <Inp label="Plano (opcional)" value={form.planoId} onChange={v=>setForm(f=>({...f,planoId:v}))} opts={[{v:"",l:"Sem plano definido ainda"},...(planos||[]).filter(pl=>pl.ativo!==false).map(pl=>({v:pl.id,l:pl.nome+" · "+(pl.modoCobranca==="porSessao"?"R$ "+Number(pl.valorSessao||0).toFixed(2).replace(".",",")+"/sessão":"R$ "+Number(pl.valor||0).toFixed(2).replace(".",","))}))]} note="Define logo de cara em qual plano esse aluno entra — dá pra trocar depois em Cobrança."/>}
 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
 <Inp label="Nascimento" type="date" value={form.dob} onChange={v=>setForm(f=>({...f,dob:v}))}/>
 <Inp label="Sexo" value={form.sex} onChange={v=>setForm(f=>({...f,sex:v}))} opts={[{v:"",l:"Selecione"},{v:"M",l:"Masculino"},{v:"F",l:"Feminino"}]}/>
@@ -1937,7 +1969,7 @@ setFeedbackModal(false);
 };
 const delFeedback = async id=>{if(window.confirm("Remover este feedback?")){await DB.remove("professor_feedbacks",id);setProfessorFeedbacks(p=>p.filter(f=>f.id!==id));}};
 const delAssessment = async id=>{if(window.confirm("Remover avaliação?")){await DB.remove("assessments",id);setAssessments(p=>p.filter(a=>a.id!==id));}};
-const openEdit = ()=>{setForm({name:st.name,dob:st.dob||"",sex:st.sex||"",phone:st.phone||"",email:st.email||"",whatsapp:st.whatsapp||"",responsibleName:st.responsibleName||"",responsiblePhone:st.responsiblePhone||"",doctorName:st.doctorName||"",doctorPhone:st.doctorPhone||"",billing:{ativo:st.billing?.ativo||false,tipo:st.billing?.tipo||"mensal",modoCobranca:st.billing?.modoCobranca||"fixo",plano:st.billing?.plano||"",valor:st.billing?.valor||"",valorSessao:st.billing?.valorSessao||"",valorAula:st.billing?.valorAula||"",vencimento:st.billing?.vencimento||""},checkinConfig:{pre:{disposicao:st.checkinConfig?.pre?.disposicao??true,hidratacao:st.checkinConfig?.pre?.hidratacao??true,alimentacao:st.checkinConfig?.pre?.alimentacao??true,sono:st.checkinConfig?.pre?.sono??true,dor:st.checkinConfig?.pre?.dor??false,pa:st.checkinConfig?.pre?.pa??false,glicemia:st.checkinConfig?.pre?.glicemia??false},post:{esforco:st.checkinConfig?.post?.esforco??true,completude:st.checkinConfig?.post?.completude??true,dor:st.checkinConfig?.post?.dor??true,obs:st.checkinConfig?.post?.obs??true}}});setEditModal(true);};
+const openEdit = ()=>{setForm({name:st.name,dob:st.dob||"",sex:st.sex||"",phone:st.phone||"",email:st.email||"",whatsapp:st.whatsapp||"",responsibleName:st.responsibleName||"",responsiblePhone:st.responsiblePhone||"",doctorName:st.doctorName||"",doctorPhone:st.doctorPhone||"",billing:{ativo:st.billing?.ativo||false,tipo:st.billing?.tipo||"mensal",modoCobranca:st.billing?.modoCobranca||"fixo",plano:st.billing?.plano||"",valor:st.billing?.valor||"",valorSessao:st.billing?.valorSessao||"",valorAula:st.billing?.valorAula||"",vencimento:st.billing?.vencimento||""},checkinConfig:{pre:{disposicao:st.checkinConfig?.pre?.disposicao??true,hidratacao:st.checkinConfig?.pre?.hidratacao??true,alimentacao:st.checkinConfig?.pre?.alimentacao??true,sono:st.checkinConfig?.pre?.sono??true,dor:st.checkinConfig?.pre?.dor??false,pa:st.checkinConfig?.pre?.pa??false,fc:st.checkinConfig?.pre?.fc??false,glicemia:st.checkinConfig?.pre?.glicemia??false},post:{esforco:st.checkinConfig?.post?.esforco??true,completude:st.checkinConfig?.post?.completude??true,dor:st.checkinConfig?.post?.dor??true,pa:st.checkinConfig?.post?.pa??false,fc:st.checkinConfig?.post?.fc??false,glicemia:st.checkinConfig?.post?.glicemia??false,obs:st.checkinConfig?.post?.obs??true}}});setEditModal(true);};
 const saveEdit = ()=>{
   if(!form.name.trim())return;
   setStudents(p=>p.map(s=>s.id===studentId?{...s,...form}:s));
@@ -1954,9 +1986,9 @@ window.open("longevus-programa.html?novo="+encodeURIComponent(st.id),"_self");
 const openViewProgram = (prog) => {
 window.open("longevus-programa.html?ver="+encodeURIComponent(prog.id),"_self");
 };
-const ccfg = st.checkinConfig || {pre:{disposicao:true,hidratacao:true,alimentacao:true,sono:true,dor:false,pa:false,glicemia:false},post:{esforco:true,completude:true,dor:true,obs:true}};
+const ccfg = st.checkinConfig || {pre:{disposicao:true,hidratacao:true,alimentacao:true,sono:true,dor:false,pa:false,fc:false,glicemia:false},post:{esforco:true,completude:true,dor:true,pa:false,fc:false,glicemia:false,obs:true}};
 const emptyPresPre = () => ({ disposicao:null, hidratacao:null, alimentacao:null, sono:null, dor:"nenhuma", pas:"", pad:"", fc:"", glicemia:"" });
-const emptyPresPos = () => ({ esforco:null, completude:null, dor:"nenhuma", obs:"" });
+const emptyPresPos = () => ({ esforco:null, completude:null, dor:"nenhuma", pas:"", pad:"", fc:"", glicemia:"", obs:"" });
 const [presTab,setPresTab] = useState("pre");
 const [presPre,setPresPre] = useState(emptyPresPre());
 const [presPos,setPresPos] = useState(emptyPresPos());
@@ -1982,7 +2014,7 @@ if(ok) setPresPre(emptyPresPre());
 };
 const salvarPresPos = async () => {
 setPresSaving(true); setPresMsg("");
-const data = { esforco:presPos.esforco, completude:presPos.completude, dor:presPos.dor, obs:presPos.obs, date:todayStr(), source:"professor_presencial", createdAt: new Date().toISOString() };
+const data = { esforco:presPos.esforco, completude:presPos.completude, dor:presPos.dor, pas:presPos.pas, pad:presPos.pad, fc:presPos.fc, glicemia:presPos.glicemia, obs:presPos.obs, date:todayStr(), source:"professor_presencial", createdAt: new Date().toISOString() };
 const ok = await submeterCheckin("pos_treino", data);
 setPresSaving(false);
 setPresMsg(ok?"Check-out registrado!":"Erro ao salvar. Tente novamente.");
@@ -2290,12 +2322,17 @@ Exatamente as mesmas perguntas que aparecem no app de {(st.name||"").split(" ")[
 )}
 {ccfg.pre?.pa && (
 <div style={{ marginBottom:20 }}>
-<div style={{ fontWeight:700,fontSize:13,color:"#475569",marginBottom:10 }}>❤️ Pressão arterial / FC</div>
-<div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8 }}>
+<div style={{ fontWeight:700,fontSize:13,color:"#475569",marginBottom:10 }}>❤️ Pressão arterial</div>
+<div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
 <input value={presPre.pas} onChange={e=>setPresPre(c=>({...c,pas:e.target.value}))} placeholder="PAS" inputMode="numeric" style={{ padding:"9px 10px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box" }}/>
 <input value={presPre.pad} onChange={e=>setPresPre(c=>({...c,pad:e.target.value}))} placeholder="PAD" inputMode="numeric" style={{ padding:"9px 10px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box" }}/>
-<input value={presPre.fc} onChange={e=>setPresPre(c=>({...c,fc:e.target.value}))} placeholder="FC" inputMode="numeric" style={{ padding:"9px 10px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box" }}/>
 </div>
+</div>
+)}
+{ccfg.pre?.fc && (
+<div style={{ marginBottom:20 }}>
+<div style={{ fontWeight:700,fontSize:13,color:"#475569",marginBottom:10 }}>💓 Frequência cardíaca</div>
+<input value={presPre.fc} onChange={e=>setPresPre(c=>({...c,fc:e.target.value}))} placeholder="FC (bpm)" inputMode="numeric" style={{ width:"100%",padding:"9px 10px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box" }}/>
 </div>
 )}
 {ccfg.pre?.glicemia && (
@@ -2489,6 +2526,27 @@ return (
 </div>
 </div>
 )}
+{ccfg.post?.pa && (
+<div style={{ marginBottom:20 }}>
+<div style={{ fontWeight:700,fontSize:13,color:"#475569",marginBottom:10 }}>❤️ Pressão arterial</div>
+<div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
+<input value={presPos.pas} onChange={e=>setPresPos(c=>({...c,pas:e.target.value}))} placeholder="PAS" inputMode="numeric" style={{ padding:"9px 10px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box" }}/>
+<input value={presPos.pad} onChange={e=>setPresPos(c=>({...c,pad:e.target.value}))} placeholder="PAD" inputMode="numeric" style={{ padding:"9px 10px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box" }}/>
+</div>
+</div>
+)}
+{ccfg.post?.fc && (
+<div style={{ marginBottom:20 }}>
+<div style={{ fontWeight:700,fontSize:13,color:"#475569",marginBottom:10 }}>💓 Frequência cardíaca</div>
+<input value={presPos.fc} onChange={e=>setPresPos(c=>({...c,fc:e.target.value}))} placeholder="FC (bpm)" inputMode="numeric" style={{ width:"100%",padding:"9px 10px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box" }}/>
+</div>
+)}
+{ccfg.post?.glicemia && (
+<div style={{ marginBottom:20 }}>
+<div style={{ fontWeight:700,fontSize:13,color:"#475569",marginBottom:10 }}>🩸 Glicemia (mg/dL)</div>
+<input value={presPos.glicemia} onChange={e=>setPresPos(c=>({...c,glicemia:e.target.value}))} placeholder="100" inputMode="numeric" style={{ width:"100%",padding:"9px 10px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box" }}/>
+</div>
+)}
 {ccfg.post?.obs && (
 <div style={{ marginBottom:20 }}>
 <div style={{ fontWeight:700,fontSize:13,color:"#475569",marginBottom:4 }}>Teve dificuldade em algum exercício específico?</div>
@@ -2675,7 +2733,8 @@ return <Card style={{ padding:"16px 14px" }}><MultiLineChart series={seriesData}
   {k:"alimentacao",label:"Alimentação"},
   {k:"sono",label:"Qualidade do sono"},
   {k:"dor",label:"Dor rápida"},
-  {k:"pa",label:"Pressão arterial / FC"},
+  {k:"pa",label:"Pressão arterial"},
+  {k:"fc",label:"Frequência cardíaca"},
   {k:"glicemia",label:"Glicemia"},
 ].map(item=>(
 <div key={item.k} onClick={()=>setForm(f=>({...f,checkinConfig:{...f.checkinConfig,pre:{...f.checkinConfig.pre,[item.k]:!f.checkinConfig.pre[item.k]}}}))} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",background:"#f8fafc",borderRadius:9,padding:"9px 12px",marginBottom:6 }}>
@@ -2690,6 +2749,9 @@ return <Card style={{ padding:"16px 14px" }}><MultiLineChart series={seriesData}
   {k:"esforco",label:"Esforço (PSE 0-10)"},
   {k:"completude",label:"Completude do treino"},
   {k:"dor",label:"Dor rápida"},
+  {k:"pa",label:"Pressão arterial"},
+  {k:"fc",label:"Frequência cardíaca"},
+  {k:"glicemia",label:"Glicemia"},
   {k:"obs",label:"Observação livre"},
 ].map(item=>(
 <div key={item.k} onClick={()=>setForm(f=>({...f,checkinConfig:{...f.checkinConfig,post:{...f.checkinConfig.post,[item.k]:!f.checkinConfig.post[item.k]}}}))} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",background:"#f8fafc",borderRadius:9,padding:"9px 12px",marginBottom:6 }}>
@@ -7060,7 +7122,14 @@ const dom = new Date(d.getFullYear(), d.getMonth(), d.getDate()-d.getDay());
 return Array.from({length:7},(_,i)=>new Date(dom.getFullYear(), dom.getMonth(), dom.getDate()+i));
 };
 const cap1 = (s) => s ? s.charAt(0).toUpperCase()+s.slice(1) : s;
-const Agenda = ({ students, setStudents, agendaEntries, setAgendaEntries, pagamentos, setPagamentos, nav }) => {
+const Agenda = ({ students, setStudents, agendaEntries, setAgendaEntries, pagamentos, setPagamentos, leads, nav }) => {
+const nomeDoCompromisso = (e) => {
+const st=students.find(s=>s.id===e.studentId);
+if(st) return st.name;
+const ld=(leads||[]).find(l=>l.id===e.leadId);
+if(ld) return "🧪 "+ld.name;
+return "Aluno";
+};
 const [viewMode,setViewMode]=useState("dia");
 const [filterSt,setFilterSt]=useState("");
 const [refDate,setRefDate]=useState(()=>new Date());
@@ -7092,14 +7161,14 @@ const schedulePrimeiroDiaSemana = scheduleDiasDoMes[0].getDay();
 // modal de aula única (editar status/horário/observação de um compromisso já agendado, ou criar um avulso)
 const [entryModal,setEntryModal]=useState(false);
 const [entryEditId,setEntryEditId]=useState(null);
-const [entryForm,setEntryForm]=useState({ studentId:"", date:"", time:"", status:"agendado", obs:"" });
+const [entryForm,setEntryForm]=useState({ studentId:"", leadId:"", date:"", time:"", status:"agendado", obs:"" });
 const openEntry = (date, entry) => {
-if(entry){ setEntryEditId(entry.id); setEntryForm({ studentId:entry.studentId, date:entry.date, time:entry.time||"", status:entry.status, obs:entry.obs||"" }); }
-else { setEntryEditId(null); setEntryForm({ studentId:filterSt||"", date:date||todayStr(), time:"", status:"agendado", obs:"" }); }
+if(entry){ setEntryEditId(entry.id); setEntryForm({ studentId:entry.studentId||"", leadId:entry.leadId||"", date:entry.date, time:entry.time||"", status:entry.status, obs:entry.obs||"" }); }
+else { setEntryEditId(null); setEntryForm({ studentId:filterSt||"", leadId:"", date:date||todayStr(), time:"", status:"agendado", obs:"" }); }
 setEntryModal(true);
 };
 const saveEntry = () => {
-if(!entryForm.studentId||!entryForm.date) return;
+if((!entryForm.studentId&&!entryForm.leadId)||!entryForm.date) return;
 if(entryEditId){
 const original = agendaEntries.find(e=>e.id===entryEditId)||{};
 const atualizado = marcarReagendamento(original, { ...original, id:entryEditId, ...entryForm });
@@ -7126,12 +7195,11 @@ const entriesDoMes = entriesFiltradas.filter(e=>e.date && e.date.slice(0,7)===me
 const contagemMes = { agendado:0, confirmada:0, realizada:0, falta:0 };
 entriesDoMes.forEach(e=>{ if(contagemMes[e.status]!==undefined) contagemMes[e.status]++; });
 const EntryRow = ({ e }) => {
-const st=students.find(s=>s.id===e.studentId);
 const cfg=STATUS_AGENDA[e.status]||STATUS_AGENDA.agendado;
 return (
 <div onClick={()=>openEntry(e.date,e)} style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,padding:"10px 12px",border:"1.5px solid #f1f5f9",borderRadius:10,cursor:"pointer" }}>
 <div style={{ flex:1,minWidth:0 }}>
-<div style={{ fontWeight:700,fontSize:13 }}>{e.time?e.time+" · ":""}{st?.name||"Aluno"}</div>
+<div style={{ fontWeight:700,fontSize:13 }}>{e.time?e.time+" · ":""}{nomeDoCompromisso(e)}</div>
 {e.obs && <div style={{ fontSize:11,color:"#94a3b8",marginTop:2 }}>{e.obs}</div>}
 {e.dataOriginal && <div style={{ fontSize:10,color:"#c2410c",marginTop:2 }}>↻ Remarcada, era dia {fmt(e.dataOriginal)}</div>}
 </div>
@@ -7225,14 +7293,13 @@ return (
 listaOrdenada.length===0?<Card style={{ textAlign:"center",padding:40 }}><I n="calendar" c="#cbd5e1" s={36}/><div style={{ color:"#94a3b8",marginTop:10 }}>Nenhuma aula agendada ainda.</div></Card>:
 <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
 {listaOrdenada.map(e=>{
-const st=students.find(s=>s.id===e.studentId);
 const cfg=STATUS_AGENDA[e.status]||STATUS_AGENDA.agendado;
 return (
 <Card key={e.id} onClick={()=>openEntry(e.date,e)} style={{ padding:"14px 16px" }}>
 <div style={{ display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10 }}>
 <div style={{ flex:1,minWidth:0 }}>
 <div style={{ display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:6 }}>
-<span style={{ fontWeight:700,fontSize:14 }}>{st?.name||"Aluno"}</span>
+<span style={{ fontWeight:700,fontSize:14 }}>{nomeDoCompromisso(e)}</span>
 <span style={{ fontSize:11,color:"#94a3b8" }}>{fmt(e.date)}{e.time?" · "+e.time:""}</span>
 <Badge color={cfg.color} bg={cfg.bg}>{cfg.label}</Badge>
 </div>
@@ -7280,7 +7347,12 @@ return (
 <Btn full onClick={saveSchedule} disabled={!scheduleForm.studentId||!scheduleForm.time||selDates.size===0}>Salvar {selDates.size>0?`(${selDates.size} dia${selDates.size>1?"s":""})`:""}</Btn>
 </Modal>}
 {entryModal&&<Modal title={entryEditId?"Compromisso":"Nova Aula Avulsa"} onClose={()=>setEntryModal(false)}>
-<Inp label="Aluno" value={entryForm.studentId} onChange={v=>setEntryForm(f=>({...f,studentId:v}))} opts={[{v:"",l:"Selecione..."},...students.map(s=>({v:s.id,l:s.name}))]}/>
+{entryForm.leadId?
+<div style={{ marginBottom:13 }}>
+<div style={{ fontSize:12,fontWeight:600,color:"#475569",marginBottom:5 }}>Lead (aula experimental)</div>
+<div style={{ padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#fff7ed",fontSize:14,color:"#9a3412",fontWeight:700 }}>🧪 {(leads||[]).find(l=>l.id===entryForm.leadId)?.name||"Lead"}</div>
+</div>
+:<Inp label="Aluno" value={entryForm.studentId} onChange={v=>setEntryForm(f=>({...f,studentId:v}))} opts={[{v:"",l:"Selecione..."},...students.map(s=>({v:s.id,l:s.name}))]}/>}
 <Inp label="Data" type="date" value={entryForm.date} onChange={v=>setEntryForm(f=>({...f,date:v}))}/>
 <Inp label="Horário" type="time" value={entryForm.time} onChange={v=>setEntryForm(f=>({...f,time:v}))}/>
 <div style={{ marginBottom:13 }}>
@@ -7297,7 +7369,7 @@ return (
 </div>
 <div style={{ display:"flex",gap:8 }}>
 {entryEditId && <Btn variant="danger" onClick={()=>{delEntry(entryEditId);setEntryModal(false);}}>Excluir</Btn>}
-<Btn full onClick={saveEntry} disabled={!entryForm.studentId||!entryForm.date}>Salvar</Btn>
+<Btn full onClick={saveEntry} disabled={(!entryForm.studentId&&!entryForm.leadId)||!entryForm.date}>Salvar</Btn>
 </div>
 </Modal>}
 </div>
@@ -7357,7 +7429,30 @@ valorPotencial: l.valorPotencial || "",
 historico: l.historico || (l.createdAt ? [{ ts:l.createdAt+"T00:00:00", texto:"Lead cadastrado" }] : []),
 };
 };
-const Leads = ({ leads, setLeads, students, setStudents, nav }) => {
+const Leads = ({ leads, setLeads, students, setStudents, agendaEntries, setAgendaEntries, nav }) => {
+// Sincroniza automaticamente leads em "Exp. Agendada" com compromissos na Agenda geral:
+// cria/atualiza/remove o compromisso vinculado (leadId) conforme etapa e próxima ação mudam,
+// sem nunca gerar cobrança (atualizarFinanceiroPelaAgenda ignora entradas sem studentId).
+useEffect(() => {
+const comData = leads.filter(l=>l.etapa==="exp_agendada" && l.proximaAcaoData);
+const foraDaEtapa = leads.filter(l=>l.etapa!=="exp_agendada" && l.agendaEntryId);
+if(foraDaEtapa.length){
+const idsRemover = foraDaEtapa.map(l=>l.agendaEntryId);
+setAgendaEntries(p=>p.filter(e=>!idsRemover.includes(e.id)));
+setLeads(p=>p.map(l=>idsRemover.includes(l.agendaEntryId)?{...l,agendaEntryId:null}:l));
+}
+comData.forEach(l=>{
+const existente = l.agendaEntryId ? (agendaEntries||[]).find(e=>e.id===l.agendaEntryId) : null;
+if(!existente){
+const nova = { id:uid(), leadId:l.id, date:l.proximaAcaoData, time:l.proximaAcaoHorario||"", status:"agendado", obs:"🧪 Aula experimental"+(l.proximaAcaoObs?" — "+l.proximaAcaoObs:"") };
+setAgendaEntries(p=>[...p,nova]);
+setLeads(p=>p.map(x=>x.id===l.id?{...x,agendaEntryId:nova.id}:x));
+} else if(existente.date!==l.proximaAcaoData || existente.time!==(l.proximaAcaoHorario||"")){
+setAgendaEntries(p=>p.map(e=>e.id===existente.id?{...e,date:l.proximaAcaoData,time:l.proximaAcaoHorario||""}:e));
+}
+});
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, [leads]);
 const [ledView,setLedView]=useState("kanban");
 const [modal,setModal]=useState(false);
 const [editId,setEditId]=useState(null);
@@ -7378,7 +7473,7 @@ return { ...l, ...form, name:form.name.trim(), historico:[...(l.historico||[]),.
 else setLeads(p=>[...p,{ id:uid(), ...form, name:form.name.trim(), createdAt:todayStr(), historico:[{ ts:now, texto:"Lead cadastrado" }] }]);
 setModal(false);
 };
-const del = async (id) => { if(window.confirm("Remover este lead?")){ await DB.remove("leads",id); setLeads(p=>p.filter(l=>l.id!==id)); } };
+const del = async (id) => { if(window.confirm("Remover este lead?")){ const lead=leads.find(l=>l.id===id); if(lead?.agendaEntryId){ await DB.remove("agenda",lead.agendaEntryId); setAgendaEntries(p=>p.filter(e=>e.id!==lead.agendaEntryId)); } await DB.remove("leads",id); setLeads(p=>p.filter(l=>l.id!==id)); } };
 const [motivoModal,setMotivoModal]=useState(null);
 const [motivoForm,setMotivoForm]=useState({ motivoNaoFechamento:"", motivoObs:"" });
 const setEtapaRapida = (lead, etapa) => {
@@ -9300,8 +9395,8 @@ return (
 }{page==="extprograma"&&(()=>{window.open("longevus-programa.html","_self");return null;})()}{page==="cognitivehub"&&<CognitiveHub students={students} hubResults={hubResults} setHubResults={setHubResults}/>}{page==="sessions"&&<SessionTracker students={students} programs={programs} sessions={sessions} setSessions={setSessions} nav={nav}/>}{page==="vincular"&&<VincularAlunos students={students} setStudents={setStudents}/>
 }{page==="extraatividades"&&<AtividadesExtras students={students} atividadesExtras={atividadesExtras} setAtividadesExtras={setAtividadesExtras} prefillStudentId={pageProps.studentId} assessments={assessments} checkins={checkins}/>
 }{page==="financeiro"&&<Financeiro students={students} setStudents={setStudents} planos={planos} setPlanos={setPlanos} pagamentos={pagamentos} setPagamentos={setPagamentos} receitasExtras={receitasExtras} setReceitasExtras={setReceitasExtras} nav={nav}/>
-}{page==="agenda"&&<Agenda students={students} setStudents={setStudents} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} pagamentos={pagamentos} setPagamentos={setPagamentos} nav={nav}/>
-}{page==="leads"&&<Leads leads={leads} setLeads={setLeads} students={students} setStudents={setStudents} nav={nav}/>
+}{page==="agenda"&&<Agenda students={students} setStudents={setStudents} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} pagamentos={pagamentos} setPagamentos={setPagamentos} leads={leads} nav={nav}/>
+}{page==="leads"&&<Leads leads={leads} setLeads={setLeads} students={students} setStudents={setStudents} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} nav={nav}/>
 }{page==="contrato"&&<Contrato students={students} setStudents={setStudents} contratoModelos={contratoModelos} setContratoModelos={setContratoModelos} contratoAssinaturas={contratoAssinaturas} nav={nav}/>
 }{page==="profile"&&<Profile session={session} onLogoChange={setLogoUrl}/>}
 </div>
