@@ -742,10 +742,10 @@ const ExCard=({ex,onEdit,onDelete,onView,isAdmin,onClassificar})=>{
       </div>
       {ex.obs&&<div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:6,padding:"4px 7px",marginBottom:7,fontSize:10,color:"#92400e"}}>📋 {ex.obs}</div>}
       {isAdmin&&ex.grupo==="Academia"&&<div style={{background:"#f3f4f6",border:"1.5px solid #d1d5db",borderRadius:6,padding:"5px 7px",marginBottom:7,display:"flex",alignItems:"center",gap:5}}>
-        <span style={{fontSize:10,color:"#475569",whiteSpace:"nowrap"}}>📁 Definir grupo:</span>
+        <span style={{fontSize:10,color:"#475569",whiteSpace:"nowrap"}}>💪 Definir músculo:</span>
         <select onChange={e=>{if(e.target.value)onClassificar(ex.id,e.target.value);}} defaultValue="" style={{fontSize:10,border:"1px solid #cbd5e1",borderRadius:5,padding:"2px 4px",flex:1,minWidth:0}}>
           <option value="" disabled>Selecionar…</option>
-          {GRUPOS.filter(g=>g!=="Academia").map(g=>(<option key={g} value={g}>{g}</option>))}
+          {MUSCULOS.map(m=>(<option key={m.k} value={m.k}>{m.l}</option>))}
         </select>
       </div>}
       <div style={{display:"flex",gap:5}}><Btn sm variant="ghost" full onClick={()=>onView(ex)}>Ver</Btn>{isAdmin&&<Btn sm variant="secondary" onClick={()=>onEdit(ex)}>✏️</Btn>}{isAdmin&&<Btn sm variant="danger" onClick={()=>onDelete(ex.id)}>🗑</Btn>}</div>
@@ -761,10 +761,10 @@ const ExDetalhe=({ex,onClose,onEdit,isAdmin,onClassificar})=>(<Modal title={ex.n
     <span style={{background:"#f0fdf4",color:"#15803d",borderRadius:99,padding:"2px 9px",fontSize:11,fontWeight:700}}>{ex.momento}</span>
   </div>
   {isAdmin&&ex.grupo==="Academia"&&<div style={{background:"#f3f4f6",border:"1.5px solid #d1d5db",borderRadius:8,padding:"8px 10px",marginBottom:11}}>
-    <div style={{fontSize:11,fontWeight:700,color:"#374151",marginBottom:5}}>📁 Ainda sem grupo muscular definido</div>
+    <div style={{fontSize:11,fontWeight:700,color:"#374151",marginBottom:5}}>💪 Ainda sem músculo definido</div>
     <select onChange={e=>{if(e.target.value)onClassificar(ex.id,e.target.value);}} defaultValue="" style={{width:"100%",fontSize:12,border:"1.5px solid #cbd5e1",borderRadius:7,padding:"6px 8px"}}>
-      <option value="" disabled>Selecionar grupo muscular…</option>
-      {GRUPOS.filter(g=>g!=="Academia").map(g=>(<option key={g} value={g}>{g}</option>))}
+      <option value="" disabled>Selecionar músculo…</option>
+      {MUSCULOS.map(m=>(<option key={m.k} value={m.k}>{m.l}</option>))}
     </select>
   </div>}
   {ex.foco&&<div style={{fontSize:12,color:"#64748b",marginBottom:9}}>🎯 <strong>Foco:</strong> {ex.foco}</div>}
@@ -975,15 +975,19 @@ function AppInner({billing}){
     setModal(null);setEditEx(null);
   };
 
-  const classificarGrupo=async(id,novoGrupo)=>{
+  const classificarMusculo=async(id,musculo)=>{
+    const atual=biblioteca.find(e=>e.id===id);
+    const tagsAtuais=(atual?.tags||"").split(",").map(t=>t.trim()).filter(Boolean);
+    if(!tagsAtuais.includes(musculo))tagsAtuais.push(musculo);
+    const novasTags=tagsAtuais.join(",");
     try{
       const h=await authHeadersFn();
       await fetch(SUPA_URL+"/rest/v1/exercises?id=eq."+id,{
         method:"PATCH",headers:{...h,"Content-Type":"application/json","Prefer":"return=minimal"},
-        body:JSON.stringify({grupo:novoGrupo,updated_at:new Date().toISOString()})
+        body:JSON.stringify({tags:novasTags,updated_at:new Date().toISOString()})
       });
-    }catch(e){console.warn("Erro ao classificar grupo");}
-    setBiblioteca(b=>b.map(e=>e.id===id?{...e,grupo:novoGrupo}:e));
+    }catch(e){console.warn("Erro ao classificar músculo");}
+    setBiblioteca(b=>b.map(e=>e.id===id?{...e,tags:novasTags}:e));
   };
   const delEx=async id=>{
     if(!window.confirm("Remover?"))return;
@@ -1035,11 +1039,11 @@ function AppInner({billing}){
           </div>
         </div>
         <div style={{fontSize:10,color:"#94a3b8",marginBottom:9}}>{filtered.length} exercício{filtered.length!==1?"s":""} encontrado{filtered.length!==1?"s":""}</div>
-        {filtered.length===0?(<Card style={{textAlign:"center",padding:36}}><div style={{fontSize:32,marginBottom:8}}>📚</div><div style={{fontWeight:700,fontSize:14,marginBottom:4}}>{biblioteca.length===0?"Biblioteca vazia":"Nenhum encontrado"}</div><div style={{color:"#94a3b8",fontSize:11,marginBottom:14}}>{biblioteca.length===0?"Cadastre exercícios.":"Tente outra busca."}</div>{biblioteca.length===0&&<Btn onClick={()=>{setEditEx(null);setModal("form");}}>Cadastrar primeiro</Btn>}</Card>):filtered.map(ex=>(<ExCard key={ex.id} ex={ex} isAdmin={billing?.is_admin} onEdit={ex=>{setEditEx(ex);setModal("form");}} onDelete={delEx} onView={ex=>{setVerEx(ex);setModal("ver");}} onClassificar={classificarGrupo}/>))}
+        {filtered.length===0?(<Card style={{textAlign:"center",padding:36}}><div style={{fontSize:32,marginBottom:8}}>📚</div><div style={{fontWeight:700,fontSize:14,marginBottom:4}}>{biblioteca.length===0?"Biblioteca vazia":"Nenhum encontrado"}</div><div style={{color:"#94a3b8",fontSize:11,marginBottom:14}}>{biblioteca.length===0?"Cadastre exercícios.":"Tente outra busca."}</div>{biblioteca.length===0&&<Btn onClick={()=>{setEditEx(null);setModal("form");}}>Cadastrar primeiro</Btn>}</Card>):filtered.map(ex=>(<ExCard key={ex.id} ex={ex} isAdmin={billing?.is_admin} onEdit={ex=>{setEditEx(ex);setModal("form");}} onDelete={delEx} onView={ex=>{setVerEx(ex);setModal("ver");}} onClassificar={classificarMusculo}/>))}
       </div>
     </div>
     {modal==="form"&&(<Modal title={editEx?"Editar Exercício":"Novo Exercício"} onClose={()=>{setModal(null);setEditEx(null);}}><ExForm initial={editEx} onSave={saveEx} onCancel={()=>{setModal(null);setEditEx(null);}}/></Modal>)}
-    {modal==="ver"&&verEx&&(<ExDetalhe ex={verEx} onClose={()=>{setModal(null);setVerEx(null);}} isAdmin={billing?.is_admin} onEdit={ex=>{setModal(null);setVerEx(null);setEditEx(ex);setModal("form");}} onClassificar={classificarGrupo}/>)}
+    {modal==="ver"&&verEx&&(<ExDetalhe ex={verEx} onClose={()=>{setModal(null);setVerEx(null);}} isAdmin={billing?.is_admin} onEdit={ex=>{setModal(null);setVerEx(null);setEditEx(ex);setModal("form");}} onClassificar={classificarMusculo}/>)}
     <NavBar active="biblioteca"/>
   </>);
 }
