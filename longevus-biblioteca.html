@@ -661,6 +661,11 @@ const LS={get:(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v)
 const uid=()=>Math.random().toString(36).slice(2)+Date.now().toString(36);
 const GRUPOS=["MMII","MMSS","Core","Equilíbrio","Mobilidade","Alongamento","Cardio","Funcional","Coordenação","Cognitivo","Respiração","Academia","Outro"];
 const MUSCULOS=[{k:"quadríceps",l:"Quadríceps"},{k:"posterior",l:"Posterior"},{k:"glúteos",l:"Glúteos"},{k:"panturrilha",l:"Panturrilha"},{k:"peito",l:"Peito"},{k:"costas",l:"Costas"},{k:"ombros",l:"Ombros"},{k:"bíceps",l:"Bíceps"},{k:"tríceps",l:"Tríceps"},{k:"core",l:"Abdômen"}];
+const musculoAtual=tags=>{
+  const arr=(tags||"").toLowerCase().split(",").map(t=>t.trim());
+  const found=MUSCULOS.find(m=>arr.includes(m.k));
+  return found?found.k:"";
+};
 const NIVEIS=["Básico","Intermediário","Avançado"];
 const MOMENTOS=["Parte Inicial","Parte Principal","Parte Final"];
 const GC={MMII:{bg:"#eff6ff",c:"#1d4ed8"},MMSS:{bg:"#fff7ed",c:"#c2410c"},Core:{bg:"#fdf4ff",c:"#7e22ce"},Equilíbrio:{bg:"#f0fdf4",c:"#15803d"},Mobilidade:{bg:"#fefce8",c:"#a16207"},Alongamento:{bg:"#f0fdfa",c:"#0f766e"},Cardio:{bg:"#fff1f2",c:"#be123c"},Funcional:{bg:"#fff4ee",c:O},Coordenação:{bg:"#faf5ff",c:"#6d28d9"},Cognitivo:{bg:"#ecfdf5",c:"#065f46"},Respiração:{bg:"#f0f9ff",c:"#0369a1"},Academia:{bg:"#f3f4f6",c:"#1f2937"},Outro:{bg:"#f8fafc",c:"#475569"}};
@@ -741,9 +746,9 @@ const ExCard=({ex,onEdit,onDelete,onView,isAdmin,onClassificar})=>{
         {[["S",ex.defaultSeries],["R",ex.defaultReps],["D",ex.defaultDescanso]].map(([l,v])=>v?(<div key={l} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:5,padding:"2px 6px",textAlign:"center",minWidth:48}}><div style={{fontSize:8,fontWeight:700,color:"#94a3b8",textTransform:"uppercase"}}>{l}</div><div style={{fontSize:10,fontWeight:800,color:"#0f172a"}}>{v}</div></div>):null)}
       </div>
       {ex.obs&&<div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:6,padding:"4px 7px",marginBottom:7,fontSize:10,color:"#92400e"}}>📋 {ex.obs}</div>}
-      {isAdmin&&ex.grupo==="Academia"&&<div style={{background:"#f3f4f6",border:"1.5px solid #d1d5db",borderRadius:6,padding:"5px 7px",marginBottom:7,display:"flex",alignItems:"center",gap:5}}>
-        <span style={{fontSize:10,color:"#475569",whiteSpace:"nowrap"}}>💪 Definir músculo:</span>
-        <select onChange={e=>{if(e.target.value)onClassificar(ex.id,e.target.value);}} defaultValue="" style={{fontSize:10,border:"1px solid #cbd5e1",borderRadius:5,padding:"2px 4px",flex:1,minWidth:0}}>
+      {isAdmin&&ex.grupo==="Academia"&&<div style={{background:musculoAtual(ex.tags)?"#f0fdf4":"#f3f4f6",border:musculoAtual(ex.tags)?"1.5px solid #86efac":"1.5px solid #d1d5db",borderRadius:6,padding:"5px 7px",marginBottom:7,display:"flex",alignItems:"center",gap:5}}>
+        <span style={{fontSize:10,color:"#475569",whiteSpace:"nowrap"}}>{musculoAtual(ex.tags)?"✅ Músculo:":"💪 Definir músculo:"}</span>
+        <select value={musculoAtual(ex.tags)} onChange={e=>{if(e.target.value)onClassificar(ex.id,e.target.value);}} style={{fontSize:10,border:"1px solid #cbd5e1",borderRadius:5,padding:"2px 4px",flex:1,minWidth:0}}>
           <option value="" disabled>Selecionar…</option>
           {MUSCULOS.map(m=>(<option key={m.k} value={m.k}>{m.l}</option>))}
         </select>
@@ -760,9 +765,9 @@ const ExDetalhe=({ex,onClose,onEdit,isAdmin,onClassificar})=>(<Modal title={ex.n
     <span style={{background:"#f1f5f9",color:"#475569",borderRadius:99,padding:"2px 9px",fontSize:11,fontWeight:700}}>{ex.nivel}</span>
     <span style={{background:"#f0fdf4",color:"#15803d",borderRadius:99,padding:"2px 9px",fontSize:11,fontWeight:700}}>{ex.momento}</span>
   </div>
-  {isAdmin&&ex.grupo==="Academia"&&<div style={{background:"#f3f4f6",border:"1.5px solid #d1d5db",borderRadius:8,padding:"8px 10px",marginBottom:11}}>
-    <div style={{fontSize:11,fontWeight:700,color:"#374151",marginBottom:5}}>💪 Ainda sem músculo definido</div>
-    <select onChange={e=>{if(e.target.value)onClassificar(ex.id,e.target.value);}} defaultValue="" style={{width:"100%",fontSize:12,border:"1.5px solid #cbd5e1",borderRadius:7,padding:"6px 8px"}}>
+  {isAdmin&&ex.grupo==="Academia"&&<div style={{background:musculoAtual(ex.tags)?"#f0fdf4":"#f3f4f6",border:musculoAtual(ex.tags)?"1.5px solid #86efac":"1.5px solid #d1d5db",borderRadius:8,padding:"8px 10px",marginBottom:11}}>
+    <div style={{fontSize:11,fontWeight:700,color:"#374151",marginBottom:5}}>{musculoAtual(ex.tags)?"✅ Músculo definido":"💪 Ainda sem músculo definido"}</div>
+    <select value={musculoAtual(ex.tags)} onChange={e=>{if(e.target.value)onClassificar(ex.id,e.target.value);}} style={{width:"100%",fontSize:12,border:"1.5px solid #cbd5e1",borderRadius:7,padding:"6px 8px"}}>
       <option value="" disabled>Selecionar músculo…</option>
       {MUSCULOS.map(m=>(<option key={m.k} value={m.k}>{m.l}</option>))}
     </select>
@@ -977,8 +982,9 @@ function AppInner({billing}){
 
   const classificarMusculo=async(id,musculo)=>{
     const atual=biblioteca.find(e=>e.id===id);
-    const tagsAtuais=(atual?.tags||"").split(",").map(t=>t.trim()).filter(Boolean);
-    if(!tagsAtuais.includes(musculo))tagsAtuais.push(musculo);
+    const musculoKeys=MUSCULOS.map(m=>m.k);
+    const tagsAtuais=(atual?.tags||"").split(",").map(t=>t.trim()).filter(Boolean).filter(t=>!musculoKeys.includes(t));
+    tagsAtuais.push(musculo);
     const novasTags=tagsAtuais.join(",");
     try{
       const h=await authHeadersFn();
