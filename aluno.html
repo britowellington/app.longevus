@@ -468,6 +468,9 @@ const ExDetalheModal = ({ex, cogEx, onClose}) => (
         <iframe src={"https://www.youtube.com/embed/"+getYtId(ex.video)} style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",border:"none"}} allowFullScreen/>
       </div>
     )}
+    {ex && !ex.video && ex.foto && (
+      <img src={ex.foto} alt={ex.nome} style={{width:"100%",maxHeight:400,objectFit:"contain",background:"#0f172a",borderRadius:10,marginBottom:14,display:"block"}}/>
+    )}
     {ex?.foco && <div style={{fontSize:13,color:"#64748b",marginBottom:10,display:"flex",alignItems:"center",gap:6}}><Icon name="target" size={14}/> <strong>Foco:</strong> {ex.foco}</div>}
     {ex?.descricao && <div style={{fontSize:13,marginBottom:10}}><strong>Descrição</strong><br/>{ex.descricao}</div>}
     {ex?.execucao && <div style={{fontSize:13,marginBottom:10}}><strong style={{display:"flex",alignItems:"center",gap:6}}><Icon name="play" size={14}/> Como executar</strong><br/><div style={{whiteSpace:"pre-line",color:"#374151"}}>{ex.execucao}</div></div>}
@@ -661,7 +664,7 @@ const ExercicioItem = ({item, bibCustom, checked, onToggle, carga, onCargaChange
     return (
       <Card style={{padding:0,marginBottom:10,overflow:"hidden",background:checked?"#f0fdf4":"#fff",borderColor:checked?"#bbf7d0":"#e2e8f0",boxShadow:"0 1px 2px rgba(15,23,42,0.04)"}}>
         <div style={{position:"relative",background:"#0f172a"}}>
-          <img src={capaImg} alt={nome} style={{width:"100%",aspectRatio:"4/3",objectFit:"cover",display:"block",opacity:checked?0.65:1}}/>
+          <img src={capaImg} alt={nome} style={{width:"100%",aspectRatio:"4/3",objectFit:"contain",background:"#0f172a",display:"block",opacity:checked?0.65:1}}/>
           <button onClick={onToggle} style={{position:"absolute",top:10,left:10,width:32,height:32,borderRadius:9,border:checked?"none":"none",background:checked?"#16a34a":"rgba(255,255,255,0.92)",color:checked?"#fff":"#0f172a",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 1px 6px rgba(0,0,0,0.3)"}}>{checked && <Icon name="check" size={17}/>}</button>
           {item.obs && (
             <div style={{position:"absolute",top:10,right:10,width:32,height:32,borderRadius:9,background:"rgba(255,255,255,0.92)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 1px 6px rgba(0,0,0,0.3)"}}>
