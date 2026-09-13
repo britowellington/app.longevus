@@ -304,6 +304,7 @@ const TREINO_DEFS={
   B:{label:"Treino B",cor:"#d97706",bg:"#fffbeb",border:"#fde68a",desc:"MMSS + Core + Alongamento",grupos:["MMSS","Core","Alongamento"]},
   C:{label:"Treino C",cor:"#7e22ce",bg:"#fdf4ff",border:"#e9d5ff",desc:"Funcional + Cardio + Coordenação",grupos:["Funcional","Cardio","Coordenação"]},
   D:{label:"Treino D",cor:"#15803d",bg:"#f0fdf4",border:"#bbf7d0",desc:"Full Body + Mobilidade Geral",grupos:["MMII","MMSS","Equilíbrio","Mobilidade","Alongamento"]},
+  FB:{label:"Full Body",cor:"#0d9488",bg:"#f0fdfa",border:"#99f6e4",desc:"Corpo todo — Pernas, Peito, Costas, Ombros, Braços"},
 };
 
 const suggestDivisao=(freq,assessment)=>{
@@ -318,6 +319,14 @@ const DIVISAO_OPTIONS={
   3:[{modelo:"unico",label:"Treino Único (A/A/A)",desc:"Full body nas 3 sessões",sequencia:["A","A","A"]},{modelo:"ABC",label:"Divisão A/B/C",desc:"MMII / MMSS / Funcional",sequencia:["A","B","C"]},{modelo:"ABA",label:"Divisão A/B/A",desc:"MMII / MMSS / MMII",sequencia:["A","B","A"]}],
   4:[{modelo:"ABAB",label:"Divisão A/B/A/B",desc:"MMII / MMSS alternados",sequencia:["A","B","A","B"]},{modelo:"ABCD",label:"Divisão A/B/C/D",desc:"MMII / MMSS / Funcional / Full Body",sequencia:["A","B","C","D"]},{modelo:"ABCA",label:"Divisão A/B/C/A",desc:"MMII / MMSS / Funcional / MMII",sequencia:["A","B","C","A"]}],
   5:[{modelo:"ABCAB",label:"Divisão A/B/C/A/B",desc:"Ciclo completo + retomada",sequencia:["A","B","C","A","B"]},{modelo:"ABCAD",label:"Divisão A/B/C/A/D",desc:"Full cycle + Full Body",sequencia:["A","B","C","A","D"]}],
+};
+
+// ─── DIVISÃO DE TREINO — TRILHA ACADEMIA (por ora, só Full Body) ─────────────
+const ACADEMIA_DIVISAO_OPTIONS={
+  2:[{modelo:"academia_fb",label:"Full Body (2×)",desc:"Corpo todo nas 2 sessões",sequencia:["FB","FB"]}],
+  3:[{modelo:"academia_fb",label:"Full Body (3×)",desc:"Corpo todo nas 3 sessões",sequencia:["FB","FB","FB"]}],
+  4:[{modelo:"academia_fb",label:"Full Body (4×)",desc:"Corpo todo nas 4 sessões",sequencia:["FB","FB","FB","FB"]}],
+  5:[{modelo:"academia_fb",label:"Full Body (5×)",desc:"Corpo todo nas 5 sessões",sequencia:["FB","FB","FB","FB","FB"]}],
 };
 
 // ─── PROGRESSÃO DE EXERCÍCIOS POR BLOCO ──────────────────────────────────────
@@ -583,6 +592,73 @@ const buildPrescricao=(assessment,sequencia,bibCustom=[],variantIndex=0)=>{
           const ex=EXERCISES.find(e=>e.id===id)||bibCustom.find(e=>e.id===id);
           if(!ex)return null;
           const p=getPresc(id,bIdx,bibCustom);
+          return{exId:id,series:p.s,reps:p.r,descanso:p.d,obs:""};
+        }).filter(Boolean),
+        {exId:respId,series:respPresc.s,reps:respPresc.r,descanso:respPresc.d,obs:"Encerrar a sessão com respiração consciente"},
+      ];
+
+      prescricao[bloco.key][treinoKey]={inicial,principal,final};
+    });
+  });
+  return prescricao;
+};
+
+// ─── TRILHA ACADEMIA — seleção por grupo muscular (usa os exercícios "gf" com foto) ──
+// Remove acentos do nível ("Básico"→"Basico") pra comparar com BLOCOS[].nivel, que não usa acento.
+const normNivel = n => (n||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+// Full Body: um exercício por grupo muscular a cada sessão.
+const MUSC_ACADEMIA_FB = ["quadríceps","posterior","glúteos","peito","costas","ombros","bíceps","tríceps","panturrilha"];
+
+const escolherAcademia = (musculo, blocoNivelSemAcento, usados, bibCustom, variantIndex) => {
+  const candidatos = bibCustom.filter(e=>
+    e.grupo==="Academia" &&
+    (e.tags||"").toLowerCase().includes(musculo) &&
+    blocoNivelSemAcento.includes(normNivel(e.nivel))
+  );
+  if(candidatos.length===0) return null;
+  // prioriza os ainda não usados nesta sessão; se não sobrar nenhum, permite repetir
+  const inedito = candidatos.filter(e=>!usados.has(e.id));
+  const pool = inedito.length>0 ? inedito : candidatos;
+  return pool[variantIndex % pool.length];
+};
+
+// ─── BUILD PRESCRIÇÃO — TRILHA ACADEMIA (Full Body) ──────────────────────────
+const buildPrescricaoAcademia = (sequencia, bibCustom=[], variantIndex=0) => {
+  const treinosUnicos=[...new Set(sequencia)];
+  const prescricao={};
+  BLOCOS.forEach((bloco,bIdx)=>{
+    prescricao[bloco.key]={};
+    const blocoNivel = bloco.nivel.map(normNivel);
+    treinosUnicos.forEach(treinoKey=>{
+      const usados=new Set();
+
+      // ── PARTE INICIAL: mobilidade geral ──
+      const inicial=MOBIL_TREINO.A.map(idOriginal=>{
+        const id=pickComMidia(idOriginal,bibCustom);
+        const ex=EXERCISES.find(e=>e.id===id)||bibCustom.find(e=>e.id===id);
+        if(!ex)return null;
+        const p=getPresc(id,bloco.key,bibCustom);
+        return{exId:id,series:p.s,reps:p.r,descanso:p.d,obs:""};
+      }).filter(Boolean);
+
+      // ── PARTE PRINCIPAL: um exercício por grupo muscular ──
+      const principal=MUSC_ACADEMIA_FB.map(musculo=>{
+        const ex=escolherAcademia(musculo,blocoNivel,usados,bibCustom,variantIndex+bIdx);
+        if(!ex)return null;
+        usados.add(ex.id);
+        const p=getPresc(ex.id,bloco.key,bibCustom);
+        return{exId:ex.id,series:p.s,reps:p.r,descanso:p.d,obs:""};
+      }).filter(Boolean);
+
+      // ── PARTE FINAL: alongamento geral + respiração ──
+      const respId=pickComMidia("ex28",bibCustom);
+      const respPresc=getPresc(respId,bloco.key,bibCustom);
+      const final=[
+        ...ALONG_TREINO.A.map(idOriginal=>{
+          const id=pickComMidia(idOriginal,bibCustom);
+          const ex=EXERCISES.find(e=>e.id===id)||bibCustom.find(e=>e.id===id);
+          if(!ex)return null;
+          const p=getPresc(id,bloco.key,bibCustom);
           return{exId:id,series:p.s,reps:p.r,descanso:p.d,obs:""};
         }).filter(Boolean),
         {exId:respId,series:respPresc.s,reps:respPresc.r,descanso:respPresc.d,obs:"Encerrar a sessão com respiração consciente"},
@@ -1008,9 +1084,9 @@ const PerfilPrescricao=({assessment})=>{
 };
 
 // ─── STEP: FREQUÊNCIA E DIVISÃO ───────────────────────────────────────────────
-const StepFrequencia=({freq,setFreq,divisao,setDivisao,assessment,onNext,onBack})=>{
-  const opcoes=DIVISAO_OPTIONS[parseInt(freq)||3]||[];
-  const sugestao=assessment?suggestDivisao(parseInt(freq)||3,assessment):null;
+const StepFrequencia=({freq,setFreq,divisao,setDivisao,assessment,local,onNext,onBack})=>{
+  const opcoes=(local==="academia"?ACADEMIA_DIVISAO_OPTIONS:DIVISAO_OPTIONS)[parseInt(freq)||3]||[];
+  const sugestao=(local!=="academia"&&assessment)?suggestDivisao(parseInt(freq)||3,assessment):null;
   useEffect(()=>{const op=opcoes.find(o=>o.modelo===sugestao?.modelo)||opcoes[opcoes.length>1?1:0];if(op&&!divisao)setDivisao(op);},[freq]);
   const dias=["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].slice(0,parseInt(freq)||3);
   return(
@@ -1085,6 +1161,7 @@ const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,n
   const [obs,setObs]=useState("");
   const [prescricao,setPrescricao]=useState({});
   const [origem,setOrigem]=useState("avaliacao"); // "avaliacao" | "patologia"
+  const [local,setLocal]=useState("casa"); // "casa" | "academia"
   const [patologias,setPatologias]=useState([]);
   const [patologiaId,setPatologiaId]=useState("");
   const [patExercicios,setPatExercicios]=useState([]);
@@ -1118,14 +1195,16 @@ const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,n
   },[patologiaId]);
 
   const handleFreqDivisaoNext=()=>{
-    const p = origem==="patologia"
+    const p = local==="academia"
+      ? buildPrescricaoAcademia(divisao.sequencia, bibCustom, varianteAtual)
+      : origem==="patologia"
       ? buildPrescricaoPatologia(patExercicios, bibCustom, divisao.sequencia, cicloOffset, varianteAtual)
       : buildPrescricao(lastAssessment||null,divisao.sequencia,bibCustom,varianteAtual);
     setPrescricao(p);setStep(3);
   };
   const save=()=>{
     if(!sid||!titulo||!divisao)return;
-    const prog={id:uid(),studentId:sid,titulo,semanas:24,freq,divisao,obs,prescricao,criadoEm:new Date().toISOString().slice(0,10),assessmentRef:lastAssessment?.id||null,origem,patologiaId:origem==="patologia"?patologiaId:null,ciclo:cicloAtual,variante:varianteAtual+1};
+    const prog={id:uid(),studentId:sid,titulo,semanas:24,freq,divisao,obs,prescricao,criadoEm:new Date().toISOString().slice(0,10),assessmentRef:lastAssessment?.id||null,origem,patologiaId:origem==="patologia"?patologiaId:null,local,ciclo:cicloAtual,variante:varianteAtual+1};
     const fresh=LS.get("longevus_programs",programs);const updated=[...fresh.filter(p=>p.id!==prog.id),prog];setPrograms(updated);LS.set("longevus_programs",updated);ProgDB.save(prog);nav("ver",{id:prog.id});
   };
   const totalEx=Object.values(prescricao).reduce((a,b)=>a+Object.values(b||{}).reduce((c,s)=>c+Object.values(s||{}).reduce((d,arr)=>d+(arr?.length||0),0),0),0);
@@ -1169,6 +1248,22 @@ const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,n
         )}
         {sid&&(
           <div style={{marginBottom:14}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#64748b",marginBottom:6}}>Onde vai treinar?</div>
+            <div style={{display:"flex",gap:8}}>
+              <button type="button" onClick={()=>setLocal("casa")} style={{flex:1,padding:"10px 8px",borderRadius:10,border:local==="casa"?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:local==="casa"?"#fff4ee":"#fff",cursor:"pointer",textAlign:"center"}}>
+                <div style={{fontSize:18}}>🏠</div>
+                <div style={{fontSize:11,fontWeight:700,color:local==="casa"?"#FF5603":"#64748b"}}>Casa</div>
+              </button>
+              <button type="button" onClick={()=>{setLocal("academia");setOrigem("avaliacao");}} style={{flex:1,padding:"10px 8px",borderRadius:10,border:local==="academia"?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:local==="academia"?"#fff4ee":"#fff",cursor:"pointer",textAlign:"center"}}>
+                <div style={{fontSize:18}}>🏋️</div>
+                <div style={{fontSize:11,fontWeight:700,color:local==="academia"?"#FF5603":"#64748b"}}>Academia</div>
+              </button>
+            </div>
+            {local==="academia"&&<div style={{fontSize:11,color:"#94a3b8",marginTop:6}}>Por enquanto, só divisão Full Body disponível pra Academia. Mais divisões (Superior/Inferior, Push/Pull/Legs, ABCD) chegam em breve.</div>}
+          </div>
+        )}
+        {sid&&local==="casa"&&(
+          <div style={{marginBottom:14}}>
             <div style={{fontSize:12,fontWeight:700,color:"#64748b",marginBottom:6}}>Origem do programa</div>
             <div style={{display:"flex",gap:8}}>
               <button type="button" onClick={()=>setOrigem("avaliacao")} style={{flex:1,padding:"10px 8px",borderRadius:10,border:origem==="avaliacao"?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:origem==="avaliacao"?"#fff4ee":"#fff",cursor:"pointer",textAlign:"center"}}>
@@ -1194,13 +1289,13 @@ const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,n
         <Inp label="Título *" value={titulo} onChange={setTitulo} placeholder="ex: Programa Longevus 24 Semanas"/>
         <Inp label="Observações gerais" value={obs} onChange={setObs} placeholder="Contexto clínico, metas, restrições..." rows={3}/>
         <Btn full disabled={!sid||!titulo||(origem==="patologia"&&!patologiaId)} onClick={()=>setStep(2)}>Próximo →</Btn></Card>)}
-      {step===2&&<StepFrequencia freq={freq} setFreq={setFreq} divisao={divisao} setDivisao={setDivisao} assessment={lastAssessment} onNext={handleFreqDivisaoNext} onBack={()=>setStep(1)}/>}
+      {step===2&&<StepFrequencia freq={freq} setFreq={setFreq} divisao={divisao} setDivisao={setDivisao} assessment={lastAssessment} local={local} onNext={handleFreqDivisaoNext} onBack={()=>setStep(1)}/>}
       {step===3&&divisao&&<StepExercicios prescricao={prescricao} setPrescricao={setPrescricao} divisao={divisao} bibCustom={bibCustom} onNext={()=>setStep(4)} onBack={()=>setStep(2)}/>}
       {step===4&&(
         <div>
           <Card>
             <div style={{fontWeight:700,fontSize:15,marginBottom:12}}>Resumo</div>
-            {[["Aluno",student?.name||"—"],["Título",titulo],["Duração","24 semanas · 4 blocos"],["Frequência",freq+"× por semana"],["Divisão",divisao?.label||"—"],["Total de exercícios",String(totalEx)]].map(([l,v])=>(
+            {[["Aluno",student?.name||"—"],["Título",titulo],["Local",local==="academia"?"🏋️ Academia":"🏠 Casa"],["Duração","24 semanas · 4 blocos"],["Frequência",freq+"× por semana"],["Divisão",divisao?.label||"—"],["Total de exercícios",String(totalEx)]].map(([l,v])=>(
               <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #f1f5f9"}}><span style={{fontSize:13,color:"#64748b"}}>{l}</span><span style={{fontSize:13,fontWeight:700}}>{v}</span></div>
             ))}
             <div style={{marginTop:12,display:"flex",gap:5,flexWrap:"wrap"}}>
