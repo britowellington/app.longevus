@@ -655,7 +655,10 @@ const escolherAcademia = (musculo, blocoNivelSemAcento, usados, bibCustom, varia
 };
 
 // ─── BUILD PRESCRIÇÃO — TRILHA ACADEMIA (Full Body) ──────────────────────────
-const buildPrescricaoAcademia = (sequencia, bibCustom=[], variantIndex=0) => {
+// Ênfase manual por objetivo: adiciona 1 exercício extra nos 2 grupos mais relevantes da ênfase.
+const ENFASE_EXTRA = { pernas:["quadríceps","glúteos"], superior:["peito","costas"] };
+
+const buildPrescricaoAcademia = (sequencia, bibCustom=[], variantIndex=0, enfase="nenhuma") => {
   const treinosUnicos=[...new Set(sequencia)];
   const prescricao={};
   BLOCOS.forEach((bloco,bIdx)=>{
@@ -682,6 +685,16 @@ const buildPrescricaoAcademia = (sequencia, bibCustom=[], variantIndex=0) => {
         const p=getPresc(ex.id,bloco.key,bibCustom);
         return{exId:ex.id,series:p.s,reps:p.r,descanso:p.d,obs:""};
       }).filter(Boolean);
+
+      // ── ÊNFASE: exercício extra nos grupos prioritários da ênfase escolhida ──
+      const musculosEnfase=(ENFASE_EXTRA[enfase]||[]).filter(m=>musculosDoTreino.includes(m));
+      musculosEnfase.forEach(musculo=>{
+        const ex=escolherAcademia(musculo,blocoNivel,usados,bibCustom,variantIndex+bIdx+1);
+        if(!ex)return;
+        usados.add(ex.id);
+        const p=getPresc(ex.id,bloco.key,bibCustom);
+        principal.push({exId:ex.id,series:p.s,reps:p.r,descanso:p.d,obs:"Ênfase"});
+      });
 
       // ── PARTE FINAL: alongamento geral + respiração ──
       const respId=pickComMidia("ex28",bibCustom);
@@ -1195,6 +1208,7 @@ const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,n
   const [prescricao,setPrescricao]=useState({});
   const [origem,setOrigem]=useState("avaliacao"); // "avaliacao" | "patologia"
   const [local,setLocal]=useState("casa"); // "casa" | "academia"
+  const [enfase,setEnfase]=useState("nenhuma"); // "nenhuma" | "pernas" | "superior"
   const [patologias,setPatologias]=useState([]);
   const [patologiaId,setPatologiaId]=useState("");
   const [patExercicios,setPatExercicios]=useState([]);
@@ -1229,7 +1243,7 @@ const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,n
 
   const handleFreqDivisaoNext=()=>{
     const p = local==="academia"
-      ? buildPrescricaoAcademia(divisao.sequencia, bibCustom, varianteAtual)
+      ? buildPrescricaoAcademia(divisao.sequencia, bibCustom, varianteAtual, enfase)
       : origem==="patologia"
       ? buildPrescricaoPatologia(patExercicios, bibCustom, divisao.sequencia, cicloOffset, varianteAtual)
       : buildPrescricao(lastAssessment||null,divisao.sequencia,bibCustom,varianteAtual);
@@ -1237,7 +1251,7 @@ const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,n
   };
   const save=()=>{
     if(!sid||!titulo||!divisao)return;
-    const prog={id:uid(),studentId:sid,titulo,semanas:24,freq,divisao,obs,prescricao,criadoEm:new Date().toISOString().slice(0,10),assessmentRef:lastAssessment?.id||null,origem,patologiaId:origem==="patologia"?patologiaId:null,local,ciclo:cicloAtual,variante:varianteAtual+1};
+    const prog={id:uid(),studentId:sid,titulo,semanas:24,freq,divisao,obs,prescricao,criadoEm:new Date().toISOString().slice(0,10),assessmentRef:lastAssessment?.id||null,origem,patologiaId:origem==="patologia"?patologiaId:null,local,enfase:local==="academia"?enfase:null,ciclo:cicloAtual,variante:varianteAtual+1};
     const fresh=LS.get("longevus_programs",programs);const updated=[...fresh.filter(p=>p.id!==prog.id),prog];setPrograms(updated);LS.set("longevus_programs",updated);ProgDB.save(prog);nav("ver",{id:prog.id});
   };
   const totalEx=Object.values(prescricao).reduce((a,b)=>a+Object.values(b||{}).reduce((c,s)=>c+Object.values(s||{}).reduce((d,arr)=>d+(arr?.length||0),0),0),0);
@@ -1295,6 +1309,16 @@ const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,n
             {local==="academia"&&<div style={{fontSize:11,color:"#94a3b8",marginTop:6}}>Divisões disponíveis: Full Body, Superior/Inferior, Push/Pull/Legs (3×+) e ABCD por grupo muscular (4×+).</div>}
           </div>
         )}
+        {sid&&local==="academia"&&(
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#64748b",marginBottom:6}}>Ênfase de volume (opcional)</div>
+            <div style={{display:"flex",gap:8}}>
+              {[["nenhuma","Nenhuma"],["pernas","Pernas/Glúteos"],["superior","Superior/Braços"]].map(([v,l])=>(
+                <button key={v} type="button" onClick={()=>setEnfase(v)} style={{flex:1,padding:"8px 6px",borderRadius:10,border:enfase===v?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:enfase===v?"#fff4ee":"#fff",cursor:"pointer",fontSize:11,fontWeight:700,color:enfase===v?"#FF5603":"#64748b"}}>{l}</button>
+              ))}
+            </div>
+          </div>
+        )}
         {sid&&local==="casa"&&(
           <div style={{marginBottom:14}}>
             <div style={{fontSize:12,fontWeight:700,color:"#64748b",marginBottom:6}}>Origem do programa</div>
@@ -1328,7 +1352,7 @@ const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,n
         <div>
           <Card>
             <div style={{fontWeight:700,fontSize:15,marginBottom:12}}>Resumo</div>
-            {[["Aluno",student?.name||"—"],["Título",titulo],["Local",local==="academia"?"🏋️ Academia":"🏠 Casa"],["Duração","24 semanas · 4 blocos"],["Frequência",freq+"× por semana"],["Divisão",divisao?.label||"—"],["Total de exercícios",String(totalEx)]].map(([l,v])=>(
+            {[["Aluno",student?.name||"—"],["Título",titulo],["Local",local==="academia"?"🏋️ Academia":"🏠 Casa"],...(local==="academia"&&enfase!=="nenhuma"?[["Ênfase",enfase==="pernas"?"Pernas/Glúteos":"Superior/Braços"]]:[]),["Duração","24 semanas · 4 blocos"],["Frequência",freq+"× por semana"],["Divisão",divisao?.label||"—"],["Total de exercícios",String(totalEx)]].map(([l,v])=>(
               <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #f1f5f9"}}><span style={{fontSize:13,color:"#64748b"}}>{l}</span><span style={{fontSize:13,fontWeight:700}}>{v}</span></div>
             ))}
             <div style={{marginTop:12,display:"flex",gap:5,flexWrap:"wrap"}}>
