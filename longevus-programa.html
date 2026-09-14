@@ -305,6 +305,8 @@ const TREINO_DEFS={
   C:{label:"Treino C",cor:"#7e22ce",bg:"#fdf4ff",border:"#e9d5ff",desc:"Funcional + Cardio + Coordenação",grupos:["Funcional","Cardio","Coordenação"]},
   D:{label:"Treino D",cor:"#15803d",bg:"#f0fdf4",border:"#bbf7d0",desc:"Full Body + Mobilidade Geral",grupos:["MMII","MMSS","Equilíbrio","Mobilidade","Alongamento"]},
   FB:{label:"Full Body",cor:"#0d9488",bg:"#f0fdfa",border:"#99f6e4",desc:"Corpo todo — Pernas, Peito, Costas, Ombros, Braços"},
+  SUP:{label:"Superior",cor:"#be185d",bg:"#fdf2f8",border:"#fbcfe8",desc:"Peito, Costas, Ombros, Bíceps, Tríceps"},
+  INF:{label:"Inferior",cor:"#1d4ed8",bg:"#eff6ff",border:"#bfdbfe",desc:"Quadríceps, Posterior, Glúteos, Panturrilha"},
 };
 
 const suggestDivisao=(freq,assessment)=>{
@@ -323,10 +325,21 @@ const DIVISAO_OPTIONS={
 
 // ─── DIVISÃO DE TREINO — TRILHA ACADEMIA (por ora, só Full Body) ─────────────
 const ACADEMIA_DIVISAO_OPTIONS={
-  2:[{modelo:"academia_fb",label:"Full Body (2×)",desc:"Corpo todo nas 2 sessões",sequencia:["FB","FB"]}],
-  3:[{modelo:"academia_fb",label:"Full Body (3×)",desc:"Corpo todo nas 3 sessões",sequencia:["FB","FB","FB"]}],
-  4:[{modelo:"academia_fb",label:"Full Body (4×)",desc:"Corpo todo nas 4 sessões",sequencia:["FB","FB","FB","FB"]}],
-  5:[{modelo:"academia_fb",label:"Full Body (5×)",desc:"Corpo todo nas 5 sessões",sequencia:["FB","FB","FB","FB","FB"]}],
+  2:[{modelo:"academia_fb",label:"Full Body (2×)",desc:"Corpo todo nas 2 sessões",sequencia:["FB","FB"]},
+     {modelo:"academia_ul",label:"Superior/Inferior (2×)",desc:"Superior e Inferior, um de cada",sequencia:["SUP","INF"]}],
+  3:[{modelo:"academia_fb",label:"Full Body (3×)",desc:"Corpo todo nas 3 sessões",sequencia:["FB","FB","FB"]},
+     {modelo:"academia_ul",label:"Superior/Inferior (3×)",desc:"Superior, Inferior, Superior",sequencia:["SUP","INF","SUP"]}],
+  4:[{modelo:"academia_fb",label:"Full Body (4×)",desc:"Corpo todo nas 4 sessões",sequencia:["FB","FB","FB","FB"]},
+     {modelo:"academia_ul",label:"Superior/Inferior (4×)",desc:"Alternando Superior e Inferior",sequencia:["SUP","INF","SUP","INF"]}],
+  5:[{modelo:"academia_fb",label:"Full Body (5×)",desc:"Corpo todo nas 5 sessões",sequencia:["FB","FB","FB","FB","FB"]},
+     {modelo:"academia_ul",label:"Superior/Inferior (5×)",desc:"Ciclo completo + retomada",sequencia:["SUP","INF","SUP","INF","SUP"]}],
+};
+
+// ─── Grupos musculares trabalhados em cada tipo de treino de Academia ────────
+const ACADEMIA_TREINO_MUSCULOS = {
+  FB: ["quadríceps","posterior","glúteos","peito","costas","ombros","bíceps","tríceps","panturrilha"],
+  SUP: ["peito","costas","ombros","bíceps","tríceps"],
+  INF: ["quadríceps","posterior","glúteos","panturrilha"],
 };
 
 // ─── PROGRESSÃO DE EXERCÍCIOS POR BLOCO ──────────────────────────────────────
@@ -607,7 +620,7 @@ const buildPrescricao=(assessment,sequencia,bibCustom=[],variantIndex=0)=>{
 // Remove acentos do nível ("Básico"→"Basico") pra comparar com BLOCOS[].nivel, que não usa acento.
 const normNivel = n => (n||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"");
 // Full Body: um exercício por grupo muscular a cada sessão.
-const MUSC_ACADEMIA_FB = ["quadríceps","posterior","glúteos","peito","costas","ombros","bíceps","tríceps","panturrilha"];
+const MUSC_ACADEMIA_FB = ACADEMIA_TREINO_MUSCULOS.FB;
 
 const escolherAcademia = (musculo, blocoNivelSemAcento, usados, bibCustom, variantIndex) => {
   const candidatos = bibCustom.filter(e=>
@@ -641,8 +654,9 @@ const buildPrescricaoAcademia = (sequencia, bibCustom=[], variantIndex=0) => {
         return{exId:id,series:p.s,reps:p.r,descanso:p.d,obs:""};
       }).filter(Boolean);
 
-      // ── PARTE PRINCIPAL: um exercício por grupo muscular ──
-      const principal=MUSC_ACADEMIA_FB.map(musculo=>{
+      // ── PARTE PRINCIPAL: um exercício por grupo muscular do treino do dia ──
+      const musculosDoTreino=ACADEMIA_TREINO_MUSCULOS[treinoKey]||MUSC_ACADEMIA_FB;
+      const principal=musculosDoTreino.map(musculo=>{
         const ex=escolherAcademia(musculo,blocoNivel,usados,bibCustom,variantIndex+bIdx);
         if(!ex)return null;
         usados.add(ex.id);
@@ -1259,7 +1273,7 @@ const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,n
                 <div style={{fontSize:11,fontWeight:700,color:local==="academia"?"#FF5603":"#64748b"}}>Academia</div>
               </button>
             </div>
-            {local==="academia"&&<div style={{fontSize:11,color:"#94a3b8",marginTop:6}}>Por enquanto, só divisão Full Body disponível pra Academia. Mais divisões (Superior/Inferior, Push/Pull/Legs, ABCD) chegam em breve.</div>}
+            {local==="academia"&&<div style={{fontSize:11,color:"#94a3b8",marginTop:6}}>Divisões disponíveis: Full Body e Superior/Inferior. Push/Pull/Legs e ABCD chegam em breve.</div>}
           </div>
         )}
         {sid&&local==="casa"&&(
