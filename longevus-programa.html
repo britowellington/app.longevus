@@ -307,6 +307,13 @@ const TREINO_DEFS={
   FB:{label:"Full Body",cor:"#0d9488",bg:"#f0fdfa",border:"#99f6e4",desc:"Corpo todo — Pernas, Peito, Costas, Ombros, Braços"},
   SUP:{label:"Superior",cor:"#be185d",bg:"#fdf2f8",border:"#fbcfe8",desc:"Peito, Costas, Ombros, Bíceps, Tríceps"},
   INF:{label:"Inferior",cor:"#1d4ed8",bg:"#eff6ff",border:"#bfdbfe",desc:"Quadríceps, Posterior, Glúteos, Panturrilha"},
+  PUSH:{label:"Push",cor:"#c2410c",bg:"#fff7ed",border:"#fed7aa",desc:"Peito, Ombros, Tríceps"},
+  PULL:{label:"Pull",cor:"#0369a1",bg:"#f0f9ff",border:"#bae6fd",desc:"Costas, Bíceps"},
+  LEGS:{label:"Legs",cor:"#65a30d",bg:"#f7fee7",border:"#d9f99d",desc:"Quadríceps, Posterior, Glúteos, Panturrilha"},
+  PEITO:{label:"Peito",cor:"#dc2626",bg:"#fef2f2",border:"#fecaca",desc:"Peito e Tríceps"},
+  COSTAS:{label:"Costas",cor:"#0891b2",bg:"#ecfeff",border:"#a5f3fc",desc:"Costas e Bíceps"},
+  PERNA:{label:"Perna",cor:"#4d7c0f",bg:"#f7fee7",border:"#d9f99d",desc:"Quadríceps, Posterior, Glúteos, Panturrilha"},
+  OMBRO:{label:"Ombro",cor:"#7c3aed",bg:"#f5f3ff",border:"#ddd6fe",desc:"Ombros e Abdômen"},
 };
 
 const suggestDivisao=(freq,assessment)=>{
@@ -328,11 +335,16 @@ const ACADEMIA_DIVISAO_OPTIONS={
   2:[{modelo:"academia_fb",label:"Full Body (2×)",desc:"Corpo todo nas 2 sessões",sequencia:["FB","FB"]},
      {modelo:"academia_ul",label:"Superior/Inferior (2×)",desc:"Superior e Inferior, um de cada",sequencia:["SUP","INF"]}],
   3:[{modelo:"academia_fb",label:"Full Body (3×)",desc:"Corpo todo nas 3 sessões",sequencia:["FB","FB","FB"]},
-     {modelo:"academia_ul",label:"Superior/Inferior (3×)",desc:"Superior, Inferior, Superior",sequencia:["SUP","INF","SUP"]}],
+     {modelo:"academia_ul",label:"Superior/Inferior (3×)",desc:"Superior, Inferior, Superior",sequencia:["SUP","INF","SUP"]},
+     {modelo:"academia_ppl",label:"Push/Pull/Legs (3×)",desc:"Empurra, Puxa, Perna",sequencia:["PUSH","PULL","LEGS"]}],
   4:[{modelo:"academia_fb",label:"Full Body (4×)",desc:"Corpo todo nas 4 sessões",sequencia:["FB","FB","FB","FB"]},
-     {modelo:"academia_ul",label:"Superior/Inferior (4×)",desc:"Alternando Superior e Inferior",sequencia:["SUP","INF","SUP","INF"]}],
+     {modelo:"academia_ul",label:"Superior/Inferior (4×)",desc:"Alternando Superior e Inferior",sequencia:["SUP","INF","SUP","INF"]},
+     {modelo:"academia_ppl",label:"Push/Pull/Legs (4×)",desc:"Empurra, Puxa, Perna, Empurra",sequencia:["PUSH","PULL","LEGS","PUSH"]},
+     {modelo:"academia_abcd",label:"ABCD por grupo (4×)",desc:"Peito / Costas / Perna / Ombro",sequencia:["PEITO","COSTAS","PERNA","OMBRO"]}],
   5:[{modelo:"academia_fb",label:"Full Body (5×)",desc:"Corpo todo nas 5 sessões",sequencia:["FB","FB","FB","FB","FB"]},
-     {modelo:"academia_ul",label:"Superior/Inferior (5×)",desc:"Ciclo completo + retomada",sequencia:["SUP","INF","SUP","INF","SUP"]}],
+     {modelo:"academia_ul",label:"Superior/Inferior (5×)",desc:"Ciclo completo + retomada",sequencia:["SUP","INF","SUP","INF","SUP"]},
+     {modelo:"academia_ppl",label:"Push/Pull/Legs (5×)",desc:"Ciclo completo + retomada",sequencia:["PUSH","PULL","LEGS","PUSH","PULL"]},
+     {modelo:"academia_abcd",label:"ABCD por grupo (5×)",desc:"Peito / Costas / Perna / Ombro / Peito",sequencia:["PEITO","COSTAS","PERNA","OMBRO","PEITO"]}],
 };
 
 // ─── Grupos musculares trabalhados em cada tipo de treino de Academia ────────
@@ -340,6 +352,13 @@ const ACADEMIA_TREINO_MUSCULOS = {
   FB: ["quadríceps","posterior","glúteos","peito","costas","ombros","bíceps","tríceps","panturrilha"],
   SUP: ["peito","costas","ombros","bíceps","tríceps"],
   INF: ["quadríceps","posterior","glúteos","panturrilha"],
+  PUSH: ["peito","ombros","tríceps"],
+  PULL: ["costas","bíceps"],
+  LEGS: ["quadríceps","posterior","glúteos","panturrilha"],
+  PEITO: ["peito","tríceps"],
+  COSTAS: ["costas","bíceps"],
+  PERNA: ["quadríceps","posterior","glúteos","panturrilha"],
+  OMBRO: ["ombros","core"],
 };
 
 // ─── PROGRESSÃO DE EXERCÍCIOS POR BLOCO ──────────────────────────────────────
@@ -1273,7 +1292,7 @@ const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,n
                 <div style={{fontSize:11,fontWeight:700,color:local==="academia"?"#FF5603":"#64748b"}}>Academia</div>
               </button>
             </div>
-            {local==="academia"&&<div style={{fontSize:11,color:"#94a3b8",marginTop:6}}>Divisões disponíveis: Full Body e Superior/Inferior. Push/Pull/Legs e ABCD chegam em breve.</div>}
+            {local==="academia"&&<div style={{fontSize:11,color:"#94a3b8",marginTop:6}}>Divisões disponíveis: Full Body, Superior/Inferior, Push/Pull/Legs (3×+) e ABCD por grupo muscular (4×+).</div>}
           </div>
         )}
         {sid&&local==="casa"&&(
