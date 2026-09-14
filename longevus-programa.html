@@ -1036,17 +1036,27 @@ const TreinoMomentos=({treinoKey,blocoKey,sessao,onChange,bibCustom,editMode})=>
 // ─── BUILD PRESCRIÇÃO A PARTIR DE PATOLOGIA ──────────────────────────────────
 // fase avança automaticamente em programas de continuação (cicloOffset = nº de programas anteriores do aluno)
 const FASES_ORDEM = ["Inicial","Intermediaria","Avancada"];
-const buildPrescricaoPatologia = (patExercicios, bibCustom, sequencia, cicloOffset=0, variantIndex=null) => {
+const buildPrescricaoPatologia = (patExercicios, bibCustom, sequencia, cicloOffset=0, variantIndex=null, local="casa") => {
   const treinosUnicos=[...new Set(sequencia)];
   const variante = variantIndex===null ? (cicloOffset % VARIANTES_COUNT) : variantIndex;
 
   // Junta cada linha de exercicios_patologia ao exercício real da biblioteca (casando pelo nome)
+  // e filtra pelo local de treino: Academia usa só os exercícios de academia (grupo="Academia"),
+  // Casa usa todo o resto (funcional/geriátrico) — classificação automática, sem precisar recadastrar nada.
   const enriched = patExercicios
     .map(pe=>({ ...pe, ex: bibCustom.find(e=>e.nome===pe.exercicio_nome_temp) || null }))
-    .filter(pe=>pe.ex && pe.papel!=="Contraindicado");
+    .filter(pe=>pe.ex && pe.papel!=="Contraindicado")
+    .filter(pe=> local==="academia" ? pe.ex.grupo==="Academia" : pe.ex.grupo!=="Academia");
+
+  // Segurança: se não sobrar nenhum exercício pro local escolhido, usa a lista completa da patologia
+  // (evita gerar programa vazio quando a condição só tem exercícios cadastrados pro outro local)
+  const semExercicioNoLocal = enriched.length===0;
+  const enrichedFinal = semExercicioNoLocal
+    ? patExercicios.map(pe=>({ ...pe, ex: bibCustom.find(e=>e.nome===pe.exercicio_nome_temp) || null })).filter(pe=>pe.ex && pe.papel!=="Contraindicado")
+    : enriched;
 
   // Distribui os grupos musculares presentes pelos treinos disponíveis (round-robin)
-  const gruposPresentes=[...new Set(enriched.map(e=>e.ex.grupo))];
+  const gruposPresentes=[...new Set(enrichedFinal.map(e=>e.ex.grupo))];
   const grupoParaTreino={};
   gruposPresentes.forEach((g,i)=>{ grupoParaTreino[g]=treinosUnicos[i % treinosUnicos.length]; });
 
@@ -1063,7 +1073,7 @@ const buildPrescricaoPatologia = (patExercicios, bibCustom, sequencia, cicloOffs
       // Exercícios com foto ou vídeo já cadastrados entram primeiro — o restante mantém a ordem original.
       // Isso não muda QUAIS exercícios são elegíveis (fase/papel continuam mandando), só desempata a favor de quem já tem mídia.
       const temMidia=e=>!!(e.ex.foto||e.ex.video);
-      const doTreino=enriched
+      const doTreino=enrichedFinal
         .filter(e=>grupoParaTreino[e.ex.grupo]===treinoKey)
         .sort((a,b)=>(temMidia(b)?1:0)-(temMidia(a)?1:0));
       // 1ª escolha: exercícios prioritários/progressão na fase-alvo
@@ -1245,7 +1255,7 @@ const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,n
     const p = local==="academia"
       ? buildPrescricaoAcademia(divisao.sequencia, bibCustom, varianteAtual, enfase)
       : origem==="patologia"
-      ? buildPrescricaoPatologia(patExercicios, bibCustom, divisao.sequencia, cicloOffset, varianteAtual)
+      ? buildPrescricaoPatologia(patExercicios, bibCustom, divisao.sequencia, cicloOffset, varianteAtual, local)
       : buildPrescricao(lastAssessment||null,divisao.sequencia,bibCustom,varianteAtual);
     setPrescricao(p);setStep(3);
   };
@@ -1301,7 +1311,7 @@ const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,n
                 <div style={{fontSize:18}}>🏠</div>
                 <div style={{fontSize:11,fontWeight:700,color:local==="casa"?"#FF5603":"#64748b"}}>Casa</div>
               </button>
-              <button type="button" onClick={()=>{setLocal("academia");setOrigem("avaliacao");}} style={{flex:1,padding:"10px 8px",borderRadius:10,border:local==="academia"?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:local==="academia"?"#fff4ee":"#fff",cursor:"pointer",textAlign:"center"}}>
+              <button type="button" onClick={()=>setLocal("academia")} style={{flex:1,padding:"10px 8px",borderRadius:10,border:local==="academia"?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:local==="academia"?"#fff4ee":"#fff",cursor:"pointer",textAlign:"center"}}>
                 <div style={{fontSize:18}}>🏋️</div>
                 <div style={{fontSize:11,fontWeight:700,color:local==="academia"?"#FF5603":"#64748b"}}>Academia</div>
               </button>
@@ -1309,7 +1319,7 @@ const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,n
             {local==="academia"&&<div style={{fontSize:11,color:"#94a3b8",marginTop:6}}>Divisões disponíveis: Full Body, Superior/Inferior, Push/Pull/Legs (3×+) e ABCD por grupo muscular (4×+).</div>}
           </div>
         )}
-        {sid&&local==="academia"&&(
+        {sid&&local==="academia"&&origem==="avaliacao"&&(
           <div style={{marginBottom:14}}>
             <div style={{fontSize:12,fontWeight:700,color:"#64748b",marginBottom:6}}>Ênfase de volume (opcional)</div>
             <div style={{display:"flex",gap:8}}>
@@ -1319,7 +1329,7 @@ const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,n
             </div>
           </div>
         )}
-        {sid&&local==="casa"&&(
+        {sid&&(
           <div style={{marginBottom:14}}>
             <div style={{fontSize:12,fontWeight:700,color:"#64748b",marginBottom:6}}>Origem do programa</div>
             <div style={{display:"flex",gap:8}}>
