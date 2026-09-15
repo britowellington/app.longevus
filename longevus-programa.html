@@ -777,6 +777,7 @@ const ExDetalheModal = ({ ex, onClose }) => (
 // ─── MOMENTO EDITÁVEL ─────────────────────────────────────────────────────────
 const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForward})=>{
   const [editIdx,setEditIdx]=useState(null);
+  const [buscaTroca,setBuscaTroca]=useState("");
   const [verExEdit,setVerExEdit]=useState(null);
   const [addModal,setAddModal]=useState(false);
   const [addTab,setAddTab]=useState("todos");
@@ -815,7 +816,16 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
         const cogEx=isCog?COGNITIVOS.find(c=>c.id===item.cogId):null;
         const ex=!isCog?(bibCustom.find(e=>e.id===item.exId)||EXERCISES.find(e=>e.id===item.exId)):null;
         const isEdit=editIdx===idx;
-        const sameCat=ex?[...EXERCISES,...bibCustom.filter(b=>!EXERCISES.find(e=>e.id===b.id))].filter(e=>(e.grupo||e.cat)===(ex.grupo||ex.cat)&&e.id!==ex.id):[];
+        const parseTags=(t)=>(t||"").toLowerCase().split(/[,;/]+/).map(s=>s.trim()).filter(Boolean);
+        const sameCat=ex?[...EXERCISES,...bibCustom.filter(b=>!EXERCISES.find(e=>e.id===b.id))].filter(e=>{
+          if(e.id===ex.id)return false;
+          if(ex.grupo==="Academia"||e.grupo==="Academia"){
+            const tagsEx=parseTags(ex.tags),tagsE=parseTags(e.tags);
+            return tagsEx.length>0&&tagsEx.some(t=>tagsE.includes(t));
+          }
+          return (e.grupo||e.cat)===(ex.grupo||ex.cat);
+        }):[];
+        const sameCatFiltrado=isEdit?sameCat.filter(e=>e.nome.toLowerCase().includes(buscaTroca.toLowerCase())):sameCat;
 
         return(
           <div key={idx} style={{background:"#fff",border:`1.5px solid ${isEdit?m.cor:"#e2e8f0"}`,borderRadius:11,padding:"11px 13px",marginBottom:7}}>
@@ -828,7 +838,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
                   </div>
                   <div style={{display:"flex",gap:4}}>
                     <button onClick={()=>updateItem(idx,"benchmark",!item.benchmark)} title="Usar como teste de referência (evolução de carga)" style={{border:`1.5px solid ${item.benchmark?"#f59e0b":"#e2e8f0"}`,background:item.benchmark?"#fffbeb":"#f8fafc",borderRadius:7,padding:"3px 8px",fontSize:11,fontWeight:700,color:item.benchmark?"#b45309":"#94a3b8",cursor:"pointer"}}>{item.benchmark?"⭐":"☆"}</button>
-                    <button onClick={()=>setEditIdx(isEdit?null:idx)} style={{border:`1.5px solid ${isEdit?m.cor:"#e2e8f0"}`,background:isEdit?m.bg:"#f8fafc",borderRadius:7,padding:"3px 8px",fontSize:11,fontWeight:700,color:isEdit?m.cor:"#64748b",cursor:"pointer"}}>{isEdit?"✕":"✏️"}</button>
+                    <button onClick={()=>{setEditIdx(isEdit?null:idx);setBuscaTroca("");}} style={{border:`1.5px solid ${isEdit?m.cor:"#e2e8f0"}`,background:isEdit?m.bg:"#f8fafc",borderRadius:7,padding:"3px 8px",fontSize:11,fontWeight:700,color:isEdit?m.cor:"#64748b",cursor:"pointer"}}>{isEdit?"✕":"✏️"}</button>
                     <button onClick={()=>removeItem(idx)} style={{border:"1.5px solid #fecaca",background:"#fff",borderRadius:7,padding:"3px 7px",fontSize:11,color:"#dc2626",cursor:"pointer"}}>🗑</button>
                   </div>
                 </div>
@@ -884,8 +894,10 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
                       <div>
                         <div style={{fontSize:10,fontWeight:700,color:"#64748b",marginBottom:5,textTransform:"uppercase"}}>Trocar exercício</div>
                         {onSwapForward&&<div style={{fontSize:10,color:"#94a3b8",marginBottom:6}}>🔁 A troca também será aplicada nos blocos futuros onde esse exercício ainda aparecer.</div>}
-                        <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
-                          {sameCat.map(e=>(<button key={e.id} onClick={()=>swapExercise(idx,e.id)} style={{border:"1.5px solid #e2e8f0",background:"#f8fafc",borderRadius:7,padding:"5px 9px",fontSize:11,cursor:"pointer",color:"#475569"}}>{e.icone} {e.nome}</button>))}
+                        <input value={buscaTroca} onChange={e=>setBuscaTroca(e.target.value)} placeholder={`Buscar entre os ${sameCat.length} exercícios de ${ex?.tags||ex?.grupo||ex?.cat||"mesmo grupo"}...`} style={{width:"100%",padding:"8px 11px",borderRadius:8,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:12,fontFamily:"inherit",marginBottom:7,boxSizing:"border-box"}}/>
+                        <div style={{display:"flex",flexWrap:"wrap",gap:5,maxHeight:220,overflowY:"auto"}}>
+                          {sameCatFiltrado.map(e=>(<button key={e.id} onClick={()=>swapExercise(idx,e.id)} style={{border:"1.5px solid #e2e8f0",background:"#f8fafc",borderRadius:7,padding:"5px 9px",fontSize:11,cursor:"pointer",color:"#475569"}}>{e.icone} {e.nome}</button>))}
+                          {sameCatFiltrado.length===0&&<div style={{fontSize:11,color:"#94a3b8",padding:"4px 0"}}>Nenhum exercício encontrado.</div>}
                         </div>
                       </div>
                     )}
