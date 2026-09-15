@@ -1656,7 +1656,7 @@ const [linkModal,setLinkModal]=useState(null);
 const [linkLoadingId,setLinkLoadingId]=useState(null);
 const [appLinkModal,setAppLinkModal]=useState(null);
 const [aba,setAba]=useState("ativo");
-const open=(s=null)=>{setForm(s?{name:s.name,dob:s.dob||"",sex:s.sex||"",phone:s.phone||"",notes:s.notes||"",planoId:""}:{name:"",dob:"",sex:"",phone:"",notes:"",planoId:""});setEditId(s?.id||null);setModal(true);};
+const open=(s=null)=>{setForm(s?{name:s.name,dob:s.dob||"",sex:s.sex||"",phone:s.phone||"",email:s.email||"",whatsapp:s.whatsapp||"",responsibleName:s.responsibleName||"",responsiblePhone:s.responsiblePhone||"",doctorName:s.doctorName||"",doctorPhone:s.doctorPhone||"",notes:s.notes||"",planoId:""}:{name:"",dob:"",sex:"",phone:"",email:"",whatsapp:"",responsibleName:"",responsiblePhone:"",doctorName:"",doctorPhone:"",notes:"",planoId:""});setEditId(s?.id||null);setModal(true);};
 const save=()=>{
 if(!form.name.trim())return;
 const { planoId, ...dados } = form;
