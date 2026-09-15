@@ -5783,14 +5783,19 @@ encontrados.push({ keywords:[], texto:"Este aluno relatou dor moderada/alta em t
 }
 return encontrados;
 };
-const AtividadesExtras = ({ students, atividadesExtras, setAtividadesExtras, prefillStudentId, assessments, checkins }) => {
+const AtividadesExtras = ({ students, atividadesExtras, setAtividadesExtras, prefillStudentId, assessments, checkins, exerciciosBiblioteca, sessions }) => {
 const [modal,setModal]=useState(false);
 const [filterSt,setFilterSt]=useState(prefillStudentId||"");
-const emptyForm = ()=>({studentId:prefillStudentId||filterSt||"",titulo:"",obs:""});
+const emptyForm = ()=>({studentId:prefillStudentId||filterSt||"",titulo:"",obs:"",exercicios:[]});
 const [form,setForm]=useState(emptyForm());
+const [buscaEx,setBuscaEx]=useState("");
 const [selDates,setSelDates]=useState(()=>new Set());
 const [calRef,setCalRef]=useState(()=>new Date());
-const openNew = () => { setForm(emptyForm()); setSelDates(new Set()); setCalRef(new Date()); setModal(true); };
+const openNew = () => { setForm(emptyForm()); setBuscaEx(""); setSelDates(new Set()); setCalRef(new Date()); setModal(true); };
+const addExercicio = (ex) => { setForm(f=>({...f,exercicios:[...f.exercicios,{exId:ex.id,series:"3",reps:"12",descanso:"60s",obs:""}]})); setBuscaEx(""); };
+const removeExercicio = (idx) => setForm(f=>({...f,exercicios:f.exercicios.filter((_,i)=>i!==idx)}));
+const updateExercicio = (idx,campo,val) => setForm(f=>({...f,exercicios:f.exercicios.map((it,i)=>i===idx?{...it,[campo]:val}:it)}));
+const resultadosBusca = buscaEx.trim().length>1 ? (exerciciosBiblioteca||[]).filter(e=>(e.nome||"").toLowerCase().includes(buscaEx.trim().toLowerCase())).slice(0,8) : [];
 const toggleDate = (iso) => setSelDates(prev=>{ const next=new Set(prev); if(next.has(iso))next.delete(iso); else next.add(iso); return next; });
 const toggleWeekdayInMonth = (weekday) => {
 const dias = getMonthDates(calRef.getFullYear(), calRef.getMonth()).filter(d=>d.getDay()===weekday).map(toISODateLocal);
@@ -5799,7 +5804,7 @@ setSelDates(prev=>{ const next=new Set(prev); dias.forEach(iso=>{ if(allSelected
 };
 const save = () => {
 if(!form.studentId||!form.titulo.trim()||selDates.size===0)return;
-const novas = [...selDates].sort().map(date=>({ id:uid(), studentId:form.studentId, date, titulo:form.titulo.trim(), obs:form.obs.trim() }));
+const novas = [...selDates].sort().map(date=>({ id:uid(), studentId:form.studentId, date, titulo:form.titulo.trim(), obs:form.obs.trim(), exercicios:form.exercicios }));
 setAtividadesExtras(p=>[...p,...novas]);
 setModal(false);
 };
@@ -5833,7 +5838,19 @@ return (
 <span style={{ fontSize:11,color:"#94a3b8" }}>{fmt(a.date)}</span>
 </div>
 <div style={{ fontSize:14,fontWeight:700,color:"#0f172a" }}>{a.titulo}</div>
+{a.exercicios?.length>0&&<div style={{ fontSize:11,fontWeight:700,color:"#FF5603",marginTop:3 }}>🏋️ {a.exercicios.length} exercício(s) montado(s)</div>}
 {a.obs&&<div style={{ fontSize:12,color:"#64748b",marginTop:2,whiteSpace:"pre-wrap" }}>{a.obs}</div>}
+{(()=>{
+const sessao=(sessions||[]).find(s=>s?.source==="atividade_extra"&&s?.atividadeExtraId===a.id);
+if(!sessao)return null;
+const cargasArr=Object.values(sessao.cargas||{});
+return (
+<div style={{ marginTop:6,fontSize:11,color:"#16a34a",fontWeight:700 }}>
+✅ Aluno registrou: {sessao.completedEx}/{sessao.totalEx} feitos
+{cargasArr.length>0&&<span style={{ color:"#64748b",fontWeight:400 }}> · {cargasArr.map(c=>`${c.nome} ${c.carga}kg`).join(", ")}</span>}
+</div>
+);
+})()}
 </div>
 <button onClick={()=>del(a.id)} style={{ background:"none",border:"none",cursor:"pointer",color:"#e2e8f0",padding:4,flexShrink:0 }}><I n="trash" s={15}/></button>
 </div>
@@ -5866,6 +5883,37 @@ return (
 <textarea value={form.obs} onChange={e=>setForm(f=>({...f,obs:e.target.value}))} placeholder="Ex: 09h no estúdio. Levar tênis fechado e garrafa d'água. Chegar 10 min antes." rows={4} style={{ width:"100%",padding:"10px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,color:"#0f172a",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical" }}/>
 <div style={{ fontSize:11,color:"#94a3b8",marginTop:4 }}>O aluno vê isso tocando em "Ver detalhes" no app dele.</div>
 </div>
+
+<div style={{ fontWeight:700,fontSize:12,color:"#FF5603",marginBottom:8,marginTop:4,paddingTop:10,borderTop:"1px solid #f1f5f9" }}>🏋️ Exercícios específicos (opcional)</div>
+<div style={{ fontSize:11,color:"#94a3b8",marginBottom:8 }}>Monte um treino de verdade pra essa atividade — o aluno vê os exercícios com foto/vídeo, igual ao treino normal.</div>
+<input value={buscaEx} onChange={e=>setBuscaEx(e.target.value)} placeholder="Buscar exercício na biblioteca..." style={{ width:"100%",padding:"9px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:13,marginBottom:6,boxSizing:"border-box" }}/>
+{resultadosBusca.length>0&&(
+<div style={{ border:"1.5px solid #e2e8f0",borderRadius:9,marginBottom:10,overflow:"hidden" }}>
+{resultadosBusca.map(ex=>(
+<button key={ex.id} onClick={()=>addExercicio(ex)} style={{ display:"block",width:"100%",textAlign:"left",border:"none",borderBottom:"1px solid #f1f5f9",background:"#fff",padding:"9px 12px",fontSize:13,cursor:"pointer",color:"#0f172a" }}>+ {ex.nome}</button>
+))}
+</div>
+)}
+{form.exercicios.length>0&&(
+<div style={{ display:"flex",flexDirection:"column",gap:8,marginBottom:14 }}>
+{form.exercicios.map((it,idx)=>{
+const ex=(exerciciosBiblioteca||[]).find(e=>e.id===it.exId);
+return (
+<div key={idx} style={{ border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 12px",background:"#f8fafc" }}>
+<div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6 }}>
+<span style={{ fontSize:13,fontWeight:700 }}>{ex?.nome||"Exercício"}</span>
+<button onClick={()=>removeExercicio(idx)} style={{ border:"none",background:"none",color:"#cbd5e1",cursor:"pointer",padding:2 }}><I n="trash" s={14}/></button>
+</div>
+<div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6 }}>
+<input value={it.series} onChange={e=>updateExercicio(idx,"series",e.target.value)} placeholder="Séries" style={{ padding:"6px 8px",borderRadius:7,border:"1.5px solid #e2e8f0",fontSize:12,textAlign:"center" }}/>
+<input value={it.reps} onChange={e=>updateExercicio(idx,"reps",e.target.value)} placeholder="Reps" style={{ padding:"6px 8px",borderRadius:7,border:"1.5px solid #e2e8f0",fontSize:12,textAlign:"center" }}/>
+<input value={it.descanso} onChange={e=>updateExercicio(idx,"descanso",e.target.value)} placeholder="Descanso" style={{ padding:"6px 8px",borderRadius:7,border:"1.5px solid #e2e8f0",fontSize:12,textAlign:"center" }}/>
+</div>
+</div>
+);
+})}
+</div>
+)}
 
 <div style={{ fontSize:12,fontWeight:600,color:"#475569",margin:"14px 0 8px" }}>Em quais dias?</div>
 
@@ -9450,7 +9498,7 @@ return (
 }{page==="documents"&&<Documents students={students} documents={documents} setDocuments={setDocuments} prefillStudentId={pageProps.studentId}/>
 }{page==="questionarios"&&<Questionarios students={students} nav={nav} onRefreshCount={refreshPendingCount}/>
 }{page==="extprograma"&&(()=>{window.open("longevus-programa.html","_self");return null;})()}{page==="cognitivehub"&&<CognitiveHub students={students} hubResults={hubResults} setHubResults={setHubResults}/>}{page==="sessions"&&<SessionTracker students={students} programs={programs} sessions={sessions} setSessions={setSessions} nav={nav}/>}{page==="vincular"&&<VincularAlunos students={students} setStudents={setStudents}/>
-}{page==="extraatividades"&&<AtividadesExtras students={students} atividadesExtras={atividadesExtras} setAtividadesExtras={setAtividadesExtras} prefillStudentId={pageProps.studentId} assessments={assessments} checkins={checkins}/>
+}{page==="extraatividades"&&<AtividadesExtras students={students} atividadesExtras={atividadesExtras} setAtividadesExtras={setAtividadesExtras} prefillStudentId={pageProps.studentId} assessments={assessments} checkins={checkins} exerciciosBiblioteca={exerciciosBiblioteca} sessions={sessions}/>
 }{page==="financeiro"&&<Financeiro students={students} setStudents={setStudents} planos={planos} setPlanos={setPlanos} pagamentos={pagamentos} setPagamentos={setPagamentos} receitasExtras={receitasExtras} setReceitasExtras={setReceitasExtras} nav={nav}/>
 }{page==="agenda"&&<Agenda students={students} setStudents={setStudents} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} pagamentos={pagamentos} setPagamentos={setPagamentos} leads={leads} nav={nav}/>
 }{page==="leads"&&<Leads leads={leads} setLeads={setLeads} students={students} setStudents={setStudents} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} nav={nav}/>

@@ -787,7 +787,7 @@ const ProgressoAtividades = ({concluidas, total}) => {
   );
 };
 
-const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, concluidasMap, onToggleAtividade, onIrTreino}) => {
+const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, concluidasMap, onToggleAtividade, onIrTreino, bibCustom, onSalvarExercicios, getSessaoAtividade}) => {
   const hoje = new Date();
   const diaLabel = DIAS_SEMANA_LONGO[hoje.getDay()]+", "+hoje.getDate()+" de "+MESES_NOME[hoje.getMonth()];
   const totalHoje = atividadesHoje.length;
@@ -812,7 +812,7 @@ const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, concluidasMap, 
         <div style={{marginBottom:4}}>
           <ProgressoAtividades concluidas={concluidasHoje} total={totalHoje}/>
           {atividadesHoje.map((atv,i)=>(
-            <AtividadeCard key={atv._id||i} atividade={atv} destaque concluida={!!concluidasMap[atv._id]} onToggle={onToggleAtividade}/>
+            <AtividadeCard key={atv._id||i} atividade={atv} destaque concluida={!!concluidasMap[atv._id]} onToggle={onToggleAtividade} bibCustom={bibCustom} onSalvarExercicios={onSalvarExercicios} sessaoSalva={getSessaoAtividade(atv._id)}/>
           ))}
         </div>
       )}
@@ -821,8 +821,38 @@ const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, concluidasMap, 
 };
 
 // ── Tela Programação (Dia / Semana / Mês) ─────────────────────────────────────
-const AtividadeCard = ({atividade, destaque, concluida, onToggle}) => {
+const AtividadeCard = ({atividade, destaque, concluida, onToggle, bibCustom, onSalvarExercicios, sessaoSalva}) => {
   const [showDetail,setShowDetail]=useState(false);
+  const temExercicios = atividade.exercicios && atividade.exercicios.length>0;
+  const [doneLocal,setDoneLocal]=useState(()=>new Set((sessaoSalva?.doneKeys)||[]));
+  const [cargasLocal,setCargasLocal]=useState(()=>{
+    const obj={};
+    if(sessaoSalva?.cargas) Object.entries(sessaoSalva.cargas).forEach(([k,v])=>{ obj[k]=v.carga; });
+    return obj;
+  });
+  const cargaSaveTimer = useRef(null);
+  useEffect(()=>{
+    setDoneLocal(new Set((sessaoSalva?.doneKeys)||[]));
+    const obj={};
+    if(sessaoSalva?.cargas) Object.entries(sessaoSalva.cargas).forEach(([k,v])=>{ obj[k]=v.carga; });
+    setCargasLocal(obj);
+  },[sessaoSalva?.createdAt]);
+  const toggleLocal = (idx) => setDoneLocal(prev=>{
+    const next=new Set(prev);
+    if(next.has(idx))next.delete(idx); else next.add(idx);
+    if(onSalvarExercicios) onSalvarExercicios(atividade,[...next],cargasLocal);
+    return next;
+  });
+  const setCargaLocal = (idx,val) => {
+    setCargasLocal(prev=>{
+      const next={...prev,[idx]:val};
+      if(onSalvarExercicios){
+        if(cargaSaveTimer.current) clearTimeout(cargaSaveTimer.current);
+        cargaSaveTimer.current = setTimeout(()=>onSalvarExercicios(atividade,[...doneLocal],next),800);
+      }
+      return next;
+    });
+  };
   return (
     <>
       <Card style={{padding:"12px 14px",marginBottom:8,background:concluida?"#f0fdf4":(destaque?"#fff7ed":"#fff"),borderColor:concluida?"#bbf7d0":(destaque?"#fed7aa":"#e2e8f0")}}>
@@ -830,17 +860,21 @@ const AtividadeCard = ({atividade, destaque, concluida, onToggle}) => {
           <button onClick={()=>onToggle && onToggle(atividade)} style={{width:30,height:30,borderRadius:9,border:concluida?"none":"1.5px solid #cbd5e1",background:concluida?"#16a34a":"#fff",color:"#fff",cursor:onToggle?"pointer":"default",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{concluida && <Icon name="check" size={16}/>}</button>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:13,fontWeight:700,color:concluida?"#15803d":(destaque?"#9a3412":"#0f172a"),textDecoration:concluida?"line-through":"none",opacity:concluida?0.75:1}}>{atividade.titulo}</div>
+            {temExercicios && <div style={{fontSize:11.5,color:concluida?"#16a34a":(destaque?"#c2410c":"#64748b"),marginTop:1}}>🏋️ {atividade.exercicios.length} exercício(s)</div>}
             {atividade.obs && <div style={{fontSize:11.5,color:concluida?"#16a34a":(destaque?"#c2410c":"#64748b"),marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{atividade.obs}</div>}
           </div>
-          {atividade.obs && (
-            <button onClick={()=>setShowDetail(true)} style={{flexShrink:0,border:"1.5px solid "+(destaque?"#fed7aa":"#e2e8f0"),background:"#fff",borderRadius:8,padding:"6px 10px",fontSize:11,fontWeight:700,color:"#FF5603",cursor:"pointer",whiteSpace:"nowrap"}}>Ver detalhes</button>
+          {(atividade.obs || temExercicios) && (
+            <button onClick={()=>setShowDetail(true)} style={{flexShrink:0,border:"1.5px solid "+(destaque?"#fed7aa":"#e2e8f0"),background:"#fff",borderRadius:8,padding:"6px 10px",fontSize:11,fontWeight:700,color:"#FF5603",cursor:"pointer",whiteSpace:"nowrap"}}>{temExercicios?"Ver treino":"Ver detalhes"}</button>
           )}
         </div>
       </Card>
       {showDetail && (
         <Modal title={atividade.titulo} onClose={()=>setShowDetail(false)}>
           {atividade.date && <div style={{fontSize:12,color:"#94a3b8",marginBottom:14}}>{fmt(atividade.date)}</div>}
-          <div style={{fontSize:14,color:"#334155",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{atividade.obs}</div>
+          {atividade.obs && <div style={{fontSize:14,color:"#334155",lineHeight:1.7,whiteSpace:"pre-wrap",marginBottom:temExercicios?16:0}}>{atividade.obs}</div>}
+          {temExercicios && atividade.exercicios.map((item,idx)=>(
+            <ExercicioItem key={idx} item={item} bibCustom={bibCustom||[]} checked={doneLocal.has(idx)} onToggle={()=>toggleLocal(idx)} carga={cargasLocal[idx]||""} onCargaChange={v=>setCargaLocal(idx,v)}/>
+          ))}
         </Modal>
       )}
     </>
@@ -859,7 +893,7 @@ const EmptyAtividade = ({texto}) => (
   <div style={{textAlign:"center",padding:"28px 10px",color:"#94a3b8",fontSize:13}}>{texto}</div>
 );
 
-const DiaView = ({refDate, onPrev, onNext, mapPorData, hojeISO, concluidasMap, onToggleAtividade}) => {
+const DiaView = ({refDate, onPrev, onNext, mapPorData, hojeISO, concluidasMap, onToggleAtividade, bibCustom, onSalvarExercicios, getSessaoAtividade}) => {
   const iso = toISODate(refDate);
   const lista = mapPorData[iso] || [];
   const isHoje = iso===hojeISO;
@@ -869,12 +903,12 @@ const DiaView = ({refDate, onPrev, onNext, mapPorData, hojeISO, concluidasMap, o
     <div>
       <NavHeader label={label} onPrev={onPrev} onNext={onNext}/>
       {lista.length>0 && <ProgressoAtividades concluidas={concluidasCount} total={lista.length}/>}
-      {lista.length>0 ? lista.map((atv,i)=><AtividadeCard key={atv._id||i} atividade={atv} destaque={isHoje} concluida={!!concluidasMap[atv._id]} onToggle={onToggleAtividade}/>) : <EmptyAtividade texto="Nenhuma atividade extra prevista para este dia."/>}
+      {lista.length>0 ? lista.map((atv,i)=><AtividadeCard key={atv._id||i} atividade={atv} destaque={isHoje} concluida={!!concluidasMap[atv._id]} onToggle={onToggleAtividade} bibCustom={bibCustom} onSalvarExercicios={onSalvarExercicios} sessaoSalva={getSessaoAtividade(atv._id)}/>) : <EmptyAtividade texto="Nenhuma atividade extra prevista para este dia."/>}
     </div>
   );
 };
 
-const SemanaView = ({refDate, onPrev, onNext, mapPorData, hojeISO, concluidasMap, onToggleAtividade}) => {
+const SemanaView = ({refDate, onPrev, onNext, mapPorData, hojeISO, concluidasMap, onToggleAtividade, bibCustom, onSalvarExercicios, getSessaoAtividade}) => {
   const dias = getWeekDates(refDate);
   const label = dias[0].getDate()+" de "+MESES_NOME[dias[0].getMonth()]+" — "+dias[6].getDate()+" de "+MESES_NOME[dias[6].getMonth()];
   return (
@@ -889,7 +923,7 @@ const SemanaView = ({refDate, onPrev, onNext, mapPorData, hojeISO, concluidasMap
             <div style={{fontSize:11,fontWeight:700,color:isHoje?"#FF5603":"#94a3b8",textTransform:"uppercase",letterSpacing:0.3,marginBottom:4}}>
               {DIAS_SEMANA_CURTO[d.getDay()]} · {d.getDate()}/{d.getMonth()+1}{isHoje?" · hoje":""}
             </div>
-            {lista.length>0 ? lista.map((atv,i)=><AtividadeCard key={atv._id||i} atividade={atv} destaque={isHoje} concluida={!!concluidasMap[atv._id]} onToggle={onToggleAtividade}/>) : (
+            {lista.length>0 ? lista.map((atv,i)=><AtividadeCard key={atv._id||i} atividade={atv} destaque={isHoje} concluida={!!concluidasMap[atv._id]} onToggle={onToggleAtividade} bibCustom={bibCustom} onSalvarExercicios={onSalvarExercicios} sessaoSalva={getSessaoAtividade(atv._id)}/>) : (
               <div style={{fontSize:12,color:"#cbd5e1",padding:"6px 2px"}}>—</div>
             )}
           </div>
@@ -899,7 +933,7 @@ const SemanaView = ({refDate, onPrev, onNext, mapPorData, hojeISO, concluidasMap
   );
 };
 
-const MesView = ({refDate, onPrev, onNext, mapPorData, hojeISO, concluidasMap, onToggleAtividade}) => {
+const MesView = ({refDate, onPrev, onNext, mapPorData, hojeISO, concluidasMap, onToggleAtividade, bibCustom, onSalvarExercicios, getSessaoAtividade}) => {
   const dias = getMonthDates(refDate.getFullYear(), refDate.getMonth());
   const diasComAtividade = dias.filter(d=>(mapPorData[toISODate(d)]||[]).length>0);
   const label = MESES_NOME[refDate.getMonth()]+" de "+refDate.getFullYear();
@@ -917,7 +951,7 @@ const MesView = ({refDate, onPrev, onNext, mapPorData, hojeISO, concluidasMap, o
             <div style={{fontSize:11,fontWeight:700,color:isHoje?"#FF5603":"#94a3b8",textTransform:"uppercase",letterSpacing:0.3,marginBottom:4}}>
               {DIAS_SEMANA_CURTO[d.getDay()]} · {d.getDate()}/{d.getMonth()+1}{isHoje?" · hoje":""}
             </div>
-            {lista.map((atv,i)=><AtividadeCard key={atv._id||i} atividade={atv} destaque={isHoje} concluida={!!concluidasMap[atv._id]} onToggle={onToggleAtividade}/>)}
+            {lista.map((atv,i)=><AtividadeCard key={atv._id||i} atividade={atv} destaque={isHoje} concluida={!!concluidasMap[atv._id]} onToggle={onToggleAtividade} bibCustom={bibCustom} onSalvarExercicios={onSalvarExercicios} sessaoSalva={getSessaoAtividade(atv._id)}/>)}
           </div>
         );
       })}
@@ -925,7 +959,7 @@ const MesView = ({refDate, onPrev, onNext, mapPorData, hojeISO, concluidasMap, o
   );
 };
 
-const TelaProgramacao = ({atividades, concluidasMap, onToggleAtividade}) => {
+const TelaProgramacao = ({atividades, concluidasMap, onToggleAtividade, bibCustom, onSalvarExercicios, getSessaoAtividade}) => {
   const [modo,setModo]=useState("semana"); // dia | semana | mes
   const [refDate,setRefDate]=useState(new Date());
 
@@ -941,9 +975,9 @@ const TelaProgramacao = ({atividades, concluidasMap, onToggleAtividade}) => {
         ))}
       </div>
 
-      {modo==="dia" && <DiaView refDate={refDate} onPrev={()=>setRefDate(addDays(refDate,-1))} onNext={()=>setRefDate(addDays(refDate,1))} mapPorData={mapPorData} hojeISO={hojeISO} concluidasMap={concluidasMap} onToggleAtividade={onToggleAtividade}/>}
-      {modo==="semana" && <SemanaView refDate={refDate} onPrev={()=>setRefDate(addDays(refDate,-7))} onNext={()=>setRefDate(addDays(refDate,7))} mapPorData={mapPorData} hojeISO={hojeISO} concluidasMap={concluidasMap} onToggleAtividade={onToggleAtividade}/>}
-      {modo==="mes" && <MesView refDate={refDate} onPrev={()=>setRefDate(addMonths(refDate,-1))} onNext={()=>setRefDate(addMonths(refDate,1))} mapPorData={mapPorData} hojeISO={hojeISO} concluidasMap={concluidasMap} onToggleAtividade={onToggleAtividade}/>}
+      {modo==="dia" && <DiaView refDate={refDate} onPrev={()=>setRefDate(addDays(refDate,-1))} onNext={()=>setRefDate(addDays(refDate,1))} mapPorData={mapPorData} hojeISO={hojeISO} concluidasMap={concluidasMap} onToggleAtividade={onToggleAtividade} bibCustom={bibCustom} onSalvarExercicios={onSalvarExercicios} getSessaoAtividade={getSessaoAtividade}/>}
+      {modo==="semana" && <SemanaView refDate={refDate} onPrev={()=>setRefDate(addDays(refDate,-7))} onNext={()=>setRefDate(addDays(refDate,7))} mapPorData={mapPorData} hojeISO={hojeISO} concluidasMap={concluidasMap} onToggleAtividade={onToggleAtividade} bibCustom={bibCustom} onSalvarExercicios={onSalvarExercicios} getSessaoAtividade={getSessaoAtividade}/>}
+      {modo==="mes" && <MesView refDate={refDate} onPrev={()=>setRefDate(addMonths(refDate,-1))} onNext={()=>setRefDate(addMonths(refDate,1))} mapPorData={mapPorData} hojeISO={hojeISO} concluidasMap={concluidasMap} onToggleAtividade={onToggleAtividade} bibCustom={bibCustom} onSalvarExercicios={onSalvarExercicios} getSessaoAtividade={getSessaoAtividade}/>}
     </div>
   );
 };
@@ -1412,6 +1446,35 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
     }
   };
 
+  // Registro persistente (carga, check-off, histórico) dos exercícios dentro de uma atividade extra —
+  // reaproveita a tabela `sessions` com source:"atividade_extra"; upsert por atividade (1 linha por atividade, sempre atualizada)
+  const getSessaoAtividade = (atividadeId) => lastSessions.find(s=>s.source==="atividade_extra"&&s.atividadeExtraId===atividadeId) || null;
+  const salvarSessaoAtividade = async (atividade, doneKeysArr, cargasObj) => {
+    const atividadeId = atividade._id;
+    if(!atividadeId) return;
+    const cargasPreenchidas = {};
+    Object.entries(cargasObj||{}).forEach(([idx,val])=>{
+      const v=(val||"").toString().trim();
+      if(!v) return;
+      const it=(atividade.exercicios||[])[Number(idx)];
+      if(!it) return;
+      const ex=bibCustom.find(e=>e.id===it.exId)||EXERCISES.find(e=>e.id===it.exId);
+      cargasPreenchidas[idx]={exId:it.exId,nome:ex?.nome||"Exercício",carga:v};
+    });
+    const data = {
+      studentId, atividadeExtraId: atividadeId, date: atividade.date||new Date().toISOString().slice(0,10),
+      totalEx:(atividade.exercicios||[]).length, completedEx:doneKeysArr.length,
+      doneKeys: doneKeysArr, cargas: cargasPreenchidas,
+      source: "atividade_extra", createdAt: new Date().toISOString()
+    };
+    setLastSessions(prev=>[data, ...prev.filter(s=>!(s.source==="atividade_extra"&&s.atividadeExtraId===atividadeId))]);
+    try{
+      const headers = { ...(await authedHeaders()), "Prefer": "resolution=merge-duplicates" };
+      const body = { id: "ae_"+atividadeId, data, owner_id: ownerId, student_id: studentId };
+      await fetch(SUPA_URL+"/rest/v1/sessions", { method:"POST", headers, body: JSON.stringify(body) });
+    } catch(e){ /* silencioso — já refletido no estado local */ }
+  };
+
   // Rotação automática: assim que soubermos o programa E o histórico, escolhe o próximo treino da sequência
   useEffect(()=>{
     if(autoSet || loading || !prog) return;
@@ -1642,10 +1705,13 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
           concluidasMap={concluidasMap}
           onToggleAtividade={toggleConcluidaAtividade}
           onIrTreino={()=>setTab("treino")}
+          bibCustom={bibCustom}
+          onSalvarExercicios={salvarSessaoAtividade}
+          getSessaoAtividade={getSessaoAtividade}
         />
       )}
 
-      {tab==="programacao" && <TelaProgramacao atividades={atividades} concluidasMap={concluidasMap} onToggleAtividade={toggleConcluidaAtividade}/>}
+      {tab==="programacao" && <TelaProgramacao atividades={atividades} concluidasMap={concluidasMap} onToggleAtividade={toggleConcluidaAtividade} bibCustom={bibCustom} onSalvarExercicios={salvarSessaoAtividade} getSessaoAtividade={getSessaoAtividade}/>}
       {tab==="avaliacao" && <TelaAvaliacao studentId={studentId} studentData={studentData}/>}
 
       {tab==="treino" && showPreCheckinGate && (
@@ -1766,7 +1832,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
           <div style={{marginBottom:10}}>
             <div style={{fontSize:11,fontWeight:700,color:"#c2410c",textTransform:"uppercase",letterSpacing:0.3,margin:"2px 2px 6px"}}>Hoje você também tem</div>
             {atividadesHoje.map((atv,i)=>(
-              <AtividadeCard key={atv._id||i} atividade={atv} destaque concluida={!!concluidasMap[atv._id]} onToggle={toggleConcluidaAtividade}/>
+              <AtividadeCard key={atv._id||i} atividade={atv} destaque concluida={!!concluidasMap[atv._id]} onToggle={toggleConcluidaAtividade} bibCustom={bibCustom} onSalvarExercicios={salvarSessaoAtividade} sessaoSalva={getSessaoAtividade(atv._id)}/>
             ))}
           </div>
         )}
