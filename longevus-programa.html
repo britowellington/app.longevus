@@ -79,36 +79,6 @@ const ModeloDB = {
   }
 };
 
-// ─── PERIODIZAÇÃO CONSULTORIA (blocos de 8 semanas, fora do perfil 50+) ──────
-const ConsultoriaDB = {
-  async load(studentId){
-    try{
-      const headers = await authHeadersFn();
-      const q = studentId ? "&student_id=eq."+encodeURIComponent(studentId) : "";
-      const r = await fetch(SUPA_URL+"/rest/v1/periodizacao_consultoria?select=*&order=bloco_numero.asc"+q, { headers });
-      if(!r.ok) return null;
-      return await r.json();
-    }catch(e){ return null; }
-  },
-  async save(bloco){
-    try{
-      const headers = { ...(await authHeadersFn()), "Prefer": "resolution=merge-duplicates" };
-      const { data: sess } = await supa.auth.getSession();
-      const ownerId = sess?.session?.user?.id;
-      const body = { id: bloco.id, owner_id: ownerId, student_id: bloco.studentId, bloco_numero: bloco.data.bloco_numero, status: bloco.data.status, data: bloco.data, updated_at: new Date().toISOString() };
-      const r = await fetch(SUPA_URL+"/rest/v1/periodizacao_consultoria", { method:"POST", headers, body: JSON.stringify(body) });
-      return r.ok;
-    }catch(e){ return false; }
-  },
-  async remove(id){
-    try{
-      const headers = await authHeadersFn();
-      await fetch(SUPA_URL+"/rest/v1/periodizacao_consultoria?id=eq."+id, { method:"DELETE", headers });
-      return true;
-    }catch(e){ return false; }
-  }
-};
-
 // ─── PATOLOGIAS (origem alternativa de geração de programa) ──────────────────
 async function fetchPatologias(){
   try{
@@ -303,6 +273,15 @@ const BLOCOS = [
   {key:"b3",label:"Bloco 3 — Intensificação",semanas:"13–18",cor:{bg:"#fdf4ff",border:"#e9d5ff",texto:"#7e22ce",dot:"#a855f7"},desc:"Desafio funcional elevado, integração de capacidades",nivel:["Basico","Intermediario","Avancado"]},
   {key:"b4",label:"Bloco 4 — Consolidação",semanas:"19–24",cor:{bg:"#f0fdf4",border:"#bbf7d0",texto:"#15803d",dot:"#22c55e"},desc:"Autonomia, exercícios integrados, manutenção de ganhos",nivel:["Basico","Intermediario","Avancado"]},
 ];
+
+// ─── BLOCOS · PERIODIZAÇÃO CONSULTORIA (3 blocos de 8 semanas = 24 no total) ──
+const BLOCOS_CONSULTORIA = [
+  {key:"b1",label:"Bloco 1",semanas:"1–8",cor:{bg:"#eff6ff",border:"#bfdbfe",texto:"#1d4ed8",dot:"#3b82f6"},desc:"Adaptação → Acúmulo → Intensificação → Deload → Pico/Reteste"},
+  {key:"b2",label:"Bloco 2",semanas:"9–16",cor:{bg:"#fff7ed",border:"#fed7aa",texto:"#c2410c",dot:"#FF5603"},desc:"Novo ciclo de 8 semanas, exercícios secundários/acessórios rotacionados"},
+  {key:"b3",label:"Bloco 3",semanas:"17–24",cor:{bg:"#fdf4ff",border:"#e9d5ff",texto:"#7e22ce",dot:"#a855f7"},desc:"Ciclo final, reteste de encerramento"},
+];
+// Escolhe o conjunto de blocos certo conforme a origem do programa — consultoria usa 3×8 sem., o resto usa o padrão 4×6 sem.
+const blocosPara = (prog) => (prog?.origem==="consultoria") ? BLOCOS_CONSULTORIA : BLOCOS;
 
 const PRESC={
   Fortalecimento:{b1:{s:"2",r:"8–10",d:"60s"},b2:{s:"3",r:"10–12",d:"60s"},b3:{s:"3",r:"12–15",d:"45s"},b4:{s:"3–4",r:"12–15",d:"45s"}},
@@ -1439,7 +1418,8 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
     else setModeloFeedback("⚠️ Não foi possível salvar agora. Tente novamente.");
   };
   const treinosUnicos=[...new Set(prog.divisao?.sequencia||["A"])];
-  const blocoAtivo=BLOCOS[blocoIdx];
+  const blocosAtivos=blocosPara(prog);
+  const blocoAtivo=blocosAtivos[blocoIdx];
   const treinoAtivo=treinosUnicos[treinoIdx];
   const tDef=TREINO_DEFS[treinoAtivo];
   const saveEdits=()=>{const fresh=LS.get("longevus_programs",programs);const editedProg={...prog,prescricao};const u=fresh.map(p=>p.id===prog.id?editedProg:p);setPrograms(u);LS.set("longevus_programs",u);ProgDB.save(editedProg);setEditMode(false);};
@@ -1456,7 +1436,7 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
         {editMode?(<div style={{display:"flex",gap:6}}><Btn sm variant="secondary" onClick={cancelEdit}>Cancelar</Btn><Btn sm onClick={saveEdits}>💾 Salvar</Btn></div>):(<div style={{display:"flex",gap:6}}><Btn sm variant="ghost" onClick={abrirModeloModal}>⭐ Salvar como modelo</Btn><Btn sm variant="ghost" onClick={()=>setEditMode(true)}>✏️ Editar</Btn></div>)}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:7,marginBottom:12}}>
-        {[["24","sem."],["4","blocos"],[String(prog.freq)+"×","sem."],[String(totalEx),"exerc."]].map(([v,l])=>(<div key={l} style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"9px 5px",textAlign:"center"}}><div style={{fontSize:16,fontWeight:800,color:"#FF5603"}}>{v}</div><div style={{fontSize:10,color:"#94a3b8",marginTop:1}}>{l}</div></div>))}
+        {[["24","sem."],[String(blocosAtivos.length),"blocos"],[String(prog.freq)+"×","sem."],[String(totalEx),"exerc."]].map(([v,l])=>(<div key={l} style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"9px 5px",textAlign:"center"}}><div style={{fontSize:16,fontWeight:800,color:"#FF5603"}}>{v}</div><div style={{fontSize:10,color:"#94a3b8",marginTop:1}}>{l}</div></div>))}
       </div>
       <Card style={{marginBottom:10,padding:"10px 14px"}}>
         <div style={{fontSize:11,fontWeight:700,color:"#64748b",marginBottom:6,textTransform:"uppercase"}}>Semana tipo · {prog.divisao?.label}</div>
@@ -1466,7 +1446,7 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
       </Card>
       {prog.obs&&<Card style={{marginBottom:10,background:"#f8fafc",padding:"9px 13px"}}><div style={{fontSize:12,color:"#64748b",fontStyle:"italic"}}>📝 {prog.obs}</div></Card>}
       <div style={{display:"flex",gap:0,marginBottom:8,background:"#f1f5f9",borderRadius:10,padding:3}}>
-        {BLOCOS.map((b,i)=>(<button key={b.key} onClick={()=>{setBlocoIdx(i);setTreinoIdx(0);}} style={{flex:1,border:"none",borderRadius:8,padding:"6px 3px",fontSize:10,fontWeight:700,cursor:"pointer",background:blocoIdx===i?b.cor.bg:"transparent",color:blocoIdx===i?b.cor.texto:"#94a3b8",lineHeight:1.3}}><div>B{i+1}</div><div style={{fontSize:8,marginTop:1}}>{b.semanas}</div></button>))}
+        {blocosAtivos.map((b,i)=>(<button key={b.key} onClick={()=>{setBlocoIdx(i);setTreinoIdx(0);}} style={{flex:1,border:"none",borderRadius:8,padding:"6px 3px",fontSize:10,fontWeight:700,cursor:"pointer",background:blocoIdx===i?b.cor.bg:"transparent",color:blocoIdx===i?b.cor.texto:"#94a3b8",lineHeight:1.3}}><div>B{i+1}</div><div style={{fontSize:8,marginTop:1}}>{b.semanas}</div></button>))}
       </div>
       <div style={{background:blocoAtivo.cor.bg,border:`1.5px solid ${blocoAtivo.cor.border}`,borderRadius:9,padding:"7px 12px",marginBottom:8}}>
         <div style={{fontWeight:700,fontSize:12,color:blocoAtivo.cor.texto}}>{blocoAtivo.label} · sem. {blocoAtivo.semanas} · {blocoAtivo.desc}</div>
@@ -1502,6 +1482,9 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
 };
 
 // ─── PERIODIZAÇÃO CONSULTORIA (fora do perfil 50+) ────────────────────────────
+// Gera um programa completo de 24 semanas (3 blocos de 8) no MESMO formato que
+// o resto do app já entende (programs.prescricao[bKey][treino]={inicial,principal,final}),
+// pra reaproveitar VerPrograma, o app do aluno e tudo mais sem tela paralela.
 const OBJETIVOS_CONSULTORIA=[["hipertrofia","Hipertrofia"],["emagrecimento","Emagrecimento"],["forca","Força / Performance"],["condicionamento","Condicionamento geral"],["estetica","Estética / Recomposição"]];
 const ENFASES_CONSULTORIA=[["nenhuma","Nenhuma"],["superior","Superior / Braços"],["inferior","Pernas / Glúteos"],["core","Core / Abdômen"]];
 const MODELOS_PERIODIZACAO=[["ondulatoria_semanal","Ondulatória semanal"],["linear","Linear clássica"],["blocos","Em blocos"]];
@@ -1512,7 +1495,7 @@ const faixaSegurancaIdade=(idade)=>{
   return "ate_39";
 };
 
-// ─── Motor de geração — tabelas base de fases por modelo de periodização ─────
+// ─── Tabelas base de fases por modelo (usadas só pra derivar a prescrição prática) ──
 const FASES_BASE_ONDULATORIA=[
   {nome:"Adaptação",semana_inicio:1,semana_fim:2,series:3,reps:"12-15",percentual_1rm:"60-65",rir:"3-4",descanso_segundos:75},
   {nome:"Acúmulo",semana_inicio:3,semana_fim:4,series:4,reps:"8-12",percentual_1rm:"70-75",rir:"2-3",descanso_segundos:75},
@@ -1538,7 +1521,8 @@ const ajustaRir=(rirStr,delta)=>{
   return partes.length>1?partes.join("-"):String(partes[0]);
 };
 
-// Aplica as camadas de Objetivo, Nível e Segurança por Idade sobre a tabela base do Modelo
+// Aplica as camadas de Objetivo, Nível e Segurança por Idade sobre a tabela base do Modelo.
+// Guardada no programa (campo `consultoria.fases`) pra referência/consulta futura do professor.
 const gerarFases=(params)=>{
   const base=FASES_BASE_POR_MODELO[params.modelo_periodizacao]||FASES_BASE_ONDULATORIA;
   let deltaRir=0;
@@ -1554,68 +1538,82 @@ const gerarFases=(params)=>{
     aquecimento_extra:aquecimentoExtra,
   }));
 };
+// Prescrição prática (série/reps/descanso) pra exibir no app — usa a fase de Acúmulo
+// (o principal volume de trabalho) como representativa do bloco inteiro de 8 semanas.
+const prescricaoPraticaConsultoria=(params)=>{
+  const fases=gerarFases(params);
+  const f=fases[1]||fases[0];
+  return{s:String(f.series),r:f.reps,d:f.descanso_segundos+"s"};
+};
 
-// ─── Motor de geração — treinos e exercícios (trilha Academia) ──────────────
+// ─── Classificação de exercícios por padrão de movimento (âncora/secundário/acessório) ──
 const NIVEL_INCLUSIVO={iniciante:["Basico"],intermediario:["Basico","Intermediario"],avancado:["Basico","Intermediario","Avancado"]};
 const ANCORA_MUSCULOS=["peito","quadríceps"];
 const ACESSORIO_MUSCULOS=["bíceps","tríceps","panturrilha"];
 const ENFASE_EXTRA_CONSULTORIA={superior:["peito","costas"],inferior:["quadríceps","glúteos"],core:["abdômen"]};
 const categoriaMusculo=(musculo)=>ANCORA_MUSCULOS.includes(musculo)?"ancora":ACESSORIO_MUSCULOS.includes(musculo)?"acessorio":"secundario";
 
-const gerarTreinosAcademia=(params,bibCustom,blocoNumero)=>{
+// ─── Motor principal — monta prescricao[b1/b2/b3][treino]={inicial,principal,final} ──
+const buildPrescricaoConsultoria=(params,bibCustom)=>{
   const opcoes=ACADEMIA_DIVISAO_OPTIONS[params.frequencia_semanal]||ACADEMIA_DIVISAO_OPTIONS[3];
-  const divisaoEscolhida=opcoes.find(o=>o.modelo==="academia_ul")||opcoes[0];
-  const sequencia=divisaoEscolhida.sequencia;
+  const divisao=opcoes.find(o=>o.modelo==="academia_ul")||opcoes[0];
+  const sequencia=divisao.sequencia;
   const treinosUnicos=[...new Set(sequencia)];
   const nivelFiltro=(NIVEL_INCLUSIVO[params.nivel]||NIVEL_INCLUSIVO.intermediario).map(normNivel);
   const enfaseMusculos=ENFASE_EXTRA_CONSULTORIA[params.enfase]||[];
+  const presc=prescricaoPraticaConsultoria(params);
+  const prescricao={};
 
-  const treinos=treinosUnicos.map(treinoKey=>{
-    const musculos=ACADEMIA_TREINO_MUSCULOS[treinoKey]||[];
-    const usados=new Set();
-    const dias_semana=sequencia.map((t,i)=>t===treinoKey?i+1:null).filter(Boolean);
-    const exercicios=musculos.map((musculo,mIdx)=>{
-      const categoria=categoriaMusculo(musculo);
-      // âncora: seleção determinística (não gira entre blocos) pra manter a referência do reteste
-      const variantIndex=categoria==="ancora"?0:(blocoNumero-1)+mIdx;
-      const ex=escolherAcademia(musculo,nivelFiltro,usados,bibCustom,variantIndex);
-      if(!ex)return null;
-      usados.add(ex.id);
-      return{exercicio_id:ex.id,nome:ex.nome,grupo_muscular:musculo,categoria,padrao_movimento:ex.tags||null,benchmark:categoria==="ancora"};
-    }).filter(Boolean);
-    const enfaseAqui=enfaseMusculos.filter(m=>musculos.includes(m));
-    const exercicios_enfase_extra=enfaseAqui.map((musculo,i)=>{
-      const ex=escolherAcademia(musculo,nivelFiltro,usados,bibCustom,blocoNumero+i+5);
-      if(!ex)return null;
-      usados.add(ex.id);
-      return{exercicio_id:ex.id,nome:ex.nome,grupo_muscular:musculo,categoria:"acessorio",dias_semana:[dias_semana[dias_semana.length-1]||dias_semana[0]]};
-    }).filter(Boolean);
-    return{id:"treino_"+treinoKey.toLowerCase(),nome:TREINO_DEFS[treinoKey]?.label||treinoKey,dias_semana,exercicios,exercicios_enfase_extra};
+  BLOCOS_CONSULTORIA.forEach((bloco,bIdx)=>{
+    prescricao[bloco.key]={};
+    treinosUnicos.forEach(treinoKey=>{
+      const usados=new Set();
+
+      const inicial=MOBIL_TREINO.A.map(idOriginal=>{
+        const id=pickComMidia(idOriginal,bibCustom);
+        const ex=EXERCISES.find(e=>e.id===id)||bibCustom.find(e=>e.id===id);
+        if(!ex)return null;
+        return{exId:id,series:presc.s,reps:presc.r,descanso:presc.d,obs:""};
+      }).filter(Boolean);
+
+      const musculos=ACADEMIA_TREINO_MUSCULOS[treinoKey]||MUSC_ACADEMIA_FB;
+      const principal=musculos.map((musculo,mIdx)=>{
+        const categoria=categoriaMusculo(musculo);
+        // âncora: seleção determinística (não gira entre blocos) pra manter a referência do reteste
+        const variantIndex=categoria==="ancora"?0:bIdx+mIdx;
+        const ex=escolherAcademia(musculo,nivelFiltro,usados,bibCustom,variantIndex);
+        if(!ex)return null;
+        usados.add(ex.id);
+        return{exId:ex.id,series:presc.s,reps:presc.r,descanso:presc.d,obs:categoria==="ancora"?"⚓ Âncora — referência do reteste (não trocar)":""};
+      }).filter(Boolean);
+
+      const enfaseAqui=enfaseMusculos.filter(m=>musculos.includes(m));
+      enfaseAqui.forEach((musculo,i)=>{
+        const ex=escolherAcademia(musculo,nivelFiltro,usados,bibCustom,bIdx+i+5);
+        if(!ex)return;
+        usados.add(ex.id);
+        principal.push({exId:ex.id,series:presc.s,reps:presc.r,descanso:presc.d,obs:"Ênfase"});
+      });
+
+      const respId=pickComMidia("ex28",bibCustom);
+      const final=[
+        ...ALONG_TREINO.A.map(idOriginal=>{
+          const id=pickComMidia(idOriginal,bibCustom);
+          const ex=EXERCISES.find(e=>e.id===id)||bibCustom.find(e=>e.id===id);
+          if(!ex)return null;
+          return{exId:id,series:presc.s,reps:presc.r,descanso:presc.d,obs:""};
+        }).filter(Boolean),
+        {exId:respId,series:"1",reps:"3 min",descanso:"—",obs:"Encerrar a sessão com respiração consciente"},
+      ];
+
+      prescricao[bloco.key][treinoKey]={inicial,principal,final};
+    });
   });
 
-  return{divisao_label:divisaoEscolhida.label,treinos};
+  return{prescricao,divisao};
 };
 
-// ─── Motor de geração — monta o bloco completo (fases + treinos + reteste) ──
-const gerarBlocoConsultoria=(params,titulo,bibCustom,blocoNumero=1)=>{
-  const fases=gerarFases(params);
-  const {divisao_label,treinos}=params.local==="academia"
-    ? gerarTreinosAcademia(params,bibCustom,blocoNumero)
-    : {divisao_label:null,treinos:[]};
-  const ancoras=treinos.flatMap(t=>t.exercicios.filter(e=>e.categoria==="ancora").map(e=>e.nome));
-  const hoje=new Date();
-  const dataInicio=hoje.toISOString().slice(0,10);
-  const dataFim=new Date(hoje.getTime()+7*24*3600*1000*8).toISOString().slice(0,10);
-  return{
-    parametros:{...params,divisao_label},
-    fases,treinos,
-    reteste:{exercicios_referencia:ancoras,resultados:null},
-    status:"ativo",bloco_numero:blocoNumero,titulo,
-    data_inicio:dataInicio,data_fim_prevista:dataFim,
-  };
-};
-
-const NovoPeriodizacaoConsultoria=({students,bibCustom,nav,prefillStudentId})=>{
+const NovoPeriodizacaoConsultoria=({students,programs,setPrograms,bibCustom,nav,prefillStudentId})=>{
   const [step,setStep]=useState(1);
   const [sid,setSid]=useState(prefillStudentId||"");
   const [titulo,setTitulo]=useState("");
@@ -1625,9 +1623,8 @@ const NovoPeriodizacaoConsultoria=({students,bibCustom,nav,prefillStudentId})=>{
   const [freq,setFreq]=useState(4);
   const [local,setLocal]=useState("academia");
   const [modeloPeriodizacao,setModeloPeriodizacao]=useState("ondulatoria_semanal");
-  const [blocoGerado,setBlocoGerado]=useState(null);
+  const [progGerado,setProgGerado]=useState(null);
   const [salvando,setSalvando]=useState(false);
-  const [salvo,setSalvo]=useState(false);
   const student=students.find(s=>s.id===sid);
   const idade=student?calcAge(student.dob):null;
 
@@ -1641,23 +1638,33 @@ const NovoPeriodizacaoConsultoria=({students,bibCustom,nav,prefillStudentId})=>{
   };
 
   const gerar=()=>{
-    const bloco=gerarBlocoConsultoria(params,titulo,bibCustom,1);
-    setBlocoGerado(bloco);
-    setSalvo(false);
+    const {prescricao,divisao}=buildPrescricaoConsultoria(params,bibCustom);
+    const prog={
+      id:uid(),studentId:sid,titulo,semanas:24,freq,divisao,obs:"",prescricao,
+      criadoEm:new Date().toISOString().slice(0,10),assessmentRef:null,
+      origem:"consultoria",patologiaId:null,local,
+      enfase:enfase!=="nenhuma"?enfase:null,ciclo:1,variante:1,
+      consultoria:{parametros:params,fases:gerarFases(params)},
+    };
+    setProgGerado(prog);
     setStep(3);
   };
 
   const salvar=async()=>{
     setSalvando(true);
-    const ok=await ConsultoriaDB.save({id:uid(),studentId:sid,data:blocoGerado});
+    const fresh=LS.get("longevus_programs",programs);
+    const updated=[...fresh.filter(p=>p.id!==progGerado.id),progGerado];
+    setPrograms(updated);
+    LS.set("longevus_programs",updated);
+    const ok=await ProgDB.save(progGerado);
     setSalvando(false);
-    if(ok) setSalvo(true);
+    if(ok) nav("ver",{id:progGerado.id});
   };
 
   return(
     <div>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:18}}>
-        <button onClick={()=>nav("consultoriaLista")} style={{border:"none",background:"#f1f5f9",borderRadius:10,padding:"8px 12px",cursor:"pointer",fontSize:14,color:"#64748b",fontWeight:700}}>‹</button>
+        <button onClick={()=>nav("lista")} style={{border:"none",background:"#f1f5f9",borderRadius:10,padding:"8px 12px",cursor:"pointer",fontSize:14,color:"#64748b",fontWeight:700}}>‹</button>
         <div style={{fontWeight:800,fontSize:18}}>💼 Periodização Consultoria</div>
       </div>
       <div style={{display:"flex",gap:5,marginBottom:20}}>
@@ -1674,7 +1681,7 @@ const NovoPeriodizacaoConsultoria=({students,bibCustom,nav,prefillStudentId})=>{
           {sid&&<div style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:9,padding:"8px 12px",marginBottom:10,fontSize:12,color:"#1d4ed8"}}>
             {idade!=null&&idade>=55?"⚠️ Faixa 55+: RIR +1 e aquecimento articular extra serão aplicados automaticamente nas fases de alta intensidade.":idade!=null&&idade>=40?"ℹ️ Faixa 40-54: aquecimento articular extra será aplicado antes das fases de alta intensidade.":"Sem ajuste de segurança por idade nesta faixa."}
           </div>}
-          <Inp label="Título *" value={titulo} onChange={setTitulo} placeholder="ex: Consultoria — Bloco 1 (semanas 1-8)"/>
+          <Inp label="Título *" value={titulo} onChange={setTitulo} placeholder="ex: Consultoria — Hipertrofia 24 semanas"/>
           <Btn full disabled={!sid||!titulo} onClick={()=>setStep(2)}>Próximo →</Btn>
         </Card>
       )}
@@ -1715,269 +1722,24 @@ const NovoPeriodizacaoConsultoria=({students,bibCustom,nav,prefillStudentId})=>{
           <div style={{fontSize:11,color:"#94a3b8",marginBottom:14}}>Idade e gênero já vêm do cadastro do aluno — usados só pra aplicar a camada de segurança por idade, sem regra automática de gênero.</div>
           <div style={{display:"flex",gap:10}}>
             <Btn variant="secondary" full onClick={()=>setStep(1)}>‹ Voltar</Btn>
-            <Btn full disabled={local!=="academia"} onClick={gerar}>Gerar bloco →</Btn>
+            <Btn full disabled={local!=="academia"} onClick={gerar}>Gerar 24 semanas →</Btn>
           </div>
           {local!=="academia"&&<div style={{fontSize:11,color:"#94a3b8",marginTop:8}}>Geração pra trilha Casa ainda não implementada nesta etapa — só Academia por enquanto.</div>}
         </Card>
       )}
-      {step===3&&blocoGerado&&(
+      {step===3&&progGerado&&(
         <div>
           <Card>
-            <div style={{fontWeight:700,fontSize:15,marginBottom:10}}>{titulo}</div>
-            <div style={{fontSize:12,color:"#64748b",marginBottom:12}}>{blocoGerado.parametros.divisao_label} · {freq}× por semana · Bloco {blocoGerado.bloco_numero} de 8 semanas</div>
-            <div style={{fontWeight:700,fontSize:13,marginBottom:8}}>Fases</div>
-            <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:16}}>
-              {blocoGerado.fases.map((f,i)=>(
-                <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 10px",background:"#f8fafc",borderRadius:8,fontSize:12}}>
-                  <span style={{fontWeight:700}}>{f.nome} <span style={{color:"#94a3b8",fontWeight:400}}>(sem {f.semana_inicio}{f.semana_fim!==f.semana_inicio?"–"+f.semana_fim:""})</span></span>
-                  <span style={{color:"#64748b"}}>{f.series}×{f.reps} · {f.percentual_1rm}% · RIR {f.rir}</span>
-                </div>
-              ))}
-            </div>
-            <div style={{fontWeight:700,fontSize:13,marginBottom:8}}>Treinos ({blocoGerado.treinos.length})</div>
-            {blocoGerado.treinos.map(t=>(
-              <div key={t.id} style={{marginBottom:10,padding:"10px 12px",border:"1.5px solid #e2e8f0",borderRadius:9}}>
-                <div style={{fontWeight:700,fontSize:13,marginBottom:6}}>{t.nome} <span style={{color:"#94a3b8",fontWeight:400,fontSize:11}}>· dias {t.dias_semana.join(", ")}</span></div>
-                {[...t.exercicios,...t.exercicios_enfase_extra].map((e,i)=>(
-                  <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:12,padding:"4px 0"}}>
-                    <span>{e.nome}</span>
-                    <span style={{color:e.categoria==="ancora"?"#FF5603":e.categoria==="acessorio"?"#94a3b8":"#64748b",fontWeight:e.categoria==="ancora"?700:400}}>{e.categoria==="ancora"?"⚓ âncora":e.categoria==="secundario"?"secundário":"acessório"}</span>
-                  </div>
-                ))}
-              </div>
-            ))}
-            {blocoGerado.reteste.exercicios_referencia.length>0&&<div style={{fontSize:11,color:"#94a3b8",marginTop:8}}>Reteste (semana 8) usa como referência: {blocoGerado.reteste.exercicios_referencia.join(", ")}</div>}
+            <div style={{fontWeight:700,fontSize:15,marginBottom:10}}>{progGerado.titulo}</div>
+            <div style={{fontSize:12,color:"#64748b",marginBottom:12}}>{progGerado.divisao.label} · {progGerado.freq}× por semana · 3 blocos de 8 semanas (24 no total)</div>
+            <div style={{fontSize:12,color:"#94a3b8",lineHeight:1.6}}>Os exercícios já foram distribuídos nos 3 blocos, com rotação de secundários/acessórios entre eles e âncoras fixas pra manter a referência do reteste. Depois de salvar, você confere e ajusta tudo na tela de detalhe do programa — a mesma usada pros programas padrão — e o aluno já vê no app dele com Bloco 1 liberado e 2/3 bloqueados até ele completar as sessões.</div>
           </Card>
-          {salvo?(
-            <Card style={{textAlign:"center",padding:20}}>
-              <div style={{fontSize:28,marginBottom:6}}>✅</div>
-              <div style={{fontWeight:700,fontSize:14,marginBottom:12}}>Bloco salvo com sucesso</div>
-              <Btn full onClick={()=>nav("consultoriaLista")}>Voltar à lista</Btn>
-            </Card>
-          ):(
-            <>
-              <div style={{display:"flex",gap:10,marginBottom:10}}>
-                <Btn variant="secondary" full onClick={()=>setStep(2)}>‹ Ajustar parâmetros</Btn>
-                <Btn full onClick={gerar}>🔄 Gerar novamente</Btn>
-              </div>
-              <Btn full onClick={salvar} disabled={salvando}>{salvando?"Salvando...":"✅ Salvar bloco"}</Btn>
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// ─── LISTA · PERIODIZAÇÃO CONSULTORIA ─────────────────────────────────────────
-const ListaConsultoria=({students,nav})=>{
-  const [blocos,setBlocos]=useState([]);
-  const [loading,setLoading]=useState(true);
-  const [search,setSearch]=useState("");
-  useEffect(()=>{ ConsultoriaDB.load().then(rows=>{ setBlocos(rows||[]); setLoading(false); }); },[]);
-  const filtered=blocos.filter(b=>{
-    const st=students.find(s=>s.id===b.student_id);
-    return (st?.name||"").toLowerCase().includes(search.toLowerCase())||(b.data?.titulo||"").toLowerCase().includes(search.toLowerCase());
-  });
-  return(
-    <div>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <button onClick={()=>nav("lista")} style={{border:"none",background:"#f1f5f9",borderRadius:10,padding:"8px 12px",cursor:"pointer",fontSize:14,color:"#64748b",fontWeight:700}}>‹</button>
-          <div style={{fontWeight:800,fontSize:20}}>💼 Consultoria</div>
-        </div>
-        <Btn sm onClick={()=>nav("novoConsultoria")}>+ Novo bloco</Btn>
-      </div>
-      <div style={{fontSize:12,color:"#94a3b8",marginBottom:14,lineHeight:1.5}}>Periodizações paramétricas de 8 semanas pra alunos fora do perfil 50+, com nível, objetivo e ênfase configuráveis.</div>
-      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por aluno ou título..." style={{width:"100%",padding:"10px 14px",borderRadius:10,border:"1.5px solid #e2e8f0",background:"#fff",fontSize:14,fontFamily:"inherit",marginBottom:14}}/>
-      {loading?(
-        <Card style={{textAlign:"center",padding:40}}><div style={{color:"#94a3b8"}}>Carregando blocos...</div></Card>
-      ):filtered.length===0?(
-        <Card style={{textAlign:"center",padding:40}}>
-          <div style={{fontSize:36,marginBottom:10}}>💼</div>
-          <div style={{color:"#94a3b8",marginBottom:14}}>Nenhum bloco de consultoria criado ainda.</div>
-          <Btn onClick={()=>nav("novoConsultoria")}>Criar primeiro bloco</Btn>
-        </Card>
-      ):(
-        <div style={{display:"flex",flexDirection:"column",gap:10}}>
-          {filtered.map(b=>{
-            const st=students.find(s=>s.id===b.student_id);
-            const d=b.data||{};
-            const statusCor={ativo:"#16a34a",concluido:"#64748b",aguardando_proximo_bloco:"#d97706"}[d.status]||"#64748b";
-            const statusLabel={ativo:"Ativo",concluido:"Concluído",aguardando_proximo_bloco:"Aguardando próximo bloco"}[d.status]||d.status;
-            return(<Card key={b.id} onClick={()=>nav("verConsultoria",{id:b.id})} style={{padding:"14px 16px"}}>
-              <div style={{display:"flex",alignItems:"center",gap:12}}>
-                <div style={{width:44,height:44,borderRadius:12,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:800,color:"#FF5603",flexShrink:0}}>{st?.name?.[0]?.toUpperCase()||"?"}</div>
-                <div style={{flex:1}}>
-                  <div style={{fontWeight:700,fontSize:15}}>{st?.name||"Aluno"}</div>
-                  <div style={{fontSize:12,color:"#94a3b8",marginTop:1}}>{d.titulo||"Bloco"} · Bloco {b.bloco_numero} de 8 sem. · {d.parametros?.divisao_label||"—"}</div>
-                  <div style={{fontSize:11,fontWeight:700,color:statusCor,marginTop:3}}>{statusLabel}</div>
-                </div>
-                <div style={{fontSize:20,color:"#cbd5e1"}}>›</div>
-              </div>
-            </Card>);
-          })}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// ─── VER · PERIODIZAÇÃO CONSULTORIA ───────────────────────────────────────────
-const VerConsultoria=({blocoId,students,nav})=>{
-  const [bloco,setBloco]=useState(null);
-  const [loading,setLoading]=useState(true);
-  useEffect(()=>{
-    ConsultoriaDB.load().then(rows=>{
-      setBloco((rows||[]).find(r=>r.id===blocoId)||null);
-      setLoading(false);
-    });
-  },[blocoId]);
-  const deletar=async()=>{
-    if(!window.confirm("Remover este bloco?"))return;
-    await ConsultoriaDB.remove(blocoId);
-    nav("consultoriaLista");
-  };
-  if(loading)return(<Card style={{textAlign:"center",padding:40}}><div style={{color:"#94a3b8"}}>Carregando...</div></Card>);
-  if(!bloco)return(<Card style={{textAlign:"center",padding:40}}><div style={{color:"#94a3b8"}}>Bloco não encontrado.</div></Card>);
-  const d=bloco.data||{};
-  const st=students.find(s=>s.id===bloco.student_id);
-  return(
-    <div>
-      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:18}}>
-        <button onClick={()=>nav("consultoriaLista")} style={{border:"none",background:"#f1f5f9",borderRadius:10,padding:"8px 12px",cursor:"pointer",fontSize:14,color:"#64748b",fontWeight:700}}>‹</button>
-        <div>
-          <div style={{fontWeight:800,fontSize:18}}>{d.titulo}</div>
-          <div style={{fontSize:12,color:"#94a3b8"}}>{st?.name||"Aluno"} · Bloco {bloco.bloco_numero} de 8 semanas</div>
-        </div>
-      </div>
-      <Card>
-        <div style={{fontSize:12,color:"#64748b",marginBottom:12}}>{d.parametros?.divisao_label} · {d.parametros?.frequencia_semanal}× por semana · {d.data_inicio} a {d.data_fim_prevista}</div>
-        <div style={{fontWeight:700,fontSize:13,marginBottom:8}}>Fases</div>
-        <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:16}}>
-          {(d.fases||[]).map((f,i)=>(
-            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 10px",background:"#f8fafc",borderRadius:8,fontSize:12}}>
-              <span style={{fontWeight:700}}>{f.nome} <span style={{color:"#94a3b8",fontWeight:400}}>(sem {f.semana_inicio}{f.semana_fim!==f.semana_inicio?"–"+f.semana_fim:""})</span></span>
-              <span style={{color:"#64748b"}}>{f.series}×{f.reps} · {f.percentual_1rm}% · RIR {f.rir}</span>
-            </div>
-          ))}
-        </div>
-        <div style={{fontWeight:700,fontSize:13,marginBottom:8}}>Treinos ({(d.treinos||[]).length})</div>
-        {(d.treinos||[]).map(t=>(
-          <div key={t.id} style={{marginBottom:10,padding:"10px 12px",border:"1.5px solid #e2e8f0",borderRadius:9}}>
-            <div style={{fontWeight:700,fontSize:13,marginBottom:6}}>{t.nome} <span style={{color:"#94a3b8",fontWeight:400,fontSize:11}}>· dias {(t.dias_semana||[]).join(", ")}</span></div>
-            {[...(t.exercicios||[]),...(t.exercicios_enfase_extra||[])].map((e,i)=>(
-              <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:12,padding:"4px 0"}}>
-                <span>{e.nome}</span>
-                <span style={{color:e.categoria==="ancora"?"#FF5603":e.categoria==="acessorio"?"#94a3b8":"#64748b",fontWeight:e.categoria==="ancora"?700:400}}>{e.categoria==="ancora"?"⚓ âncora":e.categoria==="secundario"?"secundário":"acessório"}</span>
-              </div>
-            ))}
+          <div style={{display:"flex",gap:10,marginBottom:10}}>
+            <Btn variant="secondary" full onClick={()=>setStep(2)}>‹ Ajustar parâmetros</Btn>
+            <Btn full onClick={gerar}>🔄 Gerar novamente</Btn>
           </div>
-        ))}
-        {(d.reteste?.exercicios_referencia||[]).length>0&&<div style={{fontSize:11,color:"#94a3b8",marginTop:8}}>Reteste (semana 8) usa como referência: {d.reteste.exercicios_referencia.join(", ")}</div>}
-      </Card>
-      <div style={{display:"flex",gap:10}}>
-        <Btn variant="secondary" full onClick={()=>nav("editarConsultoria",{id:blocoId})}>✏️ Editar exercícios</Btn>
-      </div>
-      <div style={{marginTop:10}}><Btn variant="ghost" full onClick={deletar}>🗑️ Remover bloco</Btn></div>
-    </div>
-  );
-};
-
-// ─── EDITAR EXERCÍCIOS · PERIODIZAÇÃO CONSULTORIA ────────────────────────────
-const candidatosParaMusculo=(grupoMuscular,nivelFiltro,bibCustom)=>bibCustom.filter(e=>
-  e.grupo==="Academia" &&
-  (e.tags||"").toLowerCase().includes(grupoMuscular) &&
-  nivelFiltro.includes(normNivel(e.nivel))
-);
-
-const EditarConsultoria=({blocoId,students,bibCustom,nav})=>{
-  const [loading,setLoading]=useState(true);
-  const [bloco,setBloco]=useState(null);
-  const [treinos,setTreinos]=useState([]);
-  const [salvando,setSalvando]=useState(false);
-  const [salvo,setSalvo]=useState(false);
-  useEffect(()=>{
-    ConsultoriaDB.load().then(rows=>{
-      const b=(rows||[]).find(r=>r.id===blocoId)||null;
-      setBloco(b);
-      setTreinos(b?JSON.parse(JSON.stringify(b.data.treinos||[])):[]);
-      setLoading(false);
-    });
-  },[blocoId]);
-
-  const nivelParam=bloco?.data?.parametros?.nivel||"intermediario";
-  const nivelFiltro=(NIVEL_INCLUSIVO[nivelParam]||NIVEL_INCLUSIVO.intermediario).map(normNivel);
-
-  const trocar=(treinoIdx,listaKey,exIdx,novoId)=>{
-    setTreinos(prev=>{
-      const cp=JSON.parse(JSON.stringify(prev));
-      const ex=cp[treinoIdx][listaKey][exIdx];
-      const novo=bibCustom.find(e=>e.id===novoId);
-      if(novo){ ex.exercicio_id=novo.id; ex.nome=novo.nome; ex.padrao_movimento=novo.tags||null; }
-      return cp;
-    });
-    setSalvo(false);
-  };
-
-  const salvar=async()=>{
-    setSalvando(true);
-    const novaData={...bloco.data,treinos};
-    const ok=await ConsultoriaDB.save({id:bloco.id,studentId:bloco.student_id,data:novaData});
-    setSalvando(false);
-    if(ok){ setSalvo(true); setBloco(b=>({...b,data:novaData})); }
-  };
-
-  if(loading)return(<Card style={{textAlign:"center",padding:40}}><div style={{color:"#94a3b8"}}>Carregando...</div></Card>);
-  if(!bloco)return(<Card style={{textAlign:"center",padding:40}}><div style={{color:"#94a3b8"}}>Bloco não encontrado.</div></Card>);
-  const st=students.find(s=>s.id===bloco.student_id);
-
-  const linhaExercicio=(treinoIdx,listaKey,ex,exIdx)=>{
-    if(ex.categoria==="ancora"){
-      return(
-        <div key={ex.exercicio_id+exIdx} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #f1f5f9"}}>
-          <div>
-            <div style={{fontSize:13,fontWeight:700}}>{ex.nome}</div>
-            <div style={{fontSize:10,color:"#94a3b8"}}>🔒 âncora — referência do reteste, não pode ser trocada</div>
-          </div>
+          <Btn full onClick={salvar} disabled={salvando}>{salvando?"Salvando...":"✅ Salvar e ver programa"}</Btn>
         </div>
-      );
-    }
-    const candidatos=candidatosParaMusculo(ex.grupo_muscular,nivelFiltro,bibCustom);
-    return(
-      <div key={ex.exercicio_id+exIdx} style={{padding:"8px 0",borderBottom:"1px solid #f1f5f9"}}>
-        <div style={{fontSize:10,color:"#94a3b8",marginBottom:3,textTransform:"uppercase",letterSpacing:"0.3px"}}>{ex.categoria==="secundario"?"Secundário":"Acessório"} · {ex.grupo_muscular}</div>
-        <select value={ex.exercicio_id} onChange={e=>trocar(treinoIdx,listaKey,exIdx,e.target.value)} style={{width:"100%",padding:"9px 10px",borderRadius:8,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:13,fontFamily:"inherit"}}>
-          {!candidatos.find(c=>c.id===ex.exercicio_id)&&<option value={ex.exercicio_id}>{ex.nome}</option>}
-          {candidatos.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}
-        </select>
-      </div>
-    );
-  };
-
-  return(
-    <div>
-      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:18}}>
-        <button onClick={()=>nav("verConsultoria",{id:blocoId})} style={{border:"none",background:"#f1f5f9",borderRadius:10,padding:"8px 12px",cursor:"pointer",fontSize:14,color:"#64748b",fontWeight:700}}>‹</button>
-        <div>
-          <div style={{fontWeight:800,fontSize:18}}>✏️ Editar exercícios</div>
-          <div style={{fontSize:12,color:"#94a3b8"}}>{st?.name||"Aluno"} · {bloco.data.titulo}</div>
-        </div>
-      </div>
-      <div style={{fontSize:11,color:"#94a3b8",marginBottom:14,lineHeight:1.5}}>Troque secundários e acessórios por qualquer exercício do mesmo grupo muscular e nível. Âncoras ficam travadas pra não perder a referência do reteste.</div>
-      {treinos.map((t,treinoIdx)=>(
-        <Card key={t.id}>
-          <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>{t.nome} <span style={{color:"#94a3b8",fontWeight:400,fontSize:11}}>· dias {(t.dias_semana||[]).join(", ")}</span></div>
-          {(t.exercicios||[]).map((ex,exIdx)=>linhaExercicio(treinoIdx,"exercicios",ex,exIdx))}
-          {(t.exercicios_enfase_extra||[]).map((ex,exIdx)=>linhaExercicio(treinoIdx,"exercicios_enfase_extra",ex,exIdx))}
-        </Card>
-      ))}
-      {salvo?(
-        <Card style={{textAlign:"center",padding:16}}>
-          <div style={{fontWeight:700,fontSize:13,color:"#16a34a"}}>✅ Alterações salvas</div>
-        </Card>
-      ):(
-        <Btn full onClick={salvar} disabled={salvando}>{salvando?"Salvando...":"✅ Salvar alterações"}</Btn>
       )}
     </div>
   );
@@ -1994,7 +1756,7 @@ const Lista=({programs,students,nav})=>{
         <div style={{display:"flex",gap:8}}>
           <Btn sm variant="ghost" onClick={()=>{window.open("longevus-biblioteca.html","_blank");}}>📚 Exercícios</Btn>
           <Btn sm variant="ghost" onClick={()=>nav("modelos")}>⭐ Modelos</Btn>
-          <Btn sm variant="ghost" onClick={()=>nav("consultoriaLista")}>💼 Consultoria</Btn>
+          <Btn sm variant="ghost" onClick={()=>nav("novoConsultoria")}>💼 Consultoria</Btn>
           <Btn sm onClick={()=>nav("novo")}>+ Novo</Btn>
         </div>
       </div>
@@ -2411,10 +2173,7 @@ function AppInner(){
           {page==="modelos"&&<ListaModelos modelos={modelos} loading={modelosLoading} nav={nav}/>}
           {page==="modeloVer"&&<VerModelo modeloId={pageProps.id} modelos={modelos} setModelos={setModelos} bibCustom={bibCustom} students={students} programs={programs} setPrograms={setPrograms} nav={nav}/>}
           {page==="novo"&&<NovoProgramaWizard students={students} assessments={assessments} programs={programs} setPrograms={setPrograms} bibCustom={bibCustom} nav={nav} prefillStudentId={pageProps.studentId}/>}
-          {page==="novoConsultoria"&&<NovoPeriodizacaoConsultoria students={students} bibCustom={bibCustom} nav={nav} prefillStudentId={pageProps.studentId}/>}
-          {page==="consultoriaLista"&&<ListaConsultoria students={students} nav={nav}/>}
-          {page==="verConsultoria"&&<VerConsultoria blocoId={pageProps.id} students={students} nav={nav}/>}
-          {page==="editarConsultoria"&&<EditarConsultoria blocoId={pageProps.id} students={students} bibCustom={bibCustom} nav={nav}/>}
+          {page==="novoConsultoria"&&<NovoPeriodizacaoConsultoria students={students} programs={programs} setPrograms={setPrograms} bibCustom={bibCustom} nav={nav} prefillStudentId={pageProps.studentId}/>}
           {page==="ver"&&<VerPrograma programId={pageProps.id} programs={programs} setPrograms={setPrograms} students={students} bibCustom={bibCustom} nav={nav} autoEdit={pageProps.autoEdit}/>}
         </div>
       </div>
