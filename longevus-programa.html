@@ -79,6 +79,36 @@ const ModeloDB = {
   }
 };
 
+// ─── PERIODIZAÇÃO CONSULTORIA (blocos de 8 semanas, fora do perfil 50+) ──────
+const ConsultoriaDB = {
+  async load(studentId){
+    try{
+      const headers = await authHeadersFn();
+      const q = studentId ? "&student_id=eq."+encodeURIComponent(studentId) : "";
+      const r = await fetch(SUPA_URL+"/rest/v1/periodizacao_consultoria?select=*&order=bloco_numero.asc"+q, { headers });
+      if(!r.ok) return null;
+      return await r.json();
+    }catch(e){ return null; }
+  },
+  async save(bloco){
+    try{
+      const headers = { ...(await authHeadersFn()), "Prefer": "resolution=merge-duplicates" };
+      const { data: sess } = await supa.auth.getSession();
+      const ownerId = sess?.session?.user?.id;
+      const body = { id: bloco.id, owner_id: ownerId, student_id: bloco.studentId, bloco_numero: bloco.data.bloco_numero, status: bloco.data.status, data: bloco.data, updated_at: new Date().toISOString() };
+      const r = await fetch(SUPA_URL+"/rest/v1/periodizacao_consultoria", { method:"POST", headers, body: JSON.stringify(body) });
+      return r.ok;
+    }catch(e){ return false; }
+  },
+  async remove(id){
+    try{
+      const headers = await authHeadersFn();
+      await fetch(SUPA_URL+"/rest/v1/periodizacao_consultoria?id=eq."+id, { method:"DELETE", headers });
+      return true;
+    }catch(e){ return false; }
+  }
+};
+
 // ─── PATOLOGIAS (origem alternativa de geração de programa) ──────────────────
 async function fetchPatologias(){
   try{
@@ -1596,6 +1626,8 @@ const NovoPeriodizacaoConsultoria=({students,bibCustom,nav,prefillStudentId})=>{
   const [local,setLocal]=useState("academia");
   const [modeloPeriodizacao,setModeloPeriodizacao]=useState("ondulatoria_semanal");
   const [blocoGerado,setBlocoGerado]=useState(null);
+  const [salvando,setSalvando]=useState(false);
+  const [salvo,setSalvo]=useState(false);
   const student=students.find(s=>s.id===sid);
   const idade=student?calcAge(student.dob):null;
 
@@ -1611,7 +1643,15 @@ const NovoPeriodizacaoConsultoria=({students,bibCustom,nav,prefillStudentId})=>{
   const gerar=()=>{
     const bloco=gerarBlocoConsultoria(params,titulo,bibCustom,1);
     setBlocoGerado(bloco);
+    setSalvo(false);
     setStep(3);
+  };
+
+  const salvar=async()=>{
+    setSalvando(true);
+    const ok=await ConsultoriaDB.save({id:uid(),studentId:sid,data:blocoGerado});
+    setSalvando(false);
+    if(ok) setSalvo(true);
   };
 
   return(
@@ -1708,10 +1748,21 @@ const NovoPeriodizacaoConsultoria=({students,bibCustom,nav,prefillStudentId})=>{
             ))}
             {blocoGerado.reteste.exercicios_referencia.length>0&&<div style={{fontSize:11,color:"#94a3b8",marginTop:8}}>Reteste (semana 8) usa como referência: {blocoGerado.reteste.exercicios_referencia.join(", ")}</div>}
           </Card>
-          <div style={{display:"flex",gap:10}}>
-            <Btn variant="secondary" full onClick={()=>setStep(2)}>‹ Ajustar parâmetros</Btn>
-            <Btn full onClick={gerar}>🔄 Gerar novamente</Btn>
-          </div>
+          {salvo?(
+            <Card style={{textAlign:"center",padding:20}}>
+              <div style={{fontSize:28,marginBottom:6}}>✅</div>
+              <div style={{fontWeight:700,fontSize:14,marginBottom:12}}>Bloco salvo com sucesso</div>
+              <Btn full onClick={()=>nav("lista")}>Voltar à lista</Btn>
+            </Card>
+          ):(
+            <>
+              <div style={{display:"flex",gap:10,marginBottom:10}}>
+                <Btn variant="secondary" full onClick={()=>setStep(2)}>‹ Ajustar parâmetros</Btn>
+                <Btn full onClick={gerar}>🔄 Gerar novamente</Btn>
+              </div>
+              <Btn full onClick={salvar} disabled={salvando}>{salvando?"Salvando...":"✅ Salvar bloco"}</Btn>
+            </>
+          )}
         </div>
       )}
     </div>
