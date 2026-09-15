@@ -272,6 +272,8 @@ PEITO:{label:"Peito",cor:"#dc2626",bg:"#fef2f2",border:"#fecaca",desc:"Peito e T
 COSTAS:{label:"Costas",cor:"#0891b2",bg:"#ecfeff",border:"#a5f3fc",desc:"Costas e Bíceps"},
 PERNA:{label:"Perna",cor:"#4d7c0f",bg:"#f7fee7",border:"#d9f99d",desc:"Quadríceps, Posterior, Glúteos, Panturrilha"},
 OMBRO:{label:"Ombro",cor:"#7c3aed",bg:"#f5f3ff",border:"#ddd6fe",desc:"Ombros e Abdômen"},
+EMP:{label:"Empurrar",cor:"#0891b2",bg:"#ecfeff",border:"#a5f3fc",desc:"Full body alternado — Peito, Abdômen, Quadríceps, Tríceps"},
+PUX:{label:"Puxar",cor:"#9333ea",bg:"#faf5ff",border:"#e9d5ff",desc:"Full body alternado — Costas, Lombar, Posterior, Bíceps, Panturrilha"},
 };
 // A consultoria não usa um número fixo de blocos — cada bloco é uma FASE da periodização,
 // repetida a cada ciclo de 8 semanas. A config completa vem embutida no programa em
@@ -1875,19 +1877,20 @@ const sessionsPerBloco = (key) => stSessions.filter(s=>s.blocoKey===key).length;
 const requiredParaBlocoPres = (idx) => (blocosAtivosPres[idx]?.semanasCount || semanasPorBlocoPadraoPres) * (currentProgram?.freq || 3);
 let maxUnlockedIdx = 0;
 for(let i=1;i<blocosAtivosPres.length;i++){ if(sessionsPerBloco(blocosAtivosPres[i-1].key) >= requiredParaBlocoPres(i-1)) maxUnlockedIdx = i; else break; }
-const treinosUnicos = currentProgram ? [...new Set(currentProgram.divisao?.sequencia || ["A"])] : [];
-let treinoDeHojeCalc = treinosUnicos[0];
-if(stSessions.length>0 && treinosUnicos.length>0){
-const idxUltimo = treinosUnicos.indexOf(stSessions[0].treinoKey);
-if(idxUltimo!==-1) treinoDeHojeCalc = treinosUnicos[(idxUltimo+1)%treinosUnicos.length];
+const treinosUnicosInicial = currentProgram ? (blocosAtivosPres[maxUnlockedIdx]?.treinos || [...new Set(currentProgram.divisao?.sequencia || ["A"])]) : [];
+let treinoDeHojeCalc = treinosUnicosInicial[0];
+if(stSessions.length>0 && treinosUnicosInicial.length>0){
+const idxUltimo = treinosUnicosInicial.indexOf(stSessions[0].treinoKey);
+if(idxUltimo!==-1) treinoDeHojeCalc = treinosUnicosInicial[(idxUltimo+1)%treinosUnicosInicial.length];
 }
 const [presBlocoIdx,setPresBlocoIdx] = useState(maxUnlockedIdx);
-const [presTreinoIdx,setPresTreinoIdx] = useState(()=>{ const i=treinosUnicos.indexOf(treinoDeHojeCalc); return i===-1?0:i; });
+const [presTreinoIdx,setPresTreinoIdx] = useState(()=>{ const i=treinosUnicosInicial.indexOf(treinoDeHojeCalc); return i===-1?0:i; });
 const [presDone,setPresDone] = useState(()=>new Set());
 const [presCargasTreino,setPresCargasTreino] = useState({});
 const [presTreinoSalvo,setPresTreinoSalvo] = useState(false);
 const blocoAtivoPres = blocosAtivosPres[presBlocoIdx] || blocosAtivosPres[0];
 const requiredPerBlock = requiredParaBlocoPres(presBlocoIdx);
+const treinosUnicos = blocoAtivoPres?.treinos || treinosUnicosInicial;
 const treinoAtivoPres = treinosUnicos[presTreinoIdx] || treinosUnicos[0] || "A";
 const tdPres = TREINO_DEFS[treinoAtivoPres];
 const sessaoPres = ((currentProgram?.prescricao||{})[blocoAtivoPres.key]||{})[treinoAtivoPres] || {inicial:[],principal:[],final:[]};
