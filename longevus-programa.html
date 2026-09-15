@@ -274,14 +274,11 @@ const BLOCOS = [
   {key:"b4",label:"Bloco 4 — Consolidação",semanas:"19–24",cor:{bg:"#f0fdf4",border:"#bbf7d0",texto:"#15803d",dot:"#22c55e"},desc:"Autonomia, exercícios integrados, manutenção de ganhos",nivel:["Basico","Intermediario","Avancado"]},
 ];
 
-// ─── BLOCOS · PERIODIZAÇÃO CONSULTORIA (3 blocos de 8 semanas = 24 no total) ──
-const BLOCOS_CONSULTORIA = [
-  {key:"b1",label:"Bloco 1",semanas:"1–8",cor:{bg:"#eff6ff",border:"#bfdbfe",texto:"#1d4ed8",dot:"#3b82f6"},desc:"Adaptação → Acúmulo → Intensificação → Deload → Pico/Reteste"},
-  {key:"b2",label:"Bloco 2",semanas:"9–16",cor:{bg:"#fff7ed",border:"#fed7aa",texto:"#c2410c",dot:"#FF5603"},desc:"Novo ciclo de 8 semanas, exercícios secundários/acessórios rotacionados"},
-  {key:"b3",label:"Bloco 3",semanas:"17–24",cor:{bg:"#fdf4ff",border:"#e9d5ff",texto:"#7e22ce",dot:"#a855f7"},desc:"Ciclo final, reteste de encerramento"},
-];
-// Escolhe o conjunto de blocos certo conforme a origem do programa — consultoria usa 3×8 sem., o resto usa o padrão 4×6 sem.
-const blocosPara = (prog) => (prog?.origem==="consultoria") ? BLOCOS_CONSULTORIA : BLOCOS;
+// ─── BLOCOS · PERIODIZAÇÃO CONSULTORIA ────────────────────────────────────────
+// Não é um número fixo: cada bloco é uma FASE da periodização (Adaptação, Acúmulo...),
+// repetida a cada ciclo de 8 semanas — a config completa vem embutida no programa em
+// `prog.blocosConfig` (gerada por gerarBlocosConsultoria). Sem isso, cai no padrão fixo 4×6.
+const blocosPara = (prog) => (prog?.blocosConfig && prog.blocosConfig.length) ? prog.blocosConfig : BLOCOS;
 
 const PRESC={
   Fortalecimento:{b1:{s:"2",r:"8–10",d:"60s"},b2:{s:"3",r:"10–12",d:"60s"},b3:{s:"3",r:"12–15",d:"45s"},b4:{s:"3–4",r:"12–15",d:"45s"}},
@@ -1445,8 +1442,8 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
         </div>
       </Card>
       {prog.obs&&<Card style={{marginBottom:10,background:"#f8fafc",padding:"9px 13px"}}><div style={{fontSize:12,color:"#64748b",fontStyle:"italic"}}>📝 {prog.obs}</div></Card>}
-      <div style={{display:"flex",gap:0,marginBottom:8,background:"#f1f5f9",borderRadius:10,padding:3}}>
-        {blocosAtivos.map((b,i)=>(<button key={b.key} onClick={()=>{setBlocoIdx(i);setTreinoIdx(0);}} style={{flex:1,border:"none",borderRadius:8,padding:"6px 3px",fontSize:10,fontWeight:700,cursor:"pointer",background:blocoIdx===i?b.cor.bg:"transparent",color:blocoIdx===i?b.cor.texto:"#94a3b8",lineHeight:1.3}}><div>B{i+1}</div><div style={{fontSize:8,marginTop:1}}>{b.semanas}</div></button>))}
+      <div style={{display:"flex",gap:4,marginBottom:8,background:"#f1f5f9",borderRadius:10,padding:3,overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
+        {blocosAtivos.map((b,i)=>(<button key={b.key} onClick={()=>{setBlocoIdx(i);setTreinoIdx(0);}} style={{flex:"0 0 auto",minWidth:44,border:"none",borderRadius:8,padding:"6px 6px",fontSize:10,fontWeight:700,cursor:"pointer",background:blocoIdx===i?b.cor.bg:"transparent",color:blocoIdx===i?b.cor.texto:"#94a3b8",lineHeight:1.3}}><div>B{i+1}</div><div style={{fontSize:8,marginTop:1,whiteSpace:"nowrap"}}>{b.semanas}</div></button>))}
       </div>
       <div style={{background:blocoAtivo.cor.bg,border:`1.5px solid ${blocoAtivo.cor.border}`,borderRadius:9,padding:"7px 12px",marginBottom:8}}>
         <div style={{fontWeight:700,fontSize:12,color:blocoAtivo.cor.texto}}>{blocoAtivo.label} · sem. {blocoAtivo.semanas} · {blocoAtivo.desc}</div>
@@ -1540,10 +1537,34 @@ const gerarFases=(params)=>{
 };
 // Prescrição prática (série/reps/descanso) pra exibir no app — usa a fase de Acúmulo
 // (o principal volume de trabalho) como representativa do bloco inteiro de 8 semanas.
-const prescricaoPraticaConsultoria=(params)=>{
+// ─── Blocos = fases da periodização, repetidas a cada ciclo de 8 semanas ─────
+// Ondulatória (5 fases) → 15 blocos · Linear (4 fases) → 12 blocos · Em blocos (3 fases) → 9 blocos.
+// Série/reps/descanso mudam a cada bloco (cada fase); exercícios só mudam a cada ciclo completo (8 sem.).
+const CORES_CICLO_CONSULTORIA=[
+  {bg:"#eff6ff",border:"#bfdbfe",texto:"#1d4ed8",dot:"#3b82f6"},
+  {bg:"#fff7ed",border:"#fed7aa",texto:"#c2410c",dot:"#FF5603"},
+  {bg:"#fdf4ff",border:"#e9d5ff",texto:"#7e22ce",dot:"#a855f7"},
+];
+const gerarBlocosConsultoria=(params)=>{
   const fases=gerarFases(params);
-  const f=fases[1]||fases[0];
-  return{s:String(f.series),r:f.reps,d:f.descanso_segundos+"s"};
+  const blocos=[];
+  for(let ciclo=0;ciclo<3;ciclo++){
+    fases.forEach((f,faseIdx)=>{
+      const semanaInicio=f.semana_inicio+ciclo*8;
+      const semanaFim=f.semana_fim+ciclo*8;
+      blocos.push({
+        key:"b"+(blocos.length+1),
+        label:`Ciclo ${ciclo+1} · ${f.nome}`,
+        semanas:`${semanaInicio}–${semanaFim}`,
+        semanasCount:(f.semana_fim-f.semana_inicio+1),
+        cor:CORES_CICLO_CONSULTORIA[ciclo%CORES_CICLO_CONSULTORIA.length],
+        desc:`RIR ${f.rir}`+(f.aquecimento_extra?" · aquecimento articular extra":""),
+        cicloIdx:ciclo,faseIdx,
+        series:f.series,reps:f.reps,rir:f.rir,descanso_segundos:f.descanso_segundos,
+      });
+    });
+  }
+  return blocos;
 };
 
 // ─── Classificação de exercícios por padrão de movimento (âncora/secundário/acessório) ──
@@ -1553,7 +1574,7 @@ const ACESSORIO_MUSCULOS=["bíceps","tríceps","panturrilha"];
 const ENFASE_EXTRA_CONSULTORIA={superior:["peito","costas"],inferior:["quadríceps","glúteos"],core:["abdômen"]};
 const categoriaMusculo=(musculo)=>ANCORA_MUSCULOS.includes(musculo)?"ancora":ACESSORIO_MUSCULOS.includes(musculo)?"acessorio":"secundario";
 
-// ─── Motor principal — monta prescricao[b1/b2/b3][treino]={inicial,principal,final} ──
+// ─── Motor principal — monta prescricao[bN][treino]={inicial,principal,final}, um bN por fase ──
 const buildPrescricaoConsultoria=(params,bibCustom)=>{
   const opcoes=ACADEMIA_DIVISAO_OPTIONS[params.frequencia_semanal]||ACADEMIA_DIVISAO_OPTIONS[3];
   const divisao=opcoes.find(o=>o.modelo==="academia_ul")||opcoes[0];
@@ -1561,10 +1582,11 @@ const buildPrescricaoConsultoria=(params,bibCustom)=>{
   const treinosUnicos=[...new Set(sequencia)];
   const nivelFiltro=(NIVEL_INCLUSIVO[params.nivel]||NIVEL_INCLUSIVO.intermediario).map(normNivel);
   const enfaseMusculos=ENFASE_EXTRA_CONSULTORIA[params.enfase]||[];
-  const presc=prescricaoPraticaConsultoria(params);
+  const blocosConfig=gerarBlocosConsultoria(params);
   const prescricao={};
 
-  BLOCOS_CONSULTORIA.forEach((bloco,bIdx)=>{
+  blocosConfig.forEach(bloco=>{
+    const presc={s:String(bloco.series),r:bloco.reps,d:bloco.descanso_segundos+"s"};
     prescricao[bloco.key]={};
     treinosUnicos.forEach(treinoKey=>{
       const usados=new Set();
@@ -1579,8 +1601,9 @@ const buildPrescricaoConsultoria=(params,bibCustom)=>{
       const musculos=ACADEMIA_TREINO_MUSCULOS[treinoKey]||MUSC_ACADEMIA_FB;
       const principal=musculos.map((musculo,mIdx)=>{
         const categoria=categoriaMusculo(musculo);
-        // âncora: seleção determinística (não gira entre blocos) pra manter a referência do reteste
-        const variantIndex=categoria==="ancora"?0:bIdx+mIdx;
+        // âncora: fixa o tempo todo. Secundário/acessório: rotacionam só a cada CICLO (não a cada fase) —
+        // assim o exercício se mantém estável dentro das 8 semanas, só a prescrição muda por fase.
+        const variantIndex=categoria==="ancora"?0:bloco.cicloIdx+mIdx;
         const ex=escolherAcademia(musculo,nivelFiltro,usados,bibCustom,variantIndex);
         if(!ex)return null;
         usados.add(ex.id);
@@ -1589,7 +1612,7 @@ const buildPrescricaoConsultoria=(params,bibCustom)=>{
 
       const enfaseAqui=enfaseMusculos.filter(m=>musculos.includes(m));
       enfaseAqui.forEach((musculo,i)=>{
-        const ex=escolherAcademia(musculo,nivelFiltro,usados,bibCustom,bIdx+i+5);
+        const ex=escolherAcademia(musculo,nivelFiltro,usados,bibCustom,bloco.cicloIdx+i+5);
         if(!ex)return;
         usados.add(ex.id);
         principal.push({exId:ex.id,series:presc.s,reps:presc.r,descanso:presc.d,obs:"Ênfase"});
@@ -1610,7 +1633,7 @@ const buildPrescricaoConsultoria=(params,bibCustom)=>{
     });
   });
 
-  return{prescricao,divisao};
+  return{prescricao,divisao,blocosConfig};
 };
 
 const NovoPeriodizacaoConsultoria=({students,programs,setPrograms,bibCustom,nav,prefillStudentId})=>{
@@ -1638,9 +1661,9 @@ const NovoPeriodizacaoConsultoria=({students,programs,setPrograms,bibCustom,nav,
   };
 
   const gerar=()=>{
-    const {prescricao,divisao}=buildPrescricaoConsultoria(params,bibCustom);
+    const {prescricao,divisao,blocosConfig}=buildPrescricaoConsultoria(params,bibCustom);
     const prog={
-      id:uid(),studentId:sid,titulo,semanas:24,freq,divisao,obs:"",prescricao,
+      id:uid(),studentId:sid,titulo,semanas:24,freq,divisao,obs:"",prescricao,blocosConfig,
       criadoEm:new Date().toISOString().slice(0,10),assessmentRef:null,
       origem:"consultoria",patologiaId:null,local,
       enfase:enfase!=="nenhuma"?enfase:null,ciclo:1,variante:1,
@@ -1731,8 +1754,8 @@ const NovoPeriodizacaoConsultoria=({students,programs,setPrograms,bibCustom,nav,
         <div>
           <Card>
             <div style={{fontWeight:700,fontSize:15,marginBottom:10}}>{progGerado.titulo}</div>
-            <div style={{fontSize:12,color:"#64748b",marginBottom:12}}>{progGerado.divisao.label} · {progGerado.freq}× por semana · 3 blocos de 8 semanas (24 no total)</div>
-            <div style={{fontSize:12,color:"#94a3b8",lineHeight:1.6}}>Os exercícios já foram distribuídos nos 3 blocos, com rotação de secundários/acessórios entre eles e âncoras fixas pra manter a referência do reteste. Depois de salvar, você confere e ajusta tudo na tela de detalhe do programa — a mesma usada pros programas padrão — e o aluno já vê no app dele com Bloco 1 liberado e 2/3 bloqueados até ele completar as sessões.</div>
+            <div style={{fontSize:12,color:"#64748b",marginBottom:12}}>{progGerado.divisao.label} · {progGerado.freq}× por semana · {progGerado.blocosConfig.length} blocos (1 por fase × 3 ciclos de 8 semanas = 24 no total)</div>
+            <div style={{fontSize:12,color:"#94a3b8",lineHeight:1.6}}>Cada bloco é uma fase da periodização — série/reps/descanso mudam a cada bloco, seguindo o modelo {MODELOS_PERIODIZACAO.find(([v])=>v===modeloPeriodizacao)?.[1]}. Os exercícios só trocam a cada ciclo completo de 8 semanas (secundários/acessórios rotacionam, âncoras ficam fixas pro reteste). Depois de salvar, você confere e ajusta tudo na tela de detalhe do programa — a mesma usada pros programas padrão — e o aluno já vê no app dele com o Bloco 1 liberado e os demais bloqueados até ele completar as sessões de cada fase.</div>
           </Card>
           <div style={{display:"flex",gap:10,marginBottom:10}}>
             <Btn variant="secondary" full onClick={()=>setStep(2)}>‹ Ajustar parâmetros</Btn>

@@ -262,7 +262,21 @@ A:{label:"Treino A",cor:"#3b82f6",bg:"#eff6ff",border:"#bfdbfe",desc:"MMII + Equ
 B:{label:"Treino B",cor:"#d97706",bg:"#fffbeb",border:"#fde68a",desc:"MMSS + Core + Alongamento"},
 C:{label:"Treino C",cor:"#7e22ce",bg:"#fdf4ff",border:"#e9d5ff",desc:"Funcional + Cardio + Coordenação"},
 D:{label:"Treino D",cor:"#15803d",bg:"#f0fdf4",border:"#bbf7d0",desc:"Full Body + Mobilidade Geral"},
+FB:{label:"Full Body",cor:"#0d9488",bg:"#f0fdfa",border:"#99f6e4",desc:"Corpo todo — Pernas, Peito, Costas, Ombros, Braços"},
+SUP:{label:"Superior",cor:"#be185d",bg:"#fdf2f8",border:"#fbcfe8",desc:"Peito, Costas, Ombros, Bíceps, Tríceps"},
+INF:{label:"Inferior",cor:"#1d4ed8",bg:"#eff6ff",border:"#bfdbfe",desc:"Quadríceps, Posterior, Glúteos, Panturrilha"},
+PUSH:{label:"Push",cor:"#c2410c",bg:"#fff7ed",border:"#fed7aa",desc:"Peito, Ombros, Tríceps"},
+PULL:{label:"Pull",cor:"#0369a1",bg:"#f0f9ff",border:"#bae6fd",desc:"Costas, Bíceps"},
+LEGS:{label:"Legs",cor:"#65a30d",bg:"#f7fee7",border:"#d9f99d",desc:"Quadríceps, Posterior, Glúteos, Panturrilha"},
+PEITO:{label:"Peito",cor:"#dc2626",bg:"#fef2f2",border:"#fecaca",desc:"Peito e Tríceps"},
+COSTAS:{label:"Costas",cor:"#0891b2",bg:"#ecfeff",border:"#a5f3fc",desc:"Costas e Bíceps"},
+PERNA:{label:"Perna",cor:"#4d7c0f",bg:"#f7fee7",border:"#d9f99d",desc:"Quadríceps, Posterior, Glúteos, Panturrilha"},
+OMBRO:{label:"Ombro",cor:"#7c3aed",bg:"#f5f3ff",border:"#ddd6fe",desc:"Ombros e Abdômen"},
 };
+// A consultoria não usa um número fixo de blocos — cada bloco é uma FASE da periodização,
+// repetida a cada ciclo de 8 semanas. A config completa vem embutida no programa em
+// `prog.blocosConfig` (gerada pelo longevus-programa.html). Sem isso, cai no padrão fixo 4×6.
+const blocosPara = (prog) => (prog?.blocosConfig && prog.blocosConfig.length) ? prog.blocosConfig : BLOCOS;
 const BLOCOS = [
 {key:"b1",label:"Bloco 1 — Adaptação",semanas:"1–6",cor:{bg:"#eff6ff",border:"#bfdbfe",texto:"#1d4ed8",dot:"#3b82f6"}},
 {key:"b2",label:"Bloco 2 — Desenvolvimento",semanas:"7–12",cor:{bg:"#fff7ed",border:"#fed7aa",texto:"#c2410c",dot:"#FF5603"}},
@@ -1855,10 +1869,12 @@ if(it && it.exId && it.exId!=="cognitivo"){ const ex=(exerciciosBiblioteca||[]).
 }
 const exerciciosComCarga = [...new Set([...stCargas.map(c=>c.name), ...exerciciosDoPrograma])].sort();
 const stSessions = (sessions||[]).filter(s=>s && s.studentId===studentId).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
-const requiredPerBlock = 6 * (currentProgram?.freq || 3);
+const blocosAtivosPres = blocosPara(currentProgram);
+const semanasPorBlocoPadraoPres = currentProgram?.origem==="consultoria" ? 8 : 6;
 const sessionsPerBloco = (key) => stSessions.filter(s=>s.blocoKey===key).length;
+const requiredParaBlocoPres = (idx) => (blocosAtivosPres[idx]?.semanasCount || semanasPorBlocoPadraoPres) * (currentProgram?.freq || 3);
 let maxUnlockedIdx = 0;
-for(let i=1;i<BLOCOS.length;i++){ if(sessionsPerBloco(BLOCOS[i-1].key) >= requiredPerBlock) maxUnlockedIdx = i; else break; }
+for(let i=1;i<blocosAtivosPres.length;i++){ if(sessionsPerBloco(blocosAtivosPres[i-1].key) >= requiredParaBlocoPres(i-1)) maxUnlockedIdx = i; else break; }
 const treinosUnicos = currentProgram ? [...new Set(currentProgram.divisao?.sequencia || ["A"])] : [];
 let treinoDeHojeCalc = treinosUnicos[0];
 if(stSessions.length>0 && treinosUnicos.length>0){
@@ -1870,7 +1886,8 @@ const [presTreinoIdx,setPresTreinoIdx] = useState(()=>{ const i=treinosUnicos.in
 const [presDone,setPresDone] = useState(()=>new Set());
 const [presCargasTreino,setPresCargasTreino] = useState({});
 const [presTreinoSalvo,setPresTreinoSalvo] = useState(false);
-const blocoAtivoPres = BLOCOS[presBlocoIdx] || BLOCOS[0];
+const blocoAtivoPres = blocosAtivosPres[presBlocoIdx] || blocosAtivosPres[0];
+const requiredPerBlock = requiredParaBlocoPres(presBlocoIdx);
 const treinoAtivoPres = treinosUnicos[presTreinoIdx] || treinosUnicos[0] || "A";
 const tdPres = TREINO_DEFS[treinoAtivoPres];
 const sessaoPres = ((currentProgram?.prescricao||{})[blocoAtivoPres.key]||{})[treinoAtivoPres] || {inicial:[],principal:[],final:[]};
@@ -2012,6 +2029,7 @@ const [presPre,setPresPre] = useState(emptyPresPre());
 const [presPos,setPresPos] = useState(emptyPresPos());
 const [presSaving,setPresSaving] = useState(false);
 const [presMsg,setPresMsg] = useState("");
+const [showHistoricoProgramas,setShowHistoricoProgramas] = useState(false);
 const submeterCheckin = async (type, data) => {
 try {
 const headers = await DB.authHeaders();
@@ -2133,7 +2151,28 @@ return (
 <Btn full variant="secondary" icon="zap" onClick={()=>openNewProgram()}>Gerar Novo Programa</Btn>
 </div>
 </Card>}
-{stPrograms.length>1&&<div style={{ fontSize:11,color:"#94a3b8",marginTop:10,textAlign:"center" }}>+{stPrograms.length-1} programa(s) anterior(es)</div>}
+{stPrograms.length>1&&(
+<div style={{ marginTop:10 }}>
+<button onClick={()=>setShowHistoricoProgramas(v=>!v)} style={{ width:"100%",border:"none",background:"transparent",color:"#64748b",fontSize:11,fontWeight:700,cursor:"pointer",padding:"4px 0",textDecoration:"underline" }}>
+{showHistoricoProgramas?"Ocultar":"Ver"} histórico · +{stPrograms.length-1} programa(s) anterior(es)
+</button>
+{showHistoricoProgramas&&(
+<div style={{ display:"flex",flexDirection:"column",gap:6,marginTop:6 }}>
+{stPrograms.slice(1).map(p=>(
+<Card key={p.id} onClick={()=>openViewProgram(p)} style={{ padding:"10px 12px",cursor:"pointer" }}>
+<div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:8 }}>
+<div>
+<div style={{ fontWeight:700,fontSize:13 }}>{p.titulo||"Programa de Treino"}</div>
+<div style={{ fontSize:11,color:"#94a3b8",marginTop:1 }}>{p.divisao?.label||"—"} · {p.freq}x/semana · criado em {fmt(p.criadoEm)}</div>
+</div>
+{p.origem==="consultoria"&&<Badge color="#7c3aed" bg="#f5f3ff">Consultoria</Badge>}
+</div>
+</Card>
+))}
+</div>
+)}
+</div>
+)}
 </div>
 )}
 {tab==="agenda"&&(
@@ -2363,13 +2402,13 @@ Exatamente as mesmas perguntas que aparecem no app de {(st.name||"").split(" ")[
 </>}
 {presTab==="treino" && <>
 {!currentProgram ? <Card style={{ textAlign:"center",padding:32 }}><I n="clip" c="#cbd5e1" s={32}/><div style={{ color:"#94a3b8",marginTop:10 }}>Este aluno ainda não tem um programa montado.</div></Card> : <>
-<div style={{ display:"flex",gap:0,marginBottom:10,background:"#f1f5f9",borderRadius:10,padding:3 }}>
-{BLOCOS.map((b,i)=>{
+<div style={{ display:"flex",gap:4,marginBottom:10,background:"#f1f5f9",borderRadius:10,padding:3,overflowX:"auto",WebkitOverflowScrolling:"touch" }}>
+{blocosAtivosPres.map((b,i)=>{
 const locked = i>maxUnlockedIdx;
 return (
-<button key={b.key} onClick={()=>{ if(!locked){ setPresBlocoIdx(i); } }} disabled={locked} style={{ flex:1,border:"none",borderRadius:8,padding:"6px 3px",fontSize:10,fontWeight:700,cursor:locked?"default":"pointer",background:presBlocoIdx===i?b.cor.bg:"transparent",color:locked?"#cbd5e1":(presBlocoIdx===i?b.cor.texto:"#94a3b8"),lineHeight:1.3 }}>
+<button key={b.key} onClick={()=>{ if(!locked){ setPresBlocoIdx(i); } }} disabled={locked} style={{ flex:"0 0 auto",minWidth:44,border:"none",borderRadius:8,padding:"6px 6px",fontSize:10,fontWeight:700,cursor:locked?"default":"pointer",background:presBlocoIdx===i?b.cor.bg:"transparent",color:locked?"#cbd5e1":(presBlocoIdx===i?b.cor.texto:"#94a3b8"),lineHeight:1.3 }}>
 <div>{locked?"🔒":"B"+(i+1)}</div>
-<div style={{ fontSize:8,marginTop:1 }}>{b.semanas}</div>
+<div style={{ fontSize:8,marginTop:1,whiteSpace:"nowrap" }}>{b.semanas}</div>
 </button>
 );
 })}
@@ -2389,7 +2428,7 @@ return (
 
 <div style={{ background:blocoAtivoPres.cor.bg,border:`1.5px solid ${blocoAtivoPres.cor.border}`,borderRadius:9,padding:"10px 12px",marginBottom:10 }}>
 <div style={{ fontWeight:700,fontSize:12,color:blocoAtivoPres.cor.texto }}>{blocoAtivoPres.label} · sem. {blocoAtivoPres.semanas}</div>
-{presBlocoIdx<BLOCOS.length-1 && (
+{presBlocoIdx<blocosAtivosPres.length-1 && (
 <div style={{ marginTop:8 }}>
 <div style={{ display:"flex",justifyContent:"space-between",fontSize:11,color:blocoAtivoPres.cor.texto,marginBottom:4,fontWeight:700 }}>
 <span>🔒 Progresso do bloco (libera o próximo)</span>
