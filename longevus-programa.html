@@ -1826,9 +1826,9 @@ const Lista=({programs,students,nav})=>{
   const filtered=programs.filter(p=>{const st=students.find(s=>s.id===p.studentId);return(st?.name||"").toLowerCase().includes(search.toLowerCase())||(p.titulo||"").toLowerCase().includes(search.toLowerCase());});
   return(
     <div>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
-        <div style={{fontWeight:800,fontSize:20}}>📋 Programas</div>
-        <div style={{display:"flex",gap:8}}>
+      <div style={{marginBottom:18}}>
+        <div style={{fontWeight:800,fontSize:20,marginBottom:10}}>📋 Programas</div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           <Btn sm variant="ghost" onClick={()=>{window.open("longevus-biblioteca.html","_blank");}}>📚 Exercícios</Btn>
           <Btn sm variant="ghost" onClick={()=>nav("modelos")}>⭐ Modelos</Btn>
           <Btn sm variant="ghost" onClick={()=>nav("novoConsultoria")}>💼 Consultoria</Btn>
