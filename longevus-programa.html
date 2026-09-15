@@ -1481,7 +1481,111 @@ const faixaSegurancaIdade=(idade)=>{
   if(idade>=40) return "40_54";
   return "ate_39";
 };
-const NovoPeriodizacaoConsultoria=({students,nav,prefillStudentId})=>{
+
+// ─── Motor de geração — tabelas base de fases por modelo de periodização ─────
+const FASES_BASE_ONDULATORIA=[
+  {nome:"Adaptação",semana_inicio:1,semana_fim:2,series:3,reps:"12-15",percentual_1rm:"60-65",rir:"3-4",descanso_segundos:75},
+  {nome:"Acúmulo",semana_inicio:3,semana_fim:4,series:4,reps:"8-12",percentual_1rm:"70-75",rir:"2-3",descanso_segundos:75},
+  {nome:"Intensificação",semana_inicio:5,semana_fim:6,series:4,reps:"4-6",percentual_1rm:"80-85",rir:"1-2",descanso_segundos:135},
+  {nome:"Deload",semana_inicio:7,semana_fim:7,series:2,reps:"10-12",percentual_1rm:"50-55",rir:"4-5",descanso_segundos:60},
+  {nome:"Pico/Reteste",semana_inicio:8,semana_fim:8,series:3,reps:"6-8",percentual_1rm:"75-80",rir:"1-2",descanso_segundos:120},
+];
+const FASES_BASE_LINEAR=[
+  {nome:"Base/Hipertrofia",semana_inicio:1,semana_fim:3,series:4,reps:"10-15",percentual_1rm:"60-70",rir:"3-4",descanso_segundos:75},
+  {nome:"Força-Hipertrofia",semana_inicio:4,semana_fim:5,series:4,reps:"6-10",percentual_1rm:"75-80",rir:"2-3",descanso_segundos:105},
+  {nome:"Força",semana_inicio:6,semana_fim:7,series:4,reps:"3-6",percentual_1rm:"85-90",rir:"1-2",descanso_segundos:150},
+  {nome:"Pico/Reteste",semana_inicio:8,semana_fim:8,series:3,reps:"1-3",percentual_1rm:"90-95",rir:"0-1",descanso_segundos:180},
+];
+const FASES_BASE_BLOCOS=[
+  {nome:"Acumulação",semana_inicio:1,semana_fim:3,series:5,reps:"10-15",percentual_1rm:"60-70",rir:"3-4",descanso_segundos:75},
+  {nome:"Transmutação",semana_inicio:4,semana_fim:6,series:4,reps:"6-10",percentual_1rm:"75-85",rir:"1-2",descanso_segundos:105},
+  {nome:"Realização",semana_inicio:7,semana_fim:8,series:3,reps:"3-6",percentual_1rm:"85-95",rir:"0-2",descanso_segundos:150},
+];
+const FASES_BASE_POR_MODELO={ondulatoria_semanal:FASES_BASE_ONDULATORIA,linear:FASES_BASE_LINEAR,blocos:FASES_BASE_BLOCOS};
+
+const ajustaRir=(rirStr,delta)=>{
+  const partes=rirStr.split("-").map(n=>Math.max(0,parseInt(n,10)+delta));
+  return partes.length>1?partes.join("-"):String(partes[0]);
+};
+
+// Aplica as camadas de Objetivo, Nível e Segurança por Idade sobre a tabela base do Modelo
+const gerarFases=(params)=>{
+  const base=FASES_BASE_POR_MODELO[params.modelo_periodizacao]||FASES_BASE_ONDULATORIA;
+  let deltaRir=0;
+  if(params.nivel==="iniciante")deltaRir+=1;
+  if(params.nivel==="avancado")deltaRir-=1;
+  if(params.faixa_seguranca_idade==="55_mais")deltaRir+=1;
+  const aquecimentoExtra=params.faixa_seguranca_idade!=="ate_39";
+  const circuito=params.objetivo==="emagrecimento";
+  return base.map(f=>({
+    ...f,
+    rir:ajustaRir(f.rir,deltaRir),
+    descanso_segundos:circuito?Math.min(f.descanso_segundos,45):f.descanso_segundos,
+    aquecimento_extra:aquecimentoExtra,
+  }));
+};
+
+// ─── Motor de geração — treinos e exercícios (trilha Academia) ──────────────
+const NIVEL_INCLUSIVO={iniciante:["Basico"],intermediario:["Basico","Intermediario"],avancado:["Basico","Intermediario","Avancado"]};
+const ANCORA_MUSCULOS=["peito","quadríceps"];
+const ACESSORIO_MUSCULOS=["bíceps","tríceps","panturrilha"];
+const ENFASE_EXTRA_CONSULTORIA={superior:["peito","costas"],inferior:["quadríceps","glúteos"],core:["abdômen"]};
+const categoriaMusculo=(musculo)=>ANCORA_MUSCULOS.includes(musculo)?"ancora":ACESSORIO_MUSCULOS.includes(musculo)?"acessorio":"secundario";
+
+const gerarTreinosAcademia=(params,bibCustom,blocoNumero)=>{
+  const opcoes=ACADEMIA_DIVISAO_OPTIONS[params.frequencia_semanal]||ACADEMIA_DIVISAO_OPTIONS[3];
+  const divisaoEscolhida=opcoes.find(o=>o.modelo==="academia_ul")||opcoes[0];
+  const sequencia=divisaoEscolhida.sequencia;
+  const treinosUnicos=[...new Set(sequencia)];
+  const nivelFiltro=(NIVEL_INCLUSIVO[params.nivel]||NIVEL_INCLUSIVO.intermediario).map(normNivel);
+  const enfaseMusculos=ENFASE_EXTRA_CONSULTORIA[params.enfase]||[];
+
+  const treinos=treinosUnicos.map(treinoKey=>{
+    const musculos=ACADEMIA_TREINO_MUSCULOS[treinoKey]||[];
+    const usados=new Set();
+    const dias_semana=sequencia.map((t,i)=>t===treinoKey?i+1:null).filter(Boolean);
+    const exercicios=musculos.map((musculo,mIdx)=>{
+      const categoria=categoriaMusculo(musculo);
+      // âncora: seleção determinística (não gira entre blocos) pra manter a referência do reteste
+      const variantIndex=categoria==="ancora"?0:(blocoNumero-1)+mIdx;
+      const ex=escolherAcademia(musculo,nivelFiltro,usados,bibCustom,variantIndex);
+      if(!ex)return null;
+      usados.add(ex.id);
+      return{exercicio_id:ex.id,nome:ex.nome,grupo_muscular:musculo,categoria,padrao_movimento:ex.tags||null,benchmark:categoria==="ancora"};
+    }).filter(Boolean);
+    const enfaseAqui=enfaseMusculos.filter(m=>musculos.includes(m));
+    const exercicios_enfase_extra=enfaseAqui.map((musculo,i)=>{
+      const ex=escolherAcademia(musculo,nivelFiltro,usados,bibCustom,blocoNumero+i+5);
+      if(!ex)return null;
+      usados.add(ex.id);
+      return{exercicio_id:ex.id,nome:ex.nome,grupo_muscular:musculo,categoria:"acessorio",dias_semana:[dias_semana[dias_semana.length-1]||dias_semana[0]]};
+    }).filter(Boolean);
+    return{id:"treino_"+treinoKey.toLowerCase(),nome:TREINO_DEFS[treinoKey]?.label||treinoKey,dias_semana,exercicios,exercicios_enfase_extra};
+  });
+
+  return{divisao_label:divisaoEscolhida.label,treinos};
+};
+
+// ─── Motor de geração — monta o bloco completo (fases + treinos + reteste) ──
+const gerarBlocoConsultoria=(params,titulo,bibCustom,blocoNumero=1)=>{
+  const fases=gerarFases(params);
+  const {divisao_label,treinos}=params.local==="academia"
+    ? gerarTreinosAcademia(params,bibCustom,blocoNumero)
+    : {divisao_label:null,treinos:[]};
+  const ancoras=treinos.flatMap(t=>t.exercicios.filter(e=>e.categoria==="ancora").map(e=>e.nome));
+  const hoje=new Date();
+  const dataInicio=hoje.toISOString().slice(0,10);
+  const dataFim=new Date(hoje.getTime()+7*24*3600*1000*8).toISOString().slice(0,10);
+  return{
+    parametros:{...params,divisao_label},
+    fases,treinos,
+    reteste:{exercicios_referencia:ancoras,resultados:null},
+    status:"ativo",bloco_numero:blocoNumero,titulo,
+    data_inicio:dataInicio,data_fim_prevista:dataFim,
+  };
+};
+
+const NovoPeriodizacaoConsultoria=({students,bibCustom,nav,prefillStudentId})=>{
   const [step,setStep]=useState(1);
   const [sid,setSid]=useState(prefillStudentId||"");
   const [titulo,setTitulo]=useState("");
@@ -1491,6 +1595,7 @@ const NovoPeriodizacaoConsultoria=({students,nav,prefillStudentId})=>{
   const [freq,setFreq]=useState(4);
   const [local,setLocal]=useState("academia");
   const [modeloPeriodizacao,setModeloPeriodizacao]=useState("ondulatoria_semanal");
+  const [blocoGerado,setBlocoGerado]=useState(null);
   const student=students.find(s=>s.id===sid);
   const idade=student?calcAge(student.dob):null;
 
@@ -1503,6 +1608,12 @@ const NovoPeriodizacaoConsultoria=({students,nav,prefillStudentId})=>{
     faixa_seguranca_idade:faixaSegurancaIdade(idade)
   };
 
+  const gerar=()=>{
+    const bloco=gerarBlocoConsultoria(params,titulo,bibCustom,1);
+    setBlocoGerado(bloco);
+    setStep(3);
+  };
+
   return(
     <div>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:18}}>
@@ -1510,7 +1621,7 @@ const NovoPeriodizacaoConsultoria=({students,nav,prefillStudentId})=>{
         <div style={{fontWeight:800,fontSize:18}}>💼 Periodização Consultoria</div>
       </div>
       <div style={{display:"flex",gap:5,marginBottom:20}}>
-        {[["1","Aluno"],["2","Parâmetros"]].map(([n,l],i)=>(
+        {[["1","Aluno"],["2","Parâmetros"],["3","Prévia"]].map(([n,l],i)=>(
           <div key={n} style={{flex:1,textAlign:"center",padding:"7px 3px",borderRadius:8,background:step===i+1?"#FF5603":step>i+1?"#dcfce7":"#f1f5f9",border:`1.5px solid ${step===i+1?"#FF5603":step>i+1?"#86efac":"#e2e8f0"}`}}>
             <div style={{fontSize:10,fontWeight:700,color:step===i+1?"#fff":step>i+1?"#16a34a":"#94a3b8"}}>{step>i+1?"✓":n}</div>
             <div style={{fontSize:9,color:step===i+1?"#fff":step>i+1?"#16a34a":"#94a3b8",marginTop:1}}>{l}</div>
@@ -1564,9 +1675,44 @@ const NovoPeriodizacaoConsultoria=({students,nav,prefillStudentId})=>{
           <div style={{fontSize:11,color:"#94a3b8",marginBottom:14}}>Idade e gênero já vêm do cadastro do aluno — usados só pra aplicar a camada de segurança por idade, sem regra automática de gênero.</div>
           <div style={{display:"flex",gap:10}}>
             <Btn variant="secondary" full onClick={()=>setStep(1)}>‹ Voltar</Btn>
-            <Btn full disabled onClick={()=>{}}>Gerar bloco (próximo passo) →</Btn>
+            <Btn full disabled={local!=="academia"} onClick={gerar}>Gerar bloco →</Btn>
           </div>
+          {local!=="academia"&&<div style={{fontSize:11,color:"#94a3b8",marginTop:8}}>Geração pra trilha Casa ainda não implementada nesta etapa — só Academia por enquanto.</div>}
         </Card>
+      )}
+      {step===3&&blocoGerado&&(
+        <div>
+          <Card>
+            <div style={{fontWeight:700,fontSize:15,marginBottom:10}}>{titulo}</div>
+            <div style={{fontSize:12,color:"#64748b",marginBottom:12}}>{blocoGerado.parametros.divisao_label} · {freq}× por semana · Bloco {blocoGerado.bloco_numero} de 8 semanas</div>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:8}}>Fases</div>
+            <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:16}}>
+              {blocoGerado.fases.map((f,i)=>(
+                <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 10px",background:"#f8fafc",borderRadius:8,fontSize:12}}>
+                  <span style={{fontWeight:700}}>{f.nome} <span style={{color:"#94a3b8",fontWeight:400}}>(sem {f.semana_inicio}{f.semana_fim!==f.semana_inicio?"–"+f.semana_fim:""})</span></span>
+                  <span style={{color:"#64748b"}}>{f.series}×{f.reps} · {f.percentual_1rm}% · RIR {f.rir}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:8}}>Treinos ({blocoGerado.treinos.length})</div>
+            {blocoGerado.treinos.map(t=>(
+              <div key={t.id} style={{marginBottom:10,padding:"10px 12px",border:"1.5px solid #e2e8f0",borderRadius:9}}>
+                <div style={{fontWeight:700,fontSize:13,marginBottom:6}}>{t.nome} <span style={{color:"#94a3b8",fontWeight:400,fontSize:11}}>· dias {t.dias_semana.join(", ")}</span></div>
+                {[...t.exercicios,...t.exercicios_enfase_extra].map((e,i)=>(
+                  <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:12,padding:"4px 0"}}>
+                    <span>{e.nome}</span>
+                    <span style={{color:e.categoria==="ancora"?"#FF5603":e.categoria==="acessorio"?"#94a3b8":"#64748b",fontWeight:e.categoria==="ancora"?700:400}}>{e.categoria==="ancora"?"⚓ âncora":e.categoria==="secundario"?"secundário":"acessório"}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+            {blocoGerado.reteste.exercicios_referencia.length>0&&<div style={{fontSize:11,color:"#94a3b8",marginTop:8}}>Reteste (semana 8) usa como referência: {blocoGerado.reteste.exercicios_referencia.join(", ")}</div>}
+          </Card>
+          <div style={{display:"flex",gap:10}}>
+            <Btn variant="secondary" full onClick={()=>setStep(2)}>‹ Ajustar parâmetros</Btn>
+            <Btn full onClick={gerar}>🔄 Gerar novamente</Btn>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -2000,7 +2146,7 @@ function AppInner(){
           {page==="modelos"&&<ListaModelos modelos={modelos} loading={modelosLoading} nav={nav}/>}
           {page==="modeloVer"&&<VerModelo modeloId={pageProps.id} modelos={modelos} setModelos={setModelos} bibCustom={bibCustom} students={students} programs={programs} setPrograms={setPrograms} nav={nav}/>}
           {page==="novo"&&<NovoProgramaWizard students={students} assessments={assessments} programs={programs} setPrograms={setPrograms} bibCustom={bibCustom} nav={nav} prefillStudentId={pageProps.studentId}/>}
-          {page==="novoConsultoria"&&<NovoPeriodizacaoConsultoria students={students} nav={nav} prefillStudentId={pageProps.studentId}/>}
+          {page==="novoConsultoria"&&<NovoPeriodizacaoConsultoria students={students} bibCustom={bibCustom} nav={nav} prefillStudentId={pageProps.studentId}/>}
           {page==="ver"&&<VerPrograma programId={pageProps.id} programs={programs} setPrograms={setPrograms} students={students} bibCustom={bibCustom} nav={nav} autoEdit={pageProps.autoEdit}/>}
         </div>
       </div>
