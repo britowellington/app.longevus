@@ -797,7 +797,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
   const swapCognitivo=(idx,cogId)=>{const arr=[...items];arr[idx]={...arr[idx],cogId};onChange(arr);setEditIdx(null);};
   const swapExercise=(idx,newExId)=>{const oldExId=items[idx].exId;const p=getPresc(newExId,blocoKey,bibCustom);const arr=[...items];arr[idx]={exId:newExId,series:p.s,reps:p.r,descanso:p.d,obs:arr[idx].obs||""};onChange(arr);setEditIdx(null);if(onSwapForward&&oldExId!==newExId)onSwapForward(momentoMeta.key,idx,oldExId,newExId);};
 
-  const filteredEx=allEx.filter(e=>e.nome.toLowerCase().includes(searchEx.toLowerCase())||e.cat?.toLowerCase().includes(searchEx.toLowerCase())||(e.grupo||"").toLowerCase().includes(searchEx.toLowerCase()));
+  const filteredEx=allEx.filter(e=>(e.nome||"").toLowerCase().includes(searchEx.toLowerCase())||e.cat?.toLowerCase().includes(searchEx.toLowerCase())||(e.grupo||"").toLowerCase().includes(searchEx.toLowerCase()));
 
   return(
     <div style={{marginBottom:16}}>
@@ -825,7 +825,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
           }
           return (e.grupo||e.cat)===(ex.grupo||ex.cat);
         }):[];
-        const sameCatFiltrado=isEdit?sameCat.filter(e=>e.nome.toLowerCase().includes(buscaTroca.toLowerCase())):sameCat;
+        const sameCatFiltrado=isEdit?sameCat.filter(e=>(e.nome||"").toLowerCase().includes(buscaTroca.toLowerCase())):sameCat;
 
         return(
           <div key={idx} style={{background:"#fff",border:`1.5px solid ${isEdit?m.cor:"#e2e8f0"}`,borderRadius:11,padding:"11px 13px",marginBottom:7}}>
@@ -933,9 +933,9 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
             </div>
           )}
           <input value={searchEx} onChange={e=>setSearchEx(e.target.value)} placeholder="Buscar em toda a biblioteca..." style={{width:"100%",padding:"10px 14px",borderRadius:10,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,fontFamily:"inherit",marginBottom:8}}/>
-          <div style={{fontSize:10,color:"#94a3b8",marginBottom:8}}>{[...EXERCISES,...bibCustom.filter(b=>!EXERCISES.find(e=>e.id===b.id))].filter(e=>e.nome.toLowerCase().includes(searchEx.toLowerCase())||(e.grupo||e.cat||"").toLowerCase().includes(searchEx.toLowerCase())||(e.foco||"").toLowerCase().includes(searchEx.toLowerCase())).length} exercícios</div>
+          <div style={{fontSize:10,color:"#94a3b8",marginBottom:8}}>{[...EXERCISES,...bibCustom.filter(b=>!EXERCISES.find(e=>e.id===b.id))].filter(e=>(e.nome||"").toLowerCase().includes(searchEx.toLowerCase())||(e.grupo||e.cat||"").toLowerCase().includes(searchEx.toLowerCase())||(e.foco||"").toLowerCase().includes(searchEx.toLowerCase())).length} exercícios</div>
           <div style={{display:"flex",flexDirection:"column",gap:7,maxHeight:"52vh",overflowY:"auto"}}>
-            {[...EXERCISES,...bibCustom.filter(b=>!EXERCISES.find(e=>e.id===b.id))].filter(e=>e.nome.toLowerCase().includes(searchEx.toLowerCase())||(e.grupo||e.cat||"").toLowerCase().includes(searchEx.toLowerCase())||(e.foco||"").toLowerCase().includes(searchEx.toLowerCase())).map(ex=>(
+            {[...EXERCISES,...bibCustom.filter(b=>!EXERCISES.find(e=>e.id===b.id))].filter(e=>(e.nome||"").toLowerCase().includes(searchEx.toLowerCase())||(e.grupo||e.cat||"").toLowerCase().includes(searchEx.toLowerCase())||(e.foco||"").toLowerCase().includes(searchEx.toLowerCase())).map(ex=>(
               <div key={ex.id} onClick={()=>addExItem(ex.id)} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",border:"1.5px solid #e2e8f0",borderRadius:12,cursor:"pointer",background:"#fff",minHeight:68}}>
                 {getYtId(ex.video)?(
                   <img src={"https://img.youtube.com/vi/"+getYtId(ex.video)+"/mqdefault.jpg"} alt="" style={{width:72,height:54,borderRadius:8,objectFit:"cover",flexShrink:0}}/>
@@ -2323,8 +2323,26 @@ return <TrialExpired/>;
 return <AppInner/>;
 }
 
+class ErrorBoundary extends React.Component{
+  constructor(p){super(p);this.state={err:null};}
+  static getDerivedStateFromError(err){return{err};}
+  render(){
+    if(this.state.err){
+      return(
+        <div style={{padding:24,fontFamily:"inherit",maxWidth:480,margin:"40px auto"}}>
+          <div style={{fontSize:32,marginBottom:10}}>⚠️</div>
+          <div style={{fontWeight:800,fontSize:16,marginBottom:8}}>Algo quebrou nessa tela</div>
+          <div style={{fontSize:13,color:"#64748b",marginBottom:14,lineHeight:1.5}}>Tira um print disso e manda pro Claude — o erro abaixo ajuda a achar a causa exata.</div>
+          <div style={{fontSize:11,color:"#dc2626",background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"10px 12px",fontFamily:"monospace",whiteSpace:"pre-wrap",marginBottom:14}}>{String(this.state.err?.message||this.state.err)}</div>
+          <button onClick={()=>window.location.reload()} style={{border:"none",background:"#FF5603",color:"#fff",borderRadius:9,padding:"10px 18px",fontWeight:700,fontSize:13,cursor:"pointer"}}>Recarregar</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 const root=ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App/>);
+root.render(<ErrorBoundary><App/></ErrorBoundary>);
 </script>
 </body>
 </html>
