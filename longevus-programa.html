@@ -775,7 +775,7 @@ const ExDetalheModal = ({ ex, onClose }) => (
 );
 
 // ─── MOMENTO EDITÁVEL ─────────────────────────────────────────────────────────
-const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom})=>{
+const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForward})=>{
   const [editIdx,setEditIdx]=useState(null);
   const [verExEdit,setVerExEdit]=useState(null);
   const [addModal,setAddModal]=useState(false);
@@ -794,7 +794,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom})=>{
     setAddModal(false);setSearchEx("");
   };
   const swapCognitivo=(idx,cogId)=>{const arr=[...items];arr[idx]={...arr[idx],cogId};onChange(arr);setEditIdx(null);};
-  const swapExercise=(idx,newExId)=>{const p=getPresc(newExId,blocoKey,bibCustom);const arr=[...items];arr[idx]={exId:newExId,series:p.s,reps:p.r,descanso:p.d,obs:arr[idx].obs||""};onChange(arr);setEditIdx(null);};
+  const swapExercise=(idx,newExId)=>{const oldExId=items[idx].exId;const p=getPresc(newExId,blocoKey,bibCustom);const arr=[...items];arr[idx]={exId:newExId,series:p.s,reps:p.r,descanso:p.d,obs:arr[idx].obs||""};onChange(arr);setEditIdx(null);if(onSwapForward&&oldExId!==newExId)onSwapForward(momentoMeta.key,idx,oldExId,newExId);};
 
   const filteredEx=allEx.filter(e=>e.nome.toLowerCase().includes(searchEx.toLowerCase())||e.cat?.toLowerCase().includes(searchEx.toLowerCase())||(e.grupo||"").toLowerCase().includes(searchEx.toLowerCase()));
 
@@ -883,6 +883,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom})=>{
                     {sameCat.length>0&&(
                       <div>
                         <div style={{fontSize:10,fontWeight:700,color:"#64748b",marginBottom:5,textTransform:"uppercase"}}>Trocar exercício</div>
+                        {onSwapForward&&<div style={{fontSize:10,color:"#94a3b8",marginBottom:6}}>🔁 A troca também será aplicada nos blocos futuros onde esse exercício ainda aparecer.</div>}
                         <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
                           {sameCat.map(e=>(<button key={e.id} onClick={()=>swapExercise(idx,e.id)} style={{border:"1.5px solid #e2e8f0",background:"#f8fafc",borderRadius:7,padding:"5px 9px",fontSize:11,cursor:"pointer",color:"#475569"}}>{e.icone} {e.nome}</button>))}
                         </div>
@@ -946,7 +947,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom})=>{
 };
 
 // ─── TREINO COM 3 MOMENTOS ────────────────────────────────────────────────────
-const TreinoMomentos=({treinoKey,blocoKey,sessao,onChange,bibCustom,editMode})=>{
+const TreinoMomentos=({treinoKey,blocoKey,sessao,onChange,bibCustom,editMode,onSwapForward})=>{
   const tDef=TREINO_DEFS[treinoKey];
   const [momentoIdx,setMomentoIdx]=useState(0);
   const [verEx,setVerEx]=useState(null);
@@ -1033,6 +1034,7 @@ const TreinoMomentos=({treinoKey,blocoKey,sessao,onChange,bibCustom,editMode})=>
         onChange={arr=>onChange({...sessao,[m.key]:arr})}
         blocoKey={blocoKey}
         bibCustom={bibCustom}
+        onSwapForward={onSwapForward}
       />
     </div>
   );
@@ -1423,6 +1425,27 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
   const cancelEdit=()=>{setPrescricao(JSON.parse(JSON.stringify(prog.prescricao)));setEditMode(false);};
   const deletePrograma=()=>{if(!window.confirm("Remover?"))return;const fresh=LS.get("longevus_programs",programs);const u=fresh.filter(p=>p.id!==prog.id);setPrograms(u);LS.set("longevus_programs",u);ProgDB.remove(prog.id);nav("lista");};
   const updateSessao=(bKey,tKey,sessao)=>setPrescricao(p=>({...p,[bKey]:{...(p[bKey]||{}),[tKey]:sessao}}));
+  // Quando o professor troca um exercício num bloco, aplica a mesma troca nos blocos futuros
+  // (mesmo treino, mesmo momento, mesma posição) onde o exercício antigo ainda apareça —
+  // mantém séries/reps/descanso já definidos em cada bloco, só troca a identidade do exercício
+  const propagarTrocaFutura=(treinoKeyAtual,momentoKey,idx,oldExId,newExId)=>{
+    const posAtual=blocosAtivos.findIndex(b=>b.key===blocoAtivo.key);
+    if(posAtual===-1)return;
+    setPrescricao(p=>{
+      const novo={...p};
+      for(let i=posAtual+1;i<blocosAtivos.length;i++){
+        const bKey=blocosAtivos[i].key;
+        const sessaoFutura=(novo[bKey]||{})[treinoKeyAtual];
+        if(!sessaoFutura)continue;
+        const arr=sessaoFutura[momentoKey]||[];
+        if(!arr[idx]||arr[idx].exId!==oldExId)continue;
+        const novoArr=[...arr];
+        novoArr[idx]={...novoArr[idx],exId:newExId};
+        novo[bKey]={...novo[bKey],[treinoKeyAtual]:{...sessaoFutura,[momentoKey]:novoArr}};
+      }
+      return novo;
+    });
+  };
   const totalEx=Object.values(prescricao).reduce((a,b)=>a+Object.values(b||{}).reduce((c,s)=>c+Object.values(s||{}).reduce((d,arr)=>d+(arr?.length||0),0),0),0);
 
   return(
@@ -1459,6 +1482,7 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
         onChange={s=>updateSessao(blocoAtivo.key,treinoAtivo,s)}
         bibCustom={bibCustom}
         editMode={editMode}
+        onSwapForward={(mk,idx,oldId,newId)=>propagarTrocaFutura(treinoAtivo,mk,idx,oldId,newId)}
       />
       <div style={{marginTop:16,paddingTop:14,borderTop:"1px solid #f1f5f9"}}>
         <Btn variant="danger" full onClick={deletePrograma}>🗑 Remover programa</Btn>
