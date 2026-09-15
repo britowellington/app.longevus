@@ -1471,6 +1471,107 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
   );
 };
 
+// ─── PERIODIZAÇÃO CONSULTORIA (fora do perfil 50+) ────────────────────────────
+const OBJETIVOS_CONSULTORIA=[["hipertrofia","Hipertrofia"],["emagrecimento","Emagrecimento"],["forca","Força / Performance"],["condicionamento","Condicionamento geral"],["estetica","Estética / Recomposição"]];
+const ENFASES_CONSULTORIA=[["nenhuma","Nenhuma"],["superior","Superior / Braços"],["inferior","Pernas / Glúteos"],["core","Core / Abdômen"]];
+const MODELOS_PERIODIZACAO=[["ondulatoria_semanal","Ondulatória semanal"],["linear","Linear clássica"],["blocos","Em blocos"]];
+const faixaSegurancaIdade=(idade)=>{
+  if(idade==null) return "ate_39";
+  if(idade>=55) return "55_mais";
+  if(idade>=40) return "40_54";
+  return "ate_39";
+};
+const NovoPeriodizacaoConsultoria=({students,nav,prefillStudentId})=>{
+  const [step,setStep]=useState(1);
+  const [sid,setSid]=useState(prefillStudentId||"");
+  const [titulo,setTitulo]=useState("");
+  const [nivel,setNivel]=useState("intermediario");
+  const [objetivo,setObjetivo]=useState("hipertrofia");
+  const [enfase,setEnfase]=useState("nenhuma");
+  const [freq,setFreq]=useState(4);
+  const [local,setLocal]=useState("academia");
+  const [modeloPeriodizacao,setModeloPeriodizacao]=useState("ondulatoria_semanal");
+  const student=students.find(s=>s.id===sid);
+  const idade=student?calcAge(student.dob):null;
+
+  const params={
+    nivel, objetivo, enfase,
+    frequencia_semanal:freq,
+    local,
+    modelo_periodizacao:modeloPeriodizacao,
+    idade_aluno:idade,
+    faixa_seguranca_idade:faixaSegurancaIdade(idade)
+  };
+
+  return(
+    <div>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:18}}>
+        <button onClick={()=>nav("lista")} style={{border:"none",background:"#f1f5f9",borderRadius:10,padding:"8px 12px",cursor:"pointer",fontSize:14,color:"#64748b",fontWeight:700}}>‹</button>
+        <div style={{fontWeight:800,fontSize:18}}>💼 Periodização Consultoria</div>
+      </div>
+      <div style={{display:"flex",gap:5,marginBottom:20}}>
+        {[["1","Aluno"],["2","Parâmetros"]].map(([n,l],i)=>(
+          <div key={n} style={{flex:1,textAlign:"center",padding:"7px 3px",borderRadius:8,background:step===i+1?"#FF5603":step>i+1?"#dcfce7":"#f1f5f9",border:`1.5px solid ${step===i+1?"#FF5603":step>i+1?"#86efac":"#e2e8f0"}`}}>
+            <div style={{fontSize:10,fontWeight:700,color:step===i+1?"#fff":step>i+1?"#16a34a":"#94a3b8"}}>{step>i+1?"✓":n}</div>
+            <div style={{fontSize:9,color:step===i+1?"#fff":step>i+1?"#16a34a":"#94a3b8",marginTop:1}}>{l}</div>
+          </div>
+        ))}
+      </div>
+      {step===1&&(
+        <Card>
+          <Inp label="Aluno *" value={sid} onChange={setSid} opts={[{v:"",l:"Selecione..."},...students.map(s=>({v:s.id,l:s.name+" ("+calcAge(s.dob)+" anos)"}))]}/>
+          {sid&&<div style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:9,padding:"8px 12px",marginBottom:10,fontSize:12,color:"#1d4ed8"}}>
+            {idade!=null&&idade>=55?"⚠️ Faixa 55+: RIR +1 e aquecimento articular extra serão aplicados automaticamente nas fases de alta intensidade.":idade!=null&&idade>=40?"ℹ️ Faixa 40-54: aquecimento articular extra será aplicado antes das fases de alta intensidade.":"Sem ajuste de segurança por idade nesta faixa."}
+          </div>}
+          <Inp label="Título *" value={titulo} onChange={setTitulo} placeholder="ex: Consultoria — Bloco 1 (semanas 1-8)"/>
+          <Btn full disabled={!sid||!titulo} onClick={()=>setStep(2)}>Próximo →</Btn>
+        </Card>
+      )}
+      {step===2&&(
+        <Card>
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#64748b",marginBottom:6}}>Nível de treino</div>
+            <div style={{display:"flex",gap:8}}>
+              {[["iniciante","Iniciante"],["intermediario","Intermediário"],["avancado","Avançado"]].map(([v,l])=>(
+                <button key={v} type="button" onClick={()=>setNivel(v)} style={{flex:1,padding:"8px 6px",borderRadius:10,border:nivel===v?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:nivel===v?"#fff4ee":"#fff",cursor:"pointer",fontSize:11,fontWeight:700,color:nivel===v?"#FF5603":"#64748b"}}>{l}</button>
+              ))}
+            </div>
+          </div>
+          <Inp label="Objetivo *" value={objetivo} onChange={setObjetivo} opts={OBJETIVOS_CONSULTORIA.map(([v,l])=>({v,l}))}/>
+          <Inp label="Ênfase (opcional)" value={enfase} onChange={setEnfase} opts={ENFASES_CONSULTORIA.map(([v,l])=>({v,l}))}/>
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#64748b",marginBottom:6}}>Frequência semanal</div>
+            <div style={{display:"flex",gap:8}}>
+              {[2,3,4,5].map(v=>(
+                <button key={v} type="button" onClick={()=>setFreq(v)} style={{flex:1,padding:"9px 0",borderRadius:9,border:`1.5px solid ${freq===v?"#FF5603":"#e2e8f0"}`,background:freq===v?"#fff4ee":"#fff",color:freq===v?"#FF5603":"#64748b",fontWeight:800,fontSize:13,cursor:"pointer"}}>{v}×</button>
+              ))}
+            </div>
+          </div>
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#64748b",marginBottom:6}}>Local</div>
+            <div style={{display:"flex",gap:8}}>
+              <button type="button" onClick={()=>setLocal("casa")} style={{flex:1,padding:"10px 8px",borderRadius:10,border:local==="casa"?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:local==="casa"?"#fff4ee":"#fff",cursor:"pointer",textAlign:"center"}}>
+                <div style={{fontSize:18}}>🏠</div>
+                <div style={{fontSize:11,fontWeight:700,color:local==="casa"?"#FF5603":"#64748b"}}>Casa</div>
+              </button>
+              <button type="button" onClick={()=>setLocal("academia")} style={{flex:1,padding:"10px 8px",borderRadius:10,border:local==="academia"?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:local==="academia"?"#fff4ee":"#fff",cursor:"pointer",textAlign:"center"}}>
+                <div style={{fontSize:18}}>🏋️</div>
+                <div style={{fontSize:11,fontWeight:700,color:local==="academia"?"#FF5603":"#64748b"}}>Academia</div>
+              </button>
+            </div>
+          </div>
+          <Inp label="Modelo de periodização" value={modeloPeriodizacao} onChange={setModeloPeriodizacao} opts={MODELOS_PERIODIZACAO.map(([v,l])=>({v,l}))}/>
+          <div style={{fontSize:11,color:"#94a3b8",marginBottom:14}}>Idade e gênero já vêm do cadastro do aluno — usados só pra aplicar a camada de segurança por idade, sem regra automática de gênero.</div>
+          <div style={{display:"flex",gap:10}}>
+            <Btn variant="secondary" full onClick={()=>setStep(1)}>‹ Voltar</Btn>
+            <Btn full disabled onClick={()=>{}}>Gerar bloco (próximo passo) →</Btn>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+};
+
 // ─── LISTA ────────────────────────────────────────────────────────────────────
 const Lista=({programs,students,nav})=>{
   const [search,setSearch]=useState("");
@@ -1482,6 +1583,7 @@ const Lista=({programs,students,nav})=>{
         <div style={{display:"flex",gap:8}}>
           <Btn sm variant="ghost" onClick={()=>{window.open("longevus-biblioteca.html","_blank");}}>📚 Exercícios</Btn>
           <Btn sm variant="ghost" onClick={()=>nav("modelos")}>⭐ Modelos</Btn>
+          <Btn sm variant="ghost" onClick={()=>nav("novoConsultoria")}>💼 Consultoria</Btn>
           <Btn sm onClick={()=>nav("novo")}>+ Novo</Btn>
         </div>
       </div>
@@ -1898,6 +2000,7 @@ function AppInner(){
           {page==="modelos"&&<ListaModelos modelos={modelos} loading={modelosLoading} nav={nav}/>}
           {page==="modeloVer"&&<VerModelo modeloId={pageProps.id} modelos={modelos} setModelos={setModelos} bibCustom={bibCustom} students={students} programs={programs} setPrograms={setPrograms} nav={nav}/>}
           {page==="novo"&&<NovoProgramaWizard students={students} assessments={assessments} programs={programs} setPrograms={setPrograms} bibCustom={bibCustom} nav={nav} prefillStudentId={pageProps.studentId}/>}
+          {page==="novoConsultoria"&&<NovoPeriodizacaoConsultoria students={students} nav={nav} prefillStudentId={pageProps.studentId}/>}
           {page==="ver"&&<VerPrograma programId={pageProps.id} programs={programs} setPrograms={setPrograms} students={students} bibCustom={bibCustom} nav={nav} autoEdit={pageProps.autoEdit}/>}
         </div>
       </div>
