@@ -644,13 +644,15 @@ const buildPrescricao=(assessment,sequencia,bibCustom=[],variantIndex=0)=>{
 // ─── TRILHA ACADEMIA — seleção por grupo muscular (usa os exercícios "gf" com foto) ──
 // Remove acentos do nível ("Básico"→"Basico") pra comparar com BLOCOS[].nivel, que não usa acento.
 const normNivel = n => (n||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+// Normaliza o campo `tags` pra string, aceitando tanto string quanto array (a biblioteca tem os dois formatos)
+const tagsToStr = (t) => Array.isArray(t) ? t.join(",") : (t==null ? "" : String(t));
 // Full Body: um exercício por grupo muscular a cada sessão.
 const MUSC_ACADEMIA_FB = ACADEMIA_TREINO_MUSCULOS.FB;
 
 const escolherAcademia = (musculo, blocoNivelSemAcento, usados, bibCustom, variantIndex) => {
   const candidatos = bibCustom.filter(e=>
     e.grupo==="Academia" &&
-    (e.tags||"").toLowerCase().includes(musculo) &&
+    tagsToStr(e.tags).toLowerCase().includes(musculo) &&
     blocoNivelSemAcento.includes(normNivel(e.nivel))
   );
   if(candidatos.length===0) return null;
@@ -816,7 +818,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
         const cogEx=isCog?COGNITIVOS.find(c=>c.id===item.cogId):null;
         const ex=!isCog?(bibCustom.find(e=>e.id===item.exId)||EXERCISES.find(e=>e.id===item.exId)):null;
         const isEdit=editIdx===idx;
-        const parseTags=(t)=>(t||"").toLowerCase().split(/[,;/]+/).map(s=>s.trim()).filter(Boolean);
+        const parseTags=(t)=>tagsToStr(t).toLowerCase().split(/[,;/]+/).map(x=>x.trim()).filter(Boolean);
         const sameCat=ex?[...EXERCISES,...bibCustom.filter(b=>!EXERCISES.find(e=>e.id===b.id))].filter(e=>{
           if(e.id===ex.id)return false;
           if(ex.grupo==="Academia"||e.grupo==="Academia"){
