@@ -779,7 +779,7 @@ const ExDetalheModal = ({ ex, onClose }) => (
 );
 
 // ─── MOMENTO EDITÁVEL ─────────────────────────────────────────────────────────
-const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForward,onRemoveForward,onAddForward,onMoveForward})=>{
+const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForward,onRemoveForward,onAddForward,onMoveForward,onFieldForward})=>{
   const [editIdx,setEditIdx]=useState(null);
   const [buscaTroca,setBuscaTroca]=useState("");
   const [verExEdit,setVerExEdit]=useState(null);
@@ -790,7 +790,14 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
   const blocoNivel=BLOCOS.find(b=>b.key===blocoKey)?.nivel||["Basico"];
   const m=momentoMeta;
 
-  const updateItem=(idx,field,val)=>{const arr=[...items];arr[idx]={...arr[idx],[field]:val};onChange(arr);};
+  const updateItem=(idx,field,val)=>{
+    const arr=[...items];
+    arr[idx]={...arr[idx],[field]:val};
+    onChange(arr);
+    if(onFieldForward&&["series","reps","descanso"].includes(field)){
+      onFieldForward(momentoMeta.key,idx,arr[idx].exId,field,val);
+    }
+  };
   const removeItem=idx=>{const removedExId=items[idx]?.exId;onChange(items.filter((_,i)=>i!==idx));if(editIdx===idx)setEditIdx(null);if(onRemoveForward&&removedExId)onRemoveForward(momentoMeta.key,idx,removedExId);};
   const moveItem=(idx,dir)=>{
     const alvo=idx+dir;
@@ -824,7 +831,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
         </div>
       </div>
 
-      {(onSwapForward||onRemoveForward||onAddForward)&&<div style={{fontSize:10,color:"#94a3b8",marginBottom:8,background:"#f8fafc",borderRadius:7,padding:"6px 9px"}}>🔁 Trocar, excluir ou adicionar exercícios aqui aplica a mesma alteração nos outros blocos deste ciclo.</div>}
+      {(onSwapForward||onRemoveForward||onAddForward)&&<div style={{fontSize:10,color:"#94a3b8",marginBottom:8,background:"#f8fafc",borderRadius:7,padding:"6px 9px"}}>🔁 Trocar, excluir, adicionar ou reordenar exercícios aqui aplica a mesma alteração nos outros blocos deste ciclo. Editar séries/reps/descanso também propaga — os blocos que você não tocar continuam com a progressão própria da fase.</div>}
 
       {items.length===0&&<div style={{textAlign:"center",padding:"14px 0",color:"#94a3b8",fontSize:13}}>Nenhum exercício. Adicione abaixo.</div>}
 
@@ -984,7 +991,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
 };
 
 // ─── TREINO COM 3 MOMENTOS ────────────────────────────────────────────────────
-const TreinoMomentos=({treinoKey,blocoKey,sessao,onChange,bibCustom,editMode,onSwapForward,onRemoveForward,onAddForward,onMoveForward})=>{
+const TreinoMomentos=({treinoKey,blocoKey,sessao,onChange,bibCustom,editMode,onSwapForward,onRemoveForward,onAddForward,onMoveForward,onFieldForward})=>{
   const tDef=TREINO_DEFS[treinoKey];
   const [momentoIdx,setMomentoIdx]=useState(0);
   const [verEx,setVerEx]=useState(null);
@@ -1075,6 +1082,7 @@ const TreinoMomentos=({treinoKey,blocoKey,sessao,onChange,bibCustom,editMode,onS
         onRemoveForward={onRemoveForward}
         onAddForward={onAddForward}
         onMoveForward={onMoveForward}
+        onFieldForward={onFieldForward}
       />
     </div>
   );
@@ -1530,6 +1538,21 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
       return novo;
     });
   };
+  const propagarCampoCiclo=(treinoKeyAtual,momentoKey,idx,exId,field,val)=>{
+    setPrescricao(p=>{
+      const novo={...p};
+      blocosMesmoCiclo().forEach(bloco=>{
+        const sessaoIrma=(novo[bloco.key]||{})[treinoKeyAtual];
+        if(!sessaoIrma)return;
+        const arr=sessaoIrma[momentoKey]||[];
+        if(!arr[idx]||arr[idx].exId!==exId)return;
+        const novoArr=[...arr];
+        novoArr[idx]={...novoArr[idx],[field]:val};
+        novo[bloco.key]={...novo[bloco.key],[treinoKeyAtual]:{...sessaoIrma,[momentoKey]:novoArr}};
+      });
+      return novo;
+    });
+  };
   const totalEx=Object.values(prescricao).reduce((a,b)=>a+Object.values(b||{}).reduce((c,s)=>c+Object.values(s||{}).reduce((d,arr)=>d+(arr?.length||0),0),0),0);
 
   return(
@@ -1571,6 +1594,7 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
         onRemoveForward={(mk,idx,removedId)=>propagarRemocaoCiclo(treinoAtivo,mk,idx,removedId)}
         onAddForward={(mk,novoItem)=>propagarAdicaoCiclo(treinoAtivo,mk,novoItem)}
         onMoveForward={(mk,idx,alvo)=>propagarOrdemCiclo(treinoAtivo,mk,idx,alvo)}
+        onFieldForward={(mk,idx,exId,field,val)=>propagarCampoCiclo(treinoAtivo,mk,idx,exId,field,val)}
       />
       <div style={{marginTop:16,paddingTop:14,borderTop:"1px solid #f1f5f9"}}>
         <Btn variant="danger" full onClick={deletePrograma}>🗑 Remover programa</Btn>
