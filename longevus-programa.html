@@ -846,7 +846,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
         // Se não achou nada com a mesma tag muscular (ex: biblioteca ainda não tem outra opção catalogada
         // pra esse músculo), cai pra biblioteca toda em vez de travar sem alternativa — a busca por nome ajuda a filtrar.
         const semEquivalente=ex&&sameCatEstrito.length===0;
-        const sameCat=semEquivalente?todosEx.filter(e=>e.id!==ex.id):sameCatEstrito;
+        const sameCat=!ex?todosEx:(semEquivalente?todosEx.filter(e=>e.id!==ex.id):sameCatEstrito);
         const sameCatFiltrado=isEdit?sameCat.filter(e=>(e.nome||"").toLowerCase().includes(buscaTroca.toLowerCase())):sameCat;
 
         return(
@@ -867,8 +867,9 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
                   </div>
                 </div>
                 <div style={{fontSize:11,color:"#94a3b8",marginBottom:6}}>
-                  {isCog?`🧩 Hub Cognitivo · ${cogEx?.duracao||"5 min"}`:`${ex?.cat||"—"} · ${ex?.foco||"—"}`}
+                  {isCog?`🧩 Hub Cognitivo · ${cogEx?.duracao||"5 min"}`:(ex?`${ex?.cat||"—"} · ${ex?.foco||"—"}`:<span style={{color:"#dc2626",fontWeight:700}}>⚠️ exercício não encontrado · id: "{item.exId||"(vazio)"}"</span>)}
                 </div>
+                {!isCog&&!ex&&<div style={{fontSize:11,color:"#d97706",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"5px 8px",marginBottom:6}}>Esse id não existe na biblioteca. Pode ter sido apagado ou gravado errado — troque por um exercício válido abaixo, ou exclua este item.</div>}
                 <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
                   {isCog?(
                     <div style={{background:"#ecfdf5",border:"1.5px solid #a7f3d0",borderRadius:7,padding:"3px 9px",fontSize:11,color:"#065f46",fontWeight:700}}>
