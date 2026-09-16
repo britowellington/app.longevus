@@ -779,7 +779,7 @@ const ExDetalheModal = ({ ex, onClose }) => (
 );
 
 // ─── MOMENTO EDITÁVEL ─────────────────────────────────────────────────────────
-const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForward})=>{
+const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForward,onRemoveForward,onAddForward,onMoveForward})=>{
   const [editIdx,setEditIdx]=useState(null);
   const [buscaTroca,setBuscaTroca]=useState("");
   const [verExEdit,setVerExEdit]=useState(null);
@@ -791,7 +791,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
   const m=momentoMeta;
 
   const updateItem=(idx,field,val)=>{const arr=[...items];arr[idx]={...arr[idx],[field]:val};onChange(arr);};
-  const removeItem=idx=>{onChange(items.filter((_,i)=>i!==idx));if(editIdx===idx)setEditIdx(null);};
+  const removeItem=idx=>{const removedExId=items[idx]?.exId;onChange(items.filter((_,i)=>i!==idx));if(editIdx===idx)setEditIdx(null);if(onRemoveForward&&removedExId)onRemoveForward(momentoMeta.key,idx,removedExId);};
   const moveItem=(idx,dir)=>{
     const alvo=idx+dir;
     if(alvo<0||alvo>=items.length)return;
@@ -799,12 +799,15 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
     [arr[idx],arr[alvo]]=[arr[alvo],arr[idx]];
     onChange(arr);
     if(editIdx===idx)setEditIdx(alvo);
+    if(onMoveForward)onMoveForward(momentoMeta.key,idx,alvo);
   };
   const addExItem=exId=>{
-    if(exId==="cognitivo_custom"){onChange([...items,{exId:"cognitivo",cogId:"cog01",series:"1",reps:"5 min",descanso:"—",obs:"",isCognitivo:true}]);setAddModal(false);return;}
+    if(exId==="cognitivo_custom"){const novo={exId:"cognitivo",cogId:"cog01",series:"1",reps:"5 min",descanso:"—",obs:"",isCognitivo:true};onChange([...items,novo]);setAddModal(false);if(onAddForward)onAddForward(momentoMeta.key,novo);return;}
     const p=getPresc(exId,blocoKey,bibCustom);
-    onChange([...items,{exId,series:p.s,reps:p.r,descanso:p.d,obs:""}]);
+    const novo={exId,series:p.s,reps:p.r,descanso:p.d,obs:""};
+    onChange([...items,novo]);
     setAddModal(false);setSearchEx("");
+    if(onAddForward)onAddForward(momentoMeta.key,novo);
   };
   const swapCognitivo=(idx,cogId)=>{const arr=[...items];arr[idx]={...arr[idx],cogId};onChange(arr);setEditIdx(null);};
   const swapExercise=(idx,newExId)=>{const oldExId=items[idx].exId;const p=getPresc(newExId,blocoKey,bibCustom);const arr=[...items];arr[idx]={exId:newExId,series:p.s,reps:p.r,descanso:p.d,obs:arr[idx].obs||""};onChange(arr);setEditIdx(null);if(onSwapForward&&oldExId!==newExId)onSwapForward(momentoMeta.key,idx,oldExId,newExId);};
@@ -820,6 +823,8 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
           <div style={{fontSize:11,color:"#64748b",marginTop:1}}>{m.desc} · {items.length} exerc.</div>
         </div>
       </div>
+
+      {(onSwapForward||onRemoveForward||onAddForward)&&<div style={{fontSize:10,color:"#94a3b8",marginBottom:8,background:"#f8fafc",borderRadius:7,padding:"6px 9px"}}>🔁 Trocar, excluir ou adicionar exercícios aqui aplica a mesma alteração nos outros blocos deste ciclo.</div>}
 
       {items.length===0&&<div style={{textAlign:"center",padding:"14px 0",color:"#94a3b8",fontSize:13}}>Nenhum exercício. Adicione abaixo.</div>}
 
@@ -912,7 +917,6 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
                     {sameCat.length>0&&(
                       <div>
                         <div style={{fontSize:10,fontWeight:700,color:"#64748b",marginBottom:5,textTransform:"uppercase"}}>Trocar exercício</div>
-                        {onSwapForward&&<div style={{fontSize:10,color:"#94a3b8",marginBottom:6}}>🔁 A troca também será aplicada nos blocos futuros onde esse exercício ainda aparecer.</div>}
                         {semEquivalente&&<div style={{fontSize:10,color:"#d97706",marginBottom:6,background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"5px 8px"}}>⚠️ Nenhum outro exercício catalogado com essa tag muscular — mostrando a biblioteca toda. Use a busca pra filtrar.</div>}
                         <input value={buscaTroca} onChange={e=>setBuscaTroca(e.target.value)} placeholder={`Buscar entre os ${sameCat.length} exercícios de ${ex?.tags||ex?.grupo||ex?.cat||"mesmo grupo"}...`} style={{width:"100%",padding:"8px 11px",borderRadius:8,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:12,fontFamily:"inherit",marginBottom:7,boxSizing:"border-box"}}/>
                         <div style={{display:"flex",flexWrap:"wrap",gap:5,maxHeight:220,overflowY:"auto"}}>
@@ -979,7 +983,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
 };
 
 // ─── TREINO COM 3 MOMENTOS ────────────────────────────────────────────────────
-const TreinoMomentos=({treinoKey,blocoKey,sessao,onChange,bibCustom,editMode,onSwapForward})=>{
+const TreinoMomentos=({treinoKey,blocoKey,sessao,onChange,bibCustom,editMode,onSwapForward,onRemoveForward,onAddForward,onMoveForward})=>{
   const tDef=TREINO_DEFS[treinoKey];
   const [momentoIdx,setMomentoIdx]=useState(0);
   const [verEx,setVerEx]=useState(null);
@@ -1067,6 +1071,9 @@ const TreinoMomentos=({treinoKey,blocoKey,sessao,onChange,bibCustom,editMode,onS
         blocoKey={blocoKey}
         bibCustom={bibCustom}
         onSwapForward={onSwapForward}
+        onRemoveForward={onRemoveForward}
+        onAddForward={onAddForward}
+        onMoveForward={onMoveForward}
       />
     </div>
   );
@@ -1457,24 +1464,68 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
   const cancelEdit=()=>{setPrescricao(JSON.parse(JSON.stringify(prog.prescricao)));setEditMode(false);};
   const deletePrograma=()=>{if(!window.confirm("Remover?"))return;const fresh=LS.get("longevus_programs",programs);const u=fresh.filter(p=>p.id!==prog.id);setPrograms(u);LS.set("longevus_programs",u);ProgDB.remove(prog.id);nav("lista");};
   const updateSessao=(bKey,tKey,sessao)=>setPrescricao(p=>({...p,[bKey]:{...(p[bKey]||{}),[tKey]:sessao}}));
-  // Quando o professor troca um exercício num bloco, aplica a mesma troca nos blocos futuros
-  // (mesmo treino, mesmo momento, mesma posição) onde o exercício antigo ainda apareça —
-  // mantém séries/reps/descanso já definidos em cada bloco, só troca a identidade do exercício
+  // Quando o professor edita exercícios num bloco (troca, exclui ou adiciona), aplica a mesma
+  // alteração em TODOS os blocos do mesmo ciclo (mesmo treino, mesmo momento) — não só pra frente.
+  // Troca/remoção só se aplicam onde o exercício antigo ainda estiver na mesma posição, pra não bagunçar
+  // um bloco que já tenha sido editado separadamente; mantém séries/reps/descanso já definidos em cada bloco.
+  const blocosMesmoCiclo=()=>blocoAtivo?.cicloIdx===undefined?[]:blocosAtivos.filter(b=>b.cicloIdx===blocoAtivo.cicloIdx&&b.key!==blocoAtivo.key);
   const propagarTrocaFutura=(treinoKeyAtual,momentoKey,idx,oldExId,newExId)=>{
-    const posAtual=blocosAtivos.findIndex(b=>b.key===blocoAtivo.key);
-    if(posAtual===-1)return;
     setPrescricao(p=>{
       const novo={...p};
-      for(let i=posAtual+1;i<blocosAtivos.length;i++){
-        const bKey=blocosAtivos[i].key;
-        const sessaoFutura=(novo[bKey]||{})[treinoKeyAtual];
-        if(!sessaoFutura)continue;
-        const arr=sessaoFutura[momentoKey]||[];
-        if(!arr[idx]||arr[idx].exId!==oldExId)continue;
+      blocosMesmoCiclo().forEach(({key:bKey})=>{
+        const sessaoIrma=(novo[bKey]||{})[treinoKeyAtual];
+        if(!sessaoIrma)return;
+        const arr=sessaoIrma[momentoKey]||[];
+        if(!arr[idx]||arr[idx].exId!==oldExId)return;
         const novoArr=[...arr];
         novoArr[idx]={...novoArr[idx],exId:newExId};
-        novo[bKey]={...novo[bKey],[treinoKeyAtual]:{...sessaoFutura,[momentoKey]:novoArr}};
-      }
+        novo[bKey]={...novo[bKey],[treinoKeyAtual]:{...sessaoIrma,[momentoKey]:novoArr}};
+      });
+      return novo;
+    });
+  };
+  const propagarRemocaoCiclo=(treinoKeyAtual,momentoKey,idx,removedExId)=>{
+    setPrescricao(p=>{
+      const novo={...p};
+      blocosMesmoCiclo().forEach(({key:bKey})=>{
+        const sessaoIrma=(novo[bKey]||{})[treinoKeyAtual];
+        if(!sessaoIrma)return;
+        const arr=sessaoIrma[momentoKey]||[];
+        if(!arr[idx]||arr[idx].exId!==removedExId)return;
+        const novoArr=arr.filter((_,i)=>i!==idx);
+        novo[bKey]={...novo[bKey],[treinoKeyAtual]:{...sessaoIrma,[momentoKey]:novoArr}};
+      });
+      return novo;
+    });
+  };
+  const propagarAdicaoCiclo=(treinoKeyAtual,momentoKey,novoItem)=>{
+    setPrescricao(p=>{
+      const novo={...p};
+      blocosMesmoCiclo().forEach(bloco=>{
+        const sessaoIrma=(novo[bloco.key]||{})[treinoKeyAtual];
+        if(!sessaoIrma)return;
+        const arr=sessaoIrma[momentoKey]||[];
+        // Recalcula série/reps/descanso a partir da fase desse bloco específico (RIR/volume próprios),
+        // em vez de copiar os mesmos números do bloco onde o exercício foi adicionado.
+        const presc=(bloco.series!=null)?{s:String(bloco.series),r:bloco.reps,d:bloco.descanso_segundos+"s"}:null;
+        const itemAjustado=presc?{...novoItem,series:presc.s,reps:presc.r,descanso:presc.d}:{...novoItem};
+        novo[bloco.key]={...novo[bloco.key],[treinoKeyAtual]:{...sessaoIrma,[momentoKey]:[...arr,itemAjustado]}};
+      });
+      return novo;
+    });
+  };
+  const propagarOrdemCiclo=(treinoKeyAtual,momentoKey,idx,alvo)=>{
+    setPrescricao(p=>{
+      const novo={...p};
+      blocosMesmoCiclo().forEach(bloco=>{
+        const sessaoIrma=(novo[bloco.key]||{})[treinoKeyAtual];
+        if(!sessaoIrma)return;
+        const arr=sessaoIrma[momentoKey]||[];
+        if(!arr[idx]||!arr[alvo])return;
+        const novoArr=[...arr];
+        [novoArr[idx],novoArr[alvo]]=[novoArr[alvo],novoArr[idx]];
+        novo[bloco.key]={...novo[bloco.key],[treinoKeyAtual]:{...sessaoIrma,[momentoKey]:novoArr}};
+      });
       return novo;
     });
   };
@@ -1516,6 +1567,9 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
         bibCustom={bibCustom}
         editMode={editMode}
         onSwapForward={(mk,idx,oldId,newId)=>propagarTrocaFutura(treinoAtivo,mk,idx,oldId,newId)}
+        onRemoveForward={(mk,idx,removedId)=>propagarRemocaoCiclo(treinoAtivo,mk,idx,removedId)}
+        onAddForward={(mk,novoItem)=>propagarAdicaoCiclo(treinoAtivo,mk,novoItem)}
+        onMoveForward={(mk,idx,alvo)=>propagarOrdemCiclo(treinoAtivo,mk,idx,alvo)}
       />
       <div style={{marginTop:16,paddingTop:14,borderTop:"1px solid #f1f5f9"}}>
         <Btn variant="danger" full onClick={deletePrograma}>🗑 Remover programa</Btn>
