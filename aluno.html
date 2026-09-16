@@ -2491,10 +2491,18 @@ function App(){
       try{
         const token = session.access_token || SUPA_KEY;
         const headers = { "apikey": SUPA_KEY, "Authorization": "Bearer "+token };
-        const r = await fetch(SUPA_URL+"/rest/v1/exercises?select=*", { headers: {...headers, "Range":"0-4999"} });
-        if(r.ok){
-          const rows = await r.json();
-          setBibCustom((rows||[]).map(e=>({
+        const rows=[];
+        let from=0;
+        while(true){
+          const r = await fetch(SUPA_URL+"/rest/v1/exercises?select=*", { headers: {...headers, "Range":from+"-"+(from+999)} });
+          if(!r.ok)break;
+          const page = await r.json();
+          rows.push(...page);
+          if(page.length<1000)break;
+          from+=1000;
+        }
+        if(rows.length>0){
+          setBibCustom(rows.map(e=>({
             id:e.id,nome:e.nome,grupo:e.grupo,nivel:e.nivel,momento:e.momento,
             foco:e.foco,icone:e.icone||null,descricao:e.descricao,execucao:e.execucao,
             beneficios:e.beneficios,cuidados:e.cuidados,material:e.material,
