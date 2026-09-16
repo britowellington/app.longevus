@@ -5792,9 +5792,10 @@ const [filterSt,setFilterSt]=useState(prefillStudentId||"");
 const emptyForm = ()=>({studentId:prefillStudentId||filterSt||"",titulo:"",obs:"",exercicios:[]});
 const [form,setForm]=useState(emptyForm());
 const [buscaEx,setBuscaEx]=useState("");
+const [semData,setSemData]=useState(false);
 const [selDates,setSelDates]=useState(()=>new Set());
 const [calRef,setCalRef]=useState(()=>new Date());
-const openNew = () => { setForm(emptyForm()); setBuscaEx(""); setSelDates(new Set()); setCalRef(new Date()); setModal(true); };
+const openNew = () => { setForm(emptyForm()); setBuscaEx(""); setSemData(false); setSelDates(new Set()); setCalRef(new Date()); setModal(true); };
 const addExercicio = (ex) => { setForm(f=>({...f,exercicios:[...f.exercicios,{exId:ex.id,series:"3",reps:"12",descanso:"60s",obs:""}]})); setBuscaEx(""); };
 const removeExercicio = (idx) => setForm(f=>({...f,exercicios:f.exercicios.filter((_,i)=>i!==idx)}));
 const updateExercicio = (idx,campo,val) => setForm(f=>({...f,exercicios:f.exercicios.map((it,i)=>i===idx?{...it,[campo]:val}:it)}));
@@ -5806,7 +5807,14 @@ const allSelected = dias.every(iso=>selDates.has(iso));
 setSelDates(prev=>{ const next=new Set(prev); dias.forEach(iso=>{ if(allSelected)next.delete(iso); else next.add(iso); }); return next; });
 };
 const save = () => {
-if(!form.studentId||!form.titulo.trim()||selDates.size===0)return;
+if(!form.studentId||!form.titulo.trim())return;
+if(semData){
+const nova = { id:uid(), studentId:form.studentId, date:null, semData:true, titulo:form.titulo.trim(), obs:form.obs.trim(), exercicios:form.exercicios };
+setAtividadesExtras(p=>[...p,nova]);
+setModal(false);
+return;
+}
+if(selDates.size===0)return;
 const novas = [...selDates].sort().map(date=>({ id:uid(), studentId:form.studentId, date, titulo:form.titulo.trim(), obs:form.obs.trim(), exercicios:form.exercicios }));
 setAtividadesExtras(p=>[...p,...novas]);
 setModal(false);
@@ -5841,6 +5849,7 @@ return (
 <span style={{ fontSize:11,color:"#94a3b8" }}>{fmt(a.date)}</span>
 </div>
 <div style={{ fontSize:14,fontWeight:700,color:"#0f172a" }}>{a.titulo}</div>
+{a.semData&&<div style={{ fontSize:11,fontWeight:700,color:"#FF5603",marginTop:3 }}>🔓 Sem data fixa</div>}
 {a.exercicios?.length>0&&<div style={{ fontSize:11,fontWeight:700,color:"#FF5603",marginTop:3 }}>🏋️ {a.exercicios.length} exercício(s) montado(s)</div>}
 {a.obs&&<div style={{ fontSize:12,color:"#64748b",marginTop:2,whiteSpace:"pre-wrap" }}>{a.obs}</div>}
 {(()=>{
@@ -5918,6 +5927,17 @@ return (
 </div>
 )}
 
+<div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 12px",margin:"14px 0" }}>
+<div>
+<div style={{ fontSize:13,fontWeight:700,color:"#0f172a" }}>🔓 Sem data fixa</div>
+<div style={{ fontSize:11,color:"#94a3b8",marginTop:1 }}>Aparece pro aluno todo dia, na tela inicial, até ele fazer — sem precisar escolher datas.</div>
+</div>
+<button onClick={()=>setSemData(v=>!v)} style={{ flexShrink:0,width:44,height:26,borderRadius:99,border:"none",background:semData?"#FF5603":"#e2e8f0",position:"relative",cursor:"pointer" }}>
+<div style={{ position:"absolute",top:3,left:semData?21:3,width:20,height:20,borderRadius:99,background:"#fff",transition:"left 0.15s" }}/>
+</button>
+</div>
+
+{!semData&&(<>
 <div style={{ fontSize:12,fontWeight:600,color:"#475569",margin:"14px 0 8px" }}>Em quais dias?</div>
 
 <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10 }}>
@@ -5946,8 +5966,9 @@ return (
 </div>
 
 <div style={{ fontSize:12,fontWeight:700,color:O,marginBottom:14 }}>{selDates.size} dia(s) selecionado(s)</div>
+</>)}
 
-<Btn full onClick={save} disabled={!form.studentId||!form.titulo.trim()||selDates.size===0}>Salvar {selDates.size>0?`(${selDates.size} dia${selDates.size>1?"s":""})`:""}</Btn>
+<Btn full onClick={save} disabled={!form.studentId||!form.titulo.trim()||(!semData&&selDates.size===0)}>{semData?"Salvar (sem data fixa)":`Salvar ${selDates.size>0?`(${selDates.size} dia${selDates.size>1?"s":""})`:""}`}</Btn>
 </Modal>}
 </div>
 );

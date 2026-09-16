@@ -789,11 +789,13 @@ const ProgressoAtividades = ({concluidas, total}) => {
   );
 };
 
-const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, concluidasMap, onToggleAtividade, onIrTreino, bibCustom, onSalvarExercicios, getSessaoAtividade}) => {
+const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, atividadesSemData, concluidasMap, onToggleAtividade, onIrTreino, bibCustom, onSalvarExercicios, getSessaoAtividade}) => {
   const hoje = new Date();
   const diaLabel = DIAS_SEMANA_LONGO[hoje.getDay()]+", "+hoje.getDate()+" de "+MESES_NOME[hoje.getMonth()];
   const totalHoje = atividadesHoje.length;
   const concluidasHoje = atividadesHoje.filter(a=>!!concluidasMap[a._id]).length;
+  const semDataPendentes = (atividadesSemData||[]).filter(a=>!concluidasMap[a._id]);
+  const semDataFeitas = (atividadesSemData||[]).filter(a=>!!concluidasMap[a._id]);
   return (
     <div style={{padding:"20px 16px 24px"}}>
       <div style={{fontSize:13,color:"#64748b",marginBottom:2}}>{diaLabel}</div>
@@ -815,6 +817,23 @@ const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, concluidasMap, 
           <ProgressoAtividades concluidas={concluidasHoje} total={totalHoje}/>
           {atividadesHoje.map((atv,i)=>(
             <AtividadeCard key={atv._id||i} atividade={atv} destaque concluida={!!concluidasMap[atv._id]} onToggle={onToggleAtividade} bibCustom={bibCustom} onSalvarExercicios={onSalvarExercicios} sessaoSalva={getSessaoAtividade(atv._id)}/>
+          ))}
+        </div>
+      )}
+
+      {semDataPendentes.length>0 && (
+        <div style={{marginTop:16}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:0.3,marginBottom:8}}>🔓 Quando você quiser</div>
+          {semDataPendentes.map((atv,i)=>(
+            <AtividadeCard key={atv._id||i} atividade={atv} concluida={false} onToggle={onToggleAtividade} bibCustom={bibCustom} onSalvarExercicios={onSalvarExercicios} sessaoSalva={getSessaoAtividade(atv._id)}/>
+          ))}
+        </div>
+      )}
+      {semDataFeitas.length>0 && (
+        <div style={{marginTop:16}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:0.3,marginBottom:8}}>✅ Já feitas</div>
+          {semDataFeitas.map((atv,i)=>(
+            <AtividadeCard key={atv._id||i} atividade={atv} concluida={true} onToggle={onToggleAtividade} bibCustom={bibCustom} onSalvarExercicios={onSalvarExercicios} sessaoSalva={getSessaoAtividade(atv._id)}/>
           ))}
         </div>
       )}
@@ -1442,7 +1461,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
       setConcluidasMap(prev=>({...prev, [key]: rowId}));
       try{
         const headers = await authedHeaders();
-        const body = { id: rowId, data: { atividadeId: key, date: atividade.date }, owner_id: ownerId, student_id: studentId };
+        const body = { id: rowId, data: { atividadeId: key, date: atividade.date || toISODate(new Date()) }, owner_id: ownerId, student_id: studentId };
         await fetch(SUPA_URL+"/rest/v1/atividades_extras_conclusoes", { method:"POST", headers, body: JSON.stringify(body) });
       } catch(e){ /* silencioso */ }
     }
@@ -1550,6 +1569,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
 
   const hojeISO = toISODate(new Date());
   const atividadesHoje = atividades.filter(a=>a && a.date===hojeISO);
+  const atividadesSemData = atividades.filter(a=>a && a.semData);
 
   const blocoAtivo = blocosAtivos[blocoIdx];
   const treinosUnicos = blocoAtivo?.treinos || [...new Set(prog.divisao?.sequencia || ["A"])];
@@ -1704,6 +1724,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
           firstName={firstName}
           treinoHojeLabel={treinoDeHoje && TREINO_DEFS[treinoDeHoje]?.label}
           atividadesHoje={atividadesHoje}
+          atividadesSemData={atividadesSemData}
           concluidasMap={concluidasMap}
           onToggleAtividade={toggleConcluidaAtividade}
           onIrTreino={()=>setTab("treino")}
