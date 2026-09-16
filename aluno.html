@@ -2491,7 +2491,7 @@ function App(){
       try{
         const token = session.access_token || SUPA_KEY;
         const headers = { "apikey": SUPA_KEY, "Authorization": "Bearer "+token };
-        const r = await fetch(SUPA_URL+"/rest/v1/exercises?select=*", { headers });
+        const r = await fetch(SUPA_URL+"/rest/v1/exercises?select=*", { headers: {...headers, "Range":"0-4999"} });
         if(r.ok){
           const rows = await r.json();
           setBibCustom((rows||[]).map(e=>({

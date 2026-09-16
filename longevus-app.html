@@ -79,7 +79,7 @@ return { "apikey": SUPA_KEY, "Authorization": "Bearer "+token, "Content-Type": "
 async load(table) {
 try {
 const headers = await this.authHeaders();
-const r = await fetch(SUPA_URL+"/rest/v1/"+table+"?select=*&order=created_at.asc", { headers });
+const r = await fetch(SUPA_URL+"/rest/v1/"+table+"?select=*&order=created_at.asc", { headers: {...headers, "Range":"0-9999"} });
 if (!r.ok) return null;
 const rows = await r.json();
 return rows.map(row => row.data);
@@ -88,7 +88,7 @@ return rows.map(row => row.data);
 async loadRaw(table, query) {
 try {
 const headers = await this.authHeaders();
-const r = await fetch(SUPA_URL+"/rest/v1/"+table+"?"+(query||"select=*&order=created_at.desc"), { headers });
+const r = await fetch(SUPA_URL+"/rest/v1/"+table+"?"+(query||"select=*&order=created_at.desc"), { headers: {...headers, "Range":"0-9999"} });
 if (!r.ok) return null;
 return await r.json();
 } catch(e) { return null; }

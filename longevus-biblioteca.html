@@ -940,7 +940,7 @@ function AppInner({billing}){
     (async()=>{
       try{
         const h=await authHeadersFn();
-        const r=await fetch(SUPA_URL+"/rest/v1/exercises?select=*&order=nome.asc",{headers:h});
+        const r=await fetch(SUPA_URL+"/rest/v1/exercises?select=*&order=nome.asc",{headers:{...h,"Range":"0-4999"}});
         if(r.ok){
           const rows=await r.json();
           if(rows&&rows.length>0){
