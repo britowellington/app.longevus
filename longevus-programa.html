@@ -794,7 +794,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
     const arr=[...items];
     arr[idx]={...arr[idx],[field]:val};
     onChange(arr);
-    if(onFieldForward&&["series","reps","descanso"].includes(field)){
+    if(onFieldForward&&["series","reps","descanso","obs"].includes(field)){
       onFieldForward(momentoMeta.key,idx,arr[idx].exId,field,val);
     }
   };
@@ -831,7 +831,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
         </div>
       </div>
 
-      {(onSwapForward||onRemoveForward||onAddForward)&&<div style={{fontSize:10,color:"#94a3b8",marginBottom:8,background:"#f8fafc",borderRadius:7,padding:"6px 9px"}}>🔁 Trocar, excluir, adicionar ou reordenar exercícios aqui aplica a mesma alteração nos outros blocos deste ciclo. Editar séries/reps/descanso também propaga — os blocos que você não tocar continuam com a progressão própria da fase.</div>}
+      {(onSwapForward||onRemoveForward||onAddForward)&&<div style={{fontSize:10,color:"#94a3b8",marginBottom:8,background:"#f8fafc",borderRadius:7,padding:"6px 9px"}}>🔁 Trocar, excluir, adicionar ou reordenar exercícios aqui aplica a mesma alteração nos outros blocos deste ciclo. Editar séries/reps/descanso/observações também propaga — os blocos que você não tocar continuam com a progressão própria da fase.</div>}
 
       {items.length===0&&<div style={{textAlign:"center",padding:"14px 0",color:"#94a3b8",fontSize:13}}>Nenhum exercício. Adicione abaixo.</div>}
 
