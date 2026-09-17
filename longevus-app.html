@@ -3099,7 +3099,11 @@ return (
 </div>
 <div style={{ display:"flex",gap:10,marginTop:8 }}>
 <Btn variant="secondary" full onClick={()=>setStep(s=>s-1)}>Voltar</Btn>
+{step>=STEP_MAP.length-1?(
+<Btn full icon="check" onClick={finish}>Finalizar Avaliação ✓</Btn>
+):(
 <Btn full onClick={()=>setStep(s=>s+1)}>Próximo →</Btn>
+)}
 </div>
 </Card>}
 {/* STEP 5: Testes físicos */}
@@ -3401,7 +3405,11 @@ return(<div style={{ background:"#f8fafc",borderRadius:12,padding:14,marginTop:4
 </div>}
 <div style={{ display:"flex",gap:10,marginTop:16 }}>
 <Btn variant="secondary" full onClick={()=>setStep(s=>s-1)}>Voltar</Btn>
+{step>=STEP_MAP.length-1?(
+<Btn full icon="check" onClick={finish}>Finalizar Avaliação ✓</Btn>
+):(
 <Btn full onClick={()=>setStep(s=>s+1)}>Próximo →</Btn>
+)}
 </div>
 </Card>}
 {/* STEP 8 — AVALIAÇÃO COGNITIVA */}
