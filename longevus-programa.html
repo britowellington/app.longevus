@@ -831,7 +831,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
         </div>
       </div>
 
-      {(onSwapForward||onRemoveForward||onAddForward)&&<div style={{fontSize:10,color:"#94a3b8",marginBottom:8,background:"#f8fafc",borderRadius:7,padding:"6px 9px"}}>🔁 Trocar, excluir, adicionar ou reordenar exercícios aqui aplica a mesma alteração nos outros blocos deste ciclo. Editar séries/reps/descanso/observações também propaga — os blocos que você não tocar continuam com a progressão própria da fase.</div>}
+      {(onSwapForward||onRemoveForward||onAddForward)&&<div style={{fontSize:10,color:"#94a3b8",marginBottom:8,background:"#f8fafc",borderRadius:7,padding:"6px 9px"}}>🔁 Trocar, excluir, adicionar ou reordenar exercícios aqui aplica a mesma alteração nos blocos seguintes deste ciclo (nunca nos anteriores). Editar séries/reps/descanso/observações também propaga só pra frente.</div>}
 
       {items.length===0&&<div style={{textAlign:"center",padding:"14px 0",color:"#94a3b8",fontSize:13}}>Nenhum exercício. Adicione abaixo.</div>}
 
@@ -1477,7 +1477,11 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
   // alteração em TODOS os blocos do mesmo ciclo (mesmo treino, mesmo momento) — não só pra frente.
   // Troca/remoção só se aplicam onde o exercício antigo ainda estiver na mesma posição, pra não bagunçar
   // um bloco que já tenha sido editado separadamente; mantém séries/reps/descanso já definidos em cada bloco.
-  const blocosMesmoCiclo=()=>blocoAtivo?.cicloIdx===undefined?[]:blocosAtivos.filter(b=>b.cicloIdx===blocoAtivo.cicloIdx&&b.key!==blocoAtivo.key);
+  const blocosMesmoCiclo=()=>{
+    if(blocoAtivo?.cicloIdx===undefined)return [];
+    const posAtual=blocosAtivos.findIndex(b=>b.key===blocoAtivo.key);
+    return blocosAtivos.filter((b,i)=>b.cicloIdx===blocoAtivo.cicloIdx&&i>posAtual);
+  };
   const propagarTrocaFutura=(treinoKeyAtual,momentoKey,idx,oldExId,newExId)=>{
     setPrescricao(p=>{
       const novo={...p};
