@@ -9239,6 +9239,7 @@ const [checkins,setCheckins]=useState(()=>LS.get("longevus_checkins",[]));
 const [notifOpen,setNotifOpen]=useState(false);
 const [checkinsSeenAt,setCheckinsSeenAt]=useState(()=>LS.get("longevus_checkins_seen_at","1970-01-01T00:00:00.000Z"));
 const [ultimoAcesso,setUltimoAcesso]=useState({});
+const [pendenciasLogin,setPendenciasLogin]=useState([]);
 const [atividadesExtras,setAtividadesExtras]=useState(()=>LS.get("longevus_atividades_extras",[]));
 const [professorFeedbacks,setProfessorFeedbacks]=useState(()=>LS.get("longevus_professor_feedbacks",[]));
 const [agendaEntries,setAgendaEntries]=useState(()=>LS.get("longevus_agenda",[]));
@@ -9297,6 +9298,10 @@ const rowsUA = await rUA.json();
 const mapUA = {};
 (rowsUA||[]).forEach(row=>{ if(row.student_id) mapUA[row.student_id]=row.last_sign_in_at; });
 setUltimoAcesso(mapUA);
+}
+const rPendBell = await fetch(SUPA_URL+"/rest/v1/rpc/rpc_listar_pendencias", { method:"POST", headers:headersUA, body:"{}" });
+if(rPendBell.ok){
+setPendenciasLogin(await rPendBell.json());
 }
 }catch(e){}
 setDbReady(true);
@@ -9445,7 +9450,8 @@ return <TrialExpired/>;
 }
 const notifItems = [
 ...checkins.map(c=>({ id:"ck_"+c.id, ts:c.created_at, kind:"checkin", checkin:c })),
-...students.filter(s=>s.createdAt).map(s=>({ id:"new_"+s.id, ts:s.createdAt+"T00:00:00.000Z", kind:"novo_aluno", student:s }))
+...students.filter(s=>s.createdAt).map(s=>({ id:"new_"+s.id, ts:s.createdAt+"T00:00:00.000Z", kind:"novo_aluno", student:s })),
+...pendenciasLogin.map(p=>({ id:"pend_"+p.user_id, ts:p.created_at, kind:"pendencia", pendencia:p }))
 ].sort((a,b)=>(b.ts||"").localeCompare(a.ts||"")).slice(0,15);
 const notifCount = notifItems.filter(n=>n.ts && n.ts>checkinsSeenAt).length;
 return (
@@ -9492,6 +9498,20 @@ return (
 <div style={{ flex:1,minWidth:0 }}>
 <div style={{ fontWeight:700,fontSize:12.5,color:"#0f172a" }}>🎓 Novo aluno: {s.name}</div>
 <div style={{ fontSize:11,color:"#94a3b8" }}>Cadastrado · {dtLabel}</div>
+</div>
+</div>
+);
+}
+if(n.kind==="pendencia"){
+const p=n.pendencia;
+const dt=n.ts?new Date(n.ts):null;
+const dtLabel=dt?dt.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})+" "+dt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}):"";
+return (
+<div key={n.id} onClick={()=>{setNotifOpen(false);nav("vincular");}} style={{ padding:"11px 14px",borderBottom:"1px solid #f8fafc",cursor:"pointer",display:"flex",gap:8,alignItems:"flex-start",background:"#fffbeb" }}>
+<div style={{ width:7,height:7,borderRadius:99,background:"#d97706",marginTop:5,flexShrink:0 }}/>
+<div style={{ flex:1,minWidth:0 }}>
+<div style={{ fontWeight:700,fontSize:12.5,color:"#0f172a" }}>🔔 Login sem vínculo: {p.email}</div>
+<div style={{ fontSize:11,color:"#94a3b8" }}>Criou conta · {dtLabel} · toque pra vincular</div>
 </div>
 </div>
 );
