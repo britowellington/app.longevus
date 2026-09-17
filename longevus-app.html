@@ -1670,8 +1670,6 @@ const [selCardioSt,setSelCardioSt]=useState("");
 const [editId,setEditId]=useState(null);
 const [form,setForm]=useState({name:"",dob:"",sex:"",phone:"",email:"",whatsapp:"",responsibleName:"",responsiblePhone:"",doctorName:"",doctorPhone:"",planoId:""});
 const [search,setSearch]=useState("");
-const [linkModal,setLinkModal]=useState(null);
-const [linkLoadingId,setLinkLoadingId]=useState(null);
 const [appLinkModal,setAppLinkModal]=useState(null);
 const [aba,setAba]=useState("ativo");
 const open=(s=null)=>{setForm(s?{name:s.name,dob:s.dob||"",sex:s.sex||"",phone:s.phone||"",email:s.email||"",whatsapp:s.whatsapp||"",responsibleName:s.responsibleName||"",responsiblePhone:s.responsiblePhone||"",doctorName:s.doctorName||"",doctorPhone:s.doctorPhone||"",notes:s.notes||"",planoId:""}:{name:"",dob:"",sex:"",phone:"",email:"",whatsapp:"",responsibleName:"",responsiblePhone:"",doctorName:"",doctorPhone:"",notes:"",planoId:""});setEditId(s?.id||null);setModal(true);};
@@ -1699,31 +1697,6 @@ setStudents(p=>p.filter(s=>s.id!==id));
 const toggleStatus=async(s)=>{const novo=(s.status||"ativo")==="ativo"?"inativo":"ativo";if(!window.confirm(novo==="inativo"?`Marcar ${s.name} como inativo? Ele deixará de aparecer na lista de ativos, mas o histórico é mantido.`:`Reativar ${s.name}?`))return;const atualizado={...s,status:novo};const ok=await DB.save("students",s.id,atualizado);if(!ok){alert("Não foi possível salvar essa alteração agora. Verifique sua conexão e tente de novo.");return;}setStudents(p=>p.map(x=>x.id===s.id?atualizado:x));};
 const ativos=students.filter(s=>(s.status||"ativo")==="ativo");
 const inativos=students.filter(s=>(s.status||"ativo")==="inativo");
-const genLink=async(s)=>{
-setLinkLoadingId(s.id);
-try{
-const headers=await DB.authHeaders();
-const { data: sess } = await supa.auth.getSession();
-const ownerId=sess?.session?.user?.id;
-const r=await fetch(SUPA_URL+"/rest/v1/questionarios_pendentes",{
-method:"POST",
-headers:{...headers,"Prefer":"return=representation"},
-body:JSON.stringify({ aluno_id:s.id, owner_id:ownerId })
-});
-if(!r.ok){window.alert("Erro ao gerar o link. Tente novamente.");return;}
-const rows=await r.json();
-const token=rows?.[0]?.token;
-if(!token){window.alert("Erro ao gerar o link.");return;}
-const base=window.location.origin+window.location.pathname.replace(/[^/]+$/,"");
-const url=base+"longevus-questionario.html?token="+token;
-setLinkModal({ name:s.name, url });
-}catch(e){window.alert("Erro ao gerar o link.");}
-finally{setLinkLoadingId(null);}
-};
-const copyLink=()=>{
-if(!linkModal)return;
-navigator.clipboard?.writeText(linkModal.url).then(()=>window.alert("Link copiado!")).catch(()=>{});
-};
 const genAppLink=(s)=>{
 const base=window.location.origin+window.location.pathname.replace(/[^/]+$/,"");
 setAppLinkModal({ name:s.name, url:base+"aluno.html" });
@@ -1759,7 +1732,6 @@ return (
 <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginTop:10 }} onClick={e=>e.stopPropagation()}>
 {aba==="ativo"?<Btn sm variant="primary" icon="clip" onClick={()=>nav("newAssessment",{studentId:s.id})}>Avaliar</Btn>:<span/>}
 <div style={{ display:"flex",alignItems:"center",gap:2,background:"#f8fafc",border:"1px solid #f1f5f9",borderRadius:11,padding:2 }}>
-<Btn sm variant="ghost" icon="link" disabled={linkLoadingId===s.id} onClick={()=>genLink(s)}/>
 <Btn sm variant="ghost" icon="download" onClick={()=>genAppLink(s)}/>
 <Btn sm variant="ghost" icon="edit" onClick={()=>open(s)}/>
 <Btn sm variant="ghost" icon={aba==="ativo"?"x":"check"} onClick={()=>toggleStatus(s)} style={{color:aba==="ativo"?"#d97706":"#16a34a"}}/>
@@ -1802,14 +1774,6 @@ return (
 <div style={{ display:"flex",gap:10,marginTop:8 }}>
 <Btn variant="secondary" full onClick={()=>setModal(false)}>Cancelar</Btn>
 <Btn full onClick={save}>Salvar</Btn>
-</div>
-</Modal>}
-{linkModal&&<Modal title="Link do Questionário" onClose={()=>setLinkModal(null)}>
-<div style={{ fontSize:13,color:"#475569",marginBottom:12 }}>Envie este link para <b>{linkModal.name}</b> pelo WhatsApp. Ele poderá preencher a anamnese, o PAR-Q e as AVDs/AIVDs antes da avaliação presencial.</div>
-<div style={{ background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 12px",fontSize:12,wordBreak:"break-all",color:"#334155",marginBottom:14 }}>{linkModal.url}</div>
-<div style={{ display:"flex",gap:10 }}>
-<Btn variant="secondary" full onClick={()=>setLinkModal(null)}>Fechar</Btn>
-<Btn full icon="link" onClick={copyLink}>Copiar Link</Btn>
 </div>
 </Modal>}
 {appLinkModal&&<Modal title="Link do Aplicativo" onClose={()=>setAppLinkModal(null)}>
