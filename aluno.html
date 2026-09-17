@@ -544,7 +544,15 @@ const Login = () => {
         return;
       }
     } catch(err){
-      setErr(err.message==="Invalid login credentials" ? "E-mail ou senha incorretos." : (err.message || "Erro ao autenticar."));
+      const msg = err.message || "";
+      if(mode==="signup" && /already registered|already exists|user already/i.test(msg)){
+        setMode("signin");
+        setPassword("");
+        setErr("");
+        setInfo("Você já tem uma conta com esse e-mail. Digite sua senha para entrar, ou toque em \"Esqueci minha senha\" se não lembrar.");
+      } else {
+        setErr(msg==="Invalid login credentials" ? "E-mail ou senha incorretos." : (msg || "Erro ao autenticar."));
+      }
     } finally {
       setLoading(false);
     }
@@ -1710,11 +1718,6 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
           <span style={{fontSize:14,fontWeight:800,color:"#FF5603",letterSpacing:0.3}}>WELLINGTON BRITO</span>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
-          {contratoAssinatura && (
-            <button onClick={()=>baixarContratoHTML(contratoAssinatura)} title="Baixar meu contrato" style={{border:"none",background:"transparent",cursor:"pointer",padding:2,display:"flex",alignItems:"center",color:"#94a3b8"}}>
-              <Icon name="download" size={19}/>
-            </button>
-          )}
           <button onClick={onLogout} style={{border:"none",background:"transparent",color:"#94a3b8",fontSize:12,cursor:"pointer",textDecoration:"underline"}}>Sair</button>
         </div>
       </div>
