@@ -416,10 +416,10 @@ const Btn = ({children,variant="primary",sm,full,disabled,...p}) => {
 
 const Modal = ({title,onClose,children}) => (
   <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:999,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
-    <div style={{background:"#fff",borderRadius:"20px 20px 0 0",width:"100%",maxWidth:640,maxHeight:"92vh",overflowY:"auto",padding:"24px 18px 44px"}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
+    <div style={{background:"#fff",borderRadius:"20px 20px 0 0",width:"100%",maxWidth:640,maxHeight:"92vh",overflowY:"auto",padding:"0 18px 44px"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18,position:"sticky",top:0,background:"#fff",padding:"24px 0 12px",zIndex:1}}>
         <div style={{fontWeight:800,fontSize:17}}>{title}</div>
-        <button onClick={onClose} style={{border:"none",background:"#f1f5f9",borderRadius:99,width:32,height:32,cursor:"pointer",fontWeight:700,color:"#64748b",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="x" size={16}/></button>
+        <button onClick={onClose} style={{border:"none",background:"#f1f5f9",borderRadius:99,width:32,height:32,cursor:"pointer",fontWeight:700,color:"#64748b",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon name="x" size={16}/></button>
       </div>
       {children}
     </div>
@@ -797,13 +797,11 @@ const ProgressoAtividades = ({concluidas, total}) => {
   );
 };
 
-const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, atividadesSemData, concluidasMap, onToggleAtividade, onIrTreino, bibCustom, onSalvarExercicios, getSessaoAtividade}) => {
+const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, atividadesSemData, concluidasMap, ultimaConclusaoMap, onToggleAtividade, onIrTreino, bibCustom, onSalvarExercicios, getSessaoAtividade}) => {
   const hoje = new Date();
   const diaLabel = DIAS_SEMANA_LONGO[hoje.getDay()]+", "+hoje.getDate()+" de "+MESES_NOME[hoje.getMonth()];
   const totalHoje = atividadesHoje.length;
   const concluidasHoje = atividadesHoje.filter(a=>!!concluidasMap[a._id]).length;
-  const semDataPendentes = (atividadesSemData||[]).filter(a=>!concluidasMap[a._id]);
-  const semDataFeitas = (atividadesSemData||[]).filter(a=>!!concluidasMap[a._id]);
   return (
     <div style={{padding:"20px 16px 24px"}}>
       <div style={{fontSize:13,color:"#64748b",marginBottom:2}}>{diaLabel}</div>
@@ -829,19 +827,11 @@ const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, atividadesSemDa
         </div>
       )}
 
-      {semDataPendentes.length>0 && (
+      {atividadesSemData.length>0 && (
         <div style={{marginTop:16}}>
           <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:0.3,marginBottom:8}}>🔓 Quando você quiser</div>
-          {semDataPendentes.map((atv,i)=>(
-            <AtividadeCard key={atv._id||i} atividade={atv} concluida={false} onToggle={onToggleAtividade} bibCustom={bibCustom} onSalvarExercicios={onSalvarExercicios} sessaoSalva={getSessaoAtividade(atv._id)}/>
-          ))}
-        </div>
-      )}
-      {semDataFeitas.length>0 && (
-        <div style={{marginTop:16}}>
-          <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:0.3,marginBottom:8}}>✅ Já feitas</div>
-          {semDataFeitas.map((atv,i)=>(
-            <AtividadeCard key={atv._id||i} atividade={atv} concluida={true} onToggle={onToggleAtividade} bibCustom={bibCustom} onSalvarExercicios={onSalvarExercicios} sessaoSalva={getSessaoAtividade(atv._id)}/>
+          {atividadesSemData.map((atv,i)=>(
+            <AtividadeCard key={atv._id||i} atividade={atv} concluida={!!concluidasMap[atv._id]} ultimaConclusao={ultimaConclusaoMap?.[atv._id]} onToggle={onToggleAtividade} bibCustom={bibCustom} onSalvarExercicios={onSalvarExercicios} sessaoSalva={getSessaoAtividade(atv._id)}/>
           ))}
         </div>
       )}
@@ -850,9 +840,10 @@ const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, atividadesSemDa
 };
 
 // ── Tela Programação (Dia / Semana / Mês) ─────────────────────────────────────
-const AtividadeCard = ({atividade, destaque, concluida, onToggle, bibCustom, onSalvarExercicios, sessaoSalva}) => {
+const AtividadeCard = ({atividade, destaque, concluida, ultimaConclusao, onToggle, bibCustom, onSalvarExercicios, sessaoSalva}) => {
   const [showDetail,setShowDetail]=useState(false);
   const temExercicios = atividade.exercicios && atividade.exercicios.length>0;
+  const repetivel = !!atividade.semData;
   const [doneLocal,setDoneLocal]=useState(()=>new Set((sessaoSalva?.doneKeys)||[]));
   const [cargasLocal,setCargasLocal]=useState(()=>{
     const obj={};
@@ -886,11 +877,12 @@ const AtividadeCard = ({atividade, destaque, concluida, onToggle, bibCustom, onS
     <>
       <Card style={{padding:"12px 14px",marginBottom:8,background:concluida?"#f0fdf4":(destaque?"#fff7ed":"#fff"),borderColor:concluida?"#bbf7d0":(destaque?"#fed7aa":"#e2e8f0")}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <button onClick={()=>onToggle && onToggle(atividade)} style={{width:30,height:30,borderRadius:9,border:concluida?"none":"1.5px solid #cbd5e1",background:concluida?"#16a34a":"#fff",color:"#fff",cursor:onToggle?"pointer":"default",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{concluida && <Icon name="check" size={16}/>}</button>
+          <button onClick={()=>{if(!temExercicios && onToggle) onToggle(atividade);}} style={{width:30,height:30,borderRadius:9,border:concluida?"none":"1.5px solid #cbd5e1",background:concluida?"#16a34a":"#fff",color:"#fff",cursor:(!temExercicios && onToggle)?"pointer":"default",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{concluida && <Icon name="check" size={16}/>}</button>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{fontSize:13,fontWeight:700,color:concluida?"#15803d":(destaque?"#9a3412":"#0f172a"),textDecoration:concluida?"line-through":"none",opacity:concluida?0.75:1}}>{atividade.titulo}</div>
+            <div style={{fontSize:13,fontWeight:700,color:concluida?"#15803d":(destaque?"#9a3412":"#0f172a"),textDecoration:(concluida&&!repetivel)?"line-through":"none",opacity:(concluida&&!repetivel)?0.75:1}}>{atividade.titulo}</div>
             {temExercicios && <div style={{fontSize:11.5,color:concluida?"#16a34a":(destaque?"#c2410c":"#64748b"),marginTop:1}}>🏋️ {atividade.exercicios.length} exercício(s)</div>}
             {atividade.obs && <div style={{fontSize:11.5,color:concluida?"#16a34a":(destaque?"#c2410c":"#64748b"),marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{atividade.obs}</div>}
+            {repetivel && <div style={{fontSize:11,color:"#94a3b8",marginTop:1}}>{concluida?"Feito hoje — pode repetir quando quiser":(ultimaConclusao?"Última vez: "+fmt(ultimaConclusao):"Ainda não feito")}</div>}
           </div>
           {(atividade.obs || temExercicios) && (
             <button onClick={()=>setShowDetail(true)} style={{flexShrink:0,border:"1.5px solid "+(destaque?"#fed7aa":"#e2e8f0"),background:"#fff",borderRadius:8,padding:"6px 10px",fontSize:11,fontWeight:700,color:"#FF5603",cursor:"pointer",whiteSpace:"nowrap"}}>{temExercicios?"Ver treino":"Ver detalhes"}</button>
@@ -904,6 +896,19 @@ const AtividadeCard = ({atividade, destaque, concluida, onToggle, bibCustom, onS
           {temExercicios && atividade.exercicios.map((item,idx)=>(
             <ExercicioItem key={idx} item={item} bibCustom={bibCustom||[]} checked={doneLocal.has(idx)} onToggle={()=>toggleLocal(idx)} carga={cargasLocal[idx]||""} onCargaChange={v=>setCargaLocal(idx,v)}/>
           ))}
+          {temExercicios && (
+            <div style={{marginTop:10}}>
+              {(concluida && !repetivel) ? (
+                <div style={{background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"12px 14px",textAlign:"center",fontSize:13,fontWeight:700,color:"#15803d",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                  <Icon name="check" size={16}/><span>Treino concluído!</span>
+                </div>
+              ) : (
+                <Btn full onClick={()=>{if(onToggle) onToggle(atividade); setShowDetail(false);}}>
+                  <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Icon name="check" size={15}/> {concluida?"Registrar de novo":"Concluir treino"}</span>
+                </Btn>
+              )}
+            </div>
+          )}
         </Modal>
       )}
     </>
@@ -1373,7 +1378,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
   const [saveError,setSaveError]=useState("");
   const [tab,setTab]=useState("inicio"); // inicio | treino | programacao | avaliacao
   const [atividades,setAtividades]=useState([]);
-  const [concluidasMap,setConcluidasMap]=useState({});
+  const [historico,setHistorico]=useState([]); // conclusões de atividades extras: [{id, atividadeId, date}]
 
   const authedHeaders = async () => {
     const { data: sess } = await supa.auth.getSession();
@@ -1426,7 +1431,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
     })();
   },[studentId]);
 
-  // Busca quais atividades extras já foram marcadas como concluídas pelo aluno
+  // Busca quais atividades extras já foram marcadas como concluídas pelo aluno (histórico completo, com datas)
   useEffect(()=>{
     (async()=>{
       try{
@@ -1434,9 +1439,8 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
         const r = await fetch(SUPA_URL+"/rest/v1/atividades_extras_conclusoes?select=id,data&student_id=eq."+encodeURIComponent(studentId)+"&limit=1000", { headers });
         if(r.ok){
           const rows = await r.json();
-          const map = {};
-          (rows||[]).forEach(x=>{ if(x?.data?.atividadeId) map[x.data.atividadeId] = x.id; });
-          setConcluidasMap(map);
+          const lista = (rows||[]).filter(x=>x?.data?.atividadeId).map(x=>({ id:x.id, atividadeId:x.data.atividadeId, date:x.data.date }));
+          setHistorico(lista);
         }
       } catch(e){ /* tabela ainda não existe — atividades extras simplesmente aparecem como não concluídas */ }
     })();
@@ -1446,30 +1450,41 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
     const key = atividade._id;
     if(!key) return;
     const isDemo = typeof key === "string" && key.startsWith("demo-");
-    const jaConcluida = !!concluidasMap[key];
+    const hojeISOAtual = toISODate(new Date());
+
+    if(atividade.semData){
+      // Repetível: cada conclusão vira um novo registro, sem nunca "travar" a atividade — o aluno pode refazer quando quiser
+      const rowId = uid2();
+      setHistorico(prev=>[...prev, { id:rowId, atividadeId:key, date:hojeISOAtual }]);
+      if(isDemo) return;
+      try{
+        const headers = await authedHeaders();
+        const body = { id: rowId, data: { atividadeId: key, date: hojeISOAtual }, owner_id: ownerId, student_id: studentId };
+        await fetch(SUPA_URL+"/rest/v1/atividades_extras_conclusoes", { method:"POST", headers, body: JSON.stringify(body) });
+      } catch(e){ /* silencioso */ }
+      return;
+    }
+
+    const jaConcluida = historico.some(h=>h.atividadeId===key);
 
     if(isDemo){
-      setConcluidasMap(prev=>{
-        const next = {...prev};
-        if(jaConcluida) delete next[key]; else next[key] = "demo";
-        return next;
-      });
+      setHistorico(prev=>jaConcluida ? prev.filter(h=>h.atividadeId!==key) : [...prev, { id:"demo", atividadeId:key, date:atividade.date||hojeISOAtual }]);
       return;
     }
 
     if(jaConcluida){
-      const rowId = concluidasMap[key];
-      setConcluidasMap(prev=>{ const next={...prev}; delete next[key]; return next; });
+      const rowId = (historico.find(h=>h.atividadeId===key)||{}).id;
+      setHistorico(prev=>prev.filter(h=>h.atividadeId!==key));
       try{
         const headers = await authedHeaders();
         await fetch(SUPA_URL+"/rest/v1/atividades_extras_conclusoes?id=eq."+encodeURIComponent(rowId), { method:"DELETE", headers });
       } catch(e){ /* silencioso */ }
     } else {
       const rowId = uid2();
-      setConcluidasMap(prev=>({...prev, [key]: rowId}));
+      setHistorico(prev=>[...prev, { id:rowId, atividadeId:key, date:atividade.date||hojeISOAtual }]);
       try{
         const headers = await authedHeaders();
-        const body = { id: rowId, data: { atividadeId: key, date: atividade.date || toISODate(new Date()) }, owner_id: ownerId, student_id: studentId };
+        const body = { id: rowId, data: { atividadeId: key, date: atividade.date || hojeISOAtual }, owner_id: ownerId, student_id: studentId };
         await fetch(SUPA_URL+"/rest/v1/atividades_extras_conclusoes", { method:"POST", headers, body: JSON.stringify(body) });
       } catch(e){ /* silencioso */ }
     }
@@ -1578,6 +1593,24 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
   const hojeISO = toISODate(new Date());
   const atividadesHoje = atividades.filter(a=>a && a.date===hojeISO);
   const atividadesSemData = atividades.filter(a=>a && a.semData);
+
+  const concluidasMap = {};
+  const ultimaConclusaoMap = {};
+  {
+    const semDataIds = new Set(atividadesSemData.map(a=>a._id));
+    const porAtividade = {};
+    historico.forEach(row=>{ (porAtividade[row.atividadeId]=porAtividade[row.atividadeId]||[]).push(row); });
+    Object.entries(porAtividade).forEach(([id,rows])=>{
+      const ordenadas = [...rows].sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+      ultimaConclusaoMap[id] = ordenadas[0]?.date;
+      if(semDataIds.has(id)){
+        const deHoje = ordenadas.find(r=>r.date===hojeISO);
+        if(deHoje) concluidasMap[id] = deHoje.id;
+      } else {
+        concluidasMap[id] = ordenadas[0].id;
+      }
+    });
+  }
 
   const blocoAtivo = blocosAtivos[blocoIdx];
   const treinosUnicos = blocoAtivo?.treinos || [...new Set(prog.divisao?.sequencia || ["A"])];
@@ -1729,6 +1762,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
           atividadesHoje={atividadesHoje}
           atividadesSemData={atividadesSemData}
           concluidasMap={concluidasMap}
+          ultimaConclusaoMap={ultimaConclusaoMap}
           onToggleAtividade={toggleConcluidaAtividade}
           onIrTreino={()=>setTab("treino")}
           bibCustom={bibCustom}
