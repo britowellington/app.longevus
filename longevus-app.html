@@ -1796,6 +1796,23 @@ const [agendaMonthRef,setAgendaMonthRef] = useState(()=>new Date());
 const [agendaEditId,setAgendaEditId] = useState(null);
 const [agendaEditForm,setAgendaEditForm] = useState(null);
 const [baixaAberta,setBaixaAberta] = useState(false);
+const [gerandoSenha,setGerandoSenha] = useState(false);
+const [senhaMsg,setSenhaMsg] = useState("");
+const gerarSenhaTemporaria = async () => {
+  if(!st.whatsapp){ setSenhaMsg("Cadastre o WhatsApp do aluno antes de gerar a senha."); return; }
+  setGerandoSenha(true);
+  setSenhaMsg("");
+  const senha = String(Math.floor(100000+Math.random()*900000));
+  const { data, error } = await supa.rpc("rpc_gerar_senha_temporaria", { p_student_id: st.id, p_nova_senha: senha });
+  setGerandoSenha(false);
+  if(error || !data?.ok){ setSenhaMsg((data&&data.error) || "Erro ao gerar senha. Tente novamente."); return; }
+  const numeroLimpo = st.whatsapp.replace(/\D/g,"");
+  const numeroCompleto = numeroLimpo.length<=11 ? "55"+numeroLimpo : numeroLimpo;
+  const primeiroNome = (st.name||"").split(" ")[0];
+  const texto = "Oi "+primeiroNome+"! Pra acessar seu treino no app, entra com o e-mail "+st.portalEmail+" e essa senha temporária: "+senha+". Assim que entrar, o app vai pedir pra você criar sua senha definitiva.";
+  window.open("https://wa.me/"+numeroCompleto+"?text="+encodeURIComponent(texto), "_blank");
+  setSenhaMsg("Senha gerada. WhatsApp aberto com o e-mail e a senha prontos pra enviar.");
+};
 const openAgendaEdit = (entry) => { setAgendaEditId(entry.id); setAgendaEditForm({ date:entry.date, time:entry.time||"", status:entry.status, obs:entry.obs||"" }); };
 const saveAgendaEdit = () => {
   const original = agendaEntries.find(e=>e.id===agendaEditId)||{};
@@ -2064,6 +2081,14 @@ return (
 {st.responsibleName&&<span style={{ fontSize:11,color:"#64748b" }}>👤 {st.responsibleName}{st.responsiblePhone?" ("+st.responsiblePhone+")":""}</span>}
 {st.doctorName&&<span style={{ fontSize:11,color:"#64748b" }}>🩺 {st.doctorName}{st.doctorPhone?" ("+st.doctorPhone+")":""}</span>}
 </div>
+</Card>}
+{st.portalEmail&&
+<Card style={{ padding:"12px 14px",marginBottom:16,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap" }}>
+<div style={{ flex:1,minWidth:180 }}>
+<div style={{ fontSize:12,fontWeight:700,color:"#334155" }}>Acesso ao portal</div>
+<div style={{ fontSize:11,color:"#94a3b8",marginTop:2 }}>{senhaMsg||"Gere uma senha temporária e envie pro WhatsApp do aluno."}</div>
+</div>
+<Btn sm variant="secondary" onClick={gerarSenhaTemporaria} disabled={gerandoSenha}>{gerandoSenha?"Gerando...":"Gerar senha temporária"}</Btn>
 </Card>}
 {st.billing?.ativo&&(()=>{
   const hoje=todayStr();

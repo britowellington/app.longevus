@@ -612,7 +612,7 @@ const Login = () => {
   );
 };
 
-const ResetPassword = ({onDone}) => {
+const ResetPassword = ({onDone, titulo, subtitulo}) => {
   const [password,setPassword]=useState("");
   const [confirm,setConfirm]=useState("");
   const [err,setErr]=useState("");
@@ -640,7 +640,8 @@ const ResetPassword = ({onDone}) => {
       <form onSubmit={submit} style={{width:"100%",maxWidth:380}}>
         <Card style={{padding:"32px 26px",textAlign:"center"}}>
           <img src={__LOGO_ALUNO__} alt="Wellington Brito" style={{width:70,height:"auto",objectFit:"contain",marginBottom:8}}/>
-          <div style={{fontSize:19,fontWeight:800,marginBottom:20}}>Definir nova senha</div>
+          <div style={{fontSize:19,fontWeight:800,marginBottom:subtitulo?8:20}}>{titulo||"Definir nova senha"}</div>
+          {subtitulo && <div style={{fontSize:12,color:"#64748b",marginBottom:16,lineHeight:1.5}}>{subtitulo}</div>}
           <div style={{textAlign:"left",marginBottom:12}}>
             <label style={{fontSize:11,fontWeight:700,color:"#475569",display:"block",marginBottom:5}}>Nova senha</label>
             <input type="password" required value={password} onChange={e=>setPassword(e.target.value)} style={{width:"100%",padding:"11px 13px",borderRadius:9,border:"1.5px solid #e2e8f0",fontSize:14,fontFamily:"inherit",boxSizing:"border-box"}}/>
@@ -2665,6 +2666,21 @@ function App(){
         </Card>
       </div>
     );
+  }
+
+  if(studentData?.senhaTemporaria){
+    return <ResetPassword
+      titulo="Crie sua senha definitiva"
+      subtitulo="Você entrou com uma senha temporária. Defina agora a senha que vai usar daqui pra frente."
+      onDone={async()=>{
+        try{
+          const token = session.access_token || SUPA_KEY;
+          const headers = { "apikey": SUPA_KEY, "Authorization": "Bearer "+token, "Content-Type": "application/json" };
+          await fetch(SUPA_URL+"/rest/v1/rpc/rpc_confirmar_senha_definida", { method:"POST", headers, body:"{}" });
+        } catch(e){}
+        setStudentData(prev=>prev?{...prev,senhaTemporaria:false}:prev);
+      }}
+    />;
   }
 
   if(questToken===undefined || (questToken && questStatus===undefined)){

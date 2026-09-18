@@ -658,9 +658,12 @@ const escolherAcademia = (musculo, blocoNivelSemAcento, usados, bibCustom, varia
     blocoNivelSemAcento.includes(normNivel(e.nivel))
   );
   if(candidatos.length===0) return null;
+  // prioriza exercícios com foto/GIF/vídeo cadastrados; só cai pros sem mídia se não houver opção com mídia
+  const comMidia = candidatos.filter(e=>e.foto||e.video);
+  const base = comMidia.length>0 ? comMidia : candidatos;
   // prioriza os ainda não usados nesta sessão; se não sobrar nenhum, permite repetir
-  const inedito = candidatos.filter(e=>!usados.has(e.id));
-  const pool = inedito.length>0 ? inedito : candidatos;
+  const inedito = base.filter(e=>!usados.has(e.id));
+  const pool = inedito.length>0 ? inedito : base;
   return pool[variantIndex % pool.length];
 };
 
