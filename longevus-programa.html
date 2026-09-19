@@ -1732,6 +1732,26 @@ const escolherAcademiaComFallback=(musculo,nivelFiltro,usados,bibCustom,variantI
   return alt?escolherAcademia(alt,nivelFiltro,usados,bibCustom,variantIndex):null;
 };
 
+// ─── Só GIF/mídia na consultoria (inicial e final) ───────────────────────────
+// Resolve idOriginal → exercício já com foto/vídeo (via pickComMidia). Se nem o
+// original nem nenhuma alternativa tiver mídia, retorna null (exclui, não cai pro sem mídia).
+const resolverComGifObrigatorio=(idOriginal,bibCustom)=>{
+  const id=pickComMidia(idOriginal,bibCustom);
+  const ex=EXERCISES.find(e=>e.id===id)||bibCustom.find(e=>e.id===id);
+  if(!ex||!(ex.foto||ex.video))return null;
+  return{id,ex};
+};
+// ─── Aeróbico (esteira/bicicleta/elíptico) para a parte inicial — só entra se tiver mídia ──
+const AEROB_TAGS=["esteira","bicicleta","eliptico","elíptico","aerobico","aeróbico"];
+const escolherAerobicoComMidia=(nivelFiltro,bibCustom,variantIndex=0)=>{
+  const candidatos=(bibCustom||[]).filter(e=>{
+    const tags=tagsToStr(e.tags).toLowerCase();
+    return AEROB_TAGS.some(t=>tags.includes(t)) && (e.foto||e.video) && nivelFiltro.includes(normNivel(e.nivel));
+  });
+  if(candidatos.length===0)return null;
+  return candidatos[variantIndex%candidatos.length];
+};
+
 // ─── Motor principal — monta prescricao[bN][treino]={inicial,principal,final}, um bN por fase ──
 const buildPrescricaoConsultoria=(params,bibCustom,divisao)=>{
   const treinosEscolhidos=[...new Set(divisao.sequencia)];
@@ -1752,11 +1772,14 @@ const buildPrescricaoConsultoria=(params,bibCustom,divisao)=>{
       const usados=new Set();
 
       const inicial=MOBIL_TREINO.A.map(idOriginal=>{
-        const id=pickComMidia(idOriginal,bibCustom);
-        const ex=EXERCISES.find(e=>e.id===id)||bibCustom.find(e=>e.id===id);
-        if(!ex)return null;
-        return{exId:id,series:presc.s,reps:presc.r,descanso:presc.d,obs:""};
+        const r=resolverComGifObrigatorio(idOriginal,bibCustom);
+        if(!r)return null;
+        return{exId:r.id,series:presc.s,reps:presc.r,descanso:presc.d,obs:""};
       }).filter(Boolean);
+      const aerobico=escolherAerobicoComMidia(nivelFiltro,bibCustom,bloco.cicloIdx);
+      if(aerobico){
+        inicial.push({exId:aerobico.id,series:"1",reps:"5–8 min",descanso:"—",obs:"Aquecimento aeróbico"});
+      }
 
       const musculos=ehEmpPux?EMP_PUX_SLOTS[treinoKey]:(ACADEMIA_TREINO_MUSCULOS[treinoKey]||MUSC_ACADEMIA_FB);
       const principal=musculos.map((musculo,mIdx)=>{
@@ -1778,15 +1801,14 @@ const buildPrescricaoConsultoria=(params,bibCustom,divisao)=>{
         principal.push({exId:ex.id,series:presc.s,reps:presc.r,descanso:presc.d,obs:"Ênfase"});
       });
 
-      const respId=pickComMidia("ex28",bibCustom);
+      const respR=resolverComGifObrigatorio("ex28",bibCustom);
       const final=[
         ...ALONG_TREINO.A.map(idOriginal=>{
-          const id=pickComMidia(idOriginal,bibCustom);
-          const ex=EXERCISES.find(e=>e.id===id)||bibCustom.find(e=>e.id===id);
-          if(!ex)return null;
-          return{exId:id,series:presc.s,reps:presc.r,descanso:presc.d,obs:""};
+          const r=resolverComGifObrigatorio(idOriginal,bibCustom);
+          if(!r)return null;
+          return{exId:r.id,series:presc.s,reps:presc.r,descanso:presc.d,obs:""};
         }).filter(Boolean),
-        {exId:respId,series:"1",reps:"3 min",descanso:"—",obs:"Encerrar a sessão com respiração consciente"},
+        ...(respR?[{exId:respR.id,series:"1",reps:"3 min",descanso:"—",obs:"Encerrar a sessão com respiração consciente"}]:[]),
       ];
 
       prescricao[bloco.key][treinoKey]={inicial,principal,final};
