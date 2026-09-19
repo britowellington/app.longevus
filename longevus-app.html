@@ -1805,8 +1805,7 @@ const gerarSenhaTemporaria = async () => {
   const senha = String(Math.floor(100000+Math.random()*900000));
   const { data, error } = await supa.rpc("rpc_gerar_senha_temporaria", { p_student_id: st.id, p_nova_senha: senha });
   setGerandoSenha(false);
-  if(error){ console.error("rpc_gerar_senha_temporaria erro:", error); setSenhaMsg("Erro: "+(error.message||JSON.stringify(error))); return; }
-  if(!data?.ok){ setSenhaMsg((data&&data.error) || "Erro ao gerar senha. Tente novamente."); return; }
+  if(error || !data?.ok){ setSenhaMsg((data&&data.error) || "Erro ao gerar senha. Tente novamente."); return; }
   const numeroLimpo = st.whatsapp.replace(/\D/g,"");
   const numeroCompleto = numeroLimpo.length<=11 ? "55"+numeroLimpo : numeroLimpo;
   const primeiroNome = (st.name||"").split(" ")[0];
