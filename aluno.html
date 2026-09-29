@@ -385,6 +385,9 @@ const TREINO_DEFS={
   PUX:{label:"Puxar",cor:"#9333ea",bg:"#faf5ff",border:"#e9d5ff",desc:"Full body alternado — Costas, Lombar, Posterior, Bíceps, Panturrilha"},
 };
 
+const nomeTreinoDe=(prog,t)=>((prog&&prog.nomesTreinos&&prog.nomesTreinos[t])||"").trim()||TREINO_DEFS[t]?.label||t;
+const treinosDoBloco=(prog,bloco)=>(bloco&&bloco.treinos&&bloco.treinos.includes("EMP"))?bloco.treinos:[...new Set(prog?.divisao?.sequencia||bloco?.treinos||["A"])];
+
 const BLOCOS = [
   {key:"b1",label:"Bloco 1 — Adaptação",semanas:"1–6",cor:{bg:"#eff6ff",border:"#bfdbfe",texto:"#1d4ed8",dot:"#3b82f6"},desc:"Aprendizado motor, tolerância ao esforço, volume baixo",nivel:["Basico"]},
   {key:"b2",label:"Bloco 2 — Desenvolvimento",semanas:"7–12",cor:{bg:"#fff7ed",border:"#fed7aa",texto:"#c2410c",dot:"#FF5603"},desc:"Progressão de volume e complexidade",nivel:["Basico","Intermediario"]},
@@ -1614,7 +1617,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
   }
 
   const blocoAtivo = blocosAtivos[blocoIdx];
-  const treinosUnicos = blocoAtivo?.treinos || [...new Set(prog.divisao?.sequencia || ["A"])];
+  const treinosUnicos = treinosDoBloco(prog, blocoAtivo);
   const requiredPerBlock = requiredParaBloco(blocoIdx);
   const treinoAtivo = treinosUnicos[treinoIdx] || treinosUnicos[0];
   const td = TREINO_DEFS[treinoAtivo];
@@ -1759,7 +1762,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
       {tab==="inicio" && (
         <TelaInicio
           firstName={firstName}
-          treinoHojeLabel={treinoDeHoje && TREINO_DEFS[treinoDeHoje]?.label}
+          treinoHojeLabel={treinoDeHoje && nomeTreinoDe(prog,treinoDeHoje)}
           atividadesHoje={atividadesHoje}
           atividadesSemData={atividadesSemData}
           concluidasMap={concluidasMap}
@@ -1914,7 +1917,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
           <div style={{background:TREINO_DEFS[treinoDeHoje].bg,border:`2px solid ${TREINO_DEFS[treinoDeHoje].cor}`,borderRadius:10,padding:"10px 12px",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <div>
               <div style={{display:"flex",alignItems:"center",gap:5,fontSize:10,fontWeight:700,color:TREINO_DEFS[treinoDeHoje].cor,textTransform:"uppercase",letterSpacing:0.3}}><Icon name="calendar" size={12}/> Treino de hoje</div>
-              <div style={{fontSize:15,fontWeight:800,color:TREINO_DEFS[treinoDeHoje].cor}}>{TREINO_DEFS[treinoDeHoje].label}</div>
+              <div style={{fontSize:15,fontWeight:800,color:TREINO_DEFS[treinoDeHoje].cor}}>{nomeTreinoDe(prog,treinoDeHoje)}</div>
             </div>
             {treinoAtivo!==treinoDeHoje && (
               <Btn sm onClick={()=>{const idx=treinosUnicos.indexOf(treinoDeHoje);if(idx!==-1)changeTreino(idx);}}>Ir para hoje</Btn>
@@ -1943,7 +1946,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
             const d = TREINO_DEFS[t];
             return (
               <button key={t+i} onClick={()=>changeTreino(i)} style={{flex:1,minWidth:70,border:`1.5px solid ${treinoIdx===i?d.cor:d.border}`,borderRadius:9,padding:"8px 6px",fontSize:11,fontWeight:700,cursor:"pointer",background:treinoIdx===i?d.bg:"#fff",color:treinoIdx===i?d.cor:"#64748b",textAlign:"center",boxShadow:treinoIdx===i?"0 2px 6px rgba(15,23,42,0.08)":"none",transition:"box-shadow 0.15s"}}>
-                {d.label}
+                {nomeTreinoDe(prog,t)}
               </button>
             );
           })}
@@ -1986,7 +1989,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
             {savedToday ? (
               <div style={{background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"12px 14px",textAlign:"center",fontSize:13,fontWeight:700,color:"#15803d",display:"flex",alignItems:"flex-start",gap:8}}>
                 <Icon name="check" size={16} style={{marginTop:2,flexShrink:0}}/>
-                <span>Treino concluído! Na próxima vez, seu treino {(()=>{const nx=treinosUnicos[(treinoIdx+1)%treinosUnicos.length];return TREINO_DEFS[nx]?.label;})()} vai abrir direto.</span>
+                <span>Treino concluído! Na próxima vez, seu treino {(()=>{const nx=treinosUnicos[(treinoIdx+1)%treinosUnicos.length];return nomeTreinoDe(prog,nx);})()} vai abrir direto.</span>
               </div>
             ) : (
               <>
@@ -2078,7 +2081,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
 
       {showCelebration && (()=>{
         const proximoTreino = treinosUnicos[(treinoIdx+1)%treinosUnicos.length];
-        const proximoLabel = TREINO_DEFS[proximoTreino]?.label;
+        const proximoLabel = proximoTreino && nomeTreinoDe(prog,proximoTreino);
         const feitas = sessionsPerBlock(blocoAtivo.key);
         const desbloqueouBloco = feitas>=requiredPerBlock && blocoIdx<blocosAtivos.length-1;
         return (
@@ -2089,7 +2092,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
               </div>
               <div style={{fontWeight:800,fontSize:20,marginBottom:6}}>Parabéns!</div>
               <div style={{fontSize:14,color:"#64748b",marginBottom:18,lineHeight:1.6}}>
-                Você concluiu o {td?.label} de hoje.{proximoLabel && <> Na próxima vez, seu <b>{proximoLabel}</b> vai abrir direto.</>}
+                Você concluiu o {nomeTreinoDe(prog,treinoAtivo)} de hoje.{proximoLabel && <> Na próxima vez, seu <b>{proximoLabel}</b> vai abrir direto.</>}
               </div>
               {!desbloqueouBloco ? (
                 <div style={{marginBottom:18}}>
