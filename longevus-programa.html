@@ -344,6 +344,7 @@ const ACADEMIA_DIVISAO_OPTIONS={
      {modelo:"academia_ul",label:"Superior/Inferior (2×)",desc:"Superior e Inferior, um de cada",sequencia:["SUP","INF"]}],
   3:[{modelo:"academia_fb",label:"Full Body (3×)",desc:"Corpo todo nas 3 sessões",sequencia:["FB","FB","FB"]},
      {modelo:"academia_ul",label:"Superior/Inferior (3×)",desc:"Superior, Inferior, Superior",sequencia:["SUP","INF","SUP"]},
+     {modelo:"academia_ulf",label:"Superior/Inferior/Full Body (3×)",desc:"Superior, Inferior, Full Body",sequencia:["SUP","INF","FB"]},
      {modelo:"academia_ppl",label:"Push/Pull/Legs (3×)",desc:"Empurra, Puxa, Perna",sequencia:["PUSH","PULL","LEGS"]}],
   4:[{modelo:"academia_fb",label:"Full Body (4×)",desc:"Corpo todo nas 4 sessões",sequencia:["FB","FB","FB","FB"]},
      {modelo:"academia_ul",label:"Superior/Inferior (4×)",desc:"Alternando Superior e Inferior",sequencia:["SUP","INF","SUP","INF"]},
@@ -1436,6 +1437,11 @@ const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,n
   );
 };
 
+// ─── NOMES E ORDEM DOS TREINOS (personalizáveis por programa) ────────────────
+const TREINOS_ACADEMIA_KEYS=["FB","SUP","INF","PUSH","PULL","LEGS","PEITO","COSTAS","PERNA","OMBRO"];
+const TREINOS_CASA_KEYS=["A","B","C","D"];
+const nomeTreinoDe=(nomes,t)=>((nomes&&nomes[t])||"").trim()||TREINO_DEFS[t]?.label||t;
+
 // ─── TELA: VER PROGRAMA ───────────────────────────────────────────────────────
 const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEdit})=>{
   const prog=programs.find(p=>p.id===programId);
@@ -1448,7 +1454,9 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
   const [modeloNome,setModeloNome]=useState("");
   const [modeloSalvando,setModeloSalvando]=useState(false);
   const [modeloFeedback,setModeloFeedback]=useState("");
-  useEffect(()=>{if(prog)setPrescricao(JSON.parse(JSON.stringify(prog.prescricao||{})));},[programId]);
+  const [sequencia,setSequencia]=useState(null);
+  const [nomes,setNomes]=useState({});
+  useEffect(()=>{if(prog){setPrescricao(JSON.parse(JSON.stringify(prog.prescricao||{})));setSequencia([...(prog.divisao?.sequencia||["A"])]);setNomes({...(prog.nomesTreinos||{})});}},[programId]);
   if(!prog||!prescricao)return null;
   const abrirModeloModal=()=>{setModeloNome(prog.titulo||"Periodização");setModeloFeedback("");setModeloModal(true);};
   const confirmarSalvarModelo=async()=>{
@@ -1460,7 +1468,7 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
       categoria:prog.origem==="patologia"?prog.patologiaId:null,
       origemProgramaId:prog.id,
       vezesUsada:0,
-      data:{titulo:prog.titulo,freq:prog.freq,divisao:prog.divisao,obs:prog.obs,prescricao,origem:prog.origem,patologiaId:prog.patologiaId||null}
+      data:{titulo:prog.titulo,freq:prog.freq,divisao:prog.divisao,nomesTreinos:prog.nomesTreinos||null,obs:prog.obs,prescricao,origem:prog.origem,patologiaId:prog.patologiaId||null}
     };
     const ok=await ModeloDB.save(modelo);
     setModeloSalvando(false);
@@ -1469,11 +1477,60 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
   };
   const blocosAtivos=blocosPara(prog);
   const blocoAtivo=blocosAtivos[blocoIdx];
-  const treinosUnicos=blocoAtivo?.treinos||[...new Set(prog.divisao?.sequencia||["A"])];
+  const seqAtual=sequencia||prog.divisao?.sequencia||["A"];
+  const seqUnicos=[...new Set(seqAtual)];
+  const nomeT=t=>nomeTreinoDe(nomes,t);
+  const treinosUnicos=(blocoAtivo?.treinos&&blocoAtivo.treinos.includes("EMP"))?blocoAtivo.treinos:seqUnicos;
   const treinoAtivo=treinosUnicos[treinoIdx]||treinosUnicos[0];
   const tDef=TREINO_DEFS[treinoAtivo];
-  const saveEdits=()=>{const fresh=LS.get("longevus_programs",programs);const editedProg={...prog,prescricao};const u=fresh.map(p=>p.id===prog.id?editedProg:p);setPrograms(u);LS.set("longevus_programs",u);ProgDB.save(editedProg);setEditMode(false);};
-  const cancelEdit=()=>{setPrescricao(JSON.parse(JSON.stringify(prog.prescricao)));setEditMode(false);};
+  // Treinos que podem ser escolhidos em cada dia (mesma família da divisão do programa)
+  const seqOriginalUnicos=[...new Set(prog.divisao?.sequencia||["A"])];
+  const opcoesTreinoDia=prog.origem==="patologia"?seqOriginalUnicos
+    :seqOriginalUnicos.some(t=>TREINOS_ACADEMIA_KEYS.includes(t))?TREINOS_ACADEMIA_KEYS:TREINOS_CASA_KEYS;
+  const treinosRenomeaveis=[...seqUnicos,...(blocosAtivos.some(b=>(b.treinos||[]).includes("EMP"))?["EMP","PUX"]:[])];
+  // Gera a prescrição de um treino que ainda não existe no programa (ex: trocar um dia pra Full Body)
+  const gerarTreinoNovo=(key)=>{
+    const variante=Math.max(0,(prog.variante||1)-1);
+    if(prog.origem==="consultoria"&&prog.consultoria?.parametros){
+      return buildPrescricaoConsultoria(prog.consultoria.parametros,bibCustom,{...prog.divisao,sequencia:[key]}).prescricao;
+    }
+    if(prog.local==="academia"||TREINOS_ACADEMIA_KEYS.includes(key)){
+      return buildPrescricaoAcademia([key],bibCustom,variante,prog.enfase||"nenhuma");
+    }
+    return buildPrescricao(null,[key],bibCustom,variante);
+  };
+  const trocarTreinoDia=(i,key)=>{
+    setSequencia(s=>{const n=[...(s||seqAtual)];n[i]=key;return n;});
+    const faltando=blocosAtivos.some(b=>!(b.treinos&&b.treinos.includes("EMP"))&&!(prescricao[b.key]||{})[key]);
+    if(!faltando)return;
+    const gerado=gerarTreinoNovo(key)||{};
+    setPrescricao(p=>{
+      const novo={...p};
+      blocosAtivos.forEach(b=>{
+        if((novo[b.key]||{})[key])return;
+        const sessao=(gerado[b.key]||{})[key];
+        if(sessao)novo[b.key]={...(novo[b.key]||{}),[key]:sessao};
+      });
+      return novo;
+    });
+  };
+  const moverDia=(i,d)=>{
+    const j=i+d;
+    if(j<0||j>=seqAtual.length)return;
+    setSequencia(s=>{const n=[...(s||seqAtual)];[n[i],n[j]]=[n[j],n[i]];return n;});
+    setTreinoIdx(0);
+  };
+  const saveEdits=()=>{
+    const fresh=LS.get("longevus_programs",programs);
+    const nomesLimpos={};
+    Object.keys(nomes).forEach(k=>{const v=(nomes[k]||"").trim();if(v&&v!==TREINO_DEFS[k]?.label)nomesLimpos[k]=v;});
+    const conjuntoMudou=seqUnicos.slice().sort().join()!==seqOriginalUnicos.slice().sort().join();
+    const divisaoNova={...prog.divisao,sequencia:[...seqAtual],...(conjuntoMudou?{modelo:"personalizada",label:"Personalizada ("+seqAtual.length+"×)",desc:seqAtual.map(nomeT).join(", ")}:{})};
+    const blocosConfigNovo=prog.blocosConfig?prog.blocosConfig.map(b=>(b.treinos&&!b.treinos.includes("EMP"))?{...b,treinos:seqUnicos}:b):prog.blocosConfig;
+    const editedProg={...prog,prescricao,divisao:divisaoNova,nomesTreinos:Object.keys(nomesLimpos).length?nomesLimpos:null,...(prog.blocosConfig?{blocosConfig:blocosConfigNovo}:{})};
+    const u=fresh.map(p=>p.id===prog.id?editedProg:p);setPrograms(u);LS.set("longevus_programs",u);ProgDB.save(editedProg);setEditMode(false);
+  };
+  const cancelEdit=()=>{setPrescricao(JSON.parse(JSON.stringify(prog.prescricao)));setSequencia([...(prog.divisao?.sequencia||["A"])]);setNomes({...(prog.nomesTreinos||{})});setTreinoIdx(0);setEditMode(false);};
   const deletePrograma=()=>{if(!window.confirm("Remover?"))return;const fresh=LS.get("longevus_programs",programs);const u=fresh.filter(p=>p.id!==prog.id);setPrograms(u);LS.set("longevus_programs",u);ProgDB.remove(prog.id);nav("lista");};
   const updateSessao=(bKey,tKey,sessao)=>setPrescricao(p=>({...p,[bKey]:{...(p[bKey]||{}),[tKey]:sessao}}));
   // Quando o professor edita exercícios num bloco (troca, exclui ou adiciona), aplica a mesma
@@ -1575,8 +1632,31 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
       <Card style={{marginBottom:10,padding:"10px 14px"}}>
         <div style={{fontSize:11,fontWeight:700,color:"#64748b",marginBottom:6,textTransform:"uppercase"}}>Semana tipo · {prog.divisao?.label}</div>
         <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-          {(prog.divisao?.sequencia||[]).map((t,i)=>{const td=TREINO_DEFS[t];return(<div key={i} style={{textAlign:"center",minWidth:40}}><div style={{fontSize:10,color:"#94a3b8",marginBottom:2}}>D{i+1}</div><div style={{background:td?.bg,border:`1.5px solid ${td?.border}`,borderRadius:7,padding:"4px 5px",fontWeight:800,fontSize:11,color:td?.cor}}>{t}</div></div>);})}
+          {seqAtual.map((t,i)=>{const td=TREINO_DEFS[t];return(<div key={i} style={{textAlign:"center",minWidth:40,maxWidth:120}}><div style={{fontSize:10,color:"#94a3b8",marginBottom:2}}>D{i+1}</div><div style={{background:td?.bg,border:"1.5px solid "+(td?.border||"#e2e8f0"),borderRadius:7,padding:"4px 6px",fontWeight:800,fontSize:11,color:td?.cor,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{nomeT(t)}</div></div>);})}
         </div>
+        {editMode&&(
+          <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid #f1f5f9"}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#64748b",marginBottom:6}}>Nomes dos treinos</div>
+            {treinosRenomeaveis.map(t=>{const td=TREINO_DEFS[t];return(
+              <div key={t} style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                <div style={{width:10,height:10,borderRadius:99,background:td?.cor||"#94a3b8",flexShrink:0}}/>
+                <input value={nomes[t]!=null?nomes[t]:(td?.label||t)} onChange={e=>{const v=e.target.value;setNomes(n=>({...n,[t]:v}));}} placeholder={td?.label||t} style={{flex:1,minWidth:0,padding:"8px 10px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box"}}/>
+              </div>
+            );})}
+            <div style={{fontSize:11,fontWeight:700,color:"#64748b",margin:"12px 0 6px"}}>Ordem da semana</div>
+            {seqAtual.map((t,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",width:24}}>D{i+1}</div>
+                <select value={t} onChange={e=>trocarTreinoDia(i,e.target.value)} style={{flex:1,minWidth:0,padding:"8px 8px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",background:"#fff"}}>
+                  {[...new Set([...opcoesTreinoDia,t])].map(o=>(<option key={o} value={o}>{nomeT(o)}</option>))}
+                </select>
+                <button onClick={()=>moverDia(i,-1)} disabled={i===0} style={{width:34,height:34,border:"1.5px solid #e2e8f0",borderRadius:8,background:"#fff",cursor:i===0?"default":"pointer",color:i===0?"#cbd5e1":"#475569",fontSize:14,fontWeight:700}}>▲</button>
+                <button onClick={()=>moverDia(i,1)} disabled={i===seqAtual.length-1} style={{width:34,height:34,border:"1.5px solid #e2e8f0",borderRadius:8,background:"#fff",cursor:i===seqAtual.length-1?"default":"pointer",color:i===seqAtual.length-1?"#cbd5e1":"#475569",fontSize:14,fontWeight:700}}>▼</button>
+              </div>
+            ))}
+            <div style={{fontSize:11,color:"#94a3b8",marginTop:4,lineHeight:1.5}}>Trocar um dia por um treino novo gera os exercícios dele em todos os blocos. As mudanças só valem depois de tocar em Salvar.</div>
+          </div>
+        )}
         {blocoAtivo?.cicloIdx===0&&blocoAtivo?.treinos?.includes("EMP")&&<div style={{fontSize:11,color:"#0891b2",marginTop:8}}>ℹ️ Ciclo 1 usa Full Body Empurrar/Puxar Alternado (padrão iniciante) — a divisão acima entra a partir do Ciclo 2.</div>}
       </Card>
       {prog.obs&&<Card style={{marginBottom:10,background:"#f8fafc",padding:"9px 13px"}}><div style={{fontSize:12,color:"#64748b",fontStyle:"italic"}}>📝 {prog.obs}</div></Card>}
@@ -1587,7 +1667,7 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
         <div style={{fontWeight:700,fontSize:12,color:blocoAtivo.cor.texto}}>{blocoAtivo.label} · sem. {blocoAtivo.semanas} · {blocoAtivo.desc}</div>
       </div>
       <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
-        {treinosUnicos.map((t,i)=>{const td=TREINO_DEFS[t];return(<button key={t} onClick={()=>setTreinoIdx(i)} style={{flex:1,minWidth:60,border:`1.5px solid ${treinoIdx===i?td.cor:td.border}`,borderRadius:9,padding:"7px 6px",fontSize:11,fontWeight:700,cursor:"pointer",background:treinoIdx===i?td.bg:"#fff",color:treinoIdx===i?td.cor:"#64748b",textAlign:"center"}}>{td.label}</button>);})}
+        {treinosUnicos.map((t,i)=>{const td=TREINO_DEFS[t];return(<button key={t} onClick={()=>setTreinoIdx(i)} style={{flex:1,minWidth:60,border:`1.5px solid ${treinoIdx===i?td.cor:td.border}`,borderRadius:9,padding:"7px 6px",fontSize:11,fontWeight:700,cursor:"pointer",background:treinoIdx===i?td.bg:"#fff",color:treinoIdx===i?td.cor:"#64748b",textAlign:"center",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{nomeT(t)}</button>);})}
       </div>
       <TreinoMomentos
         key={blocoAtivo.key+"-"+treinoAtivo+"-"+editMode}
@@ -2086,7 +2166,7 @@ const VerModelo=({modeloId,modelos,setModelos,bibCustom,students,programs,setPro
     const programasDoAluno=(programs||[]).filter(p=>p.studentId===alunoSel);
     const cicloAtual=programasDoAluno.length+1;
     const novoProg={
-      id:uid(),studentId:alunoSel,titulo:d.titulo||modelo.nome,semanas:24,freq:d.freq,divisao:d.divisao,
+      id:uid(),studentId:alunoSel,titulo:d.titulo||modelo.nome,semanas:24,freq:d.freq,divisao:d.divisao,nomesTreinos:d.nomesTreinos||null,
       obs:d.obs||"",prescricao:JSON.parse(JSON.stringify(prescricao)),
       criadoEm:new Date().toISOString().slice(0,10),assessmentRef:null,
       origem:d.origem||"manual",patologiaId:d.patologiaId||null,ciclo:cicloAtual,variante:1,
@@ -2111,7 +2191,7 @@ const VerModelo=({modeloId,modelos,setModelos,bibCustom,students,programs,setPro
       <Card style={{marginBottom:10,padding:"10px 14px"}}>
         <div style={{fontSize:11,fontWeight:700,color:"#64748b",marginBottom:6,textTransform:"uppercase"}}>Semana tipo · {d.divisao?.label}</div>
         <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-          {(d.divisao?.sequencia||[]).map((t,i)=>{const td=TREINO_DEFS[t];return(<div key={i} style={{textAlign:"center",minWidth:40}}><div style={{fontSize:10,color:"#94a3b8",marginBottom:2}}>D{i+1}</div><div style={{background:td?.bg,border:`1.5px solid ${td?.border}`,borderRadius:7,padding:"4px 5px",fontWeight:800,fontSize:11,color:td?.cor}}>{t}</div></div>);})}
+          {(d.divisao?.sequencia||[]).map((t,i)=>{const td=TREINO_DEFS[t];return(<div key={i} style={{textAlign:"center",minWidth:40}}><div style={{fontSize:10,color:"#94a3b8",marginBottom:2}}>D{i+1}</div><div style={{background:td?.bg,border:`1.5px solid ${td?.border}`,borderRadius:7,padding:"4px 5px",fontWeight:800,fontSize:11,color:td?.cor}}>{nomeTreinoDe(d.nomesTreinos,t)}</div></div>);})}
         </div>
       </Card>
       {d.obs&&<Card style={{marginBottom:10,background:"#f8fafc",padding:"9px 13px"}}><div style={{fontSize:12,color:"#64748b",fontStyle:"italic"}}>📝 {d.obs}</div></Card>}
@@ -2122,7 +2202,7 @@ const VerModelo=({modeloId,modelos,setModelos,bibCustom,students,programs,setPro
         <div style={{fontWeight:700,fontSize:12,color:blocoAtivo.cor.texto}}>{blocoAtivo.label} · sem. {blocoAtivo.semanas} · {blocoAtivo.desc}</div>
       </div>
       <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
-        {treinosUnicos.map((t,i)=>{const td=TREINO_DEFS[t];return(<button key={t} onClick={()=>setTreinoIdx(i)} style={{flex:1,minWidth:60,border:`1.5px solid ${treinoIdx===i?td.cor:td.border}`,borderRadius:9,padding:"7px 6px",fontSize:11,fontWeight:700,cursor:"pointer",background:treinoIdx===i?td.bg:"#fff",color:treinoIdx===i?td.cor:"#64748b",textAlign:"center"}}>{td.label}</button>);})}
+        {treinosUnicos.map((t,i)=>{const td=TREINO_DEFS[t];return(<button key={t} onClick={()=>setTreinoIdx(i)} style={{flex:1,minWidth:60,border:`1.5px solid ${treinoIdx===i?td.cor:td.border}`,borderRadius:9,padding:"7px 6px",fontSize:11,fontWeight:700,cursor:"pointer",background:treinoIdx===i?td.bg:"#fff",color:treinoIdx===i?td.cor:"#64748b",textAlign:"center"}}>{nomeTreinoDe(d.nomesTreinos,t)}</button>);})}
       </div>
       <TreinoMomentos
         key={blocoAtivo.key+"-"+treinoAtivo}
