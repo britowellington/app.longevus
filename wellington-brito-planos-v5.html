@@ -40,7 +40,10 @@
   /* PLANS */
   main{ padding-bottom:80px; }
   .planos{
-    display:grid; grid-template-columns:1fr 1.08fr 1fr; gap:22px; align-items:end;
+    display:grid; grid-template-columns:repeat(4,1fr); gap:20px; align-items:stretch;
+  }
+  @media (max-width:1080px){
+    .planos{ grid-template-columns:repeat(2,1fr); max-width:760px; margin:0 auto; }
   }
   @media (max-width:880px){
     .planos{ grid-template-columns:1fr; max-width:440px; margin:0 auto; gap:24px; }
@@ -49,7 +52,7 @@
 
   .plano{
     background:var(--paper); border:1px solid var(--line); border-radius:3px;
-    padding:36px 30px; display:flex; flex-direction:column;
+    padding:34px 24px; display:flex; flex-direction:column;
   }
   .tag{
     font-size:10.5px; letter-spacing:0.09em; text-transform:uppercase; font-weight:700;
@@ -59,8 +62,8 @@
   .plano h2{ font-family:'Fraunces', serif; font-size:24px; font-weight:500; margin-bottom:4px; }
   .plano .freq{ font-size:13.5px; color:var(--muted); margin-bottom:24px; }
 
-  .preco{ margin-bottom:26px; }
-  .preco .valor{ font-family:'Fraunces', serif; font-size:36px; font-weight:500; }
+  .preco{ margin-bottom:26px; white-space:nowrap; }
+  .preco .valor{ font-family:'Fraunces', serif; font-size:32px; font-weight:500; }
   .preco .periodo{ font-size:13px; color:var(--muted); }
   .preco.consulta .valor{ font-size:26px; font-weight:500; }
 
@@ -72,7 +75,7 @@
   .beneficios li::before{ content:'—'; color:var(--orange); flex-shrink:0; }
 
   .btn{
-    text-align:center; padding:14px 20px; font-size:14.5px; font-weight:700;
+    text-align:center; padding:14px 12px; font-size:14.5px; white-space:nowrap; font-weight:700;
     border-radius:2px; border:1px solid var(--orange); background:var(--orange); color:var(--ink);
     transition:background .2s ease, border-color .2s ease;
   }
@@ -96,7 +99,7 @@
 
 <div class="title-block wrap">
   <h1 class="serif">Escolha seu plano</h1>
-  <p>Três formas de acompanhamento. Escolha a que melhor se encaixa na sua rotina.</p>
+  <p>Quatro formas de acompanhamento. Escolha a que melhor se encaixa na sua rotina.</p>
 </div>
 
 <main class="wrap">
@@ -108,7 +111,7 @@
       <h2 class="serif">Presencial</h2>
       <div class="freq">Acompanhamento completo, toda semana</div>
       <div class="preco">
-        <span class="valor serif">R$ 1.440</span>
+        <span class="valor serif">R$ 1.200</span>
         <span class="periodo">/ mês</span>
       </div>
       <ul class="beneficios">
@@ -118,6 +121,24 @@
         <li>Prioridade de horário</li>
       </ul>
       <a class="btn" href="https://britowellington.github.io/app.longevus/aluno.html?cadastro=1&plano=presencial">Quero este plano</a>
+    </div>
+
+    <!-- PLANO PRESENCIAL 2X -->
+    <div class="plano">
+      <div class="tag">2x por semana</div>
+      <h2 class="serif">Presencial</h2>
+      <div class="freq">Acompanhamento próximo, em ritmo mais leve</div>
+      <div class="preco">
+        <span class="valor serif">R$ 900</span>
+        <span class="periodo">/ mês</span>
+      </div>
+      <ul class="beneficios">
+        <li>Sessões presenciais 2x por semana</li>
+        <li>Avaliação e reavaliações completas</li>
+        <li>Ajuste contínuo do treino</li>
+        <li>Suporte por WhatsApp</li>
+      </ul>
+      <a class="btn" href="https://britowellington.github.io/app.longevus/aluno.html?cadastro=1&plano=presencial2x">Quero este plano</a>
     </div>
 
     <!-- PLANO HÍBRIDO -->
