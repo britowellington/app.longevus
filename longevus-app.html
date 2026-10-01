@@ -133,7 +133,7 @@ const LS = {
 get: (k, d) => { try { const v = window.localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
 set: (k, v) => { try { window.localStorage.setItem(k, JSON.stringify(v)); } catch {} }
 };const uid = () => Math.random().toString(36).slice(2, 10);
-const todayStr = () => new Date().toISOString().slice(0, 10);
+const todayStr = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 const DIAS_SEMANA_CURTO = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
 const MESES_NOME = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 const toISODateLocal = (d) => { const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),dd=String(d.getDate()).padStart(2,"0"); return `${y}-${m}-${dd}`; };
@@ -915,7 +915,7 @@ return (
 </Card>
 ))}
 </div>
-<div style={{ fontSize:12,fontWeight:700,color:"#64748b",marginBottom:8 }}>Financeiro · {new Date(mesStart).toLocaleDateString("pt-BR",{month:"long"})}</div>
+<div style={{ fontSize:12,fontWeight:700,color:"#64748b",marginBottom:8 }}>Financeiro · {MESES_NOME[Number(anoMes.slice(5,7))-1].toLowerCase()}</div>
 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:22 }}>
 {[["Previsto",previstoMes,"#6366f1","#eef2ff"],["Recebido",recebidoMes,"#16a34a","#dcfce7"],["Em aberto",emAbertoMes,"#d97706","#fef3c7"]].map(([l,v,c,bg])=>(
 <Card key={l} onClick={()=>nav("financeiro")} style={{ padding:"10px 8px",background:bg,border:"none" }}>
@@ -1288,12 +1288,15 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
     ]);
   };
   // Previsto x recebido — período selecionável
-  const PERIODOS = [{id:"mes",label:"Este mês"},{id:"15d",label:"15 dias"},{id:"2m",label:"2 meses"},{id:"3m",label:"3 meses"},{id:"6m",label:"6 meses"}];
+  const PERIODOS = [{id:"mes",label:"Mês"},{id:"15d",label:"15 dias"},{id:"2m",label:"2 meses"},{id:"3m",label:"3 meses"},{id:"6m",label:"6 meses"}];
   const [periodo,setPeriodo] = useState("mes");
+  const [mesOffset,setMesOffset] = useState(0); // 0 = mês atual, -1 = anterior, +1 = seguinte
+  const mesSelD = (()=>{ const d=new Date(hoje+"T00:00:00"); return new Date(d.getFullYear(), d.getMonth()+mesOffset, 1); })();
+  const mesSelLabel = MESES_NOME[mesSelD.getMonth()]+" "+mesSelD.getFullYear();
   const [periodoInicio,periodoFimSel] = (()=>{
     const fimD = new Date(hoje+"T00:00:00");
     if(periodo==="mes"){
-      const y=fimD.getFullYear(), m=fimD.getMonth();
+      const y=mesSelD.getFullYear(), m=mesSelD.getMonth();
       return [toISODateLocal(new Date(y,m,1)), toISODateLocal(new Date(y,m+1,0))];
     }
     const dias = {"15d":15,"2m":60,"3m":90,"6m":180}[periodo] || 30;
@@ -1385,9 +1388,18 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
       ) : <>
       <div style={{ display:"flex",gap:6,marginBottom:14,overflowX:"auto",paddingBottom:2 }}>
         {PERIODOS.map(pr=>(
-          <button key={pr.id} onClick={()=>setPeriodo(pr.id)} style={{ flexShrink:0,border:"none",borderRadius:99,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",background:periodo===pr.id?"#0f172a":"#f1f5f9",color:periodo===pr.id?"#fff":"#64748b" }}>{pr.label}</button>
+          <button key={pr.id} onClick={()=>{ setPeriodo(pr.id); if(pr.id!=="mes") setMesOffset(0); }} style={{ flexShrink:0,border:"none",borderRadius:99,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer",background:periodo===pr.id?"#0f172a":"#f1f5f9",color:periodo===pr.id?"#fff":"#64748b" }}>{pr.label}</button>
         ))}
       </div>
+      {periodo==="mes" &&
+      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,background:"#fff",border:"1px solid #e2e8f0",borderRadius:12,padding:"6px 8px",marginBottom:14 }}>
+        <button onClick={()=>setMesOffset(o=>o-1)} aria-label="Mês anterior" style={{ border:"none",background:"#f1f5f9",borderRadius:9,width:36,height:36,fontSize:18,fontWeight:800,color:"#334155",cursor:"pointer" }}>‹</button>
+        <div style={{ textAlign:"center",flex:1 }}>
+          <div style={{ fontSize:15,fontWeight:800,color:"#0f172a" }}>{mesSelLabel}</div>
+          {mesOffset!==0 && <button onClick={()=>setMesOffset(0)} style={{ border:"none",background:"none",padding:0,marginTop:2,fontSize:11,fontWeight:700,color:O,cursor:"pointer" }}>Voltar ao mês atual</button>}
+        </div>
+        <button onClick={()=>setMesOffset(o=>o+1)} aria-label="Mês seguinte" style={{ border:"none",background:"#f1f5f9",borderRadius:9,width:36,height:36,fontSize:18,fontWeight:800,color:"#334155",cursor:"pointer" }}>›</button>
+      </div>}
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10 }}>
         <Card onClick={()=>setDetalheCard("previsto")} style={{ padding:"14px 16px",cursor:"pointer" }}>
           <div style={{ fontSize:11,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:4 }}>Previsto no período</div>
