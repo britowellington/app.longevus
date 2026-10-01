@@ -6,8 +6,11 @@
 // v2: agora força fetch({cache:"no-store"}) pra ignorar completamente o cache
 // HTTP do navegador (antes, mesmo em modo "network-first", o Chrome podia
 // responder com uma cópia em cache sem nem chegar a acessar a internet).
+//
+// v3: novo "id" no manifest-aluno.json (meu-treino-aluno-v2), pra destravar a
+// instalação em aparelhos onde o Chrome ficou com um registro antigo preso.
 
-const CACHE_NAME = "meutreino-cache-v2"; // troque para v3, v4... se quiser forçar limpeza de cache
+const CACHE_NAME = "meutreino-cache-v3"; // troque para v4, v5... se quiser forçar limpeza de cache
 const APP_SHELL = [
   "./aluno.html",
   "./manifest-aluno.json",
@@ -49,4 +52,3 @@ self.addEventListener("fetch", (event) => {
       .catch(() => caches.match(req))
   );
 });
-
