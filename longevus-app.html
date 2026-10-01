@@ -892,7 +892,7 @@ const previstoMes = pg.filter(p=>p.dataPrevista&&p.dataPrevista>=mesStart&&p.dat
   + rx.filter(r=>r.dataPrevista&&r.dataPrevista>=mesStart&&r.dataPrevista<=mesEnd).reduce((a,r)=>a+(Number(r.valorPrevisto)||0),0);
 const recebidoMes = pg.filter(p=>p.status==="pago"&&p.dataPagamento&&p.dataPagamento>=mesStart&&p.dataPagamento<=mesEnd).reduce((a,p)=>a+(Number(p.valorPago)||0),0)
   + rx.filter(r=>r.status==="recebido"&&r.dataPagamento&&r.dataPagamento>=mesStart&&r.dataPagamento<=mesEnd).reduce((a,r)=>a+(Number(r.valorPago)||0),0);
-const abertosMes = pg.filter(p=>p.status==="previsto"&&p.dataPrevista&&p.dataPrevista>=mesStart&&p.dataPrevista<=mesEnd);
+const abertosMes = pg.filter(p=>p.status==="previsto"&&p.dataPrevista&&p.dataPrevista>=mesStart&&p.dataPrevista<=mesEnd&&p.dataPrevista<=hoje);
 const emAbertoMes = abertosMes.reduce((a,p)=>a+(Number(p.valorPrevisto)||0),0);
 const vencidosCount = pg.filter(p=>p.status==="previsto"&&p.dataPrevista&&p.dataPrevista<hoje).length;
 const ativos = students.filter(s=>(s.status||"ativo")==="ativo");
@@ -1265,8 +1265,13 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
   const alunosPorPlano = (nome) => students.filter(s=>s.billing?.ativo && s.billing?.plano===nome).length;
   const hoje = todayStr();
   const comCobranca = students.filter(s=>s.billing?.ativo).map(s=>{
-    const vencido = s.billing.vencimento && s.billing.vencimento < hoje;
-    const diasDiff = s.billing.vencimento ? Math.round((new Date(s.billing.vencimento)-new Date(hoje))/86400000) : null;
+    let venc = s.billing.vencimento;
+    if(s.billing?.tipo!=="avulso" && s.billing?.modoCobranca==="porSessao"){
+      const ab = pagamentos.filter(p=>p.studentId===s.id && p.status==="previsto" && p.dataPrevista).map(p=>p.dataPrevista).sort();
+      venc = ab[0] || null;
+    }
+    const vencido = venc && venc < hoje;
+    const diasDiff = venc ? Math.round((new Date(venc)-new Date(hoje))/86400000) : null;
     return { ...s, _vencido:vencido, _diasDiff:diasDiff };
   }).sort((a,b)=>(a.billing.vencimento||"").localeCompare(b.billing.vencimento||""));
   const mensalistas = comCobranca.filter(s=>s.billing?.tipo!=="avulso");
@@ -1276,7 +1281,7 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
   const [baixaStudentId,setBaixaStudentId] = useState(null);
   const [detalheCard,setDetalheCard] = useState(null); // null | "previsto" | "recebido" | "aberto"
   const baixaStudent = baixaStudentId ? students.find(s=>s.id===baixaStudentId) : null;
-  const abertosDe = (studentId) => pagamentos.filter(p=>p.studentId===studentId && p.status==="previsto");
+  const abertosDe = (studentId) => pagamentos.filter(p=>p.studentId===studentId && p.status==="previsto" && p.dataPrevista && p.dataPrevista<=todayStr());
   const confirmarPagamentoInicial = (studentId) => {
     const st = students.find(s=>s.id===studentId);
     const proxVenc = new Date(); proxVenc.setDate(proxVenc.getDate()+30);
@@ -1309,7 +1314,7 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
   const recebidoAlunosMes = pagamentos.filter(p=>p.status==="pago" && p.dataPagamento && p.dataPagamento>=periodoInicio && p.dataPagamento<=periodoFimSel).reduce((a,p)=>a+(Number(p.valorPago)||0),0);
   const recebidoExtrasMes = receitasExtras.filter(r=>r.status==="recebido" && r.dataPagamento && r.dataPagamento>=periodoInicio && r.dataPagamento<=periodoFimSel).reduce((a,r)=>a+(Number(r.valorPago)||0),0);
   const recebidoMes = recebidoAlunosMes + recebidoExtrasMes;
-  const emAberto = pagamentos.filter(p=>p.status==="previsto" && p.dataPrevista && p.dataPrevista>=periodoInicio && p.dataPrevista<=periodoFimSel).sort((a,b)=>(a.dataPrevista||"").localeCompare(b.dataPrevista||""));
+  const emAberto = pagamentos.filter(p=>p.status==="previsto" && p.dataPrevista && p.dataPrevista>=periodoInicio && p.dataPrevista<=periodoFimSel && p.dataPrevista<=hoje).sort((a,b)=>(a.dataPrevista||"").localeCompare(b.dataPrevista||""));
   const emAbertoVencidos = emAberto.filter(p=>p.dataPrevista && p.dataPrevista<hoje);
   const emAbertoTotal = emAberto.reduce((a,p)=>a+(Number(p.valorPrevisto)||0),0);
   const pctRealizado = previstoMes>0 ? Math.round((recebidoMes/previstoMes)*100) : (recebidoMes>0?100:0);
@@ -1324,7 +1329,7 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
       pagamentos.filter(p=>p.status==="pago" && p.dataPagamento && p.dataPagamento>=periodoInicio && p.dataPagamento<=periodoFimSel)
         .forEach(p=>{ mapa[p.studentId] = (mapa[p.studentId]||0) + (Number(p.valorPago)||0); });
     } else if(tipo==="aberto"){
-      pagamentos.filter(p=>p.status==="previsto" && p.dataPrevista && p.dataPrevista>=periodoInicio && p.dataPrevista<=periodoFimSel)
+      pagamentos.filter(p=>p.status==="previsto" && p.dataPrevista && p.dataPrevista>=periodoInicio && p.dataPrevista<=periodoFimSel && p.dataPrevista<=hoje)
         .forEach(p=>{ mapa[p.studentId] = (mapa[p.studentId]||0) + (Number(p.valorPrevisto)||0); });
     }
     const linhas = Object.entries(mapa).map(([sid,total])=>({ studentId:sid, nome: students.find(s=>s.id===sid)?.name||"Aluno", total })).sort((a,b)=>b.total-a.total);
@@ -1482,7 +1487,7 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
                   <div style={{ fontSize:11,color:"#94a3b8",marginTop:2 }}>{s.billing.plano||"Plano"}{s.billing.modoCobranca==="porSessao"?(s.billing.valorSessao?" · R$ "+Number(s.billing.valorSessao).toFixed(2).replace(".",",")+"/sessão":""):(s.billing.valor?" · "+fmtR(s.billing.valor):"")}</div>
                   <div style={{ marginTop:5 }}>
                     <Badge color={s._vencido?"#dc2626":"#16a34a"} bg={s._vencido?"#fee2e2":"#dcfce7"}>
-                      {s._vencido?"Vencido há "+Math.abs(s._diasDiff)+" dia(s)":s._diasDiff===0?"Vence hoje":"Vence em "+s._diasDiff+" dia(s)"}
+                      {s._diasDiff===null?"Sem vencimento":s._vencido?"Vencido há "+Math.abs(s._diasDiff)+" dia(s)":s._diasDiff===0?"Vence hoje":"Vence em "+s._diasDiff+" dia(s)"}
                     </Badge>
                   </div>
                 </div>
@@ -2106,17 +2111,21 @@ return (
 {st.billing?.ativo&&(()=>{
   const hoje=todayStr();
   const isAvulso = st.billing?.tipo==="avulso";
-  const vencido = !isAvulso && st.billing.vencimento && st.billing.vencimento<hoje;
-  const alerta = isAvulso ? stAbertos.length>0 : vencido;
+  const isPorSessao = !isAvulso && st.billing?.modoCobranca==="porSessao";
+  const abertosVencidos = stAbertos.filter(pg=>pg.dataPrevista && pg.dataPrevista<=hoje);
+  const proxAberto = stAbertos.map(pg=>pg.dataPrevista).filter(Boolean).sort()[0] || null;
+  const vencimentoExibido = isPorSessao ? proxAberto : st.billing.vencimento;
+  const vencido = !isAvulso && (isPorSessao ? abertosVencidos.some(pg=>pg.dataPrevista<hoje) : (st.billing.vencimento && st.billing.vencimento<hoje));
+  const alerta = isAvulso ? abertosVencidos.length>0 : vencido;
   return (
     <Card style={{ padding:"12px 14px",marginBottom:16,background:alerta?"#fef2f2":"#f0fdf4",borderColor:alerta?"#fecaca":"#bbf7d0" }}>
       <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:10 }}>
         <div>
           <div style={{ fontSize:12,fontWeight:700,color:alerta?"#dc2626":"#16a34a" }}>
-            {isAvulso ? (stAbertos.length>0?"⚠️ "+stAbertos.length+" cobrança(s) em aberto":"✅ Sem pendências") : (vencido?"⚠️ Mensalidade vencida":"✅ Mensalidade em dia")}
+            {isAvulso ? (abertosVencidos.length>0?"⚠️ "+abertosVencidos.length+" cobrança(s) em aberto":"✅ Sem pendências") : (vencido?"⚠️ Mensalidade vencida":"✅ Mensalidade em dia")}
           </div>
           <div style={{ fontSize:11,color:"#64748b",marginTop:2 }}>
-            {isAvulso ? (st.billing.valorAula?"R$ "+Number(st.billing.valorAula).toFixed(2).replace(".",",")+" / aula":"Aula avulsa") : (st.billing.plano||"Plano")+(st.billing.modoCobranca==="porSessao"?(st.billing.valorSessao?" · R$ "+Number(st.billing.valorSessao).toFixed(2).replace(".",",")+"/sessão":""):(st.billing.valor?" · R$ "+Number(st.billing.valor).toFixed(2).replace(".",","):""))+" · vence "+fmt(st.billing.vencimento)}
+            {isAvulso ? (st.billing.valorAula?"R$ "+Number(st.billing.valorAula).toFixed(2).replace(".",",")+" / aula":"Aula avulsa") : (st.billing.plano||"Plano")+(st.billing.modoCobranca==="porSessao"?(st.billing.valorSessao?" · R$ "+Number(st.billing.valorSessao).toFixed(2).replace(".",",")+"/sessão":""):(st.billing.valor?" · R$ "+Number(st.billing.valor).toFixed(2).replace(".",","):""))+(vencimentoExibido?" · "+(isPorSessao?"próxima sessão ":"vence ")+fmt(vencimentoExibido):"")}
           </div>
           {isAvulso && (st.billing?.creditosAvulso||0)>0 &&
             <div style={{ fontSize:11,color:"#166534",fontWeight:700,marginTop:3 }}>💳 {st.billing.creditosAvulso} aula(s) já paga(s) adiantado</div>}
