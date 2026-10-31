@@ -19,7 +19,7 @@ const POTENCIAL = [{v:"",l:"Não classificado"},{v:"Alto",l:"Alto"},{v:"Médio",
 const SIMNAO = [{v:"",l:"Não informado"},{v:"sim",l:"Sim"},{v:"nao",l:"Não"},{v:"avaliar",l:"A avaliar"}];
 const INTERACOES = ["WhatsApp","Ligação","Visita presencial","E-mail","Reunião","Envio de material","Anotação"];
 const PERFIS_LEAD = [{v:"50+",l:"Pessoa 50+"},{v:"familiar",l:"Familiar"},{v:"outro",l:"Outro"}];
-const SERVICOS = [{v:"",l:"A definir"},{v:"Personal no condomínio",l:"Personal no condomínio"},{v:"Casal",l:"Atendimento para casais"},{v:"Consultoria",l:"Consultoria de treinamento"},{v:"Outro",l:"Outro"}];
+const SERVICOS = [{v:"",l:"A definir"},{v:"Personal no condomínio",l:"Personal no condomínio"},{v:"Casal",l:"Atendimento para casais"},{v:"Pequeno grupo",l:"Pequenos grupos"},{v:"Consultoria",l:"Consultoria de treinamento"},{v:"Outro",l:"Outro"}];
 const ORIGENS = [{v:"Aluno atual",l:"Indicação de aluno atual"},{v:"Apresentação digital",l:"Apresentação digital"},{v:"Evento no condomínio",l:"Evento no condomínio"},{v:"Síndico/administração",l:"Síndico ou administração"},{v:"Outro",l:"Outro"}];
 const AGORA = function(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
 const digits = function(s){ return String(s||"").replace(/\D/g,""); };
@@ -542,7 +542,7 @@ return <div>
 <Inp label="Condomínio" value={cid} onChange={pickCondo} opts={[{v:"",l:"Versão geral, sem condomínio"}].concat(condos.map(function(x){return {v:x.id,l:x.nome};}))}/>
 <Inp label="Nome do responsável" value={f.responsavel} onChange={upf("responsavel")}/>
 <Inp label="Mensagem de abertura" value={f.mensagem} onChange={upf("mensagem")} placeholder="Opcional, até 280 caracteres"/>
-<Inp label="Tipo de ação proposta" value={f.tipoAcao} onChange={upf("tipoAcao")} opts={[{v:"",l:"Não destacar"},{v:"Personal na academia do condomínio",l:"Personal na academia do condomínio"},{v:"Encontro educativo Movimento 50+",l:"Encontro educativo Movimento 50+"},{v:"Atendimento para casais",l:"Atendimento para casais"},{v:"Consultoria de treinamento",l:"Consultoria de treinamento"}]}/>
+<Inp label="Tipo de ação proposta" value={f.tipoAcao} onChange={upf("tipoAcao")} opts={[{v:"",l:"Não destacar"},{v:"Personal na academia do condomínio",l:"Personal na academia do condomínio"},{v:"Encontro educativo Movimento 50+",l:"Encontro educativo Movimento 50+"},{v:"Atendimento para casais",l:"Atendimento para casais"},{v:"Pequenos grupos",l:"Pequenos grupos"},{v:"Consultoria de treinamento",l:"Consultoria de treinamento"}]}/>
 <Inp label="Data da apresentação" type="date" value={f.data} onChange={upf("data")}/>
 <Inp label="WhatsApp que aparece na página" value={f.whats} onChange={upf("whats")} placeholder={prof&&prof.whatsapp?"Usando o do seu perfil":"Preencha aqui ou no seu perfil"} note="Se vazio, usa o WhatsApp do seu perfil profissional."/>
 {!w&&<div style={{fontSize:12,color:"#d97706",marginBottom:10}}>Sem WhatsApp definido, os botões de contato não aparecem na página.</div>}

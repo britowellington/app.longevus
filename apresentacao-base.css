@@ -44,3 +44,16 @@ body{background:#fff}
 section{break-inside:avoid;padding:26px 0}
 }
 [data-show]{display:none}
+
+.logo-hero{display:block;width:clamp(150px,38vw,230px);height:auto;margin-top:6px}
+.hero .brand{margin-top:14px}
+.logo-card{display:block;width:150px;height:auto;margin:0 auto 12px}
+.cardlogo{text-align:center}
+.logo-contact{display:block;width:150px;height:auto;margin-bottom:18px}
+.card{border-top:3px solid var(--o)}
+section:nth-of-type(even){background:#EEF1EC}
+section h2::after{content:"";display:block;width:44px;height:3px;background:var(--o);border-radius:2px;margin-top:10px}
+.contact h2::after{background:var(--o)}
+.contact{background:var(--g)!important}
+.pill{border-color:#cfd8d4;color:var(--g)}
+.tag{background:rgba(255,86,3,.18);border-color:rgba(255,86,3,.6)}
