@@ -11,7 +11,8 @@ var cond=d.c?(" do "+d.c):"";
 var txt=document.body.getAttribute("data-wa")||"Olá, Wellington! Vi sua apresentação e gostaria de conversar.";
 if(d.c) txt+=" (Condomínio "+d.c+")";
 document.querySelectorAll(".wa").forEach(function(a){
-if(d.w){a.href="https://wa.me/"+d.w+"?text="+encodeURIComponent(txt);a.target="_blank";a.rel="noopener noreferrer";}
+var t2=a.getAttribute("data-wa")||txt;
+if(d.w){a.href="https://wa.me/"+d.w+"?text="+encodeURIComponent(t2);a.target="_blank";a.rel="noopener noreferrer";}
 else a.classList.add("hide");
 });
 document.querySelectorAll(".nowa").forEach(function(e){e.style.display=d.w?"none":"";});
