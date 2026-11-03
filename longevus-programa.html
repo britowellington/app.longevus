@@ -1961,6 +1961,53 @@ const escolherAerobicoComMidia=(nivelFiltro,bibCustom,variantIndex=0)=>{
   return candidatos[variantIndex%candidatos.length];
 };
 
+// ─── Métodos de intensificação automáticos (consultoria) ─────────────────────
+// Só quando o professor liga "Incluir métodos" no wizard. Regras:
+// • nunca em iniciante · só na Parte Principal · nunca nos exercícios âncora (peito, quadríceps)
+// • 55+ recebe só B7 · no máximo 1 grupo + 1 Drop7 por sessão
+// • índice = posição da fase no modelo (ondulatória: Adaptação, Acúmulo, Intensificação, Deload, Pico/Reteste)
+const METODOS_AUTO_POR_FASE={
+  ondulatoria_semanal:[[],["B7"],["TRI7","DROP7"],[],["TRI7","DROP7"]],
+  linear:[["B7"],["TRI7","DROP7"],[],[]],
+  blocos:[["B7"],["TRI7","DROP7"],[]],
+};
+const metodosAutoDaFase=(params,faseIdx)=>{
+  if(!params.incluir_metodos||params.nivel==="iniciante")return [];
+  const lista=(METODOS_AUTO_POR_FASE[params.modelo_periodizacao]||[])[faseIdx]||[];
+  if(lista.length===0)return [];
+  if(params.faixa_seguranca_idade==="55_mais")return ["B7"];
+  return lista;
+};
+const MUSCULOS_GRUPO_METODO=["ombros","bíceps","tríceps"];
+const MUSCULOS_DROP_METODO=["panturrilha","bíceps","tríceps","ombros"];
+// Recebe a lista principal com o campo temporário _m (músculo) e devolve sem ele, já com os métodos aplicados.
+const aplicarMetodosAuto=(principal,permitidos)=>{
+  const out=principal.map(it=>({...it}));
+  const aplicarGrupo=key=>{
+    const met=METODOS[key];
+    for(let ini=out.length-met.tam;ini>=0;ini--){
+      let ok=true;
+      for(let k=0;k<met.tam;k++){const it=out[ini+k];if(!MUSCULOS_GRUPO_METODO.includes(it._m)||it.metodo)ok=false;}
+      if(!ok)continue;
+      const gid="g"+Math.random().toString(36).slice(2,8);
+      const serie=out[ini].series;
+      for(let k=0;k<met.tam;k++){out[ini+k].metodo=key;out[ini+k].grupoId=gid;out[ini+k].series=serie;if(met.reps7)out[ini+k].reps="7";}
+      return true;
+    }
+    return false;
+  };
+  if(permitidos.includes("TRI7")){if(!aplicarGrupo("TRI7"))aplicarGrupo("B7");}
+  else if(permitidos.includes("B7")){aplicarGrupo("B7");}
+  if(permitidos.includes("DROP7")){
+    for(let c=0;c<MUSCULOS_DROP_METODO.length;c++){
+      const alvo=out.find(it=>it._m===MUSCULOS_DROP_METODO[c]&&!it.metodo);
+      if(alvo){alvo.metodo="DROP7";break;}
+    }
+  }
+  out.forEach(it=>{delete it._m;});
+  return out;
+};
+
 // ─── Motor principal — monta prescricao[bN][treino]={inicial,principal,final}, um bN por fase ──
 const buildPrescricaoConsultoria=(params,bibCustom,divisao)=>{
   const treinosEscolhidos=[...new Set(divisao.sequencia)];
@@ -1999,7 +2046,7 @@ const buildPrescricaoConsultoria=(params,bibCustom,divisao)=>{
         const ex=escolherAcademiaComFallback(musculo,nivelFiltro,usados,bibCustom,variantIndex);
         if(!ex)return null;
         usados.add(ex.id);
-        return{exId:ex.id,series:presc.s,reps:presc.r,descanso:presc.d,obs:categoria==="ancora"?"⚓ Âncora — referência do reteste (não trocar)":""};
+        return{exId:ex.id,series:presc.s,reps:presc.r,descanso:presc.d,obs:categoria==="ancora"?"⚓ Âncora — referência do reteste (não trocar)":"",_m:musculo};
       }).filter(Boolean);
 
       const enfaseAqui=ehEmpPux?[]:enfaseMusculos.filter(m=>musculos.includes(m));
@@ -2007,8 +2054,9 @@ const buildPrescricaoConsultoria=(params,bibCustom,divisao)=>{
         const ex=escolherAcademiaComFallback(musculo,nivelFiltro,usados,bibCustom,bloco.cicloIdx+i+5);
         if(!ex)return;
         usados.add(ex.id);
-        principal.push({exId:ex.id,series:presc.s,reps:presc.r,descanso:presc.d,obs:"Ênfase"});
+        principal.push({exId:ex.id,series:presc.s,reps:presc.r,descanso:presc.d,obs:"Ênfase",_m:musculo});
       });
+      const principalFinal=aplicarMetodosAuto(principal,metodosAutoDaFase(params,bloco.faseIdx));
 
       const respR=resolverComGifObrigatorio("ex28",bibCustom);
       const final=[
@@ -2020,7 +2068,7 @@ const buildPrescricaoConsultoria=(params,bibCustom,divisao)=>{
         ...(respR?[{exId:respR.id,series:"1",reps:"3 min",descanso:"—",obs:"Encerrar a sessão com respiração consciente"}]:[]),
       ];
 
-      prescricao[bloco.key][treinoKey]={inicial,principal,final};
+      prescricao[bloco.key][treinoKey]={inicial,principal:principalFinal,final};
     });
   });
 
@@ -2038,6 +2086,7 @@ const NovoPeriodizacaoConsultoria=({students,programs,setPrograms,bibCustom,nav,
   const [local,setLocal]=useState("academia");
   const [divisao,setDivisao]=useState(null);
   const [modeloPeriodizacao,setModeloPeriodizacao]=useState("ondulatoria_semanal");
+  const [incluirMetodos,setIncluirMetodos]=useState(false);
   const [progGerado,setProgGerado]=useState(null);
   const [salvando,setSalvando]=useState(false);
   const student=students.find(s=>s.id===sid);
@@ -2052,6 +2101,7 @@ const NovoPeriodizacaoConsultoria=({students,programs,setPrograms,bibCustom,nav,
     frequencia_semanal:freq,
     local,
     modelo_periodizacao:modeloPeriodizacao,
+    incluir_metodos:incluirMetodos,
     idade_aluno:idade,
     faixa_seguranca_idade:faixaSegurancaIdade(idade)
   };
@@ -2151,6 +2201,15 @@ const NovoPeriodizacaoConsultoria=({students,programs,setPrograms,bibCustom,nav,
             </div>
           </div>
           <Inp label="Modelo de periodização" value={modeloPeriodizacao} onChange={setModeloPeriodizacao} opts={MODELOS_PERIODIZACAO.map(([v,l])=>({v,l}))}/>
+          <div style={{marginBottom:14}}>
+            <button type="button" onClick={()=>setIncluirMetodos(!incluirMetodos)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,textAlign:"left",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+(incluirMetodos?"#FF5603":"#e2e8f0"),background:incluirMetodos?"#fff4ee":"#fff",cursor:"pointer",fontFamily:"inherit"}}>
+              <div style={{width:18,height:18,borderRadius:5,border:"2px solid "+(incluirMetodos?"#FF5603":"#cbd5e1"),background:incluirMetodos?"#FF5603":"transparent",color:"#fff",fontSize:12,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{incluirMetodos?"✓":""}</div>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:13,color:incluirMetodos?"#FF5603":"#0f172a"}}>Incluir métodos de intensificação</div>
+                <div style={{fontSize:11,color:"#64748b",marginTop:1,lineHeight:1.4}}>{nivel==="iniciante"?"Iniciante não recebe métodos. A opção não terá efeito neste programa.":(idade!=null&&idade>=55)?"Faixa 55+: só B7, nas fases de volume e de intensificação.":"B7 nas fases de volume, Tri7 e Drop7 nas de intensificação. Só em ombros, braços e panturrilha, nunca nos exercícios âncora."}</div>
+              </div>
+            </button>
+          </div>
           <div style={{fontSize:11,color:"#94a3b8",marginBottom:14}}>Idade e gênero já vêm do cadastro do aluno — usados só pra aplicar a camada de segurança por idade, sem regra automática de gênero.</div>
           <div style={{display:"flex",gap:10}}>
             <Btn variant="secondary" full onClick={()=>setStep(1)}>‹ Voltar</Btn>
