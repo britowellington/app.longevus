@@ -762,7 +762,51 @@ const getYtId = url => {
   return m ? m[1] : null;
 };
 
-const ExDetalheModal = ({ ex, onClose }) => (
+// ─── MÉTODOS DE INTENSIFICAÇÃO ───────────────────────────────────────────────
+// tipo "grupo": ocupa N exercícios seguidos da lista, ligados por grupoId (B7, Tri7, Pré-exaustão)
+// tipo "individual": marca um único exercício e explica o que fazer na última série (Drop7, Rest-pause, 21s, Cluster)
+const METODOS = {
+  B7:   { nome:"B7 · Bi-set", tipo:"grupo", tam:2, reps7:true, icone:"🔗", cor:"#1d4ed8", bg:"#eff6ff", border:"#bfdbfe", resumo:"2 exercícios seguidos, 7 reps em cada, sem descanso entre eles." },
+  TRI7: { nome:"Tri7 · Tri-set", tipo:"grupo", tam:3, reps7:true, icone:"🔗", cor:"#1d4ed8", bg:"#eff6ff", border:"#bfdbfe", resumo:"3 exercícios seguidos, 7 reps em cada, sem descanso entre eles." },
+  PRE:  { nome:"Pré-exaustão", tipo:"grupo", tam:2, reps7:false, icone:"🔗", cor:"#15803d", bg:"#f0fdf4", border:"#bbf7d0", resumo:"Isolador logo antes do composto, sem descanso entre os dois. O primeiro cansa o músculo, o segundo termina o trabalho." },
+  DROP7:{ nome:"Drop7", tipo:"individual", icone:"🔻", cor:"#b45309", bg:"#fffbeb", border:"#fde68a", resumo:"Na última série: 7 reps, reduz cerca de 25% da carga, mais 7 reps, reduz de novo e mais 7 reps. Sem pausa entre as etapas." },
+  RP:   { nome:"Rest-pause", tipo:"individual", icone:"⏸", cor:"#7e22ce", bg:"#fdf4ff", border:"#e9d5ff", resumo:"Na última série: vai até perto da falha, pausa de 15s, mais reps, pausa de 15s e mais uma vez. Mesma carga o tempo todo." },
+  V21:  { nome:"21s", tipo:"individual", icone:"🔁", cor:"#b91c1c", bg:"#fef2f2", border:"#fecaca", resumo:"7 reps na metade de baixo do movimento, 7 na metade de cima e 7 completas, sem parar. São 21 reps por série." },
+  CLU:  { nome:"Cluster", tipo:"individual", icone:"⏱", cor:"#475569", bg:"#f1f5f9", border:"#cbd5e1", resumo:"Cada série é dividida em mini-blocos de 3 reps com 20s de pausa entre eles, usando carga mais alta que o normal." }
+};
+
+// Mantém só grupos válidos: mesmo método, exercícios contíguos e quantidade igual ao tamanho do método.
+// Roda depois de mover, remover ou trocar, então um grupo quebrado se desfaz sozinho em vez de ficar torto.
+const normalizarGrupos = arr => {
+  const out = arr.map(it => ({...it}));
+  const ids = {};
+  out.forEach((it,i) => { if (it.grupoId) { (ids[it.grupoId] = ids[it.grupoId] || []).push(i); } });
+  Object.keys(ids).forEach(g => {
+    const pos = ids[g];
+    const met = METODOS[out[pos[0]].metodo];
+    const contiguo = pos.every((p,k) => k===0 || p===pos[k-1]+1);
+    const mesmo = pos.every(p => out[p].metodo===out[pos[0]].metodo);
+    if (!met || met.tipo!=="grupo" || !contiguo || !mesmo || pos.length!==met.tam) {
+      pos.forEach(p => { delete out[p].grupoId; delete out[p].metodo; });
+    }
+  });
+  out.forEach(it => { if (it.metodo && METODOS[it.metodo] && METODOS[it.metodo].tipo==="grupo" && !it.grupoId) delete it.metodo; });
+  return out;
+};
+
+const MetodoSelo = ({item, items, idx}) => {
+  const met = item.metodo ? METODOS[item.metodo] : null;
+  if (!met) return null;
+  let extra = "";
+  if (met.tipo==="grupo" && item.grupoId) {
+    let ini = idx;
+    while (ini>0 && items[ini-1] && items[ini-1].grupoId===item.grupoId) ini--;
+    extra = " · " + String.fromCharCode(65+idx-ini) + " de " + met.tam;
+  }
+  return <div style={{marginTop:5,display:"inline-block",fontSize:11,fontWeight:700,color:met.cor,background:met.bg,border:"1.5px solid "+met.border,borderRadius:7,padding:"3px 9px"}}>{met.icone} {met.nome}{extra}</div>;
+};
+
+const ExDetalheModal =({ ex, onClose }) => (
   <Modal title={ex.nome} onClose={onClose}>
     {ex.video && getYtId(ex.video) && (
       <div style={{marginBottom:14,borderRadius:10,overflow:"hidden",position:"relative",paddingBottom:"56.25%",height:0}}>
@@ -783,8 +827,9 @@ const ExDetalheModal = ({ ex, onClose }) => (
 );
 
 // ─── MOMENTO EDITÁVEL ─────────────────────────────────────────────────────────
-const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForward,onRemoveForward,onAddForward,onMoveForward,onFieldForward})=>{
+const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForward,onRemoveForward,onAddForward,onMoveForward,onFieldForward,onMetodoForward})=>{
   const [editIdx,setEditIdx]=useState(null);
+  const [msgMetodo,setMsgMetodo]=useState("");
   const [buscaTroca,setBuscaTroca]=useState("");
   const [verExEdit,setVerExEdit]=useState(null);
   const [addModal,setAddModal]=useState(false);
@@ -797,18 +842,23 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
   const updateItem=(idx,field,val)=>{
     const arr=[...items];
     arr[idx]={...arr[idx],[field]:val};
+    const gid=arr[idx].grupoId;
+    if(field==="series"&&gid){
+      arr.forEach((it,i)=>{if(it.grupoId===gid&&i!==idx)arr[i]={...it,series:val};});
+    }
     onChange(arr);
     if(onFieldForward&&["series","reps","descanso","obs"].includes(field)){
       onFieldForward(momentoMeta.key,idx,arr[idx].exId,field,val);
+      if(field==="series"&&gid){arr.forEach((it,i)=>{if(it.grupoId===gid&&i!==idx)onFieldForward(momentoMeta.key,i,it.exId,field,val);});}
     }
   };
-  const removeItem=idx=>{const removedExId=items[idx]?.exId;onChange(items.filter((_,i)=>i!==idx));if(editIdx===idx)setEditIdx(null);if(onRemoveForward&&removedExId)onRemoveForward(momentoMeta.key,idx,removedExId);};
+  const removeItem=idx=>{const removedExId=items[idx]?.exId;onChange(normalizarGrupos(items.filter((_,i)=>i!==idx)));if(editIdx===idx)setEditIdx(null);if(onRemoveForward&&removedExId)onRemoveForward(momentoMeta.key,idx,removedExId);};
   const moveItem=(idx,dir)=>{
     const alvo=idx+dir;
     if(alvo<0||alvo>=items.length)return;
     const arr=[...items];
     [arr[idx],arr[alvo]]=[arr[alvo],arr[idx]];
-    onChange(arr);
+    onChange(normalizarGrupos(arr));
     if(editIdx===idx)setEditIdx(alvo);
     if(onMoveForward)onMoveForward(momentoMeta.key,idx,alvo);
   };
@@ -821,7 +871,44 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
     if(onAddForward)onAddForward(momentoMeta.key,novo);
   };
   const swapCognitivo=(idx,cogId)=>{const arr=[...items];arr[idx]={...arr[idx],cogId};onChange(arr);setEditIdx(null);};
-  const swapExercise=(idx,newExId)=>{const oldExId=items[idx].exId;const p=getPresc(newExId,blocoKey,bibCustom);const arr=[...items];arr[idx]={exId:newExId,series:p.s,reps:p.r,descanso:p.d,obs:arr[idx].obs||""};onChange(arr);setEditIdx(null);if(onSwapForward&&oldExId!==newExId)onSwapForward(momentoMeta.key,idx,oldExId,newExId);};
+  const swapExercise=(idx,newExId)=>{const oldExId=items[idx].exId;const p=getPresc(newExId,blocoKey,bibCustom);const arr=[...items];arr[idx]={exId:newExId,series:p.s,reps:p.r,descanso:p.d,obs:arr[idx].obs||""};if(items[idx].metodo){arr[idx].metodo=items[idx].metodo;if(METODOS[items[idx].metodo]&&METODOS[items[idx].metodo].reps7)arr[idx].reps=items[idx].reps;}if(items[idx].grupoId)arr[idx].grupoId=items[idx].grupoId;onChange(arr);setEditIdx(null);if(onSwapForward&&oldExId!==newExId)onSwapForward(momentoMeta.key,idx,oldExId,newExId);};
+
+  const setMetodo=(idx,key)=>{
+    const antes=items;
+    const arr=items.map(it=>({...it}));
+    const gAtual=arr[idx].grupoId;
+    if(gAtual){arr.forEach(it=>{if(it.grupoId===gAtual){delete it.grupoId;delete it.metodo;}});}
+    delete arr[idx].metodo;delete arr[idx].grupoId;
+    const met=key?METODOS[key]:null;
+    if(met&&met.tipo==="grupo"){
+      let ok=true;
+      for(let k=0;k<met.tam;k++){
+        const alvo=arr[idx+k];
+        if(!alvo||alvo.isCognitivo||alvo.exId==="cognitivo"||alvo.grupoId||alvo.metodo)ok=false;
+      }
+      if(!ok){setMsgMetodo("Este método junta "+met.tam+" exercícios seguidos, começando neste. Faltam exercícios livres logo abaixo, ou algum já tem outro método. Reordene ou limpe o método do vizinho.");return;}
+      const gid="g"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+      const serie=arr[idx].series;
+      for(let k=0;k<met.tam;k++){
+        arr[idx+k].metodo=key;arr[idx+k].grupoId=gid;arr[idx+k].series=serie;
+        if(met.reps7)arr[idx+k].reps="7";
+      }
+    }else if(met){
+      arr[idx].metodo=key;
+    }
+    setMsgMetodo("");
+    onChange(arr);
+    if(onMetodoForward){
+      const patches=[];
+      arr.forEach((it,i)=>{
+        const b=antes[i];
+        if(b.metodo!==it.metodo||b.grupoId!==it.grupoId||b.reps!==it.reps){
+          patches.push({idx:i,exId:b.exId,metodo:it.metodo||null,grupoId:it.grupoId||null,reps:(it.reps!==b.reps)?it.reps:null});
+        }
+      });
+      if(patches.length>0)onMetodoForward(momentoMeta.key,patches);
+    }
+  };
 
   const filteredEx=allEx.filter(e=>(e.nome||"").toLowerCase().includes(searchEx.toLowerCase())||e.cat?.toLowerCase().includes(searchEx.toLowerCase())||(e.grupo||"").toLowerCase().includes(searchEx.toLowerCase()));
 
@@ -873,7 +960,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
                     <button onClick={()=>moveItem(idx,-1)} disabled={idx===0} title="Mover pra cima" style={{border:"1.5px solid #e2e8f0",background:idx===0?"#f8fafc":"#fff",borderRadius:7,padding:"3px 6px",fontSize:11,fontWeight:700,color:idx===0?"#e2e8f0":"#64748b",cursor:idx===0?"default":"pointer"}}>↑</button>
                     <button onClick={()=>moveItem(idx,1)} disabled={idx===items.length-1} title="Mover pra baixo" style={{border:"1.5px solid #e2e8f0",background:idx===items.length-1?"#f8fafc":"#fff",borderRadius:7,padding:"3px 6px",fontSize:11,fontWeight:700,color:idx===items.length-1?"#e2e8f0":"#64748b",cursor:idx===items.length-1?"default":"pointer"}}>↓</button>
                     <button onClick={()=>updateItem(idx,"benchmark",!item.benchmark)} title="Usar como teste de referência (evolução de carga)" style={{border:`1.5px solid ${item.benchmark?"#f59e0b":"#e2e8f0"}`,background:item.benchmark?"#fffbeb":"#f8fafc",borderRadius:7,padding:"3px 8px",fontSize:11,fontWeight:700,color:item.benchmark?"#b45309":"#94a3b8",cursor:"pointer"}}>{item.benchmark?"⭐":"☆"}</button>
-                    <button onClick={()=>{setEditIdx(isEdit?null:idx);setBuscaTroca("");}} style={{border:`1.5px solid ${isEdit?m.cor:"#e2e8f0"}`,background:isEdit?m.bg:"#f8fafc",borderRadius:7,padding:"3px 8px",fontSize:11,fontWeight:700,color:isEdit?m.cor:"#64748b",cursor:"pointer"}}>{isEdit?"✕":"✏️"}</button>
+                    <button onClick={()=>{setEditIdx(isEdit?null:idx);setBuscaTroca("");setMsgMetodo("");}} style={{border:`1.5px solid ${isEdit?m.cor:"#e2e8f0"}`,background:isEdit?m.bg:"#f8fafc",borderRadius:7,padding:"3px 8px",fontSize:11,fontWeight:700,color:isEdit?m.cor:"#64748b",cursor:"pointer"}}>{isEdit?"✕":"✏️"}</button>
                     <button onClick={()=>removeItem(idx)} style={{border:"1.5px solid #fecaca",background:"#fff",borderRadius:7,padding:"3px 7px",fontSize:11,color:"#dc2626",cursor:"pointer"}}>🗑</button>
                   </div>
                 </div>
@@ -895,6 +982,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
                 </div>
                 {!isCog&&ex&&(ex.descricao||ex.execucao||ex.video)&&<button onClick={()=>setVerExEdit(ex)} style={{fontSize:11,fontWeight:700,color:"#FF5603",background:"transparent",border:"1.5px solid #FF5603",borderRadius:7,padding:"3px 10px",cursor:"pointer",marginTop:4}}>Ver detalhes</button>}
                 {item.benchmark&&<div style={{marginTop:5,fontSize:11,color:"#b45309",fontWeight:700}}>⭐ Teste de referência — aparece na Evolução</div>}
+                <MetodoSelo item={item} items={items} idx={idx}/>
                 {item.obs&&<div style={{marginTop:5,fontSize:11,color:"#64748b",fontStyle:"italic",padding:"4px 8px",background:"#f8fafc",borderRadius:6}}>📝 {item.obs}</div>}
               </div>
             </div>
@@ -926,6 +1014,25 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
                       <Inp label="Descanso" value={item.descanso} onChange={v=>updateItem(idx,"descanso",v)} placeholder="60s"/>
                     </div>
                     <Inp label="Observações / Adaptações" value={item.obs} onChange={v=>updateItem(idx,"obs",v)} placeholder="Progressões, cuidados..." rows={2}/>
+                    {momentoMeta.key==="principal"&&(
+                      <div style={{marginBottom:12}}>
+                        <div style={{fontSize:10,fontWeight:700,color:"#64748b",marginBottom:5,textTransform:"uppercase"}}>Método de intensificação</div>
+                        <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                          <button onClick={()=>setMetodo(idx,"")} style={{border:"1.5px solid "+(!item.metodo?"#0f172a":"#e2e8f0"),background:!item.metodo?"#0f172a":"#f8fafc",color:!item.metodo?"#fff":"#64748b",borderRadius:7,padding:"5px 10px",fontSize:11,fontWeight:700,cursor:"pointer"}}>Nenhum</button>
+                          {Object.keys(METODOS).map(k=>{const mt=METODOS[k];const on=item.metodo===k;return(
+                            <button key={k} onClick={()=>setMetodo(idx,k)} style={{border:"1.5px solid "+(on?mt.cor:"#e2e8f0"),background:on?mt.bg:"#f8fafc",color:on?mt.cor:"#64748b",borderRadius:7,padding:"5px 10px",fontSize:11,fontWeight:700,cursor:"pointer"}}>{mt.icone} {mt.nome.split(" · ")[0]}</button>
+                          );})}
+                        </div>
+                        {item.metodo&&METODOS[item.metodo]&&(
+                          <div style={{marginTop:7,fontSize:11,color:METODOS[item.metodo].cor,background:METODOS[item.metodo].bg,border:"1.5px solid "+METODOS[item.metodo].border,borderRadius:8,padding:"7px 10px",lineHeight:1.5}}>
+                            {METODOS[item.metodo].resumo}
+                            {METODOS[item.metodo].tipo==="grupo"&&<div style={{marginTop:3,fontWeight:700}}>O grupo começa no primeiro exercício marcado e inclui os {METODOS[item.metodo].tam-1} de baixo. Série e reps ficam iguais dentro do grupo. O descanso que vale é o do último.</div>}
+                          </div>
+                        )}
+                        {!item.metodo&&<div style={{marginTop:6,fontSize:10,color:"#94a3b8",lineHeight:1.5}}>B7, Tri7 e Pré-exaustão juntam este exercício com os próximos da lista. Os outros valem só para este exercício.</div>}
+                        {msgMetodo&&<div style={{marginTop:6,fontSize:11,color:"#b91c1c",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:7,padding:"6px 9px",lineHeight:1.5}}>{msgMetodo}</div>}
+                      </div>
+                    )}
                     {sameCat.length>0&&(
                       <div>
                         <div style={{fontSize:10,fontWeight:700,color:"#64748b",marginBottom:5,textTransform:"uppercase"}}>Trocar exercício</div>
@@ -995,7 +1102,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
 };
 
 // ─── TREINO COM 3 MOMENTOS ────────────────────────────────────────────────────
-const TreinoMomentos=({treinoKey,blocoKey,sessao,onChange,bibCustom,editMode,onSwapForward,onRemoveForward,onAddForward,onMoveForward,onFieldForward})=>{
+const TreinoMomentos=({treinoKey,blocoKey,sessao,onChange,bibCustom,editMode,onSwapForward,onRemoveForward,onAddForward,onMoveForward,onFieldForward,onMetodoForward})=>{
   const tDef=TREINO_DEFS[treinoKey];
   const [momentoIdx,setMomentoIdx]=useState(0);
   const [verEx,setVerEx]=useState(null);
@@ -1055,6 +1162,7 @@ const TreinoMomentos=({treinoKey,blocoKey,sessao,onChange,bibCustom,editMode,onS
                       )}
                     </div>
                   )}
+                  <MetodoSelo item={item} items={sessao[m.key]||[]} idx={idx}/>
                   {item.obs&&<div style={{marginTop:5,fontSize:11,color:"#64748b",fontStyle:"italic",padding:"4px 8px",background:"#f8fafc",borderRadius:6}}>📝 {item.obs}</div>}
                 </div>
               </div>
@@ -1087,6 +1195,7 @@ const TreinoMomentos=({treinoKey,blocoKey,sessao,onChange,bibCustom,editMode,onS
         onAddForward={onAddForward}
         onMoveForward={onMoveForward}
         onFieldForward={onFieldForward}
+        onMetodoForward={onMetodoForward}
       />
     </div>
   );
@@ -1565,7 +1674,7 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
         if(!sessaoIrma)return;
         const arr=sessaoIrma[momentoKey]||[];
         if(!arr[idx]||arr[idx].exId!==removedExId)return;
-        const novoArr=arr.filter((_,i)=>i!==idx);
+        const novoArr=normalizarGrupos(arr.filter((_,i)=>i!==idx));
         novo[bKey]={...novo[bKey],[treinoKeyAtual]:{...sessaoIrma,[momentoKey]:novoArr}};
       });
       return novo;
@@ -1597,7 +1706,7 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
         if(!arr[idx]||!arr[alvo])return;
         const novoArr=[...arr];
         [novoArr[idx],novoArr[alvo]]=[novoArr[alvo],novoArr[idx]];
-        novo[bloco.key]={...novo[bloco.key],[treinoKeyAtual]:{...sessaoIrma,[momentoKey]:novoArr}};
+        novo[bloco.key]={...novo[bloco.key],[treinoKeyAtual]:{...sessaoIrma,[momentoKey]:normalizarGrupos(novoArr)}};
       });
       return novo;
     });
@@ -1613,6 +1722,25 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
         const novoArr=[...arr];
         novoArr[idx]={...novoArr[idx],[field]:val};
         novo[bloco.key]={...novo[bloco.key],[treinoKeyAtual]:{...sessaoIrma,[momentoKey]:novoArr}};
+      });
+      return novo;
+    });
+  };
+  const propagarMetodoCiclo=(treinoKeyAtual,momentoKey,patches)=>{
+    setPrescricao(p=>{
+      const novo={...p};
+      blocosMesmoCiclo().forEach(bloco=>{
+        const sessaoIrma=(novo[bloco.key]||{})[treinoKeyAtual];
+        if(!sessaoIrma)return;
+        const arr=(sessaoIrma[momentoKey]||[]).map(it=>({...it}));
+        patches.forEach(pt=>{
+          const alvo=arr[pt.idx];
+          if(!alvo||alvo.exId!==pt.exId)return;
+          if(pt.metodo)alvo.metodo=pt.metodo;else delete alvo.metodo;
+          if(pt.grupoId)alvo.grupoId=pt.grupoId;else delete alvo.grupoId;
+          if(pt.reps!=null)alvo.reps=pt.reps;
+        });
+        novo[bloco.key]={...novo[bloco.key],[treinoKeyAtual]:{...sessaoIrma,[momentoKey]:normalizarGrupos(arr)}};
       });
       return novo;
     });
@@ -1682,6 +1810,7 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
         onAddForward={(mk,novoItem)=>propagarAdicaoCiclo(treinoAtivo,mk,novoItem)}
         onMoveForward={(mk,idx,alvo)=>propagarOrdemCiclo(treinoAtivo,mk,idx,alvo)}
         onFieldForward={(mk,idx,exId,field,val)=>propagarCampoCiclo(treinoAtivo,mk,idx,exId,field,val)}
+        onMetodoForward={(mk,patches)=>propagarMetodoCiclo(treinoAtivo,mk,patches)}
       />
       <div style={{marginTop:16,paddingTop:14,borderTop:"1px solid #f1f5f9"}}>
         <Btn variant="danger" full onClick={deletePrograma}>🗑 Remover programa</Btn>

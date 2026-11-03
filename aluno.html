@@ -678,8 +678,19 @@ const CargaInput = ({value, onChange, lastCarga, compact}) => (
   </div>
 );
 
+// ── Métodos de intensificação (espelham as chaves gravadas pelo longevus-programa.html) ──
+const METODOS_ALUNO = {
+  B7:   { tipo:"grupo", faixa:"B7 · sem descanso entre os 2", icone:"🔗", cor:"#1d4ed8", bg:"#eff6ff", border:"#bfdbfe" },
+  TRI7: { tipo:"grupo", faixa:"Tri7 · sem descanso entre os 3", icone:"🔗", cor:"#1d4ed8", bg:"#eff6ff", border:"#bfdbfe" },
+  PRE:  { tipo:"grupo", faixa:"Pré-exaustão · sem descanso entre os 2", icone:"🔗", cor:"#15803d", bg:"#f0fdf4", border:"#bbf7d0" },
+  DROP7:{ tipo:"individual", faixa:"Drop7 · última série", icone:"🔻", cor:"#b45309", bg:"#fffbeb", border:"#fde68a", resumo:"Na última série, sem pausa entre as etapas: 7 reps com a carga cheia, reduza cerca de 25% da carga e faça mais 7, reduza de novo e faça mais 7." },
+  RP:   { tipo:"individual", faixa:"Rest-pause · última série", icone:"⏸", cor:"#7e22ce", bg:"#fdf4ff", border:"#e9d5ff", resumo:"Na última série: vá até quase a falha, pause 15s, faça mais reps, pause 15s e faça mais uma vez. Mesma carga o tempo todo." },
+  V21:  { tipo:"individual", faixa:"21s · 21 reps por série", icone:"🔁", cor:"#b91c1c", bg:"#fef2f2", border:"#fecaca", resumo:"Sem parar: 7 reps na metade de baixo do movimento, 7 na metade de cima e 7 completas." },
+  CLU:  { tipo:"individual", faixa:"Cluster · mini-séries", icone:"⏱", cor:"#475569", bg:"#f1f5f9", border:"#cbd5e1", resumo:"Divida cada série em blocos de 3 reps, com 20s de pausa entre eles. Use uma carga mais alta que o normal." }
+};
+
 // ── Exercício individual (com check-off) ─────────────────────────────────────
-const ExercicioItem = ({item, bibCustom, checked, onToggle, carga, onCargaChange, lastCarga}) => {
+const ExercicioItem = ({item, bibCustom, checked, onToggle, carga, onCargaChange, lastCarga, emGrupo}) => {
   const [showDetail,setShowDetail]=useState(false);
   const isCog = item.isCognitivo || item.exId==="cognitivo";
   const cogEx = isCog ? COGNITIVOS.find(c=>c.id===item.cogId) : null;
@@ -690,11 +701,20 @@ const ExercicioItem = ({item, bibCustom, checked, onToggle, carga, onCargaChange
   const ytId = ex && getYtId(ex.video);
   const hasDetail = !isCog && ex && (ex.descricao || ex.execucao || ex.video || ex.beneficios || ex.cuidados);
   const capaImg = !isCog ? (ytId ? ("https://img.youtube.com/vi/"+ytId+"/hqdefault.jpg") : (ex?.foto || null)) : null;
+  const g = emGrupo || null;
+  const metInd = (!g && !isCog && item.metodo && METODOS_ALUNO[item.metodo] && METODOS_ALUNO[item.metodo].tipo==="individual") ? METODOS_ALUNO[item.metodo] : null;
+  const faixaMetodo = metInd ? (
+    <div style={{display:"flex",alignItems:"center",gap:6,padding:"8px 14px",background:metInd.bg,color:metInd.cor,fontSize:11.5,fontWeight:700,textTransform:"uppercase",letterSpacing:0.3}}>{metInd.icone} {metInd.faixa}</div>
+  ) : null;
+  const caixaMetodo = metInd ? (
+    <div style={{marginTop:10,fontSize:12,lineHeight:1.5,color:metInd.cor,background:metInd.bg,border:"1px solid "+metInd.border,borderRadius:8,padding:"8px 10px"}}>{metInd.resumo}</div>
+  ) : null;
 
-  if (capaImg) {
+  if (capaImg && !g) {
     // Layout com foto de capa em destaque (exercícios com vídeo/foto cadastrados)
     return (
       <Card style={{padding:0,marginBottom:10,overflow:"hidden",background:checked?"#f0fdf4":"#fff",borderColor:checked?"#bbf7d0":"#e2e8f0",boxShadow:"0 1px 2px rgba(15,23,42,0.04)"}}>
+        {faixaMetodo}
         <div style={{position:"relative",background:"#0f172a"}}>
           <img src={capaImg} alt={nome} style={{width:"100%",aspectRatio:"4/3",objectFit:"contain",background:"#0f172a",display:"block",opacity:checked?0.65:1}}/>
           <button onClick={onToggle} style={{position:"absolute",top:10,left:10,width:32,height:32,borderRadius:9,border:checked?"none":"none",background:checked?"#16a34a":"rgba(255,255,255,0.92)",color:checked?"#fff":"#0f172a",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 1px 6px rgba(0,0,0,0.3)"}}>{checked && <Icon name="check" size={17}/>}</button>
@@ -712,6 +732,7 @@ const ExercicioItem = ({item, bibCustom, checked, onToggle, carga, onCargaChange
             <span>Descanso: <b style={{color:"#475569"}}>{item.descanso}</b></span>
           </div>
           {!isCog && <div style={{marginTop:8}}><CargaInput value={carga||""} onChange={onCargaChange} lastCarga={lastCarga}/></div>}
+          {caixaMetodo}
           {item.obs && <div style={{marginTop:10,fontSize:12,color:"#64748b",fontStyle:"italic",padding:"8px 10px",background:"#f8fafc",borderRadius:8,display:"flex",alignItems:"flex-start",gap:6}}><Icon name="note" size={13} style={{marginTop:1,flexShrink:0}}/><span>{item.obs}</span></div>}
           {hasDetail && (
             <button onClick={()=>setShowDetail(true)} style={{marginTop:12,width:"100%",fontSize:13,fontWeight:700,color:"#FF5603",background:"transparent",border:"1.5px solid #FF5603",borderRadius:9,padding:"10px 12px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
@@ -726,21 +747,26 @@ const ExercicioItem = ({item, bibCustom, checked, onToggle, carga, onCargaChange
 
   // Layout compacto (sem foto/vídeo cadastrado — cognitivo ou exercício sem mídia)
   return (
-    <Card style={{padding:"12px 14px",marginBottom:8,background:checked?"#f0fdf4":"#fff",borderColor:checked?"#bbf7d0":"#e2e8f0",boxShadow:"0 1px 2px rgba(15,23,42,0.04)"}}>
+    <Card style={g ? {padding:"12px 14px",marginBottom:0,border:"none",borderRadius:0,boxShadow:"none",background:checked?"#f0fdf4":"#fff"} : {padding:"12px 14px",marginBottom:8,overflow:"hidden",background:checked?"#f0fdf4":"#fff",borderColor:checked?"#bbf7d0":"#e2e8f0",boxShadow:"0 1px 2px rgba(15,23,42,0.04)"}}>
+      {metInd && <div style={{margin:"-12px -14px 10px"}}>{faixaMetodo}</div>}
       <div style={{display:"flex",alignItems:"center",gap:10}}>
         <button onClick={onToggle} style={{width:26,height:26,borderRadius:8,border:checked?"none":"1.5px solid #cbd5e1",background:checked?"#16a34a":"#fff",color:"#fff",cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{checked && <Icon name="check" size={15}/>}</button>
-        <div style={{width:38,height:38,borderRadius:10,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>
-          {isCog ? <Icon name="bulb" size={19} color="#FF5603"/> : (iconeCustom || <Icon name="dumbbell" size={18} color="#FF5603"/>)}
-        </div>
+        {g && capaImg ? (
+          <img src={capaImg} alt="" style={{width:50,height:38,borderRadius:7,objectFit:"cover",background:"#0f172a",flexShrink:0}}/>
+        ) : (
+          <div style={{width:38,height:38,borderRadius:10,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>
+            {isCog ? <Icon name="bulb" size={19} color="#FF5603"/> : (iconeCustom || <Icon name="dumbbell" size={18} color="#FF5603"/>)}
+          </div>
+        )}
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontWeight:700,fontSize:13,color:cor,textDecoration:checked?"line-through":"none",opacity:checked?0.7:1}}>{nome}</div>
+          <div style={{fontWeight:700,fontSize:13,color:cor,textDecoration:checked?"line-through":"none",opacity:checked?0.7:1}}>{g && <span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:18,height:18,borderRadius:99,background:"#eff6ff",color:"#1d4ed8",fontSize:10.5,fontWeight:800,marginRight:6,verticalAlign:"1px"}}>{g.letra}</span>}{nome}</div>
           {isCog ? (
             <div style={{display:"flex",alignItems:"center",gap:4,fontSize:11,color:"#94a3b8",marginTop:2}}><Icon name="clock" size={11}/> {item.reps}</div>
           ) : (
             <div style={{display:"flex",gap:10,marginTop:2,fontSize:11,color:"#94a3b8",flexWrap:"wrap",rowGap:5}}>
-              <span>Séries: <b style={{color:"#475569"}}>{item.series}</b></span>
+              {!g && <span>Séries: <b style={{color:"#475569"}}>{item.series}</b></span>}
               <span>Reps: <b style={{color:"#475569"}}>{item.reps}</b></span>
-              <span>Descanso: <b style={{color:"#475569"}}>{item.descanso}</b></span>
+              {!g && <span>Descanso: <b style={{color:"#475569"}}>{item.descanso}</b></span>}
             </div>
           )}
         </div>
@@ -749,6 +775,7 @@ const ExercicioItem = ({item, bibCustom, checked, onToggle, carga, onCargaChange
         )}
       </div>
       {!isCog && <div style={{marginTop:8,marginLeft:48}}><CargaInput compact value={carga||""} onChange={onCargaChange} lastCarga={lastCarga}/></div>}
+      {caixaMetodo}
       {item.obs && <div style={{marginTop:8,fontSize:11,color:"#64748b",fontStyle:"italic",padding:"6px 8px",background:"#f8fafc",borderRadius:6,display:"flex",alignItems:"flex-start",gap:6}}><Icon name="note" size={12} style={{marginTop:1,flexShrink:0}}/><span>{item.obs}</span></div>}
       {hasDetail && (
         <button onClick={()=>setShowDetail(true)} style={{marginTop:8,fontSize:11,fontWeight:700,color:"#FF5603",background:"transparent",border:"1.5px solid #FF5603",borderRadius:7,padding:"5px 12px",cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5}}>
@@ -757,6 +784,32 @@ const ExercicioItem = ({item, bibCustom, checked, onToggle, carga, onCargaChange
       )}
       {showDetail && <ExDetalheModal ex={ex} onClose={()=>setShowDetail(false)}/>}
     </Card>
+  );
+};
+
+// ── Bloco de exercícios ligados (B7, Tri7, Pré-exaustão) ────────────────────
+const BlocoGrupo = ({membros, met, bibCustom, done, onToggle, cargas, onCarga, getLastCarga}) => {
+  const n = membros.length;
+  const letras = membros.map((m,i)=>String.fromCharCode(65+i));
+  const lista = letras.slice(0,-1).join(", ") + " e " + letras[n-1];
+  const descUlt = membros[n-1].item.descanso;
+  const temDesc = descUlt && descUlt!=="—";
+  const series = membros[0].item.series;
+  return (
+    <div style={{background:"#fff",border:"2px solid "+met.border,borderRadius:14,overflow:"hidden",marginBottom:10,boxShadow:"0 1px 2px rgba(15,23,42,0.04)"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 14px",background:met.bg,color:met.cor,fontSize:11.5,fontWeight:700,textTransform:"uppercase",letterSpacing:0.3}}>
+        <span>{met.icone} {met.faixa}</span>
+        <span>{series} {String(series)==="1"?"série":"séries"}</span>
+      </div>
+      {membros.map((m,i)=>(
+        <div key={m.k} style={{borderTop:i===0?"none":"1px solid #f1f5f9"}}>
+          <ExercicioItem item={m.item} bibCustom={bibCustom} checked={done.has(m.k)} onToggle={()=>onToggle(m.k)} carga={cargas[m.k]} onCargaChange={v=>onCarga(m.k,v)} lastCarga={getLastCarga(m.item.exId)} emGrupo={{letra:letras[i],primeiro:i===0,ultimo:i===n-1}}/>
+        </div>
+      ))}
+      <div style={{padding:"9px 14px",background:"#f8fafc",borderTop:"1px solid #f1f5f9",fontSize:12,color:"#475569",lineHeight:1.5}}>
+        Faça {lista} em sequência, sem pausa.{temDesc ? (" Só descanse "+descUlt+" depois do "+letras[n-1]+".") : ""}
+      </div>
+    </div>
   );
 };
 
@@ -1977,10 +2030,28 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
               <div style={{display:"flex",alignItems:"center",gap:7,fontSize:12,fontWeight:800,color:"#64748b",marginBottom:8,textTransform:"uppercase",letterSpacing:0.3}}>
                 <span style={{width:8,height:8,borderRadius:99,background:color,flexShrink:0}}/>{label}
               </div>
-              {items.map((item,idx)=>{
-                const k = key+"-"+idx;
-                return <ExercicioItem key={k} item={item} bibCustom={bibCustom} checked={done.has(k)} onToggle={()=>toggle(k)} carga={cargas[k]} onCargaChange={v=>setCarga(k,v)} lastCarga={getLastCarga(item.exId)}/>;
-              })}
+              {(()=>{
+                const out = [];
+                let i = 0;
+                while (i < items.length) {
+                  const it = items[i];
+                  const met = it.metodo ? METODOS_ALUNO[it.metodo] : null;
+                  if (met && met.tipo==="grupo" && it.grupoId) {
+                    let j = i;
+                    while (j < items.length && items[j].grupoId===it.grupoId) j++;
+                    if (j-i >= 2) {
+                      const membros = items.slice(i,j).map((m,o)=>({item:m,k:key+"-"+(i+o)}));
+                      out.push(<BlocoGrupo key={"g-"+key+"-"+i} membros={membros} met={met} bibCustom={bibCustom} done={done} onToggle={toggle} cargas={cargas} onCarga={setCarga} getLastCarga={getLastCarga}/>);
+                      i = j;
+                      continue;
+                    }
+                  }
+                  const k = key+"-"+i;
+                  out.push(<ExercicioItem key={k} item={it} bibCustom={bibCustom} checked={done.has(k)} onToggle={()=>toggle(k)} carga={cargas[k]} onCargaChange={v=>setCarga(k,v)} lastCarga={getLastCarga(it.exId)}/>);
+                  i++;
+                }
+                return out;
+              })()}
             </div>
           );
         })}
