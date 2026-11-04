@@ -72,6 +72,8 @@
     };
     add('i-phone', fmtPhone(num), wa(baseMsg), '', 'WhatsApp');
     const ex = document.body.getAttribute('data-wa-extra');
+    const ex2 = document.body.getAttribute('data-wa-extra2');
+    if (ex2) add('i-person', document.body.getAttribute('data-wa-extra2-label') || 'Sou síndico ou administrador', wa(ex2), 'alt');
     if (ex) add('i-heart', document.body.getAttribute('data-wa-extra-label') || 'Falar sobre meus pais', wa(ex), 'alt');
     add('i-insta', CONFIG.instagram.label, CONFIG.instagram.href, '', 'Instagram');
     if (document.body.hasAttribute('data-share')) {
@@ -234,7 +236,21 @@
     }
     p.dataset.k = k.toFixed(3);
   }
-  function fitAll() { pages.forEach(fitPage); }
+  function fitAll() { pages.forEach(fitPage); focusAll(); }
+
+  /* ---------- Enquadramento das fotos: centraliza o ponto focal (rosto/corpo) ---------- */
+  const imgCache = {};
+  function focusPhoto(el) {
+    const fx = parseFloat(el.dataset.fx), fy = parseFloat(el.dataset.fy), ar = parseFloat(el.dataset.ar);
+    const cw = el.clientWidth, ch = el.clientHeight;
+    if (!cw || !ch || !ar || isNaN(fx) || isNaN(fy)) return;
+    const s = Math.max(cw / ar, ch / 1);           // imagem normalizada: altura 1, largura ar
+    const dw = ar * s, dh = s;
+    const x = Math.min(0, Math.max(cw - dw, cw / 2 - fx * dw));
+    const y = Math.min(0, Math.max(ch - dh, ch / 2 - fy * dh));
+    el.style.backgroundPosition = x.toFixed(1) + 'px ' + y.toFixed(1) + 'px';
+  }
+  function focusAll() { document.querySelectorAll('.ph.has-img[data-fx]').forEach(focusPhoto); }
   let rt = 0;
   function scheduleFit() { clearTimeout(rt); rt = setTimeout(fitAll, 120); }
   window.addEventListener('resize', scheduleFit);
