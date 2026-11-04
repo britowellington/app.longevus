@@ -30,7 +30,8 @@ const lstageName = function(id){ var s=LSTAGES.find(function(x){return x.id===id
 const MATERIAIS = [
 {id:"sindicos",file:"apresentacao-sindicos.html",titulo:"Movimento e Longevidade nos Condomínios",pub:"Síndicos e administradoras"},
 {id:"moradores",file:"apresentacao-moradores.html",titulo:"Sua academia está dentro do condomínio",pub:"Moradores"},
-{id:"indicacao",file:"apresentacao-indicacao.html",titulo:"Indicação de alunos",pub:"Alunos que indicam vizinhos e amigos"}
+{id:"indicacao",file:"apresentacao-indicacao.html",titulo:"Indicação de alunos",pub:"Alunos que indicam vizinhos e amigos"},
+{id:"academia",file:"academia-assistida.html",titulo:"Academia Assistida",pub:"Academia Assistida",fixo:true}
 ];
 
 function rangeOf(p){
@@ -526,9 +527,10 @@ var qs=[];
 var add=function(k,v){ if(v) qs.push(k+"="+encodeURIComponent(String(v).slice(0,280))); };
 if(c){ add("c",c.nome); add("b",c.bairro); }
 add("r",f.responsavel); add("m",f.mensagem); add("a",f.tipoAcao); add("d",f.data); add("w",waNum(w));
-var url=base+(qs.length?"?"+qs.join("&"):"");
+var fixo=!!m.fixo;
+var url=fixo?base:base+(qs.length?"?"+qs.join("&"):"");
 var printUrl=url+(qs.length?"&":"?")+"print=1";
-var texto="Olá"+(f.responsavel?", "+f.responsavel:"")+"! Preparei uma apresentação"+(c?" pensando no "+c.nome:"")+". Segue o link: "+url;
+var texto=fixo?"Olá! Segue a apresentação do programa Academia Assistida: "+url:"Olá"+(f.responsavel?", "+f.responsavel:"")+"! Preparei uma apresentação"+(c?" pensando no "+c.nome:"")+". Segue o link: "+url;
 var salvar=function(){ if(c) saveCondo(Object.assign({},c,{apresentacao:{responsavel:f.responsavel,mensagem:f.mensagem,tipoAcao:f.tipoAcao,data:f.data}})); say("Personalização salva"); };
 var upf=function(k){return function(v){setF(function(p){var n=Object.assign({},p); n[k]=v; return n;});};};
 var aBtn={textDecoration:"none"};
@@ -538,7 +540,8 @@ return <div>
 </div>
 <Card style={{marginTop:8}}>
 <div style={{fontWeight:800,fontSize:15}}>{m.titulo}</div>
-<div style={{...S.muted,marginBottom:12}}>O modelo base não muda. A versão personalizada vive só no link.</div>
+<div style={{...S.muted,marginBottom:12}}>{fixo?"Apresentação fixa, igual para todos. Não leva personalização no link.":"O modelo base não muda. A versão personalizada vive só no link."}</div>
+{!fixo&&<div>
 <Inp label="Condomínio" value={cid} onChange={pickCondo} opts={[{v:"",l:"Versão geral, sem condomínio"}].concat(condos.map(function(x){return {v:x.id,l:x.nome};}))}/>
 <Inp label="Nome do responsável" value={f.responsavel} onChange={upf("responsavel")}/>
 <Inp label="Mensagem de abertura" value={f.mensagem} onChange={upf("mensagem")} placeholder="Opcional, até 280 caracteres"/>
@@ -546,6 +549,7 @@ return <div>
 <Inp label="Data da apresentação" type="date" value={f.data} onChange={upf("data")}/>
 <Inp label="WhatsApp que aparece na página" value={f.whats} onChange={upf("whats")} placeholder={prof&&prof.whatsapp?"Usando o do seu perfil":"Preencha aqui ou no seu perfil"} note="Se vazio, usa o WhatsApp do seu perfil profissional."/>
 {!w&&<div style={{fontSize:12,color:"#d97706",marginBottom:10}}>Sem WhatsApp definido, os botões de contato não aparecem na página.</div>}
+</div>}
 {!publico&&<div style={{fontSize:12,color:"#dc2626",marginBottom:10}}>Você abriu o app fora do site publicado. O link só funciona para outras pessoas depois que os arquivos de apresentação estiverem no mesmo endereço do app.</div>}
 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
 <Btn variant="secondary" icon="eye" onClick={function(){setPrev(true);}}>Visualizar</Btn>
@@ -553,9 +557,9 @@ return <div>
 <a href={"https://wa.me/?text="+encodeURIComponent(texto)} target="_blank" rel="noopener noreferrer" style={aBtn}><Btn full variant="outline">WhatsApp</Btn></a>
 <a href={url} target="_blank" rel="noopener noreferrer" style={aBtn}><Btn full variant="outline">Abrir no navegador</Btn></a>
 </div>
-<div style={{marginTop:8}}><a href={printUrl} target="_blank" rel="noopener noreferrer" style={aBtn}><Btn full variant="outline" icon="download">Imprimir ou salvar PDF</Btn></a></div>
-{c&&<div style={{marginTop:8}}><Btn full variant="ghost" onClick={salvar}>Guardar personalização neste condomínio</Btn></div>}
-<div style={{fontSize:11,color:"#94a3b8",marginTop:10,lineHeight:1.5}}>O link leva só nome do condomínio, bairro, responsável, mensagem, ação, data e o WhatsApp profissional. Nenhum dado de aluno, lead ou administrativo é enviado. Nada é enviado automaticamente: o WhatsApp abre para você revisar e enviar.</div>
+{!fixo&&<div style={{marginTop:8}}><a href={printUrl} target="_blank" rel="noopener noreferrer" style={aBtn}><Btn full variant="outline" icon="download">Imprimir ou salvar PDF</Btn></a></div>}
+{!fixo&&c&&<div style={{marginTop:8}}><Btn full variant="ghost" onClick={salvar}>Guardar personalização neste condomínio</Btn></div>}
+{!fixo&&<div style={{fontSize:11,color:"#94a3b8",marginTop:10,lineHeight:1.5}}>O link leva só nome do condomínio, bairro, responsável, mensagem, ação, data e o WhatsApp profissional. Nenhum dado de aluno, lead ou administrativo é enviado. Nada é enviado automaticamente: o WhatsApp abre para você revisar e enviar.</div>}
 </Card>
 {prev&&<Modal title="Visualização" onClose={function(){setPrev(false);}}>
 {publico?<iframe title="previa" src={url} style={{width:"100%",height:"60vh",border:"1px solid #e2e8f0",borderRadius:10}}/>:<div style={S.muted}>A visualização precisa do app publicado no site. Use o app pelo endereço do GitHub Pages.</div>}
