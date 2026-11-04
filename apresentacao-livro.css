@@ -505,3 +505,62 @@ button{ font:inherit; color:inherit; }
 .contacts li.alt a svg{ color:var(--orange)!important; }
 [data-show]{ display:none; }
 .nowa{ display:none; }
+
+
+/* =========================================================
+   PADRÃO TIPOGRÁFICO PREMIUM (v2)
+   Escala única, sem esticar fontes e sem variar entre páginas.
+   ========================================================= */
+.pg-inner{ --u:min(1cqw,.5cqh); }
+@container pg (orientation: landscape){ .pg-inner{ --u:min(1cqh,.5cqw); } }
+.h1{ font-weight:700; font-size:calc(var(--k)*clamp(22px,calc(var(--u)*6),40px)); line-height:1.12; letter-spacing:-.012em; max-width:20ch; text-wrap:balance; }
+.lead{ font-size:calc(var(--k)*clamp(14px,calc(var(--u)*3.7),19px)); line-height:1.5; }
+.body{ font-size:calc(var(--k)*clamp(13px,calc(var(--u)*3.3),16.5px)); line-height:1.55; }
+.small{ font-size:calc(var(--k)*clamp(11.5px,calc(var(--u)*2.9),14px)); }
+.eyebrow{ letter-spacing:.16em; }
+.quote{ font-size:calc(var(--k)*clamp(13.5px,calc(var(--u)*3.5),18px)); line-height:1.45; }
+.hero{ font-weight:700; font-size:calc(var(--k)*clamp(30px,calc(var(--u)*8.2),64px)); line-height:1.02; letter-spacing:-.01em; text-transform:uppercase; }
+.hero.sm{ font-size:calc(var(--k)*clamp(28px,calc(var(--u)*7.4),58px)); }
+.hero.q{ text-transform:none; font-size:calc(var(--k)*clamp(24px,calc(var(--u)*6.4),48px)); line-height:1.1; max-width:18ch; }
+.hero small{ display:block; margin-top:.7em; text-transform:none; font-weight:500; font-family:var(--ff-body); letter-spacing:0; font-size:calc(var(--k)*clamp(14px,calc(var(--u)*3.6),19px)); line-height:1.35; color:#fff; opacity:.92; }
+.cover-sign{ font-size:calc(var(--k)*clamp(13.5px,calc(var(--u)*3.5),18px)); line-height:1.45; max-width:38ch; }
+.numlist li,.checks li,.benefits li,.steps li{ font-size:calc(var(--k)*clamp(13px,calc(var(--u)*3.3),16px)); line-height:1.45; }
+.front h3{ font-size:calc(var(--k)*clamp(12px,calc(var(--u)*3),15px)); }
+.front p{ font-size:calc(var(--k)*clamp(12.5px,calc(var(--u)*3.1),15px)); }
+.msgq{ font-size:calc(var(--k)*clamp(17px,calc(var(--u)*4.6),26px)); line-height:1.4; }
+/* fotos: sem corte dentro do cartão, cantos suaves */
+.ph.has-img{ background-repeat:no-repeat; background-size:cover; }
+@container pg (orientation: landscape){
+  .p1 .brandline{ max-width:44%; flex-wrap:wrap; row-gap:.4em; }
+  .p1 .brandline .sep{ display:none; }
+  .p1 .brandline .ed{ flex-basis:100%; }
+  .cover-main{ max-width:44%; }
+}
+
+/* =========================================================
+   v3 PREMIUM: tipografia editorial, só DM Sans nos títulos
+   (Syne é muito larga no celular; fica só no que for pequeno)
+   ========================================================= */
+:root{ --ff-head:'DM Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; }
+.h1,.hero,.front h3,.name,.msgq,.plan .pn,.brandline,.brand,.sig,.badge b,.next4 b,.numlist li span,.steps li span,.cover-foot,.where .num{ font-family:var(--ff-head); }
+.h1{ font-weight:700; font-size:calc(var(--k)*clamp(22px,calc(var(--u)*5.3),34px)); line-height:1.14; letter-spacing:-.02em; max-width:18ch; }
+.hero{ text-transform:none; font-weight:700; letter-spacing:-.03em; line-height:1.02;
+  font-size:calc(var(--k)*clamp(30px,calc(var(--u)*8.6),58px)); }
+.hero.sm,.hero.q{ font-size:calc(var(--k)*clamp(28px,calc(var(--u)*7.6),52px)); }
+.hero.q{ font-size:calc(var(--k)*clamp(24px,calc(var(--u)*6.2),42px)); line-height:1.1; letter-spacing:-.025em; }
+.hero small{ font-weight:400; font-size:calc(var(--k)*clamp(14px,calc(var(--u)*3.5),18px)); opacity:.85; letter-spacing:0; }
+.h1,.hero{ text-wrap:balance; }
+.front h3{ font-size:calc(var(--k)*clamp(13px,calc(var(--u)*3.2),16px)); letter-spacing:.02em; text-transform:none; font-weight:700; }
+.front h3 b{ font-weight:700; opacity:.55; margin-right:.5em; }
+.name{ font-size:calc(var(--k)*clamp(20px,calc(var(--u)*5),30px)); font-weight:700; letter-spacing:-.02em; }
+.cover-main .eyebrow,.eyebrow{ letter-spacing:.14em; font-weight:600; }
+.badge b{ font-weight:800; letter-spacing:-.02em; }
+.numlist li span{ font-weight:700; letter-spacing:.02em; }
+.msgq{ font-weight:500; }
+.sig{ font-weight:500; }
+.brandline,.brand{ letter-spacing:.14em; font-weight:700; }
+.where .num{ font-weight:700; }
+/* menos ruído: contatos mais discretos */
+.contacts{ gap:calc(var(--k)*8px); }
+.p4 .pg-inner{ justify-content:flex-start; gap:calc(var(--gap)*2.2); }
+.p4 .fronts{ margin-top:0; }
