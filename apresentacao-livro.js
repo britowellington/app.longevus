@@ -73,7 +73,7 @@
     add('i-phone', fmtPhone(num), wa(baseMsg), '', 'WhatsApp');
     const ex = document.body.getAttribute('data-wa-extra');
     const ex2 = document.body.getAttribute('data-wa-extra2');
-    if (ex2) add('i-person', document.body.getAttribute('data-wa-extra2-label') || 'Sou síndico ou administrador', wa(ex2), 'alt');
+    if (ex2 && P.c) add('i-person', document.body.getAttribute('data-wa-extra2-label') || 'Sou síndico ou administrador', wa(ex2), 'alt');
     if (ex) add('i-heart', document.body.getAttribute('data-wa-extra-label') || 'Falar sobre meus pais', wa(ex), 'alt');
     add('i-insta', CONFIG.instagram.label, CONFIG.instagram.href, '', 'Instagram');
     if (document.body.hasAttribute('data-share')) {
