@@ -564,3 +564,6 @@ button{ font:inherit; color:inherit; }
 .contacts{ gap:calc(var(--k)*8px); }
 .p4 .pg-inner{ justify-content:flex-start; gap:calc(var(--gap)*2.2); }
 .p4 .fronts{ margin-top:0; }
+.p4s .fronts{ grid-template-columns:1fr; margin:0; }
+@container pg (orientation: landscape){ .p4s .fronts{ grid-template-columns:1fr 1fr; gap:0 calc(var(--k)*18px); } }
+.p8s .contacts{ margin-top:calc(var(--gap)*.8); justify-content:flex-start; }
