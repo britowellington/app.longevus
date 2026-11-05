@@ -311,6 +311,11 @@ const TREINO_DEFS={
   C:{label:"Treino C",cor:"#7e22ce",bg:"#fdf4ff",border:"#e9d5ff",desc:"Funcional + Cardio + Coordenação",grupos:["Funcional","Cardio","Coordenação"]},
   D:{label:"Treino D",cor:"#15803d",bg:"#f0fdf4",border:"#bbf7d0",desc:"Full Body + Mobilidade Geral",grupos:["MMII","MMSS","Equilíbrio","Mobilidade","Alongamento"]},
   FB:{label:"Full Body",cor:"#0d9488",bg:"#f0fdfa",border:"#99f6e4",desc:"Corpo todo — Pernas, Peito, Costas, Ombros, Braços"},
+  FBA:{label:"Full Body A",cor:"#0d9488",bg:"#f0fdfa",border:"#99f6e4",desc:"Corpo todo, seleção A de exercícios"},
+  FBB:{label:"Full Body B",cor:"#0f766e",bg:"#ecfdf5",border:"#6ee7b7",desc:"Corpo todo, seleção B de exercícios"},
+  FBC:{label:"Full Body C",cor:"#0e7490",bg:"#ecfeff",border:"#a5f3fc",desc:"Corpo todo, seleção C de exercícios"},
+  FBD:{label:"Full Body D",cor:"#115e59",bg:"#f0fdfa",border:"#5eead4",desc:"Corpo todo, seleção D de exercícios"},
+  FBE:{label:"Full Body E",cor:"#155e75",bg:"#f0f9ff",border:"#7dd3fc",desc:"Corpo todo, seleção E de exercícios"},
   SUP:{label:"Superior",cor:"#be185d",bg:"#fdf2f8",border:"#fbcfe8",desc:"Peito, Costas, Ombros, Bíceps, Tríceps"},
   INF:{label:"Inferior",cor:"#1d4ed8",bg:"#eff6ff",border:"#bfdbfe",desc:"Quadríceps, Posterior, Glúteos, Panturrilha"},
   PUSH:{label:"Push",cor:"#c2410c",bg:"#fff7ed",border:"#fed7aa",desc:"Peito, Ombros, Tríceps"},
@@ -341,24 +346,38 @@ const DIVISAO_OPTIONS={
 // ─── DIVISÃO DE TREINO — TRILHA ACADEMIA (por ora, só Full Body) ─────────────
 const ACADEMIA_DIVISAO_OPTIONS={
   2:[{modelo:"academia_fb",label:"Full Body (2×)",desc:"Corpo todo nas 2 sessões",sequencia:["FB","FB"]},
+     {modelo:"academia_fb_ab",label:"Full Body A/B (2×)",desc:"Dois Full Body com exercícios diferentes",sequencia:["FBA","FBB"]},
      {modelo:"academia_ul",label:"Superior/Inferior (2×)",desc:"Superior e Inferior, um de cada",sequencia:["SUP","INF"]}],
   3:[{modelo:"academia_fb",label:"Full Body (3×)",desc:"Corpo todo nas 3 sessões",sequencia:["FB","FB","FB"]},
+     {modelo:"academia_fb_aba",label:"Full Body A/B/A (3×)",desc:"Dois Full Body diferentes, alternando",sequencia:["FBA","FBB","FBA"]},
+     {modelo:"academia_fb_abc",label:"Full Body A/B/C (3×)",desc:"Três Full Body com exercícios diferentes",sequencia:["FBA","FBB","FBC"]},
      {modelo:"academia_ul",label:"Superior/Inferior (3×)",desc:"Superior, Inferior, Superior",sequencia:["SUP","INF","SUP"]},
      {modelo:"academia_ulf",label:"Superior/Inferior/Full Body (3×)",desc:"Superior, Inferior, Full Body",sequencia:["SUP","INF","FB"]},
      {modelo:"academia_ppl",label:"Push/Pull/Legs (3×)",desc:"Empurra, Puxa, Perna",sequencia:["PUSH","PULL","LEGS"]}],
   4:[{modelo:"academia_fb",label:"Full Body (4×)",desc:"Corpo todo nas 4 sessões",sequencia:["FB","FB","FB","FB"]},
+     {modelo:"academia_fb_abab",label:"Full Body A/B (4×)",desc:"Dois Full Body diferentes, alternando",sequencia:["FBA","FBB","FBA","FBB"]},
+     {modelo:"academia_fb_abcd",label:"Full Body A/B/C/D (4×)",desc:"Quatro Full Body com exercícios diferentes",sequencia:["FBA","FBB","FBC","FBD"]},
      {modelo:"academia_ul",label:"Superior/Inferior (4×)",desc:"Alternando Superior e Inferior",sequencia:["SUP","INF","SUP","INF"]},
      {modelo:"academia_ppl",label:"Push/Pull/Legs (4×)",desc:"Empurra, Puxa, Perna, Empurra",sequencia:["PUSH","PULL","LEGS","PUSH"]},
      {modelo:"academia_abcd",label:"ABCD por grupo (4×)",desc:"Peito / Costas / Perna / Ombro",sequencia:["PEITO","COSTAS","PERNA","OMBRO"]}],
   5:[{modelo:"academia_fb",label:"Full Body (5×)",desc:"Corpo todo nas 5 sessões",sequencia:["FB","FB","FB","FB","FB"]},
+     {modelo:"academia_fb_abcab",label:"Full Body A/B/C (5×)",desc:"Três Full Body diferentes, em rodízio",sequencia:["FBA","FBB","FBC","FBA","FBB"]},
+     {modelo:"academia_fb_abcde",label:"Full Body A/B/C/D/E (5×)",desc:"Cinco Full Body com exercícios diferentes",sequencia:["FBA","FBB","FBC","FBD","FBE"]},
      {modelo:"academia_ul",label:"Superior/Inferior (5×)",desc:"Ciclo completo + retomada",sequencia:["SUP","INF","SUP","INF","SUP"]},
      {modelo:"academia_ppl",label:"Push/Pull/Legs (5×)",desc:"Ciclo completo + retomada",sequencia:["PUSH","PULL","LEGS","PUSH","PULL"]},
      {modelo:"academia_abcd",label:"ABCD por grupo (5×)",desc:"Peito / Costas / Perna / Ombro / Peito",sequencia:["PEITO","COSTAS","PERNA","OMBRO","PEITO"]}],
 };
 
 // ─── Grupos musculares trabalhados em cada tipo de treino de Academia ────────
+// Full Body A/B/C...: cada letra desloca a escolha dentro do mesmo grupo muscular, pra não repetir exercício entre os treinos
+const FB_OFFSET = { FBA:0, FBB:1, FBC:2, FBD:3, FBE:4 };
 const ACADEMIA_TREINO_MUSCULOS = {
   FB: ["quadríceps","posterior","glúteos","peito","costas","ombros","bíceps","tríceps","panturrilha"],
+  FBA: ["quadríceps","posterior","glúteos","peito","costas","ombros","bíceps","tríceps","panturrilha"],
+  FBB: ["quadríceps","posterior","glúteos","peito","costas","ombros","bíceps","tríceps","panturrilha"],
+  FBC: ["quadríceps","posterior","glúteos","peito","costas","ombros","bíceps","tríceps","panturrilha"],
+  FBD: ["quadríceps","posterior","glúteos","peito","costas","ombros","bíceps","tríceps","panturrilha"],
+  FBE: ["quadríceps","posterior","glúteos","peito","costas","ombros","bíceps","tríceps","panturrilha"],
   SUP: ["peito","costas","ombros","bíceps","tríceps"],
   INF: ["quadríceps","posterior","glúteos","panturrilha"],
   PUSH: ["peito","ombros","tríceps"],
@@ -693,7 +712,7 @@ const buildPrescricaoAcademia = (sequencia, bibCustom=[], variantIndex=0, enfase
       // ── PARTE PRINCIPAL: um exercício por grupo muscular do treino do dia ──
       const musculosDoTreino=ACADEMIA_TREINO_MUSCULOS[treinoKey]||MUSC_ACADEMIA_FB;
       const principal=musculosDoTreino.map(musculo=>{
-        const ex=escolherAcademia(musculo,blocoNivel,usados,bibCustom,variantIndex+bIdx);
+        const ex=escolherAcademia(musculo,blocoNivel,usados,bibCustom,variantIndex+bIdx+(FB_OFFSET[treinoKey]||0));
         if(!ex)return null;
         usados.add(ex.id);
         const p=getPresc(ex.id,bloco.key,bibCustom);
@@ -703,7 +722,7 @@ const buildPrescricaoAcademia = (sequencia, bibCustom=[], variantIndex=0, enfase
       // ── ÊNFASE: exercício extra nos grupos prioritários da ênfase escolhida ──
       const musculosEnfase=(ENFASE_EXTRA[enfase]||[]).filter(m=>musculosDoTreino.includes(m));
       musculosEnfase.forEach(musculo=>{
-        const ex=escolherAcademia(musculo,blocoNivel,usados,bibCustom,variantIndex+bIdx+1);
+        const ex=escolherAcademia(musculo,blocoNivel,usados,bibCustom,variantIndex+bIdx+1+(FB_OFFSET[treinoKey]||0));
         if(!ex)return;
         usados.add(ex.id);
         const p=getPresc(ex.id,bloco.key,bibCustom);
@@ -1547,7 +1566,7 @@ const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,n
 };
 
 // ─── NOMES E ORDEM DOS TREINOS (personalizáveis por programa) ────────────────
-const TREINOS_ACADEMIA_KEYS=["FB","SUP","INF","PUSH","PULL","LEGS","PEITO","COSTAS","PERNA","OMBRO"];
+const TREINOS_ACADEMIA_KEYS=["FB","FBA","FBB","FBC","FBD","FBE","SUP","INF","PUSH","PULL","LEGS","PEITO","COSTAS","PERNA","OMBRO"];
 const TREINOS_CASA_KEYS=["A","B","C","D"];
 const nomeTreinoDe=(nomes,t)=>((nomes&&nomes[t])||"").trim()||TREINO_DEFS[t]?.label||t;
 
@@ -2042,7 +2061,7 @@ const buildPrescricaoConsultoria=(params,bibCustom,divisao)=>{
         const categoria=categoriaMusculo(musculo);
         // âncora: fixa o tempo todo. Secundário/acessório: rotacionam só a cada CICLO (não a cada fase) —
         // assim o exercício se mantém estável dentro das 8 semanas, só a prescrição muda por fase.
-        const variantIndex=categoria==="ancora"?0:bloco.cicloIdx+mIdx;
+        const variantIndex=(categoria==="ancora"?0:bloco.cicloIdx+mIdx)+(FB_OFFSET[treinoKey]||0);
         const ex=escolherAcademiaComFallback(musculo,nivelFiltro,usados,bibCustom,variantIndex);
         if(!ex)return null;
         usados.add(ex.id);
@@ -2051,7 +2070,7 @@ const buildPrescricaoConsultoria=(params,bibCustom,divisao)=>{
 
       const enfaseAqui=ehEmpPux?[]:enfaseMusculos.filter(m=>musculos.includes(m));
       enfaseAqui.forEach((musculo,i)=>{
-        const ex=escolherAcademiaComFallback(musculo,nivelFiltro,usados,bibCustom,bloco.cicloIdx+i+5);
+        const ex=escolherAcademiaComFallback(musculo,nivelFiltro,usados,bibCustom,bloco.cicloIdx+i+5+(FB_OFFSET[treinoKey]||0));
         if(!ex)return;
         usados.add(ex.id);
         principal.push({exId:ex.id,series:presc.s,reps:presc.r,descanso:presc.d,obs:"Ênfase",_m:musculo});
