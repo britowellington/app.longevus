@@ -327,7 +327,13 @@ const TREINO_DEFS={
   OMBRO:{label:"Ombro",cor:"#7c3aed",bg:"#f5f3ff",border:"#ddd6fe",desc:"Ombros e Abdômen"},
   EMP:{label:"Empurrar",cor:"#0891b2",bg:"#ecfeff",border:"#a5f3fc",desc:"Full body alternado — Peito, Abdômen, Quadríceps, Tríceps"},
   PUX:{label:"Puxar",cor:"#9333ea",bg:"#faf5ff",border:"#e9d5ff",desc:"Full body alternado — Costas, Lombar, Posterior, Bíceps, Panturrilha"},
+  ALTA:{label:"Treino A",cor:"#0891b2",bg:"#ecfeff",border:"#a5f3fc",desc:"Alternado por segmento: Peitoral, Abdômen, Ombros, Quadríceps, Tríceps"},
+  ALTB:{label:"Treino B",cor:"#9333ea",bg:"#faf5ff",border:"#e9d5ff",desc:"Alternado por segmento: Dorsal, Posterior, Lombar, Bíceps, Abdutores, Adutores"},
+  ALTC:{label:"Treino C",cor:"#65a30d",bg:"#f7fee7",border:"#d9f99d",desc:"Alternado por segmento: Quadríceps, Bíceps, Panturrilha, Peitoral, Dorsal, Core, Glúteos, Funcional"},
 };
+
+const TREINOS_ALTERNADOS=["EMP","PUX","ALTA","ALTB","ALTC"];
+const ehBlocoAlternado=b=>(b?.treinos||[]).some(t=>TREINOS_ALTERNADOS.includes(t));
 
 const suggestDivisao=(freq,assessment)=>{
   const sppb=assessment?(parseInt(assessment.phys?.sppbSide||0)?(parseInt(assessment.phys?.sppbSemi||0)+parseInt(assessment.phys?.sppbTandem||0)):0):4;
@@ -1616,14 +1622,14 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
   const seqAtual=sequencia||prog.divisao?.sequencia||["A"];
   const seqUnicos=[...new Set(seqAtual)];
   const nomeT=t=>nomeTreinoDe(nomes,t);
-  const treinosUnicos=(blocoAtivo?.treinos&&blocoAtivo.treinos.includes("EMP"))?blocoAtivo.treinos:seqUnicos;
+  const treinosUnicos=ehBlocoAlternado(blocoAtivo)?blocoAtivo.treinos:seqUnicos;
   const treinoAtivo=treinosUnicos[treinoIdx]||treinosUnicos[0];
   const tDef=TREINO_DEFS[treinoAtivo];
   // Treinos que podem ser escolhidos em cada dia (mesma família da divisão do programa)
   const seqOriginalUnicos=[...new Set(prog.divisao?.sequencia||["A"])];
   const opcoesTreinoDia=prog.origem==="patologia"?seqOriginalUnicos
     :seqOriginalUnicos.some(t=>TREINOS_ACADEMIA_KEYS.includes(t))?TREINOS_ACADEMIA_KEYS:TREINOS_CASA_KEYS;
-  const treinosRenomeaveis=[...seqUnicos,...(blocosAtivos.some(b=>(b.treinos||[]).includes("EMP"))?["EMP","PUX"]:[])];
+  const treinosRenomeaveis=[...seqUnicos,...[...new Set(blocosAtivos.filter(ehBlocoAlternado).flatMap(b=>b.treinos))].filter(t=>!seqUnicos.includes(t))];
   // Gera a prescrição de um treino que ainda não existe no programa (ex: trocar um dia pra Full Body)
   const gerarTreinoNovo=(key)=>{
     const variante=Math.max(0,(prog.variante||1)-1);
@@ -1637,7 +1643,7 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
   };
   const trocarTreinoDia=(i,key)=>{
     setSequencia(s=>{const n=[...(s||seqAtual)];n[i]=key;return n;});
-    const faltando=blocosAtivos.some(b=>!(b.treinos&&b.treinos.includes("EMP"))&&!(prescricao[b.key]||{})[key]);
+    const faltando=blocosAtivos.some(b=>!ehBlocoAlternado(b)&&!(prescricao[b.key]||{})[key]);
     if(!faltando)return;
     const gerado=gerarTreinoNovo(key)||{};
     setPrescricao(p=>{
@@ -1662,7 +1668,7 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
     Object.keys(nomes).forEach(k=>{const v=(nomes[k]||"").trim();if(v&&v!==TREINO_DEFS[k]?.label)nomesLimpos[k]=v;});
     const conjuntoMudou=seqUnicos.slice().sort().join()!==seqOriginalUnicos.slice().sort().join();
     const divisaoNova={...prog.divisao,sequencia:[...seqAtual],...(conjuntoMudou?{modelo:"personalizada",label:"Personalizada ("+seqAtual.length+"×)",desc:seqAtual.map(nomeT).join(", ")}:{})};
-    const blocosConfigNovo=prog.blocosConfig?prog.blocosConfig.map(b=>(b.treinos&&!b.treinos.includes("EMP"))?{...b,treinos:seqUnicos}:b):prog.blocosConfig;
+    const blocosConfigNovo=prog.blocosConfig?prog.blocosConfig.map(b=>(b.treinos&&!ehBlocoAlternado(b))?{...b,treinos:seqUnicos}:b):prog.blocosConfig;
     const editedProg={...prog,prescricao,divisao:divisaoNova,nomesTreinos:Object.keys(nomesLimpos).length?nomesLimpos:null,...(prog.blocosConfig?{blocosConfig:blocosConfigNovo}:{})};
     const u=fresh.map(p=>p.id===prog.id?editedProg:p);setPrograms(u);LS.set("longevus_programs",u);ProgDB.save(editedProg);setEditMode(false);
   };
@@ -1812,7 +1818,7 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
             <div style={{fontSize:11,color:"#94a3b8",marginTop:4,lineHeight:1.5}}>Trocar um dia por um treino novo gera os exercícios dele em todos os blocos. As mudanças só valem depois de tocar em Salvar.</div>
           </div>
         )}
-        {blocoAtivo?.cicloIdx===0&&blocoAtivo?.treinos?.includes("EMP")&&<div style={{fontSize:11,color:"#0891b2",marginTop:8}}>ℹ️ Ciclo 1 usa Full Body Empurrar/Puxar Alternado (padrão iniciante) — a divisão acima entra a partir do Ciclo 2.</div>}
+        {blocoAtivo?.cicloIdx===0&&ehBlocoAlternado(blocoAtivo)&&<div style={{fontSize:11,color:"#0891b2",marginTop:8}}>ℹ️ Ciclo 1 usa {blocoAtivo.treinos.includes("EMP")?"Full Body Empurrar/Puxar Alternado":"A/B/C alternado por segmento"} (padrão iniciante). A divisão acima entra a partir do Ciclo 2.</div>}
       </Card>
       {prog.obs&&<Card style={{marginBottom:10,background:"#f8fafc",padding:"9px 13px"}}><div style={{fontSize:12,color:"#64748b",fontStyle:"italic"}}>📝 {prog.obs}</div></Card>}
       <div style={{display:"flex",gap:4,marginBottom:8,background:"#f1f5f9",borderRadius:10,padding:3,overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
@@ -1960,12 +1966,31 @@ const EMP_PUX_SLOTS={
   EMP:["peito","abdômen","quadríceps","peito","abdômen","quadríceps","tríceps"],
   PUX:["costas","lombar","posterior","costas","lombar","posterior","bíceps","panturrilha"],
 };
-const FALLBACK_MUSCULO={lombar:"costas"};
+// A/B/C alternado por segmento: substitui o Empurrar/Puxar no Ciclo 1 dos iniciantes.
+// Nunca dois exercícios seguidos da mesma região. "funcional" puxa equilíbrio/funcional da biblioteca geral.
+const ALT_SEGMENTO_SLOTS={
+  ALTA:["peito","abdômen","ombros","quadríceps","peito","tríceps","quadríceps","ombros"],
+  ALTB:["costas","posterior","lombar","costas","bíceps","abdutores","posterior","adutores"],
+  ALTC:["quadríceps","bíceps","panturrilha","peito","costas","core","glúteos","funcional"],
+};
+const SLOTS_ALTERNADOS={...EMP_PUX_SLOTS,...ALT_SEGMENTO_SLOTS};
+const FALLBACK_MUSCULO={lombar:["costas"],abdutores:["glúteos"],adutores:["quadríceps","glúteos"],core:["abdômen"]};
 const escolherAcademiaComFallback=(musculo,nivelFiltro,usados,bibCustom,variantIndex)=>{
   const ex=escolherAcademia(musculo,nivelFiltro,usados,bibCustom,variantIndex);
   if(ex)return ex;
-  const alt=FALLBACK_MUSCULO[musculo];
-  return alt?escolherAcademia(alt,nivelFiltro,usados,bibCustom,variantIndex):null;
+  for(const alt of (FALLBACK_MUSCULO[musculo]||[])){
+    const e=escolherAcademia(alt,nivelFiltro,usados,bibCustom,variantIndex);
+    if(e)return e;
+  }
+  return null;
+};
+const FUNCIONAL_IDS=["ex15","ex31","ex17","ex14","ex32"];
+const escolherFuncionalComMidia=(bibCustom,usados)=>{
+  for(const id of FUNCIONAL_IDS){
+    const r=resolverComGifObrigatorio(id,bibCustom);
+    if(r&&!usados.has(r.id))return r;
+  }
+  return null;
 };
 
 // ─── Só GIF/mídia na consultoria (inicial e final) ───────────────────────────
@@ -2040,16 +2065,16 @@ const buildPrescricaoConsultoria=(params,bibCustom,divisao)=>{
   const treinosEscolhidos=[...new Set(divisao.sequencia)];
   const nivelFiltro=(NIVEL_INCLUSIVO[params.nivel]||NIVEL_INCLUSIVO.intermediario).map(normNivel);
   const enfaseMusculos=ENFASE_EXTRA_CONSULTORIA[params.enfase]||[];
-  const usaEmpPuxNoCiclo1=params.nivel==="iniciante";
+  const usaAlternadoNoCiclo1=params.nivel==="iniciante";
   const blocosConfig=gerarBlocosConsultoria(params).map(bloco=>({
     ...bloco,
-    treinos:(usaEmpPuxNoCiclo1&&bloco.cicloIdx===0)?["EMP","PUX"]:treinosEscolhidos,
+    treinos:(usaAlternadoNoCiclo1&&bloco.cicloIdx===0)?["ALTA","ALTB","ALTC"]:treinosEscolhidos,
   }));
   const prescricao={};
 
   blocosConfig.forEach(bloco=>{
     const presc={s:String(bloco.series),r:bloco.reps,d:bloco.descanso_segundos+"s"};
-    const ehEmpPux=bloco.treinos.includes("EMP");
+    const ehEmpPux=ehBlocoAlternado(bloco);
     prescricao[bloco.key]={};
     bloco.treinos.forEach(treinoKey=>{
       const usados=new Set();
@@ -2064,8 +2089,15 @@ const buildPrescricaoConsultoria=(params,bibCustom,divisao)=>{
         inicial.push({exId:aerobico.id,series:"1",reps:"5–8 min",descanso:"—",obs:"Aquecimento aeróbico"});
       }
 
-      const musculos=ehEmpPux?EMP_PUX_SLOTS[treinoKey]:(ACADEMIA_TREINO_MUSCULOS[treinoKey]||MUSC_ACADEMIA_FB);
+      const musculos=ehEmpPux?SLOTS_ALTERNADOS[treinoKey]:(ACADEMIA_TREINO_MUSCULOS[treinoKey]||MUSC_ACADEMIA_FB);
       const principal=musculos.map((musculo,mIdx)=>{
+        if(musculo==="funcional"){
+          const r=escolherFuncionalComMidia(bibCustom,usados);
+          if(!r)return null;
+          usados.add(r.id);
+          const pf=getPresc(r.id,"b1",bibCustom);
+          return{exId:r.id,series:presc.s,reps:pf.r,descanso:presc.d,obs:"Equilíbrio / funcional",_m:musculo};
+        }
         const categoria=categoriaMusculo(musculo);
         // âncora: fixa o tempo todo. Secundário/acessório: rotacionam só a cada CICLO (não a cada fase) —
         // assim o exercício se mantém estável dentro das 8 semanas, só a prescrição muda por fase.
@@ -2250,7 +2282,7 @@ const NovoPeriodizacaoConsultoria=({students,programs,setPrograms,bibCustom,nav,
           <Card>
             <div style={{fontWeight:700,fontSize:15,marginBottom:10}}>{progGerado.titulo}</div>
             <div style={{fontSize:12,color:"#64748b",marginBottom:12}}>{progGerado.divisao.label} · {progGerado.freq}× por semana · {progGerado.blocosConfig.length} blocos (1 por fase × 3 ciclos de 8 semanas = 24 no total)</div>
-            {nivel==="iniciante"&&<div style={{fontSize:12,color:"#0891b2",background:"#ecfeff",border:"1.5px solid #a5f3fc",borderRadius:9,padding:"8px 12px",marginBottom:12}}>ℹ️ Nível Iniciante: o Ciclo 1 (semanas 1-8) usa Full Body Empurrar/Puxar Alternado em vez de {progGerado.divisao.label} — a divisão escolhida entra a partir do Ciclo 2.</div>}
+            {nivel==="iniciante"&&<div style={{fontSize:12,color:"#0891b2",background:"#ecfeff",border:"1.5px solid #a5f3fc",borderRadius:9,padding:"8px 12px",marginBottom:12}}>ℹ️ Nível Iniciante: o Ciclo 1 (semanas 1-8) usa A/B/C alternado por segmento em vez de {progGerado.divisao.label}. A divisão escolhida entra a partir do Ciclo 2.</div>}
             <div style={{fontSize:12,color:"#94a3b8",lineHeight:1.6}}>Cada bloco é uma fase da periodização — série/reps/descanso mudam a cada bloco, seguindo o modelo {MODELOS_PERIODIZACAO.find(([v])=>v===modeloPeriodizacao)?.[1]}. Os exercícios só trocam a cada ciclo completo de 8 semanas (secundários/acessórios rotacionam, âncoras ficam fixas pro reteste). Depois de salvar, você confere e ajusta tudo na tela de detalhe do programa — a mesma usada pros programas padrão — e o aluno já vê no app dele com o Bloco 1 liberado e os demais bloqueados até ele completar as sessões de cada fase.</div>
           </Card>
           <div style={{display:"flex",gap:10,marginBottom:10}}>

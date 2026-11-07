@@ -389,10 +389,14 @@ const TREINO_DEFS={
   OMBRO:{label:"Ombro",cor:"#7c3aed",bg:"#f5f3ff",border:"#ddd6fe",desc:"Ombros e Abdômen"},
   EMP:{label:"Empurrar",cor:"#0891b2",bg:"#ecfeff",border:"#a5f3fc",desc:"Full body alternado — Peito, Abdômen, Quadríceps, Tríceps"},
   PUX:{label:"Puxar",cor:"#9333ea",bg:"#faf5ff",border:"#e9d5ff",desc:"Full body alternado — Costas, Lombar, Posterior, Bíceps, Panturrilha"},
+  ALTA:{label:"Treino A",cor:"#0891b2",bg:"#ecfeff",border:"#a5f3fc",desc:"Alternado por segmento: Peitoral, Abdômen, Ombros, Quadríceps, Tríceps"},
+  ALTB:{label:"Treino B",cor:"#9333ea",bg:"#faf5ff",border:"#e9d5ff",desc:"Alternado por segmento: Dorsal, Posterior, Lombar, Bíceps, Abdutores, Adutores"},
+  ALTC:{label:"Treino C",cor:"#65a30d",bg:"#f7fee7",border:"#d9f99d",desc:"Alternado por segmento: Quadríceps, Bíceps, Panturrilha, Peitoral, Dorsal, Core, Glúteos, Funcional"},
 };
 
 const nomeTreinoDe=(prog,t)=>((prog&&prog.nomesTreinos&&prog.nomesTreinos[t])||"").trim()||TREINO_DEFS[t]?.label||t;
-const treinosDoBloco=(prog,bloco)=>(bloco&&bloco.treinos&&bloco.treinos.includes("EMP"))?bloco.treinos:[...new Set(prog?.divisao?.sequencia||bloco?.treinos||["A"])];
+const TREINOS_ALTERNADOS=["EMP","PUX","ALTA","ALTB","ALTC"];
+const treinosDoBloco=(prog,bloco)=>(bloco&&bloco.treinos&&bloco.treinos.some(t=>TREINOS_ALTERNADOS.includes(t)))?bloco.treinos:[...new Set(prog?.divisao?.sequencia||bloco?.treinos||["A"])];
 
 const BLOCOS = [
   {key:"b1",label:"Bloco 1 — Adaptação",semanas:"1–6",cor:{bg:"#eff6ff",border:"#bfdbfe",texto:"#1d4ed8",dot:"#3b82f6"},desc:"Aprendizado motor, tolerância ao esforço, volume baixo",nivel:["Basico"]},
@@ -1616,7 +1620,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
   },[prog, lastSessions, blocoAutoSet, loading]);
 
   // Qual treino é "o de hoje" segundo a rotação (independente da aba que o aluno está olhando agora)
-  const treinosSequencia = prog ? [...new Set(prog.divisao?.sequencia || ["A"])] : [];
+  const treinosSequencia = prog ? treinosDoBloco(prog, blocosPara(prog)[maxUnlockedIdx]) : [];
   let treinoDeHoje = treinosSequencia[0];
   if(lastSessions.length>0 && treinosSequencia.length>0){
     const idxUltimoGlobal = treinosSequencia.indexOf(lastSessions[0].treinoKey);
