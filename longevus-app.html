@@ -168,6 +168,26 @@ dataPagamento:null, valorPago:null, status:"previsto", origem: agendaEntryId?"ag
 // próximo vencimento (múltiplo de 30 dias a partir da âncora) em que essa aula deve ser cobrada.
 // É isso que faz várias cobranças por-sessão se agruparem visualmente num mesmo "ciclo de 30 dias",
 // mesmo sendo lançamentos individuais por aula.
+// Vencimento recorrente: "30dias" (padrão) ou "quintoDiaUtil" (5º dia útil do mês seguinte,
+// desconsiderando sábados, domingos e feriados nacionais).
+const feriadosNacionais = (ano) => {
+const a=ano%19,b=Math.floor(ano/100),c=ano%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451);
+const mesP=Math.floor((h+l-7*m+114)/31), diaP=((h+l-7*m+114)%31)+1;
+const sextaSanta=new Date(ano,mesP-1,diaP-2);
+return new Set(["01-01","04-21","05-01","09-07","10-12","11-02","11-15","11-20","12-25",String(sextaSanta.getMonth()+1).padStart(2,"0")+"-"+String(sextaSanta.getDate()).padStart(2,"0")]);
+};
+const quintoDiaUtil = (ano, mes) => {
+const fer=feriadosNacionais(ano); let d=new Date(ano,mes,1), cont=0;
+while(true){ const dow=d.getDay(); const chave=String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+if(dow!==0&&dow!==6&&!fer.has(chave)){ cont++; if(cont===5) return toISODateLocal(d); }
+d.setDate(d.getDate()+1); }
+};
+const proximoVencimentoMensal = (billing, baseISO) => {
+const base=new Date((baseISO||todayStr())+"T00:00:00");
+if(billing?.regraVencimento==="quintoDiaUtil") return quintoDiaUtil(base.getMonth()===11?base.getFullYear()+1:base.getFullYear(), (base.getMonth()+1)%12);
+base.setDate(base.getDate()+30); return toISODateLocal(base);
+};
+const REGRA_VENC_OPTS=[{v:"30dias",l:"A cada 30 dias"},{v:"quintoDiaUtil",l:"5º dia útil de cada mês"}];
 const vencimentoDoCiclo = (anchorISO, dataAula) => {
 if(!anchorISO) return dataAula;
 let d = new Date(anchorISO+"T00:00:00");
@@ -1051,6 +1071,18 @@ const selArr = abertos.filter(p=>selecionados.has(p.id));
 setValores(vs=>{ const n={...vs}; selArr.forEach(p=>{ n[p.id]=p.valorPrevisto; }); return n; });
 setDescontoValor("");
 };
+const registrarPagamentoMes = () => {
+const hoje = todayStr();
+const base = student.billing?.vencimento || hoje;
+if(!window.confirm("Registrar pagamento de "+fmtR(student.billing?.valor)+" referente ao vencimento de "+fmt(base)+"?")) return;
+const proxIso = proximoVencimentoMensal(student.billing, base);
+setPagamentos(p=>[...p,
+{...novoPagamentoMensal(student, base),status:"pago",valorPago:Number(student.billing?.valor)||0,dataPagamento:hoje,origem:"manual"},
+novoPagamentoMensal(student, proxIso, base)
+]);
+if(setStudents) setStudents(p=>p.map(s=>s.id===student.id?{...s,billing:{...(s.billing||{}),ultimoPagamento:hoje,vencimento:proxIso}}:s));
+onClose();
+};
 const confirmarBaixa = () => {
 const hoje = todayStr();
 const pagos = abertos.filter(p=>selecionados.has(p.id));
@@ -1068,8 +1100,7 @@ if(student.billing?.modoCobranca==="porSessao"){
 setStudents(p=>p.map(s=>s.id===student.id?{...s,billing:{...(s.billing||{}),ultimoPagamento:hoje}}:s));
 } else {
 const base = pagosMensais[pagosMensais.length-1].dataPrevista || hoje;
-const prox = new Date(base+"T00:00:00"); prox.setDate(prox.getDate()+30);
-const proxIso = toISODateLocal(prox);
+const proxIso = proximoVencimentoMensal(student.billing, base);
 setPagamentos(p=>[...p, novoPagamentoMensal(student, proxIso, base)]);
 setStudents(p=>p.map(s=>s.id===student.id?{...s,billing:{...(s.billing||{}),ultimoPagamento:hoje,vencimento:proxIso}}:s));
 }
@@ -1109,7 +1140,10 @@ return (
 ✅ {student.billing.creditosAvulso} aula(s) já paga(s) adiantado, disponíveis pra abater
 </div>}
 {abertos.length===0 ?
-<div style={{ fontSize:13,color:"#94a3b8",marginBottom:16 }}>Nenhuma cobrança em aberto no momento.</div>
+<div style={{ marginBottom:16 }}>
+<div style={{ fontSize:13,color:"#94a3b8",marginBottom:student.billing?.tipo!=="avulso"&&student.billing?.modoCobranca!=="porSessao"?10:0 }}>Nenhuma cobrança em aberto no momento.</div>
+{student.billing?.tipo!=="avulso" && student.billing?.modoCobranca!=="porSessao" && <Btn full variant="secondary" onClick={registrarPagamentoMes}>Registrar pagamento do mês ({fmtR(student.billing?.valor)})</Btn>}
+</div>
 :
 <>
 {tipoPrincipal==="mensal" ?
@@ -1195,10 +1229,10 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
   const [finView,setFinView] = useState("alunos");
   const [planoModal,setPlanoModal] = useState(false);
   const [planoEditId,setPlanoEditId] = useState(null);
-  const emptyPlano = () => ({ nome:"", modoCobranca:"fixo", valor:"", valorSessao:"", frequencia:"", descricao:"", ativo:true, slugVenda:"" });
+  const emptyPlano = () => ({ nome:"", modoCobranca:"fixo", valor:"", valorSessao:"", frequencia:"", descricao:"", ativo:true, slugVenda:"", regraVencimento:"30dias", toleranciaDias:"" });
   const [planoForm,setPlanoForm] = useState(emptyPlano());
   const openNovoPlano = () => { setPlanoEditId(null); setPlanoForm(emptyPlano()); setPlanoModal(true); };
-  const openEditPlano = (pl) => { setPlanoEditId(pl.id); setPlanoForm({ nome:pl.nome, modoCobranca:pl.modoCobranca||"fixo", valor:pl.valor, valorSessao:pl.valorSessao||"", frequencia:pl.frequencia||"", descricao:pl.descricao||"", ativo:pl.ativo!==false, slugVenda:pl.slugVenda||"" }); setPlanoModal(true); };
+  const openEditPlano = (pl) => { setPlanoEditId(pl.id); setPlanoForm({ nome:pl.nome, modoCobranca:pl.modoCobranca||"fixo", valor:pl.valor, valorSessao:pl.valorSessao||"", frequencia:pl.frequencia||"", descricao:pl.descricao||"", ativo:pl.ativo!==false, slugVenda:pl.slugVenda||"", regraVencimento:pl.regraVencimento||"30dias", toleranciaDias:pl.toleranciaDias??"" }); setPlanoModal(true); };
   const salvarPlano = () => {
     if(!planoForm.nome.trim()) return;
     if(planoEditId) setPlanos(p=>p.map(pl=>pl.id===planoEditId?{...pl,...planoForm,nome:planoForm.nome.trim()}:pl));
@@ -1285,8 +1319,7 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
   const abertosDe = (studentId) => pagamentos.filter(p=>p.studentId===studentId && p.status==="previsto" && p.dataPrevista && p.dataPrevista<=todayStr());
   const confirmarPagamentoInicial = (studentId) => {
     const st = students.find(s=>s.id===studentId);
-    const proxVenc = new Date(); proxVenc.setDate(proxVenc.getDate()+30);
-    const proxIso = proxVenc.toISOString().slice(0,10);
+    const proxIso = proximoVencimentoMensal(st?.billing, hoje);
     setStudents(p=>p.map(s=>s.id===studentId?{...s,billing:{...(s.billing||{}),ativo:true,pendente:false,ultimoPagamento:hoje,vencimento:proxIso}}:s));
     if(st) setPagamentos(p=>[...p,
       {...novoPagamentoMensal(st,hoje),status:"pago",valorPago:Number(st.billing?.valor)||0,dataPagamento:hoje,origem:"manual"},
@@ -1595,6 +1628,10 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
           ) : (
             <Inp label="Valor mensal (R$)" type="number" value={planoForm.valor} onChange={v=>setPlanoForm(f=>({...f,valor:v}))} placeholder="250.00"/>
           )}
+          {planoForm.modoCobranca!=="porSessao" && <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
+          <Inp label="Vencimento recorrente" value={planoForm.regraVencimento} onChange={v=>setPlanoForm(f=>({...f,regraVencimento:v}))} opts={REGRA_VENC_OPTS}/>
+          <Inp label="Dias de tolerância" type="number" value={planoForm.toleranciaDias} onChange={v=>setPlanoForm(f=>({...f,toleranciaDias:v}))} placeholder="Padrão do Perfil"/>
+          </div>}
           <Inp label="Frequência" value={planoForm.frequencia} onChange={v=>setPlanoForm(f=>({...f,frequencia:v}))} placeholder="Ex: 3x/semana, 2x/mês, Consultoria"/>
           <Inp label="Identificador de venda (opcional)" value={planoForm.slugVenda} onChange={v=>setPlanoForm(f=>({...f,slugVenda:v.toLowerCase().replace(/[^a-z0-9]/g,"")}))} placeholder="Ex: presencial, hibrido, consultoria"/>
           <div style={{ fontSize:11,color:"#94a3b8",marginTop:-8,marginBottom:13,lineHeight:1.4 }}>Use o mesmo valor do link da página de vendas (?plano=...). Assim o nome e o preço mostrados lá vêm direto deste plano.</div>
@@ -1681,25 +1718,26 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
     </div>
   );
 };
-const Students = ({ students, setStudents, planos, nav }) => {
+const Students = ({ students, setStudents, planos, setPagamentos, nav }) => {
 const [modal,setModal]=useState(false);
 const [cardioModal,setCardioModal]=useState(false);
 const [selCardioSt,setSelCardioSt]=useState("");
 const [editId,setEditId]=useState(null);
-const [form,setForm]=useState({name:"",dob:"",sex:"",phone:"",email:"",whatsapp:"",responsibleName:"",responsiblePhone:"",doctorName:"",doctorPhone:"",planoId:""});
+const [form,setForm]=useState({name:"",dob:"",sex:"",phone:"",email:"",whatsapp:"",responsibleName:"",responsiblePhone:"",doctorName:"",doctorPhone:"",planoId:"",primeiroVencimento:""});
 const [search,setSearch]=useState("");
 const [appLinkModal,setAppLinkModal]=useState(null);
 const [aba,setAba]=useState("ativo");
-const open=(s=null)=>{setForm(s?{name:s.name,dob:s.dob||"",sex:s.sex||"",phone:s.phone||"",email:s.email||"",whatsapp:s.whatsapp||"",responsibleName:s.responsibleName||"",responsiblePhone:s.responsiblePhone||"",doctorName:s.doctorName||"",doctorPhone:s.doctorPhone||"",notes:s.notes||"",planoId:""}:{name:"",dob:"",sex:"",phone:"",email:"",whatsapp:"",responsibleName:"",responsiblePhone:"",doctorName:"",doctorPhone:"",notes:"",planoId:""});setEditId(s?.id||null);setModal(true);};
+const open=(s=null)=>{setForm(s?{name:s.name,dob:s.dob||"",sex:s.sex||"",phone:s.phone||"",email:s.email||"",whatsapp:s.whatsapp||"",responsibleName:s.responsibleName||"",responsiblePhone:s.responsiblePhone||"",doctorName:s.doctorName||"",doctorPhone:s.doctorPhone||"",notes:s.notes||"",planoId:""}:{name:"",dob:"",sex:"",phone:"",email:"",whatsapp:"",responsibleName:"",responsiblePhone:"",doctorName:"",doctorPhone:"",notes:"",planoId:"",primeiroVencimento:""});setEditId(s?.id||null);setModal(true);};
 const save=()=>{
 if(!form.name.trim())return;
-const { planoId, ...dados } = form;
+const { planoId, primeiroVencimento, ...dados } = form;
 if(editId){ setStudents(p=>p.map(s=>s.id===editId?{...s,...dados}:s)); }
 else {
 const pl = planoId ? (planos||[]).find(p=>p.id===planoId) : null;
 const novoAluno = { id:uid(), ...dados, status:"ativo", createdAt:todayStr() };
-if(pl) novoAluno.billing = { ativo:true, tipo:"mensal", modoCobranca:pl.modoCobranca||"fixo", plano:pl.nome, valor:pl.valor||"", valorSessao:pl.valorSessao||"" };
+if(pl) novoAluno.billing = { ativo:true, tipo:"mensal", modoCobranca:pl.modoCobranca||"fixo", plano:pl.nome, valor:pl.valor||"", valorSessao:pl.valorSessao||"", regraVencimento:pl.regraVencimento||"30dias", toleranciaDias:pl.toleranciaDias??"", vencimento:primeiroVencimento||"" };
 setStudents(p=>[...p,novoAluno]);
+if(pl && pl.modoCobranca!=="porSessao" && primeiroVencimento && setPagamentos) setPagamentos(p=>[...p, novoPagamentoMensal(novoAluno, primeiroVencimento, todayStr())]);
 }
 setModal(false);
 };
@@ -1769,7 +1807,8 @@ return (
 </div>}
 {modal&&<Modal title={editId?"Editar Aluno":"Novo Aluno"} onClose={()=>setModal(false)}>
 <Inp label="Nome completo *" value={form.name} onChange={v=>setForm(f=>({...f,name:v}))} placeholder="Nome do aluno"/>
-{!editId && <Inp label="Plano (opcional)" value={form.planoId} onChange={v=>setForm(f=>({...f,planoId:v}))} opts={[{v:"",l:"Sem plano definido ainda"},...(planos||[]).filter(pl=>pl.ativo!==false).map(pl=>({v:pl.id,l:pl.nome+" · "+(pl.modoCobranca==="porSessao"?"R$ "+Number(pl.valorSessao||0).toFixed(2).replace(".",",")+"/sessão":"R$ "+Number(pl.valor||0).toFixed(2).replace(".",","))}))]} note="Define logo de cara em qual plano esse aluno entra — dá pra trocar depois em Cobrança."/>}
+{!editId && <Inp label="Plano (opcional)" value={form.planoId} onChange={v=>setForm(f=>({...f,planoId:v}))} opts={[{v:"",l:"Sem plano definido ainda"},...(planos||[]).filter(pl=>pl.ativo!==false).map(pl=>({v:pl.id,l:pl.nome+" · "+(pl.modoCobranca==="porSessao"?"R$ "+Number(pl.valorSessao||0).toFixed(2).replace(".",",")+"/sessão":"R$ "+Number(pl.valor||0).toFixed(2).replace(".",","))}))]} note="Define logo de cara em qual plano esse aluno entra. Dá pra trocar depois em Cobrança."/>}
+{!editId && form.planoId && (planos||[]).find(pl=>pl.id===form.planoId)?.modoCobranca!=="porSessao" && <Inp label="Primeiro vencimento" type="date" value={form.primeiroVencimento} onChange={v=>setForm(f=>({...f,primeiroVencimento:v}))} note="Os próximos seguem a regra do plano (30 dias ou 5º dia útil)."/>}
 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
 <Inp label="Nascimento" type="date" value={form.dob} onChange={v=>setForm(f=>({...f,dob:v}))}/>
 <Inp label="Sexo" value={form.sex} onChange={v=>setForm(f=>({...f,sex:v}))} opts={[{v:"",l:"Selecione"},{v:"M",l:"Masculino"},{v:"F",l:"Feminino"}]}/>
@@ -2023,7 +2062,7 @@ setFeedbackModal(false);
 };
 const delFeedback = async id=>{if(window.confirm("Remover este feedback?")){await DB.remove("professor_feedbacks",id);setProfessorFeedbacks(p=>p.filter(f=>f.id!==id));}};
 const delAssessment = async id=>{if(window.confirm("Remover avaliação?")){await DB.remove("assessments",id);setAssessments(p=>p.filter(a=>a.id!==id));}};
-const openEdit = ()=>{setForm({name:st.name,dob:st.dob||"",sex:st.sex||"",phone:st.phone||"",email:st.email||"",whatsapp:st.whatsapp||"",responsibleName:st.responsibleName||"",responsiblePhone:st.responsiblePhone||"",doctorName:st.doctorName||"",doctorPhone:st.doctorPhone||"",billing:{ativo:st.billing?.ativo||false,tipo:st.billing?.tipo||"mensal",modoCobranca:st.billing?.modoCobranca||"fixo",plano:st.billing?.plano||"",valor:st.billing?.valor||"",valorSessao:st.billing?.valorSessao||"",valorAula:st.billing?.valorAula||"",vencimento:st.billing?.vencimento||""},checkinConfig:{pre:{disposicao:st.checkinConfig?.pre?.disposicao??true,hidratacao:st.checkinConfig?.pre?.hidratacao??true,alimentacao:st.checkinConfig?.pre?.alimentacao??true,sono:st.checkinConfig?.pre?.sono??true,dor:st.checkinConfig?.pre?.dor??false,pa:st.checkinConfig?.pre?.pa??false,fc:st.checkinConfig?.pre?.fc??false,glicemia:st.checkinConfig?.pre?.glicemia??false},post:{esforco:st.checkinConfig?.post?.esforco??true,completude:st.checkinConfig?.post?.completude??true,dor:st.checkinConfig?.post?.dor??true,pa:st.checkinConfig?.post?.pa??false,fc:st.checkinConfig?.post?.fc??false,glicemia:st.checkinConfig?.post?.glicemia??false,obs:st.checkinConfig?.post?.obs??true}}});setEditModal(true);};
+const openEdit = ()=>{setForm({name:st.name,dob:st.dob||"",sex:st.sex||"",phone:st.phone||"",email:st.email||"",whatsapp:st.whatsapp||"",responsibleName:st.responsibleName||"",responsiblePhone:st.responsiblePhone||"",doctorName:st.doctorName||"",doctorPhone:st.doctorPhone||"",billing:{ativo:st.billing?.ativo||false,tipo:st.billing?.tipo||"mensal",modoCobranca:st.billing?.modoCobranca||"fixo",plano:st.billing?.plano||"",valor:st.billing?.valor||"",valorSessao:st.billing?.valorSessao||"",valorAula:st.billing?.valorAula||"",vencimento:st.billing?.vencimento||"",regraVencimento:st.billing?.regraVencimento||"30dias",toleranciaDias:st.billing?.toleranciaDias??""},checkinConfig:{pre:{disposicao:st.checkinConfig?.pre?.disposicao??true,hidratacao:st.checkinConfig?.pre?.hidratacao??true,alimentacao:st.checkinConfig?.pre?.alimentacao??true,sono:st.checkinConfig?.pre?.sono??true,dor:st.checkinConfig?.pre?.dor??false,pa:st.checkinConfig?.pre?.pa??false,fc:st.checkinConfig?.pre?.fc??false,glicemia:st.checkinConfig?.pre?.glicemia??false},post:{esforco:st.checkinConfig?.post?.esforco??true,completude:st.checkinConfig?.post?.completude??true,dor:st.checkinConfig?.post?.dor??true,pa:st.checkinConfig?.post?.pa??false,fc:st.checkinConfig?.post?.fc??false,glicemia:st.checkinConfig?.post?.glicemia??false,obs:st.checkinConfig?.post?.obs??true}}});setEditModal(true);};
 const saveEdit = ()=>{
   if(!form.name.trim())return;
   setStudents(p=>p.map(s=>s.id===studentId?{...s,...form}:s));
@@ -2795,7 +2834,7 @@ return <Card style={{ padding:"16px 14px" }}><MultiLineChart series={seriesData}
 ) : (
 <>
 {(planos||[]).filter(pl=>pl.ativo!==false).length>0 &&
-<Inp label="Escolher de um plano salvo" value="" onChange={v=>{ const pl=(planos||[]).find(p=>p.id===v); if(pl) setForm(f=>({...f,billing:{...f.billing,plano:pl.nome,modoCobranca:pl.modoCobranca||"fixo",valor:pl.valor,valorSessao:pl.valorSessao||""}})); }} opts={[{v:"",l:"Selecionar..."},...(planos||[]).filter(pl=>pl.ativo!==false).map(pl=>({v:pl.id,l:pl.nome+" · "+(pl.modoCobranca==="porSessao"?"R$ "+Number(pl.valorSessao||0).toFixed(2).replace(".",",")+"/sessão":"R$ "+Number(pl.valor||0).toFixed(2).replace(".",","))}))]}/>
+<Inp label="Escolher de um plano salvo" value="" onChange={v=>{ const pl=(planos||[]).find(p=>p.id===v); if(pl) setForm(f=>({...f,billing:{...f.billing,plano:pl.nome,modoCobranca:pl.modoCobranca||"fixo",valor:pl.valor,valorSessao:pl.valorSessao||"",regraVencimento:pl.regraVencimento||"30dias",toleranciaDias:pl.toleranciaDias??""}})); }} opts={[{v:"",l:"Selecionar..."},...(planos||[]).filter(pl=>pl.ativo!==false).map(pl=>({v:pl.id,l:pl.nome+" · "+(pl.modoCobranca==="porSessao"?"R$ "+Number(pl.valorSessao||0).toFixed(2).replace(".",",")+"/sessão":"R$ "+Number(pl.valor||0).toFixed(2).replace(".",","))}))]}/>
 }
 <Inp label="Plano" value={form.billing.plano} onChange={v=>setForm(f=>({...f,billing:{...f.billing,plano:v}}))} placeholder="Ex: Mensal - 3x/semana"/>
 <div style={{ display:"flex",gap:6,marginBottom:12 }}>
@@ -2813,6 +2852,11 @@ return <Card style={{ padding:"16px 14px" }}><MultiLineChart series={seriesData}
 <Inp label="Próximo vencimento" type="date" value={form.billing.vencimento} onChange={v=>setForm(f=>({...f,billing:{...f.billing,vencimento:v}}))}/>
 </div>
 )}
+{form.billing.modoCobranca!=="porSessao" && <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
+<Inp label="Vencimentos seguintes" value={form.billing.regraVencimento} onChange={v=>setForm(f=>({...f,billing:{...f.billing,regraVencimento:v}}))} opts={REGRA_VENC_OPTS}/>
+<Inp label="Dias de tolerância" type="number" value={form.billing.toleranciaDias} onChange={v=>setForm(f=>({...f,billing:{...f.billing,toleranciaDias:v}}))} placeholder="Padrão do Perfil"/>
+</div>}
+{form.billing.modoCobranca!=="porSessao" && <div style={{ fontSize:11,color:"#94a3b8",marginTop:-6,marginBottom:13 }}>Tolerância: dias que o aluno ainda acessa o app depois de vencer, vendo um aviso de atraso. Em branco, usa o valor de Meu Perfil.</div>}
 {form.billing.modoCobranca==="porSessao" && <div style={{ fontSize:11,color:"#94a3b8",marginTop:-6,marginBottom:13 }}>Cada aula agendada já gera a cobrança dela sozinha (igual avulso). A data acima é só a âncora do ciclo de 30 dias — as cobranças de cada ciclo se agrupam nela.</div>}
 </>
 )}
@@ -9018,7 +9062,7 @@ return (
 );
 };
 const Profile = ({ session, onLogoChange }) => {
-const [form,setForm]=useState({ nome:"", whatsapp:"", cref:"", especializacao:"", logo_url:"", pix_key:"", pix_key_type:"cpf", pix_merchant_name:"", pix_merchant_city:"", aviso_vencimento_dias:"7" });
+const [form,setForm]=useState({ nome:"", whatsapp:"", cref:"", especializacao:"", logo_url:"", pix_key:"", pix_key_type:"cpf", pix_merchant_name:"", pix_merchant_city:"", aviso_vencimento_dias:"7", tolerancia_vencimento_dias:"0" });
 const [loading,setLoading]=useState(true);
 const [saving,setSaving]=useState(false);
 const [uploading,setUploading]=useState(false);
@@ -9043,10 +9087,10 @@ useEffect(()=>{
 (async()=>{
 try {
 const headers = await DB.authHeaders();
-const r = await fetch(SUPA_URL+"/rest/v1/professionals?select=nome,whatsapp,cref,especializacao,email,logo_url,pix_key,pix_key_type,pix_merchant_name,pix_merchant_city,aviso_vencimento_dias&id=eq."+session.user.id, { headers });
+const r = await fetch(SUPA_URL+"/rest/v1/professionals?select=nome,whatsapp,cref,especializacao,email,logo_url,pix_key,pix_key_type,pix_merchant_name,pix_merchant_city,aviso_vencimento_dias,tolerancia_vencimento_dias&id=eq."+session.user.id, { headers });
 const rows = await r.json();
 const p = rows?.[0]||{};
-setForm({ nome:p.nome||"", whatsapp:p.whatsapp||"", cref:p.cref||"", especializacao:p.especializacao||"", email:p.email||session.user.email, logo_url:p.logo_url||"", pix_key:p.pix_key||"", pix_key_type:p.pix_key_type||"cpf", pix_merchant_name:p.pix_merchant_name||p.nome||"", pix_merchant_city:p.pix_merchant_city||"", aviso_vencimento_dias:String(p.aviso_vencimento_dias ?? 7) });
+setForm({ nome:p.nome||"", whatsapp:p.whatsapp||"", cref:p.cref||"", especializacao:p.especializacao||"", email:p.email||session.user.email, logo_url:p.logo_url||"", pix_key:p.pix_key||"", pix_key_type:p.pix_key_type||"cpf", pix_merchant_name:p.pix_merchant_name||p.nome||"", pix_merchant_city:p.pix_merchant_city||"", aviso_vencimento_dias:String(p.aviso_vencimento_dias ?? 7), tolerancia_vencimento_dias:String(p.tolerancia_vencimento_dias ?? 0) });
 } catch(e) {}
 setLoading(false);
 })();
@@ -9057,7 +9101,7 @@ try {
 const headers = await DB.authHeaders();
 await fetch(SUPA_URL+"/rest/v1/professionals?id=eq."+session.user.id, {
 method:"PATCH", headers: { ...headers, "Prefer":"return=minimal" },
-body: JSON.stringify({ nome:form.nome, whatsapp:form.whatsapp, cref:form.cref, especializacao:form.especializacao, pix_key:form.pix_key, pix_key_type:form.pix_key_type, pix_merchant_name:form.pix_merchant_name, pix_merchant_city:form.pix_merchant_city, aviso_vencimento_dias:parseInt(form.aviso_vencimento_dias)||7 })
+body: JSON.stringify({ nome:form.nome, whatsapp:form.whatsapp, cref:form.cref, especializacao:form.especializacao, pix_key:form.pix_key, pix_key_type:form.pix_key_type, pix_merchant_name:form.pix_merchant_name, pix_merchant_city:form.pix_merchant_city, aviso_vencimento_dias:parseInt(form.aviso_vencimento_dias)||7, tolerancia_vencimento_dias:Math.max(0,parseInt(form.tolerancia_vencimento_dias)||0) })
 });
 setMsg("Dados salvos com sucesso!");
 } catch(e) { setMsg("Erro ao salvar."); }
@@ -9138,6 +9182,11 @@ return (
 <label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Avisar o aluno quantos dias antes do vencimento?</label>
 <input type="number" min="0" max="30" value={form.aviso_vencimento_dias} onChange={e=>setForm(f=>({...f,aviso_vencimento_dias:e.target.value}))} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
 <div style={{ fontSize:11,color:"#94a3b8",marginTop:4 }}>Nesse período, o aluno vê um aviso de vencimento próximo (com opção de pagar adiantado) toda vez que abrir o app dele — mas ainda consegue usar normalmente. Só bloqueia de fato depois que vencer.</div>
+</div>
+<div style={{ marginBottom:14 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Dias de tolerância após o vencimento</label>
+<input type="number" min="0" max="30" value={form.tolerancia_vencimento_dias} onChange={e=>setForm(f=>({...f,tolerancia_vencimento_dias:e.target.value}))} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
+<div style={{ fontSize:11,color:"#94a3b8",marginTop:4 }}>Depois de vencer, o aluno ainda usa o app por esse número de dias, vendo um aviso de atraso. Passado o prazo, o acesso é bloqueado até o pagamento. Use 0 para bloquear no dia seguinte ao vencimento.</div>
 </div>
 {msg && <div style={{ fontSize:12,color: msg.includes("Erro")?"#dc2626":"#16a34a",marginBottom:10 }}>{msg}</div>}
 <Btn full onClick={save} disabled={saving}>{saving?"Salvando...":"Salvar chave Pix"}</Btn>
@@ -9614,7 +9663,7 @@ return (
 )}
 <div style={{ padding:"20px 16px",maxWidth:640,margin:"0 auto" }}>
 {page==="dashboard"&&<Dashboard students={students} assessments={assessments} dailyLogs={dailyLogs} pagamentos={pagamentos} receitasExtras={receitasExtras} nav={nav}/>}
-{page==="students"&&<Students students={students} setStudents={setStudents} planos={planos} nav={nav}/>}
+{page==="students"&&<Students students={students} setStudents={setStudents} planos={planos} setPagamentos={setPagamentos} nav={nav}/>}
 {page==="studentDetail"&&<StudentDetail studentId={pageProps.studentId} students={students} setStudents={setStudents} assessments={assessments} setAssessments={setAssessments} programs={programs} setPrograms={setPrograms} dailyLogs={dailyLogs} documents={documents} checkins={checkins} sessions={sessions} setSessions={setSessions} exerciciosBiblioteca={exerciciosBiblioteca} planos={planos} professorFeedbacks={professorFeedbacks} setProfessorFeedbacks={setProfessorFeedbacks} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} pagamentos={pagamentos} setPagamentos={setPagamentos} ultimoAcesso={ultimoAcesso} initialTab={pageProps.initialTab} nav={nav}/>}
 {page==="assessments"&&<AssessmentsList assessments={assessments} students={students} setAssessments={setAssessments} nav={nav}/>}
 {page==="newAssessment"&&<NewAssessment students={students} setAssessments={setAssessments} nav={nav} prefillStudentId={pageProps.studentId}/>}

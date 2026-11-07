@@ -2262,7 +2262,7 @@ const AvisoVencimentoModal = ({billing, profPix, studentName, diasParaVencer, on
           <Icon name="bell" size={20} color="#FF5603"/>
         </div>
         <div style={{fontWeight:800,fontSize:17,textAlign:"center",marginBottom:4}}>
-          {diasParaVencer<=0?"Sua mensalidade vence hoje":"Sua mensalidade vence em "+diasParaVencer+" dia"+(diasParaVencer>1?"s":"")}
+          {diasParaVencer<0?"Sua mensalidade venceu há "+Math.abs(diasParaVencer)+" dia"+(Math.abs(diasParaVencer)>1?"s":"")+". Regularize para não perder o acesso":diasParaVencer===0?"Sua mensalidade vence hoje":"Sua mensalidade vence em "+diasParaVencer+" dia"+(diasParaVencer>1?"s":"")}
         </div>
         <div style={{fontSize:12,color:"#64748b",textAlign:"center",marginBottom:18,maxWidth:320,lineHeight:1.5}}>
           Vencimento: {fmt(billing.vencimento)}. Quer adiantar o pagamento agora? Pode escanear o Pix abaixo.
@@ -2839,9 +2839,9 @@ function App(){
 
   const hoje = new Date().toISOString().slice(0,10);
   const billing = studentData?.billing;
-  const billingBloqueado = !!(billing?.ativo && billing?.vencimento && billing.vencimento < hoje);
-
   const diasParaVencer = billing?.vencimento ? Math.round((new Date(billing.vencimento)-new Date(hoje))/86400000) : null;
+  const toleranciaDias = (billing?.toleranciaDias!==undefined && billing?.toleranciaDias!==null && billing?.toleranciaDias!=="") ? (parseInt(billing.toleranciaDias)||0) : (parseInt(profPix?.tolerancia_vencimento_dias) || 0);
+  const billingBloqueado = !!(billing?.ativo && diasParaVencer!==null && diasParaVencer < -toleranciaDias);
   const avisoDias = profPix?.aviso_vencimento_dias ?? 7;
   const dentroDoAviso = !!(billing?.ativo && !billingBloqueado && diasParaVencer!==null && diasParaVencer<=avisoDias);
 
