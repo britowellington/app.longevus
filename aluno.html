@@ -460,6 +460,7 @@ const ICON_PATHS = {
   clipboard: <g><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="15" y2="15"/></g>,
   bell: <g><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></g>,
   download: <g><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></g>,
+  food: <g><path d="M7 3v8a3 3 0 0 0 3 0V3"/><line x1="8.5" y1="11" x2="8.5" y2="21"/><path d="M17 21V3c-2 1-3.5 3.5-3.5 7 0 2 1 3 3.5 3"/></g>,
 };
 const Icon = ({name, size=16, color="currentColor", style={}}) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline-block",verticalAlign:"-0.15em",flexShrink:0,...style}}>{ICON_PATHS[name]}</svg>
@@ -831,6 +832,7 @@ const BottomNav = ({tab, setTab}) => {
     {key:"inicio", label:"Início", icon:"home"},
     {key:"treino", label:"Treino", icon:"dumbbell"},
     {key:"programacao", label:"Programação", icon:"calendar"},
+    {key:"alimentacao", label:"Alimentação", icon:"food"},
     {key:"avaliacao", label:"Avaliação", icon:"clipboard"},
   ];
   return (
@@ -838,7 +840,7 @@ const BottomNav = ({tab, setTab}) => {
       {items.map(it=>{
         const active = tab===it.key;
         return (
-          <button key={it.key} onClick={()=>setTab(it.key)} style={{border:"none",background:"transparent",display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"4px 16px",cursor:"pointer"}}>
+          <button key={it.key} onClick={()=>setTab(it.key)} style={{border:"none",background:"transparent",display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"4px 6px",cursor:"pointer",minWidth:0}}>
             <Icon name={it.icon} size={22} color={active?"#FF5603":"#94a3b8"}/>
             <span style={{fontSize:10,fontWeight:700,color:active?"#FF5603":"#94a3b8"}}>{it.label}</span>
           </button>
@@ -1416,6 +1418,622 @@ const TelaAvaliacao = ({studentId, studentData}) => {
   );
 };
 
+const nutriSupa = () => supa;
+// ══ REGISTRO ALIMENTAR · núcleo compartilhado (aluno.html e longevus-app.html) ══
+// Tabelas: refeicoes_registro (1 linha por refeição) e metas_alimentares (1 linha por aluno, id "meta_"+studentId).
+// A foto da refeição é comprimida no celular, enviada para a Edge Function "analisar-refeicao"
+// e descartada: só os números ficam salvos.
+const NUTRI_MACROS = [
+  { k:"prot", nome:"Proteína", curto:"P" },
+  { k:"carb", nome:"Carboidratos", curto:"C" },
+  { k:"gord", nome:"Gorduras", curto:"G" },
+  { k:"fibra", nome:"Fibras", curto:"F" },
+];
+const NUTRI_TIPOS = [
+  ["cafe","Café da manhã"],["lanche_manha","Lanche da manhã"],["almoco","Almoço"],
+  ["lanche_tarde","Lanche da tarde"],["jantar","Jantar"],["ceia","Ceia"],
+];
+const NUTRI_TIPOS_FIXOS = ["cafe","almoco","lanche_tarde","jantar"];
+const NUTRI_LIMITE_DIA = 15;
+const NUTRI_OBJETIVOS = [["manter","Manter"],["massa","Ganhar massa"],["gordura","Perder gordura"]];
+const NUTRI_ESCURO = "#0f172a";
+const NUTRI_LARANJA = "#FF5603";
+const NUTRI_LARANJA_TXT = "#c2410c";
+
+const nutriTipoNome = (k) => (NUTRI_TIPOS.find(t=>t[0]===k)||[k,"Refeição"])[1];
+const nutriISO = (d) => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const nutriHoje = () => nutriISO(new Date());
+const nutriDiaMais = (iso, n) => { const p = iso.split("-").map(Number); return nutriISO(new Date(p[0], p[1]-1, p[2]+n)); };
+const nutriNum = (v) => { const n = parseFloat(String(v==null?"":v).replace(",", ".")); return isFinite(n) && n > 0 ? n : 0; };
+const nutriFmt = (n) => { const v = Math.round(nutriNum(n)); return v.toLocaleString("pt-BR"); };
+const nutriId = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+const nutriZero = () => ({ kcal:0, prot:0, carb:0, gord:0, fibra:0 });
+const nutriSomar = (lista) => (lista||[]).reduce((t, i) => ({
+  kcal: t.kcal + nutriNum(i.kcal), prot: t.prot + nutriNum(i.prot), carb: t.carb + nutriNum(i.carb),
+  gord: t.gord + nutriNum(i.gord), fibra: t.fibra + nutriNum(i.fibra),
+}), nutriZero());
+const nutriDataCurta = (iso) => { if(!iso) return ""; const p = iso.slice(0,10).split("-"); return p[2]+"/"+p[1]; };
+const nutriDiaSemana = (iso) => { const p = iso.split("-").map(Number); return ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"][new Date(p[0], p[1]-1, p[2]).getDay()]; };
+
+const nutriApi = {
+  async headers() {
+    const { data } = await nutriSupa().auth.getSession();
+    const token = data?.session?.access_token || SUPA_KEY;
+    return { "apikey": SUPA_KEY, "Authorization": "Bearer "+token, "Content-Type": "application/json" };
+  },
+  async usuarioId() { const { data } = await nutriSupa().auth.getSession(); return data?.session?.user?.id || null; },
+  async listar(studentId, desde, ate) {
+    try {
+      const h = await this.headers();
+      const q = "select=id,data&student_id=eq."+encodeURIComponent(studentId)+"&data->>date=gte."+desde+"&data->>date=lte."+ate+"&order=created_at.asc&limit=500";
+      const r = await fetch(SUPA_URL+"/rest/v1/refeicoes_registro?"+q, { headers: h });
+      if(!r.ok) return null;
+      const rows = await r.json();
+      return (rows||[]).filter(x=>x && x.data).map(x=>({ ...x.data, id: x.id }));
+    } catch(e) { return null; }
+  },
+  async salvar(studentId, ownerId, refeicao) {
+    try {
+      const h = { ...(await this.headers()), "Prefer": "resolution=merge-duplicates" };
+      const { id, ...data } = refeicao;
+      const body = { id, data, owner_id: ownerId, student_id: studentId, updated_at: new Date().toISOString() };
+      const r = await fetch(SUPA_URL+"/rest/v1/refeicoes_registro", { method:"POST", headers:h, body: JSON.stringify(body) });
+      return r.ok;
+    } catch(e) { return false; }
+  },
+  async remover(id) {
+    try {
+      const h = await this.headers();
+      const r = await fetch(SUPA_URL+"/rest/v1/refeicoes_registro?id=eq."+encodeURIComponent(id), { method:"DELETE", headers:h });
+      return r.ok;
+    } catch(e) { return false; }
+  },
+  async metas(studentId) {
+    try {
+      const h = await this.headers();
+      const r = await fetch(SUPA_URL+"/rest/v1/metas_alimentares?select=data&student_id=eq."+encodeURIComponent(studentId)+"&limit=1", { headers: h });
+      if(!r.ok) return null;
+      const rows = await r.json();
+      return rows && rows.length ? (rows[0].data || {}) : {};
+    } catch(e) { return null; }
+  },
+  async salvarMetas(studentId, ownerId, metas) {
+    try {
+      const h = { ...(await this.headers()), "Prefer": "resolution=merge-duplicates" };
+      const body = { id: "meta_"+studentId, data: metas, owner_id: ownerId, student_id: studentId, updated_at: new Date().toISOString() };
+      const r = await fetch(SUPA_URL+"/rest/v1/metas_alimentares", { method:"POST", headers:h, body: JSON.stringify(body) });
+      return r.ok;
+    } catch(e) { return false; }
+  },
+  async analisar(payload) {
+    const h = await this.headers();
+    const r = await fetch(SUPA_URL+"/functions/v1/analisar-refeicao", { method:"POST", headers:h, body: JSON.stringify(payload) });
+    let j = null;
+    try { j = await r.json(); } catch(e) {}
+    if(!r.ok || !j || j.erro) throw new Error((j && j.erro) || ("Falha na análise (HTTP "+r.status+")"));
+    return j;
+  },
+};
+
+// Comprime a foto no próprio celular (máx. 1024 px, JPEG) e devolve só o base64.
+const nutriComprimirFoto = (file) => new Promise((resolve, reject) => {
+  const fr = new FileReader();
+  fr.onerror = () => reject(new Error("Não consegui ler a foto."));
+  fr.onload = () => {
+    const img = new Image();
+    img.onerror = () => reject(new Error("Formato de foto não suportado."));
+    img.onload = () => {
+      const max = 1024;
+      const esc = Math.min(1, max / Math.max(img.width, img.height));
+      const w = Math.round(img.width * esc), h = Math.round(img.height * esc);
+      const c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      c.getContext("2d").drawImage(img, 0, 0, w, h);
+      const url = c.toDataURL("image/jpeg", 0.72);
+      c.width = 0; c.height = 0;
+      resolve(url.split(",")[1]);
+    };
+    img.src = fr.result;
+  };
+  fr.readAsDataURL(file);
+});
+
+const nutriUsoHoje = {
+  chave: () => "nutri_uso_"+nutriHoje(),
+  get() { try { return parseInt(localStorage.getItem(this.chave())||"0",10)||0; } catch(e) { return 0; } },
+  somar() { try { localStorage.setItem(this.chave(), String(this.get()+1)); } catch(e) {} },
+};
+
+const NutriBarra = ({ valor, meta, cor, fundo, altura }) => {
+  const pct = meta ? Math.min(100, Math.round(nutriNum(valor) / meta * 100)) : 0;
+  return (
+    <div style={{ height: altura||8, borderRadius: 99, background: fundo||"#e2e8f0", overflow:"hidden" }}>
+      <div style={{ width: pct+"%", height:"100%", borderRadius: 99, background: cor||NUTRI_LARANJA, transition:"width 0.3s" }}/>
+    </div>
+  );
+};
+
+// Cartão escuro com o resumo do dia (calorias, proteína em destaque, demais macros).
+const NutriResumoDia = ({ totais, metas, qtd }) => {
+  const m = metas || {};
+  const faltaProt = m.prot ? Math.max(0, Math.round(m.prot - totais.prot)) : null;
+  return (
+    <div style={{ background:NUTRI_ESCURO, color:"#f8fafc", borderRadius:18, padding:18, marginBottom:14 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:14 }}>
+        <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
+          <span style={{ fontSize:34, fontWeight:800 }}>{nutriFmt(totais.kcal)}</span>
+          <span style={{ fontSize:13, color:"#cbd5e1" }}>kcal{m.kcal ? " de "+nutriFmt(m.kcal) : ""}</span>
+        </div>
+        <span style={{ fontSize:12, color:"#cbd5e1" }}>{qtd} {qtd===1?"refeição":"refeições"}</span>
+      </div>
+      <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginBottom:6 }}>
+        <span style={{ fontWeight:700 }}>Proteína</span>
+        <span><b style={{ color:"#fb923c" }}>{nutriFmt(totais.prot)} g</b><span style={{ color:"#cbd5e1" }}>{m.prot ? " de "+nutriFmt(m.prot)+" g" : ""}</span></span>
+      </div>
+      <NutriBarra valor={totais.prot} meta={m.prot||0} cor="#fb923c" fundo="#334155" altura={10}/>
+      <div style={{ fontSize:12, color:"#cbd5e1", marginTop:6, marginBottom:14 }}>
+        {m.prot ? (faltaProt>0 ? "Faltam "+faltaProt+" g para a meta de hoje" : "Meta de proteína atingida") : "Defina suas metas para acompanhar o progresso"}
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(3, minmax(0, 1fr))", gap:8 }}>
+        {NUTRI_MACROS.slice(1).map(mc=>(
+          <div key={mc.k} style={{ background:"#1e293b", borderRadius:12, padding:"9px 10px" }}>
+            <div style={{ fontSize:11, color:"#cbd5e1" }}>{mc.nome}</div>
+            <div style={{ fontSize:15, fontWeight:700, margin:"2px 0 6px" }}>{nutriFmt(totais[mc.k])} g<span style={{ fontSize:11, fontWeight:500, color:"#94a3b8" }}>{m[mc.k] ? " / "+nutriFmt(m[mc.k]) : ""}</span></div>
+            <NutriBarra valor={totais[mc.k]} meta={m[mc.k]||0} cor="#e2e8f0" fundo="#334155" altura={4}/>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const NutriStepper = ({ nome, dica, valor, un, passo, onChange }) => (
+  <div style={{ background:"#fff", border:"1.5px solid #e2e8f0", borderRadius:14, padding:"8px 10px 8px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", gap:8, marginBottom:8 }}>
+    <div style={{ minWidth:0 }}>
+      <div style={{ fontSize:14, fontWeight:700 }}>{nome}</div>
+      <div style={{ fontSize:11, color:"#64748b" }}>{dica}</div>
+    </div>
+    <div style={{ display:"flex", alignItems:"center", gap:4, flexShrink:0 }}>
+      <button type="button" aria-label={"Diminuir "+nome} onClick={()=>onChange(Math.max(0, nutriNum(valor) - passo))} style={{ width:40, height:40, borderRadius:20, border:"1.5px solid #e2e8f0", background:"#f8fafc", fontSize:20, cursor:"pointer", color:"#0f172a" }}>−</button>
+      <input inputMode="decimal" value={valor===""||valor==null?"":String(valor)} onChange={e=>onChange(e.target.value.replace(/[^0-9.,]/g,""))} placeholder="—" style={{ width:62, height:40, textAlign:"center", border:"none", background:"transparent", fontSize:16, fontWeight:800, fontFamily:"inherit", color:"#0f172a" }}/>
+      <span style={{ fontSize:12, color:"#64748b", width:26 }}>{un}</span>
+      <button type="button" aria-label={"Aumentar "+nome} onClick={()=>onChange(nutriNum(valor) + passo)} style={{ width:40, height:40, borderRadius:20, border:"1.5px solid #e2e8f0", background:"#f8fafc", fontSize:20, cursor:"pointer", color:"#0f172a" }}>+</button>
+    </div>
+  </div>
+);
+
+// Tela de metas diárias: usada pelo aluno e pelo professor. Registra quem alterou por último.
+const NutriMetasEditor = ({ studentId, ownerId, metas, papel, pesoSugerido, onSalvo, onCancelar }) => {
+  const ini = metas || {};
+  const [f, setF] = useState({
+    peso: ini.peso || pesoSugerido || "", objetivo: ini.objetivo || "manter",
+    kcal: ini.kcal || "", prot: ini.prot || "", carb: ini.carb || "", gord: ini.gord || "", fibra: ini.fibra || "",
+  });
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+  const set = (k) => (v) => setF(p => ({ ...p, [k]: v }));
+  const peso = nutriNum(f.peso);
+  const usarBase = () => {
+    if(!peso){ setErro("Informe o peso para calcular a base sugerida."); return; }
+    setErro("");
+    const fator = f.objetivo === "massa" ? 1.4 : 1.2;
+    setF(p => ({ ...p, prot: Math.round(peso * fator / 5) * 5, fibra: nutriNum(p.fibra) || 25 }));
+  };
+  const salvar = async () => {
+    setSalvando(true); setErro("");
+    const limpo = { peso: nutriNum(f.peso) || null, objetivo: f.objetivo };
+    ["kcal","prot","carb","gord","fibra"].forEach(k => { limpo[k] = nutriNum(f[k]) || null; });
+    limpo.atualizadoPor = papel;
+    limpo.atualizadoEm = new Date().toISOString();
+    const ok = await nutriApi.salvarMetas(studentId, ownerId, limpo);
+    setSalvando(false);
+    if(!ok){ setErro("Não consegui salvar. Confira a conexão e tente de novo."); return; }
+    onSalvo && onSalvo(limpo);
+  };
+  const porKg = peso && nutriNum(f.prot) ? (Math.round(nutriNum(f.prot) / peso * 10) / 10).toString().replace(".", ",") + " g por kg" : "por dia";
+  const quem = ini.atualizadoPor ? ("Atualizado " + (ini.atualizadoPor === papel ? "por você" : (ini.atualizadoPor === "aluno" ? "pelo aluno" : "pelo professor")) + " em " + nutriDataCurta(ini.atualizadoEm)) : "";
+  return (
+    <div>
+      {quem && <div style={{ fontSize:12, color:"#64748b", marginBottom:12 }}>{quem}</div>}
+      <div style={{ background:"#fff", border:"1.5px solid #e2e8f0", borderRadius:14, padding:14, marginBottom:12 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:10, marginBottom:12 }}>
+          <div>
+            <div style={{ fontSize:12, color:"#64748b" }}>Peso atual</div>
+            <div style={{ display:"flex", alignItems:"baseline", gap:4 }}>
+              <input inputMode="decimal" value={String(f.peso||"")} onChange={e=>set("peso")(e.target.value.replace(/[^0-9.,]/g,""))} placeholder="—" style={{ width:70, border:"none", borderBottom:"1.5px solid #e2e8f0", fontSize:18, fontWeight:800, fontFamily:"inherit", padding:"2px 0", color:"#0f172a", background:"transparent" }}/>
+              <span style={{ fontSize:13, color:"#64748b" }}>kg</span>
+            </div>
+          </div>
+          {pesoSugerido ? <span style={{ fontSize:11, color:"#64748b", textAlign:"right" }}>Última avaliação: {String(pesoSugerido).replace(".", ",")} kg</span> : null}
+        </div>
+        <div style={{ fontSize:12, color:"#64748b", marginBottom:6 }}>Objetivo</div>
+        <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:12 }}>
+          {NUTRI_OBJETIVOS.map(o => {
+            const ativo = f.objetivo === o[0];
+            return <button key={o[0]} type="button" onClick={()=>set("objetivo")(o[0])} style={{ height:36, padding:"0 14px", borderRadius:18, border:"1.5px solid "+(ativo?NUTRI_ESCURO:"#e2e8f0"), background:ativo?NUTRI_ESCURO:"#fff", color:ativo?"#fff":"#0f172a", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>{o[1]}</button>;
+          })}
+        </div>
+        <button type="button" onClick={usarBase} style={{ width:"100%", height:42, borderRadius:21, border:"1.5px solid "+NUTRI_LARANJA, background:"#fff", color:NUTRI_LARANJA_TXT, fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Preencher com base sugerida</button>
+      </div>
+      <NutriStepper nome="Calorias" dica="opcional" valor={f.kcal} un="kcal" passo={50} onChange={set("kcal")}/>
+      <NutriStepper nome="Proteína" dica={porKg} valor={f.prot} un="g" passo={5} onChange={set("prot")}/>
+      <NutriStepper nome="Carboidratos" dica="por dia" valor={f.carb} un="g" passo={10} onChange={set("carb")}/>
+      <NutriStepper nome="Gorduras" dica="por dia" valor={f.gord} un="g" passo={5} onChange={set("gord")}/>
+      <NutriStepper nome="Fibras" dica="referência geral 25 a 30 g" valor={f.fibra} un="g" passo={1} onChange={set("fibra")}/>
+      <div style={{ fontSize:12, color:"#64748b", textAlign:"center", margin:"10px 0 12px", lineHeight:1.5 }}>A base sugerida é só um ponto de partida. Se houver acompanhamento com nutricionista, use as metas definidas por ele.</div>
+      {erro && <div style={{ fontSize:13, color:"#dc2626", textAlign:"center", marginBottom:10 }}>{erro}</div>}
+      <div style={{ display:"flex", gap:8 }}>
+        {onCancelar && <button type="button" onClick={onCancelar} style={{ flex:1, height:48, borderRadius:24, border:"1.5px solid #e2e8f0", background:"#fff", fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"inherit", color:"#0f172a" }}>Cancelar</button>}
+        <button type="button" onClick={salvar} disabled={salvando} style={{ flex:1.4, height:48, borderRadius:24, border:"none", background:NUTRI_LARANJA, color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer", opacity:salvando?0.6:1, fontFamily:"inherit" }}>{salvando ? "Salvando..." : "Salvar metas"}</button>
+      </div>
+    </div>
+  );
+};
+
+// ══ REGISTRO ALIMENTAR · telas do aluno ══
+const NUTRI_PORCOES = [["Pequena",0.7],["Média",1],["Grande",1.3]];
+const nutriItemDaIA = (i) => ({ uid: nutriId(), nome: i.nome || "Alimento", manual:false, fator:1,
+  base: { gramas: nutriNum(i.gramas), kcal: nutriNum(i.kcal), prot: nutriNum(i.prot), carb: nutriNum(i.carb), gord: nutriNum(i.gord), fibra: nutriNum(i.fibra) } });
+const nutriItemManual = () => ({ uid: nutriId(), nome: "", manual:true, fator:1, base: { gramas:"", kcal:"", prot:"", carb:"", gord:"", fibra:"" } });
+const nutriValores = (it) => {
+  const f = it.manual ? 1 : (it.fator || 1);
+  const r = {};
+  ["gramas","kcal","prot","carb","gord","fibra"].forEach(k => { r[k] = Math.round(nutriNum(it.base[k]) * f * 10) / 10; });
+  r.kcal = Math.round(r.kcal); r.gramas = Math.round(r.gramas);
+  return r;
+};
+const nutriLinhaMacros = (v) => "P " + nutriFmt(v.prot) + " · C " + nutriFmt(v.carb) + " · G " + nutriFmt(v.gord) + " · F " + nutriFmt(v.fibra) + " g";
+
+const NutriBotao = ({ children, onClick, tipo, disabled, style }) => {
+  const s = tipo === "sec"
+    ? { border:"1.5px solid #e2e8f0", background:"#fff", color:"#0f172a" }
+    : { border:"none", background:NUTRI_LARANJA, color:"#fff", boxShadow:"0 2px 8px rgba(255,86,3,0.28)" };
+  return <button type="button" onClick={disabled ? undefined : onClick} disabled={disabled} style={{ height:50, borderRadius:25, fontSize:15, fontWeight:700, cursor:disabled?"not-allowed":"pointer", opacity:disabled?0.55:1, fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", ...s, ...(style||{}) }}>{children}</button>;
+};
+
+const NutriCamera = ({ cor }) => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={cor||"#fff"} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+);
+
+// Fluxo de registro: foto (ou texto) → análise → revisão → salvar.
+const NutriRegistro = ({ dia, tipoInicial, onCancelar, onSalvo, studentId, ownerId }) => {
+  const [etapa, setEtapa] = useState("inicio"); // inicio | analisando | revisao
+  const [tipo, setTipo] = useState(tipoInicial || "almoco");
+  const [texto, setTexto] = useState("");
+  const [itens, setItens] = useState([]);
+  const [origem, setOrigem] = useState("foto");
+  const [erro, setErro] = useState("");
+  const [obs, setObs] = useState("");
+  const [addTexto, setAddTexto] = useState("");
+  const [adicionando, setAdicionando] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const camRef = useRef(null);
+  const galRef = useRef(null);
+
+  const podeAnalisar = () => {
+    if(nutriUsoHoje.get() >= NUTRI_LIMITE_DIA){ setErro("Você chegou ao limite de "+NUTRI_LIMITE_DIA+" análises hoje. Ainda dá para preencher manualmente."); return false; }
+    return true;
+  };
+  const rodar = async (payload, modo) => {
+    setErro(""); setObs("");
+    if(!podeAnalisar()) return;
+    setEtapa("analisando");
+    try {
+      const j = await nutriApi.analisar({ ...payload, tipo: nutriTipoNome(tipo) });
+      nutriUsoHoje.somar();
+      const novos = (j.itens||[]).map(nutriItemDaIA);
+      setItens(novos);
+      setOrigem(modo);
+      setObs(j.observacao || "");
+      if(!novos.length) setErro(j.observacao || "Não identifiquei alimentos. Tente outra foto ou preencha manualmente.");
+      setEtapa("revisao");
+    } catch(e) {
+      setErro((e && e.message) || "Não consegui analisar agora.");
+      setEtapa("inicio");
+    }
+  };
+  const onFoto = async (ev) => {
+    const file = ev.target.files && ev.target.files[0];
+    ev.target.value = "";
+    if(!file) return;
+    let b64 = null;
+    try { b64 = await nutriComprimirFoto(file); } catch(e) { setErro(e.message); return; }
+    await rodar({ imagem: b64, mime:"image/jpeg", texto: texto.trim() }, "foto");
+    b64 = null;
+  };
+  const porTexto = () => { if(texto.trim().length < 3){ setErro("Descreva o que você comeu, por exemplo: 2 ovos mexidos e 1 pão francês."); return; } rodar({ texto: texto.trim() }, "texto"); };
+  const manual = () => { setErro(""); setItens([nutriItemManual()]); setOrigem("manual"); setEtapa("revisao"); };
+  const adicionarTexto = async () => {
+    if(addTexto.trim().length < 3) return;
+    if(!podeAnalisar()) return;
+    setAdicionando(true); setErro("");
+    try {
+      const j = await nutriApi.analisar({ texto: addTexto.trim(), tipo: nutriTipoNome(tipo) });
+      nutriUsoHoje.somar();
+      setItens(p => [...p, ...(j.itens||[]).map(nutriItemDaIA)]);
+      setAddTexto("");
+    } catch(e) { setErro((e && e.message) || "Não consegui adicionar."); }
+    setAdicionando(false);
+  };
+  const atualizar = (uid, patch) => setItens(p => p.map(i => i.uid === uid ? { ...i, ...patch } : i));
+  const atualizarBase = (uid, k, v) => setItens(p => p.map(i => i.uid === uid ? { ...i, base: { ...i.base, [k]: v } } : i));
+  const remover = (uid) => setItens(p => p.filter(i => i.uid !== uid));
+
+  const valoresLista = itens.map(i => ({ nome: (i.nome||"").trim() || "Alimento", vazio: !(i.nome||"").trim() && !nutriNum(i.base.kcal), ...nutriValores(i) }))
+    .filter(i => !i.vazio).map(({ vazio, ...resto }) => resto);
+  const totais = nutriSomar(valoresLista);
+  const salvar = async () => {
+    if(!valoresLista.length){ setErro("Adicione pelo menos um alimento."); return; }
+    setSalvando(true); setErro("");
+    const agora = new Date();
+    const t = {}; Object.keys(totais).forEach(k => { t[k] = Math.round(totais[k] * 10) / 10; }); t.kcal = Math.round(t.kcal);
+    const refeicao = { id: nutriId(), date: dia, hora: String(agora.getHours()).padStart(2,"0")+":"+String(agora.getMinutes()).padStart(2,"0"),
+      tipo, origem, itens: valoresLista, totais: t, createdAt: agora.toISOString() };
+    const ok = await nutriApi.salvar(studentId, ownerId, refeicao);
+    setSalvando(false);
+    if(!ok){ setErro("Não consegui salvar. Confira a conexão e tente de novo."); return; }
+    onSalvo(refeicao);
+  };
+
+  const chipTipo = (
+    <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:4, marginBottom:14 }}>
+      {NUTRI_TIPOS.map(t => {
+        const ativo = tipo === t[0];
+        return <button key={t[0]} type="button" onClick={()=>setTipo(t[0])} style={{ flexShrink:0, height:36, padding:"0 14px", borderRadius:18, border:"1.5px solid "+(ativo?NUTRI_ESCURO:"#e2e8f0"), background:ativo?NUTRI_ESCURO:"#fff", color:ativo?"#fff":"#0f172a", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>{t[1]}</button>;
+      })}
+    </div>
+  );
+  const cabecalho = (titulo, sub) => (
+    <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
+      <button type="button" aria-label="Voltar" onClick={onCancelar} style={{ width:40, height:40, borderRadius:20, border:"1.5px solid #e2e8f0", background:"#fff", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0f172a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <div>
+        <div style={{ fontSize:19, fontWeight:800 }}>{titulo}</div>
+        {sub && <div style={{ fontSize:12, color:"#64748b" }}>{sub}</div>}
+      </div>
+    </div>
+  );
+
+  if(etapa === "analisando"){
+    return (
+      <div style={{ padding:"80px 24px", textAlign:"center" }}>
+        <div style={{ width:56, height:56, borderRadius:28, border:"4px solid #ffe8d5", borderTopColor:NUTRI_LARANJA, margin:"0 auto 18px", animation:"nutriGira 0.9s linear infinite" }}/>
+        <style>{"@keyframes nutriGira{to{transform:rotate(360deg)}}"}</style>
+        <div style={{ fontWeight:800, fontSize:16, marginBottom:6 }}>Analisando sua refeição</div>
+        <div style={{ fontSize:13, color:"#64748b" }}>Leva alguns segundos. A foto não fica salva.</div>
+      </div>
+    );
+  }
+
+  if(etapa === "inicio"){
+    return (
+      <div style={{ padding:"18px 16px 24px" }}>
+        {cabecalho("Registrar refeição", dia === nutriHoje() ? "Hoje" : nutriDiaSemana(dia)+", "+nutriDataCurta(dia))}
+        {chipTipo}
+        <input ref={camRef} type="file" accept="image/*" capture="environment" onChange={onFoto} style={{ display:"none" }}/>
+        <input ref={galRef} type="file" accept="image/*" onChange={onFoto} style={{ display:"none" }}/>
+        <NutriBotao onClick={()=>camRef.current && camRef.current.click()}><NutriCamera/>Tirar foto do prato</NutriBotao>
+        <NutriBotao tipo="sec" onClick={()=>galRef.current && galRef.current.click()} style={{ marginTop:8 }}>Escolher foto da galeria</NutriBotao>
+        <div style={{ display:"flex", alignItems:"center", gap:10, margin:"20px 0 12px", color:"#94a3b8", fontSize:12 }}>
+          <div style={{ flex:1, height:1, background:"#e2e8f0" }}/>ou descreva<div style={{ flex:1, height:1, background:"#e2e8f0" }}/>
+        </div>
+        <textarea value={texto} onChange={e=>setTexto(e.target.value)} placeholder="Ex.: 1 concha de feijão, 4 colheres de arroz, 1 filé de frango grelhado" rows={3} style={{ width:"100%", boxSizing:"border-box", borderRadius:12, border:"1.5px solid #e2e8f0", padding:12, fontSize:14, fontFamily:"inherit", resize:"vertical", marginBottom:8 }}/>
+        <div style={{ fontSize:11, color:"#94a3b8", marginBottom:10 }}>Se tirar foto, esse texto ajuda a análise (ex.: "frito no azeite").</div>
+        <NutriBotao tipo="sec" onClick={porTexto}>Analisar só pela descrição</NutriBotao>
+        <button type="button" onClick={manual} style={{ display:"block", margin:"14px auto 0", background:"transparent", border:"none", color:NUTRI_LARANJA_TXT, fontSize:14, fontWeight:700, cursor:"pointer", padding:8, fontFamily:"inherit" }}>Preencher manualmente</button>
+        {erro && <div style={{ marginTop:12, fontSize:13, color:"#dc2626", textAlign:"center", lineHeight:1.5 }}>{erro}</div>}
+        <div style={{ marginTop:18, fontSize:11, color:"#94a3b8", textAlign:"center", lineHeight:1.5 }}>Os valores são estimativas para acompanhamento e não substituem a orientação de um nutricionista.</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding:"18px 16px 24px" }}>
+      {cabecalho(nutriTipoNome(tipo), "Confira e ajuste antes de salvar")}
+      {origem !== "manual" && (
+        <div style={{ display:"flex", alignItems:"center", gap:8, background:"#ecfdf5", borderRadius:12, padding:"9px 12px", marginBottom:12, fontSize:13, color:"#065f46" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#065f46" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l4 4 10-10"/></svg>
+          {origem === "foto" ? "Foto analisada e descartada. Só os números ficam." : "Estimativa feita pela sua descrição."}
+        </div>
+      )}
+      {obs && <div style={{ fontSize:12, color:"#64748b", marginBottom:10 }}>{obs}</div>}
+      {itens.map(it => {
+        const v = nutriValores(it);
+        return (
+          <div key={it.uid} style={{ background:"#fff", border:"1.5px solid #e2e8f0", borderRadius:14, padding:12, marginBottom:8 }}>
+            <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:8 }}>
+              <input value={it.nome} onChange={e=>atualizar(it.uid, { nome:e.target.value })} placeholder="Nome do alimento" style={{ flex:1, minWidth:0, border:"none", fontSize:15, fontWeight:700, fontFamily:"inherit", color:"#0f172a", background:"transparent", padding:"4px 0" }}/>
+              {!it.manual && <span style={{ fontSize:14, fontWeight:700, whiteSpace:"nowrap" }}>{nutriFmt(v.kcal)} kcal</span>}
+              <button type="button" aria-label={"Remover "+(it.nome||"item")} onClick={()=>remover(it.uid)} style={{ width:32, height:32, borderRadius:16, border:"none", background:"#f1f5f9", color:"#64748b", cursor:"pointer", fontSize:16, flexShrink:0 }}>×</button>
+            </div>
+            {!it.manual ? (
+              <div>
+                <div style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap", marginBottom:6 }}>
+                  {NUTRI_PORCOES.map(p => {
+                    const ativo = Math.abs((it.fator||1) - p[1]) < 0.01;
+                    return <button key={p[0]} type="button" onClick={()=>atualizar(it.uid, { fator:p[1] })} style={{ height:32, padding:"0 12px", borderRadius:16, border:"1.5px solid "+(ativo?NUTRI_ESCURO:"#e2e8f0"), background:ativo?NUTRI_ESCURO:"#fff", color:ativo?"#fff":"#0f172a", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>{p[0]}</button>;
+                  })}
+                  {nutriNum(it.base.gramas) > 0 && (
+                    <span style={{ display:"flex", alignItems:"center", gap:4, marginLeft:"auto" }}>
+                      <input inputMode="numeric" value={String(v.gramas)} onChange={e=>{ const g = nutriNum(e.target.value); atualizar(it.uid, { fator: g > 0 ? g / nutriNum(it.base.gramas) : 0.01 }); }} aria-label="Gramas" style={{ width:52, height:32, borderRadius:8, border:"1.5px solid #e2e8f0", textAlign:"center", fontSize:13, fontFamily:"inherit" }}/>
+                      <span style={{ fontSize:12, color:"#64748b" }}>g</span>
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize:12, color:"#64748b" }}>{nutriLinhaMacros(v)}</div>
+              </div>
+            ) : (
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(3, minmax(0, 1fr))", gap:6 }}>
+                {[["gramas","Gramas"],["kcal","kcal"],["prot","Proteína g"],["carb","Carbo g"],["gord","Gordura g"],["fibra","Fibra g"]].map(c => (
+                  <label key={c[0]} style={{ display:"flex", flexDirection:"column", gap:2, fontSize:11, color:"#64748b" }}>{c[1]}
+                    <input inputMode="decimal" value={String(it.base[c[0]])} onChange={e=>atualizarBase(it.uid, c[0], e.target.value.replace(/[^0-9.,]/g,""))} style={{ height:36, borderRadius:8, border:"1.5px solid #e2e8f0", padding:"0 8px", fontSize:14, fontFamily:"inherit" }}/>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+      <div style={{ display:"flex", gap:6, margin:"4px 0 6px" }}>
+        <input value={addTexto} onChange={e=>setAddTexto(e.target.value)} placeholder="Faltou algo? Ex.: 1 colher de azeite" style={{ flex:1, minWidth:0, height:42, borderRadius:12, border:"1.5px solid #e2e8f0", padding:"0 12px", fontSize:14, fontFamily:"inherit" }}/>
+        <button type="button" onClick={adicionarTexto} disabled={adicionando} style={{ height:42, padding:"0 14px", borderRadius:12, border:"none", background:NUTRI_ESCURO, color:"#fff", fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"inherit", opacity:adicionando?0.6:1 }}>{adicionando ? "..." : "Adicionar"}</button>
+      </div>
+      <button type="button" onClick={()=>setItens(p=>[...p, nutriItemManual()])} style={{ background:"transparent", border:"none", color:NUTRI_LARANJA_TXT, fontSize:13, fontWeight:700, cursor:"pointer", padding:"6px 2px", marginBottom:12, fontFamily:"inherit" }}>+ Adicionar item manualmente</button>
+      <div style={{ background:NUTRI_ESCURO, color:"#f8fafc", borderRadius:14, padding:"12px 14px", display:"grid", gridTemplateColumns:"repeat(5, minmax(0, 1fr))", gap:4, marginBottom:12 }}>
+        {[["kcal","kcal"],["prot","Prot"],["carb","Carbo"],["gord","Gord"],["fibra","Fibra"]].map(c => (
+          <div key={c[0]}>
+            <div style={{ fontSize:10, color:"#cbd5e1" }}>{c[1]}</div>
+            <div style={{ fontSize:15, fontWeight:800, color:c[0]==="prot"?"#fb923c":"#f8fafc" }}>{nutriFmt(totais[c[0]])}{c[0]==="kcal"?"":"g"}</div>
+          </div>
+        ))}
+      </div>
+      {erro && <div style={{ fontSize:13, color:"#dc2626", textAlign:"center", marginBottom:10, lineHeight:1.5 }}>{erro}</div>}
+      <div style={{ display:"flex", gap:8 }}>
+        <NutriBotao tipo="sec" onClick={()=>{ setItens([]); setErro(""); setEtapa("inicio"); }} style={{ flex:1 }}>Refazer</NutriBotao>
+        <NutriBotao onClick={salvar} disabled={salvando} style={{ flex:1.4 }}>{salvando ? "Salvando..." : "Salvar refeição"}</NutriBotao>
+      </div>
+    </div>
+  );
+};
+
+// Aba "Alimentação" do aluno.
+const TelaAlimentacao = ({ studentId, ownerId }) => {
+  const [dia, setDia] = useState(nutriHoje());
+  const [refeicoes, setRefeicoes] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+  const [falhou, setFalhou] = useState(false);
+  const [metas, setMetas] = useState(null);
+  const [pesoAval, setPesoAval] = useState(null);
+  const [modo, setModo] = useState("dia"); // dia | registrar | metas
+  const [tipoSel, setTipoSel] = useState(null);
+  const [detalhe, setDetalhe] = useState(null);
+  const [apagando, setApagando] = useState(false);
+
+  useEffect(()=>{
+    (async()=>{
+      const m = await nutriApi.metas(studentId);
+      setMetas(m || {});
+      try {
+        const h = await nutriApi.headers();
+        const r = await fetch(SUPA_URL+"/rest/v1/assessments?select=data&student_id=eq."+encodeURIComponent(studentId)+"&order=updated_at.desc&limit=20", { headers: h });
+        if(r.ok){
+          const rows = await r.json();
+          const lista = (rows||[]).map(x=>x.data).filter(a=>a && a.aha && nutriNum(a.aha.weight)).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+          if(lista.length) setPesoAval(nutriNum(lista[0].aha.weight));
+        }
+      } catch(e) {}
+    })();
+  },[studentId]);
+
+  useEffect(()=>{
+    (async()=>{
+      setCarregando(true);
+      const lista = await nutriApi.listar(studentId, dia, dia);
+      setFalhou(lista === null);
+      setRefeicoes((lista||[]).sort((a,b)=>(a.hora||"").localeCompare(b.hora||"")));
+      setCarregando(false);
+    })();
+  },[studentId, dia]);
+
+  const totais = nutriSomar(refeicoes.map(r=>r.totais||{}));
+  const ehHoje = dia === nutriHoje();
+  const tituloDia = ehHoje ? "Hoje" : (dia === nutriDiaMais(nutriHoje(), -1) ? "Ontem" : nutriDiaSemana(dia)+", "+nutriDataCurta(dia));
+
+  const apagar = async () => {
+    if(!detalhe || !window.confirm("Apagar este registro?")) return;
+    setApagando(true);
+    const ok = await nutriApi.remover(detalhe.id);
+    setApagando(false);
+    if(ok){ setRefeicoes(p=>p.filter(r=>r.id!==detalhe.id)); setDetalhe(null); }
+    else alert("Não consegui apagar. Tente de novo.");
+  };
+
+  if(modo === "registrar"){
+    return <NutriRegistro dia={dia} tipoInicial={tipoSel} studentId={studentId} ownerId={ownerId}
+      onCancelar={()=>setModo("dia")}
+      onSalvo={(r)=>{ setRefeicoes(p=>[...p, r].sort((a,b)=>(a.hora||"").localeCompare(b.hora||""))); setModo("dia"); }}/>;
+  }
+  if(modo === "metas"){
+    return (
+      <div style={{ padding:"18px 16px 24px" }}>
+        <div style={{ fontSize:20, fontWeight:800, marginBottom:4 }}>Minhas metas diárias</div>
+        <div style={{ fontSize:13, color:"#64748b", marginBottom:14 }}>Você e seu personal podem ajustar.</div>
+        <NutriMetasEditor studentId={studentId} ownerId={ownerId} metas={metas} papel="aluno" pesoSugerido={pesoAval}
+          onCancelar={()=>setModo("dia")} onSalvo={(m)=>{ setMetas(m); setModo("dia"); }}/>
+      </div>
+    );
+  }
+
+  const registrados = {};
+  refeicoes.forEach(r => { registrados[r.tipo] = true; });
+  const pendentes = NUTRI_TIPOS_FIXOS.filter(t => !registrados[t]);
+  const semMetas = metas && !metas.prot && !metas.kcal && !metas.carb && !metas.gord && !metas.fibra;
+
+  return (
+    <div style={{ padding:"18px 16px 24px" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+        <div style={{ fontSize:22, fontWeight:800 }}>Alimentação</div>
+        <button type="button" onClick={()=>setModo("metas")} style={{ height:36, padding:"0 14px", borderRadius:18, border:"1.5px solid #e2e8f0", background:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", color:"#0f172a" }}>Minhas metas</button>
+      </div>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+        <button type="button" aria-label="Dia anterior" onClick={()=>setDia(d=>nutriDiaMais(d,-1))} style={{ width:40, height:40, borderRadius:20, border:"1.5px solid #e2e8f0", background:"#fff", cursor:"pointer", fontSize:18, color:"#0f172a" }}>‹</button>
+        <div style={{ fontSize:15, fontWeight:700 }}>{tituloDia}</div>
+        <button type="button" aria-label="Próximo dia" disabled={ehHoje} onClick={()=>setDia(d=>nutriDiaMais(d,1))} style={{ width:40, height:40, borderRadius:20, border:"1.5px solid #e2e8f0", background:"#fff", cursor:ehHoje?"default":"pointer", fontSize:18, color:"#0f172a", opacity:ehHoje?0.35:1 }}>›</button>
+      </div>
+      {semMetas && (
+        <button type="button" onClick={()=>setModo("metas")} style={{ width:"100%", textAlign:"left", background:"#fff4ee", border:"1.5px solid #fed7aa", borderRadius:14, padding:"12px 14px", marginBottom:12, cursor:"pointer", fontFamily:"inherit" }}>
+          <div style={{ fontSize:14, fontWeight:700, color:NUTRI_LARANJA_TXT }}>Defina suas metas do dia</div>
+          <div style={{ fontSize:12, color:"#64748b", marginTop:2 }}>Proteína, carboidratos, gorduras e fibras. Toque para começar.</div>
+        </button>
+      )}
+      <NutriResumoDia totais={totais} metas={metas} qtd={refeicoes.length}/>
+      <div style={{ fontSize:15, fontWeight:800, marginBottom:8 }}>Refeições do dia</div>
+      {carregando ? <div style={{ padding:"20px 0", textAlign:"center", color:"#94a3b8", fontSize:13 }}>Carregando...</div> : (
+        <div>
+          {falhou && <div style={{ fontSize:13, color:"#dc2626", marginBottom:8 }}>Não consegui carregar os registros. Confira a conexão.</div>}
+          {refeicoes.map(r => (
+            <button key={r.id} type="button" onClick={()=>setDetalhe(r)} style={{ width:"100%", textAlign:"left", background:"#fff", border:"1.5px solid #e2e8f0", borderRadius:14, padding:"12px 14px", marginBottom:8, display:"flex", justifyContent:"space-between", alignItems:"center", gap:10, cursor:"pointer", fontFamily:"inherit", color:"#0f172a" }}>
+              <div style={{ minWidth:0 }}>
+                <div style={{ fontSize:14, fontWeight:700 }}>{nutriTipoNome(r.tipo)}</div>
+                <div style={{ fontSize:12, color:"#64748b" }}>{(r.hora||"")+" · "+nutriFmt((r.totais||{}).prot)+" g proteína"}</div>
+              </div>
+              <span style={{ fontSize:14, fontWeight:700, whiteSpace:"nowrap" }}>{nutriFmt((r.totais||{}).kcal)} kcal</span>
+            </button>
+          ))}
+          {pendentes.map(t => (
+            <button key={t} type="button" onClick={()=>{ setTipoSel(t); setModo("registrar"); }} style={{ width:"100%", textAlign:"left", background:"transparent", border:"1.5px dashed #cbd5e1", borderRadius:14, padding:"12px 14px", marginBottom:8, display:"flex", justifyContent:"space-between", alignItems:"center", cursor:"pointer", fontFamily:"inherit" }}>
+              <span style={{ fontSize:14, color:"#475569" }}>{nutriTipoNome(t)}</span>
+              <span style={{ fontSize:12, color:"#64748b" }}>toque para registrar</span>
+            </button>
+          ))}
+        </div>
+      )}
+      <NutriBotao onClick={()=>{ setTipoSel(null); setModo("registrar"); }} style={{ marginTop:8, height:54 }}><NutriCamera/>Registrar refeição</NutriBotao>
+      <div style={{ fontSize:11, color:"#94a3b8", textAlign:"center", marginTop:10, lineHeight:1.5 }}>Valores estimados. A foto é lida e descartada, nunca fica salva.</div>
+
+      {detalhe && (
+        <Modal title={nutriTipoNome(detalhe.tipo)+" · "+(detalhe.hora||"")} onClose={()=>setDetalhe(null)}>
+          {(detalhe.itens||[]).map((i, idx) => (
+            <div key={idx} style={{ display:"flex", justifyContent:"space-between", gap:10, padding:"10px 0", borderBottom:"1px solid #f1f5f9" }}>
+              <div style={{ minWidth:0 }}>
+                <div style={{ fontSize:14, fontWeight:700 }}>{i.nome}</div>
+                <div style={{ fontSize:12, color:"#64748b" }}>{(nutriNum(i.gramas) ? nutriFmt(i.gramas)+" g · " : "")+nutriLinhaMacros(i)}</div>
+              </div>
+              <span style={{ fontSize:14, fontWeight:700, whiteSpace:"nowrap" }}>{nutriFmt(i.kcal)} kcal</span>
+            </div>
+          ))}
+          <div style={{ display:"flex", justifyContent:"space-between", padding:"12px 0", fontWeight:800 }}>
+            <span>Total</span><span>{nutriFmt((detalhe.totais||{}).kcal)} kcal</span>
+          </div>
+          <div style={{ fontSize:12, color:"#64748b", marginBottom:16 }}>{nutriLinhaMacros(detalhe.totais||{})}</div>
+          <NutriBotao tipo="sec" onClick={apagar} disabled={apagando} style={{ color:"#dc2626" }}>{apagando ? "Apagando..." : "Apagar registro"}</NutriBotao>
+        </Modal>
+      )}
+    </div>
+  );
+};
+
 const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, contratoAssinatura, onLogout}) => {
   const [loading,setLoading]=useState(true);
   const [prog,setProg]=useState(null);
@@ -1840,6 +2458,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
 
       {tab==="programacao" && <TelaProgramacao atividades={atividades} concluidasMap={concluidasMap} onToggleAtividade={toggleConcluidaAtividade} bibCustom={bibCustom} onSalvarExercicios={salvarSessaoAtividade} getSessaoAtividade={getSessaoAtividade}/>}
       {tab==="avaliacao" && <TelaAvaliacao studentId={studentId} studentData={studentData}/>}
+      {tab==="alimentacao" && <TelaAlimentacao studentId={studentId} ownerId={ownerId}/>}
 
       {tab==="treino" && showPreCheckinGate && (
         <div style={{padding:"16px 18px"}}>
