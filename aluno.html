@@ -1507,10 +1507,23 @@ const nutriApi = {
   },
   async analisar(payload) {
     const h = await this.headers();
-    const r = await fetch(SUPA_URL+"/functions/v1/analisar-refeicao", { method:"POST", headers:h, body: JSON.stringify(payload) });
+    let r;
+    const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timer = setTimeout(() => { if(ctrl) ctrl.abort(); }, 45000);
+    try { r = await fetch(SUPA_URL+"/functions/v1/analisar-refeicao", { method:"POST", headers:h, body: JSON.stringify(payload), signal: ctrl ? ctrl.signal : undefined }); }
+    catch(e) {
+      clearTimeout(timer);
+      if(e && e.name === "AbortError") throw new Error("A análise demorou demais. Tente de novo, descreva a refeição em texto ou preencha manualmente.");
+      throw new Error("Não consegui conectar ao serviço de análise. Tente de novo em instantes ou preencha manualmente.");
+    }
+    clearTimeout(timer);
     let j = null;
     try { j = await r.json(); } catch(e) {}
-    if(!r.ok || !j || j.erro) throw new Error((j && j.erro) || ("Falha na análise (HTTP "+r.status+")"));
+    if(!r.ok || !j || j.erro){
+      const msg = (j && j.erro) || ("Falha na análise (HTTP "+r.status+")");
+      const det = j && j.detalhe ? String(j.detalhe).slice(0, 220) : "";
+      throw new Error(det ? msg + "\n\nDetalhe técnico: " + det : msg);
+    }
     return j;
   },
 };
@@ -1709,6 +1722,12 @@ const NutriRegistro = ({ dia, tipoInicial, onCancelar, onSalvo, studentId, owner
   const [salvando, setSalvando] = useState(false);
   const camRef = useRef(null);
   const galRef = useRef(null);
+  const [segundos, setSegundos] = useState(0);
+  useEffect(()=>{
+    if(etapa !== "analisando"){ setSegundos(0); return; }
+    const t = setInterval(()=>setSegundos(s=>s+1), 1000);
+    return ()=>clearInterval(t);
+  },[etapa]);
 
   const podeAnalisar = () => {
     if(nutriUsoHoje.get() >= NUTRI_LIMITE_DIA){ setErro("Você chegou ao limite de "+NUTRI_LIMITE_DIA+" análises hoje. Ainda dá para preencher manualmente."); return false; }
@@ -1800,8 +1819,8 @@ const NutriRegistro = ({ dia, tipoInicial, onCancelar, onSalvo, studentId, owner
       <div style={{ padding:"80px 24px", textAlign:"center" }}>
         <div style={{ width:56, height:56, borderRadius:28, border:"4px solid #ffe8d5", borderTopColor:NUTRI_LARANJA, margin:"0 auto 18px", animation:"nutriGira 0.9s linear infinite" }}/>
         <style>{"@keyframes nutriGira{to{transform:rotate(360deg)}}"}</style>
-        <div style={{ fontWeight:800, fontSize:16, marginBottom:6 }}>Analisando sua refeição</div>
-        <div style={{ fontSize:13, color:"#64748b" }}>Leva alguns segundos. A foto não fica salva.</div>
+        <div style={{ fontWeight:800, fontSize:16, marginBottom:6 }}>{segundos < 12 ? "Analisando sua refeição" : "Quase lá..."}</div>
+        <div style={{ fontSize:13, color:"#64748b", lineHeight:1.5 }}>{segundos < 12 ? "Identificando os alimentos e as porções. A foto não fica salva." : (segundos < 25 ? "Está levando um pouco mais que o normal. Calculando os macros." : "O serviço está mais lento agora. Se passar de 45 segundos, eu aviso e você pode descrever a refeição.")}</div>
       </div>
     );
   }
@@ -1822,7 +1841,7 @@ const NutriRegistro = ({ dia, tipoInicial, onCancelar, onSalvo, studentId, owner
         <div style={{ fontSize:11, color:"#94a3b8", marginBottom:10 }}>Se tirar foto, esse texto ajuda a análise (ex.: "frito no azeite").</div>
         <NutriBotao tipo="sec" onClick={porTexto}>Analisar só pela descrição</NutriBotao>
         <button type="button" onClick={manual} style={{ display:"block", margin:"14px auto 0", background:"transparent", border:"none", color:NUTRI_LARANJA_TXT, fontSize:14, fontWeight:700, cursor:"pointer", padding:8, fontFamily:"inherit" }}>Preencher manualmente</button>
-        {erro && <div style={{ marginTop:12, fontSize:13, color:"#dc2626", textAlign:"center", lineHeight:1.5 }}>{erro}</div>}
+        {erro && <div style={{ marginTop:12, fontSize:13, color:"#dc2626", textAlign:"center", lineHeight:1.5, whiteSpace:"pre-line", wordBreak:"break-word" }}>{erro}</div>}
         <div style={{ marginTop:18, fontSize:11, color:"#94a3b8", textAlign:"center", lineHeight:1.5 }}>Os valores são estimativas para acompanhamento e não substituem a orientação de um nutricionista.</div>
       </div>
     );
