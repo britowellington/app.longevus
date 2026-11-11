@@ -26,6 +26,7 @@ var __LOGO_WB__ = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAFuCAYAAAC
 </script>
 <script type="text/babel" data-presets="react" src="longevus-condominios.js"></script>
 <script src="longevus-alimentacao.js?v=2"></script>
+<script src="longevus-antropometria.js?v=1"></script>
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useCallback, useRef } = React;
 // ── Supabase ─────────────────────────────────────────────────────────────────
@@ -2116,7 +2117,7 @@ setPresSaving(false);
 setPresMsg(ok?"Check-out registrado!":"Erro ao salvar. Tente novamente.");
 if(ok) setPresPos(emptyPresPos());
 };
-const TABS=[{id:"aval",label:"Avaliações"},{id:"treino",label:"Treino"},{id:"agenda",label:"Agenda"},{id:"checkin",label:"Check-in"},{id:"alim",label:"Alimentação"},{id:"presencial",label:"Presencial"},{id:"evolucao",label:"Evolução"},{id:"mon",label:"Monitoramento"},{id:"doc",label:"Documentos"}];
+const TABS=[{id:"aval",label:"Avaliações"},{id:"treino",label:"Treino"},{id:"agenda",label:"Agenda"},{id:"checkin",label:"Check-in"},{id:"alim",label:"Alimentação"},{id:"antro",label:"Antropometria"},{id:"presencial",label:"Presencial"},{id:"evolucao",label:"Evolução"},{id:"mon",label:"Monitoramento"},{id:"doc",label:"Documentos"}];
 return (
 <div>
 <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:16 }}>
@@ -2779,6 +2780,7 @@ return <Card style={{ padding:"16px 14px" }}><MultiLineChart series={seriesData}
 </div>
 )}
 {tab==="alim"&&(window.LongevusAlimentacao?<window.LongevusAlimentacao.Painel st={st} assessments={assessments}/>:<Card style={{ textAlign:"center",padding:32,color:"#94a3b8" }}>Módulo de alimentação não carregou. Confira se o arquivo longevus-alimentacao.js está no repositório.</Card>)}
+{tab==="antro"&&(window.LongevusAntropometria?<window.LongevusAntropometria.Painel st={st}/>:<Card style={{ textAlign:"center",padding:32,color:"#94a3b8" }}>Módulo de antropometria não carregou. Confira se o arquivo longevus-antropometria.js está no repositório.</Card>)}
 {tab==="doc"&&(
 <div>
 <div style={{ display:"flex",justifyContent:"flex-end",marginBottom:10 }}>
