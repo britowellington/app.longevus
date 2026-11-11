@@ -2,6 +2,7 @@
   const { useState, useEffect } = React;
   const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
   const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
+  const nutriSupa = () => window.__LV_SUPA;
   const antroSupa = () => window.__LV_SUPA;
   const ANTRO_MEMBROS = [["bracoRelaxado", "Braço relaxado"], ["bracoContraido", "Braço contraído"], ["antebraco", "Antebraço"], ["coxa", "Coxa"], ["panturrilha", "Panturrilha"]];
   const ANTRO_TRONCO = [["torax", "Tórax"], ["cintura", "Cintura"], ["abdomen", "Abdômen"], ["quadril", "Quadril"]];
@@ -91,6 +92,25 @@
     if (d && e) return (d + e) / 2;
     return d || e || null;
   };
+  const antroMedidas = (antroLista, avalLista, metas) => {
+    const cands = [];
+    (antroLista || []).forEach((r2) => cands.push({ date: r2.date, fonte: "antropometria", peso: r2.peso, altura: r2.altura, cintura: r2.tronco && r2.tronco.cintura, quadril: r2.tronco && r2.tronco.quadril, panturrilha: antroMedia(r2.membros && r2.membros.panturrilha) }));
+    (avalLista || []).forEach((a) => {
+      const h = a && a.aha || {};
+      cands.push({ date: a && a.date, fonte: "avaliacao", peso: h.weight, altura: h.height, cintura: h.waist, quadril: h.hip, panturrilha: h.calf });
+    });
+    if (metas && metas.peso) cands.push({ date: String(metas.atualizadoEm || "").slice(0, 10), fonte: "metas", peso: metas.peso });
+    const r = {};
+    ["peso", "altura", "cintura", "quadril", "panturrilha"].forEach((k) => {
+      let best = null;
+      cands.forEach((c) => {
+        const v = antroNum(c[k]);
+        if (v && (!best || String(c.date || "") > String(best.date || ""))) best = { v: Math.round(v * 10) / 10, date: c.date || "", fonte: c.fonte };
+      });
+      if (best) r[k] = best;
+    });
+    return r;
+  };
   const antroApi = {
     async headers() {
       var _a;
@@ -124,6 +144,27 @@
       } catch (e) {
         return false;
       }
+    },
+    async fontesMedidas(studentId) {
+      const out = { aval: [], metas: null };
+      try {
+        const h = await this.headers();
+        const [ra, rm] = await Promise.all([
+          fetch(SUPA_URL + "/rest/v1/assessments?select=data&student_id=eq." + encodeURIComponent(studentId) + "&limit=50", { headers: h }),
+          fetch(SUPA_URL + "/rest/v1/metas_alimentares?select=data&student_id=eq." + encodeURIComponent(studentId) + "&limit=1", { headers: h })
+        ]);
+        if (ra.ok) out.aval = (await ra.json() || []).map((x) => x.data).filter(Boolean);
+        if (rm.ok) {
+          const m = await rm.json();
+          out.metas = m && m.length ? m[0].data : null;
+        }
+      } catch (e) {
+      }
+      return out;
+    },
+    async medidas(studentId) {
+      const [l, f] = await Promise.all([this.listar(studentId), this.fontesMedidas(studentId)]);
+      return antroMedidas(l || [], f.aval, f.metas);
     },
     async remover(id) {
       try {
@@ -168,8 +209,17 @@
     const s = tipo === "sec" ? { border: "1.5px solid #e2e8f0", background: "#fff", color: ANTRO_ESCURO } : tipo === "perigo" ? { border: "1.5px solid #fecaca", background: "#fff", color: "#dc2626" } : { border: "none", background: ANTRO_LARANJA, color: "#fff" };
     return /* @__PURE__ */ React.createElement("button", { type: "button", onClick: disabled ? void 0 : onClick, disabled, style: { height: 50, borderRadius: 25, fontSize: 15, fontWeight: 700, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.55 : 1, fontFamily: "inherit", width: "100%", ...s, ...style || {} } }, children);
   };
-  const AntroForm = ({ rec, papel, sexo, dob, onSalvar, onCancelar, onApagar, abaInicial }) => {
-    const [f, setF] = useState(antroParaForm(rec || {}));
+  const AntroForm = ({ rec, papel, sexo, dob, onSalvar, onCancelar, onApagar, abaInicial, prefill }) => {
+    const [f, setF] = useState(() => {
+      const b = antroParaForm(rec || {});
+      if (prefill && !(rec && rec.id)) {
+        if (!b.peso && prefill.peso) b.peso = antroInput(prefill.peso.v);
+        if (!b.altura && prefill.altura) b.altura = antroInput(prefill.altura.v);
+      }
+      return b;
+    });
+    const veioDoUltimo = !!(prefill && !(rec && rec.id) && (prefill.peso || prefill.altura));
+    const dataUltimo = veioDoUltimo ? antroDataCurta((prefill.peso || prefill.altura).date) : "";
     const [aba, setAba] = useState(papel === "aluno" ? "bio" : abaInicial || "medidas");
     const [salvando, setSalvando] = useState(false);
     const [erro, setErro] = useState("");
@@ -270,7 +320,7 @@
     const sitios = antroSitios(f.protocolo, sexo || "M");
     const nomeDobra = (k) => (ANTRO_DOBRAS.find((d) => d[0] === k) || [k, k])[1];
     const rcqAlto = base.rcq && (sexo === "F" ? base.rcq > 0.85 : base.rcq > 0.9);
-    return /* @__PURE__ */ React.createElement("div", null, abas.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 4, background: "#f1f5f9", borderRadius: 14, padding: 4, marginBottom: 12 } }, abas.map((a) => /* @__PURE__ */ React.createElement("button", { key: a[0], type: "button", onClick: () => setAba(a[0]), style: { height: 40, borderRadius: 10, border: "none", background: aba === a[0] ? ANTRO_ESCURO : "transparent", color: aba === a[0] ? "#fff" : ANTRO_ESCURO, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, a[1]))), /* @__PURE__ */ React.createElement(AntroBloco, { titulo: papel === "aluno" ? "Seus dados" : "Básico", extra: papel === "aluno" ? "obrigatório" : null }, /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 } }, /* @__PURE__ */ React.createElement(AntroCampo, { rotulo: "Peso", un: "kg", valor: f.peso, onChange: set("peso"), destaque: papel === "aluno" && !peso }), /* @__PURE__ */ React.createElement(AntroCampo, { rotulo: "Altura", un: "cm", valor: f.altura, onChange: set("altura"), destaque: papel === "aluno" && !altura }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "#64748b" } }, /* @__PURE__ */ React.createElement("span", null, "IMC"), /* @__PURE__ */ React.createElement("div", { style: { height: 42, borderRadius: 10, background: "#f8fafc", display: "flex", alignItems: "center", padding: "0 10px", fontSize: 16, fontWeight: 700, color: ANTRO_ESCURO } }, base.imc ? antroFmt(base.imc, 1) : "—"))), /* @__PURE__ */ React.createElement("label", { style: { display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "#64748b", marginTop: 10 } }, /* @__PURE__ */ React.createElement("span", null, papel === "aluno" ? "Data do exame" : "Data da avaliação"), /* @__PURE__ */ React.createElement("input", { type: "date", value: f.date, onChange: (e) => set("date")(e.target.value), style: { height: 42, borderRadius: 10, border: "1.5px solid #e2e8f0", padding: "0 10px", fontSize: 15, fontFamily: "inherit", color: ANTRO_ESCURO, background: "#fff" } }))), aba === "medidas" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(AntroBloco, { titulo: "Membros (cm)", extra: "direito · esquerdo · diferença" }, ANTRO_MEMBROS.map((m) => {
+    return /* @__PURE__ */ React.createElement("div", null, abas.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 4, background: "#f1f5f9", borderRadius: 14, padding: 4, marginBottom: 12 } }, abas.map((a) => /* @__PURE__ */ React.createElement("button", { key: a[0], type: "button", onClick: () => setAba(a[0]), style: { height: 40, borderRadius: 10, border: "none", background: aba === a[0] ? ANTRO_ESCURO : "transparent", color: aba === a[0] ? "#fff" : ANTRO_ESCURO, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, a[1]))), /* @__PURE__ */ React.createElement(AntroBloco, { titulo: papel === "aluno" ? "Seus dados" : "Básico", extra: veioDoUltimo ? "do último registro (" + dataUltimo + ")" : papel === "aluno" ? "obrigatório" : null }, /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 } }, /* @__PURE__ */ React.createElement(AntroCampo, { rotulo: "Peso", un: "kg", valor: f.peso, onChange: set("peso"), destaque: papel === "aluno" && !peso }), /* @__PURE__ */ React.createElement(AntroCampo, { rotulo: "Altura", un: "cm", valor: f.altura, onChange: set("altura"), destaque: papel === "aluno" && !altura }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "#64748b" } }, /* @__PURE__ */ React.createElement("span", null, "IMC"), /* @__PURE__ */ React.createElement("div", { style: { height: 42, borderRadius: 10, background: "#f8fafc", display: "flex", alignItems: "center", padding: "0 10px", fontSize: 16, fontWeight: 700, color: ANTRO_ESCURO } }, base.imc ? antroFmt(base.imc, 1) : "—"))), /* @__PURE__ */ React.createElement("label", { style: { display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "#64748b", marginTop: 10 } }, /* @__PURE__ */ React.createElement("span", null, papel === "aluno" ? "Data do exame" : "Data da avaliação"), /* @__PURE__ */ React.createElement("input", { type: "date", value: f.date, onChange: (e) => set("date")(e.target.value), style: { height: 42, borderRadius: 10, border: "1.5px solid #e2e8f0", padding: "0 10px", fontSize: 15, fontFamily: "inherit", color: ANTRO_ESCURO, background: "#fff" } }))), aba === "medidas" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(AntroBloco, { titulo: "Membros (cm)", extra: "direito · esquerdo · diferença" }, ANTRO_MEMBROS.map((m) => {
       const d = antroNum(f["m_" + m[0] + "_d"]), e = antroNum(f["m_" + m[0] + "_e"]);
       const dif = d && e ? Math.abs(d - e) : null;
       return /* @__PURE__ */ React.createElement("div", { key: m[0], style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { flex: 1, fontSize: 14, minWidth: 0 } }, m[1]), /* @__PURE__ */ React.createElement("input", { inputMode: "decimal", "aria-label": m[1] + " direito", placeholder: "D", value: f["m_" + m[0] + "_d"] || "", onChange: (ev) => set("m_" + m[0] + "_d")(ev.target.value.replace(/[^0-9.,]/g, "")), style: { width: 58, height: 40, borderRadius: 10, border: "1.5px solid #e2e8f0", textAlign: "center", fontSize: 15, fontWeight: 700, fontFamily: "inherit", color: ANTRO_ESCURO } }), /* @__PURE__ */ React.createElement("input", { inputMode: "decimal", "aria-label": m[1] + " esquerdo", placeholder: "E", value: f["m_" + m[0] + "_e"] || "", onChange: (ev) => set("m_" + m[0] + "_e")(ev.target.value.replace(/[^0-9.,]/g, "")), style: { width: 58, height: 40, borderRadius: 10, border: "1.5px solid #e2e8f0", textAlign: "center", fontSize: 15, fontWeight: 700, fontFamily: "inherit", color: ANTRO_ESCURO } }), /* @__PURE__ */ React.createElement("span", { style: { width: 34, textAlign: "right", fontSize: 12, fontWeight: dif > 2 ? 700 : 500, color: dif > 2 ? ANTRO_LARANJA_TXT : "#64748b" } }, dif !== null ? antroFmt(dif, 1) : ""));
@@ -344,9 +394,11 @@
     const [atual, setAtual] = useState(null);
     const [abaForm, setAbaForm] = useState("medidas");
     const [ownerId, setOwnerId] = useState(null);
+    const [fontes, setFontes] = useState({ aval: [], metas: null });
     const carregar = async () => {
       setCarregando(true);
-      const [l, uid] = await Promise.all([antroApi.listar(st.id), antroApi.usuarioId()]);
+      const [l, uid, fm] = await Promise.all([antroApi.listar(st.id), antroApi.usuarioId(), antroApi.fontesMedidas(st.id)]);
+      setFontes(fm);
       setFalhou(l === null);
       setLista(l || []);
       setOwnerId(uid);
@@ -395,6 +447,7 @@
           sexo: st.sex,
           dob: st.dob,
           abaInicial: abaForm,
+          prefill: antroMedidas(lista, fontes.aval, fontes.metas),
           onSalvar: salvar,
           onCancelar: () => {
             setModo(atual && atual.status === "pendente" ? "revisao" : "inicio");
@@ -435,5 +488,7 @@
       setModo("form");
     }, style: { height: 38, padding: "0 16px", borderRadius: 10, border: "none", background: ANTRO_LARANJA, color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" } }, "+ Nova antropométrica")), falhou && /* @__PURE__ */ React.createElement(AntroCard, { style: { padding: 12, marginBottom: 10, color: "#dc2626", fontSize: 13 } }, "Não consegui carregar. Confira se os SQLs da avaliação antropométrica foram rodados."), pendentes.map((r) => /* @__PURE__ */ React.createElement("button", { key: r.id, type: "button", onClick: () => abrir(r), style: { width: "100%", textAlign: "left", background: "#fff4ee", border: "1.5px solid #fed7aa", borderRadius: 14, padding: "12px 14px", marginBottom: 10, cursor: "pointer", fontFamily: "inherit", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 800, color: "#7c2d12" } }, "Laudo do aluno para conferir"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#7c2d12" } }, "Bioimpedância de " + antroData(r.date) + (r.bio && r.bio.aparelho ? " · " + r.bio.aparelho : ""))), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: ANTRO_LARANJA_TXT, whiteSpace: "nowrap" } }, "Conferir ›"))), lista.length === 0 ? /* @__PURE__ */ React.createElement(AntroCard, { style: { textAlign: "center", padding: 28, color: "#94a3b8", fontSize: 13, lineHeight: 1.5 } }, "Nenhuma avaliação antropométrica ainda. Use o botão acima, ou peça para o aluno lançar a bioimpedância pelo app dele.") : /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(AntroEvolucao, { lista, papel: "professor" }), /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 15, margin: "18px 0 8px" } }, "Histórico"), recentes.map((r) => /* @__PURE__ */ React.createElement(AntroCard, { key: r.id, onClick: () => abrir(r), style: { padding: "12px 14px", marginBottom: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, fontSize: 14 } }, antroData(r.date)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b" } }, antroTipos(r) + " · " + (r.origem === "aluno" ? "lançada pelo aluno" : "lançada por você"))), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 700, borderRadius: 10, padding: "3px 8px", whiteSpace: "nowrap", color: r.status === "pendente" ? "#fff" : ANTRO_VERDE, background: r.status === "pendente" ? "#c2410c" : "#ecfdf5" } }, r.status === "pendente" ? "pendente" : "conferida"))))));
   };
-  window.LongevusAntropometria = { Painel: AntroPainel };
+  window.LongevusAntropometria = { Painel: AntroPainel, medidas: function(id) {
+    return antroApi.medidas(id);
+  } };
 })();
