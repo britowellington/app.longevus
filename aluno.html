@@ -19,7 +19,7 @@
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="longevus-aluno-extras.js?v=3"></script>
+<script src="longevus-aluno-extras.js?v=4"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -875,46 +875,65 @@ const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, atividadesSemDa
   const diaLabel = DIAS_SEMANA_LONGO[hoje.getDay()]+", "+hoje.getDate()+" de "+MESES_NOME[hoje.getMonth()];
   const totalHoje = atividadesHoje.length;
   const concluidasHoje = atividadesHoje.filter(a=>!!concluidasMap[a._id]).length;
+  const XX = window.LongevusAlunoExtras;
+  if(!XX || !XX.InicioTopo) {
   return (
-    <div style={{paddingBottom:24}}>
-      {window.LongevusAlunoExtras && window.LongevusAlunoExtras.InicioTopo ? (
-        <window.LongevusAlunoExtras.InicioTopo firstName={firstName} treinoHojeLabel={treinoHojeLabel} onIrTreino={onIrTreino} onLogout={onLogout} onIr={onIr} studentId={studentId} studentData={studentData}/>
-      ) : (
-      <div style={{padding:"20px 16px 0"}}>
-      <div style={{fontSize:13,color:"#64748b",marginBottom:2}}>{diaLabel}</div>
-      <div style={{fontSize:22,fontWeight:800,marginBottom:18,color:"#0f172a"}}>Olá{firstName?`, ${firstName}`:""}!</div>
-
-      <Card style={{padding:"16px 18px",marginBottom:12,cursor:"pointer"}} onClick={onIrTreino}>
-        <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <div style={{width:44,height:44,borderRadius:12,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon name="dumbbell" size={22} color="#FF5603"/></div>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:0.3}}>Treino de hoje</div>
-            <div style={{fontSize:16,fontWeight:800,color:"#0f172a"}}>{treinoHojeLabel || "Ver treino"}</div>
+      <div style={{padding:"20px 16px 24px"}}>
+        <div style={{fontSize:13,color:"#64748b",marginBottom:2}}>{diaLabel}</div>
+        <div style={{fontSize:22,fontWeight:800,marginBottom:18,color:"#0f172a"}}>Olá{firstName?`, ${firstName}`:""}!</div>
+  
+        <Card style={{padding:"16px 18px",marginBottom:12,cursor:"pointer"}} onClick={onIrTreino}>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <div style={{width:44,height:44,borderRadius:12,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon name="dumbbell" size={22} color="#FF5603"/></div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:0.3}}>Treino de hoje</div>
+              <div style={{fontSize:16,fontWeight:800,color:"#0f172a"}}>{treinoHojeLabel || "Ver treino"}</div>
+            </div>
+            <Icon name="chevronRight" size={18} color="#cbd5e1"/>
           </div>
-          <Icon name="chevronRight" size={18} color="#cbd5e1"/>
-        </div>
-      </Card>
+        </Card>
+  
+        {totalHoje>0 && (
+          <div style={{marginBottom:4}}>
+            <ProgressoAtividades concluidas={concluidasHoje} total={totalHoje}/>
+            {atividadesHoje.map((atv,i)=>(
+              <AtividadeCard key={atv._id||i} atividade={atv} destaque concluida={!!concluidasMap[atv._id]} onToggle={onToggleAtividade} bibCustom={bibCustom} onSalvarExercicios={onSalvarExercicios} sessaoSalva={getSessaoAtividade(atv._id)}/>
+            ))}
+          </div>
+        )}
+  
+        {atividadesSemData.length>0 && (
+          <div style={{marginTop:16}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:0.3,marginBottom:8}}>Quando você quiser</div>
+            {atividadesSemData.map((atv,i)=>(
+              <AtividadeCard key={atv._id||i} atividade={atv} concluida={!!concluidasMap[atv._id]} ultimaConclusao={ultimaConclusaoMap?.[atv._id]} onToggle={onToggleAtividade} bibCustom={bibCustom} onSalvarExercicios={onSalvarExercicios} sessaoSalva={getSessaoAtividade(atv._id)}/>
+            ))}
+          </div>
+        )}
       </div>
-      )}
-      <div style={{padding:"16px 20px 0"}}>
-
-      {totalHoje>0 && (
-        <div style={{marginBottom:4}}>
-          <ProgressoAtividades concluidas={concluidasHoje} total={totalHoje}/>
-          {atividadesHoje.map((atv,i)=>(
-            <AtividadeCard key={atv._id||i} atividade={atv} destaque concluida={!!concluidasMap[atv._id]} onToggle={onToggleAtividade} bibCustom={bibCustom} onSalvarExercicios={onSalvarExercicios} sessaoSalva={getSessaoAtividade(atv._id)}/>
-          ))}
-        </div>
-      )}
-
-      {atividadesSemData.length>0 && (
-        <div style={{marginTop:16}}>
-          <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:0.3,marginBottom:8}}>Quando você quiser</div>
-          {atividadesSemData.map((atv,i)=>(
-            <AtividadeCard key={atv._id||i} atividade={atv} concluida={!!concluidasMap[atv._id]} ultimaConclusao={ultimaConclusaoMap?.[atv._id]} onToggle={onToggleAtividade} bibCustom={bibCustom} onSalvarExercicios={onSalvarExercicios} sessaoSalva={getSessaoAtividade(atv._id)}/>
-          ))}
-        </div>
-      )}
+    );
+  }
+  const faixa = (lista, render) => (
+    <div style={{display:"flex",gap:10,overflowX:"auto",scrollSnapType:"x mandatory",paddingBottom:2}}>
+      {lista.map((atv,i)=>(<div key={atv._id||i} style={{flex:"0 0 "+(lista.length>1?"88%":"100%"),scrollSnapAlign:"start",minWidth:0}}>{render(atv)}</div>))}
+    </div>
+  );
+  return (
+    <div style={{height:"calc(100dvh - 66px - env(safe-area-inset-bottom))",display:"flex",flexDirection:"column",overflowY:"auto"}}>
+      <XX.InicioTopo firstName={firstName} treinoHojeLabel={treinoHojeLabel} onIrTreino={onIrTreino} onLogout={onLogout} onIr={onIr} studentId={studentId} studentData={studentData}/>
+      <div style={{flexShrink:0,padding:"12px 18px 4px"}}>
+        {totalHoje>0 && (
+          <div style={{marginBottom:6}}>
+            <div style={{fontSize:11.5,fontWeight:700,letterSpacing:"0.08em",color:"#64748B",textTransform:"uppercase",marginBottom:6}}>{"Hoje · "+concluidasHoje+" de "+totalHoje+" feito"+(concluidasHoje===1?"":"s")}</div>
+            {faixa(atividadesHoje, (atv)=><AtividadeCard atividade={atv} destaque concluida={!!concluidasMap[atv._id]} onToggle={onToggleAtividade} bibCustom={bibCustom} onSalvarExercicios={onSalvarExercicios} sessaoSalva={getSessaoAtividade(atv._id)}/>)}
+          </div>
+        )}
+        {atividadesSemData.length>0 && (
+          <div>
+            <div style={{fontSize:11.5,fontWeight:700,letterSpacing:"0.08em",color:"#64748B",textTransform:"uppercase",marginBottom:6}}>{"Quando você quiser"+(atividadesSemData.length>1?" · deslize para o lado":"")}</div>
+            {faixa(atividadesSemData, (atv)=><AtividadeCard atividade={atv} concluida={!!concluidasMap[atv._id]} ultimaConclusao={ultimaConclusaoMap?.[atv._id]} onToggle={onToggleAtividade} bibCustom={bibCustom} onSalvarExercicios={onSalvarExercicios} sessaoSalva={getSessaoAtividade(atv._id)}/>)}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1827,7 +1846,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
   const firstName = (studentName||"").trim().split(" ")[0] || "";
 
   return (
-    <div style={{minHeight:"100vh",background:"#F4F5F7",paddingBottom:88}}>
+    <div style={{minHeight:"100dvh",boxSizing:"border-box",background:"#F4F5F7",paddingBottom:((tab==="inicio"||tab==="alimentacao")&&window.LongevusAlunoExtras)?0:88}}>
       {!((tab==="inicio"||tab==="alimentacao") && window.LongevusAlunoExtras) && (
       <div style={{background:"#fff",borderBottom:"1.5px solid #e2e8f0",padding:"12px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100,boxShadow:"0 2px 8px rgba(15,23,42,0.04)"}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
