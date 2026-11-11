@@ -10,13 +10,16 @@
 <link rel="icon" type="image/png" href="favicon-32.png"/>
 <link rel="apple-touch-icon" href="apple-touch-icon.png"/>
 <link rel="manifest" href="manifest-aluno.json"/>
-<meta name="theme-color" content="#FF5603"/>
+<meta name="theme-color" content="#0F172A"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>body{margin:0;font-family:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;background:#F4F5F7;-webkit-font-smoothing:antialiased}button,input,textarea,select{font-family:inherit}</style>
 </head>
 <body>
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="longevus-aluno-extras.js?v=2"></script>
+<script src="longevus-aluno-extras.js?v=3"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -867,13 +870,17 @@ const ProgressoAtividades = ({concluidas, total}) => {
   );
 };
 
-const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, atividadesSemData, concluidasMap, ultimaConclusaoMap, onToggleAtividade, onIrTreino, bibCustom, onSalvarExercicios, getSessaoAtividade}) => {
+const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, atividadesSemData, concluidasMap, ultimaConclusaoMap, onToggleAtividade, onIrTreino, bibCustom, onSalvarExercicios, getSessaoAtividade, onLogout, onIr, studentId, studentData}) => {
   const hoje = new Date();
   const diaLabel = DIAS_SEMANA_LONGO[hoje.getDay()]+", "+hoje.getDate()+" de "+MESES_NOME[hoje.getMonth()];
   const totalHoje = atividadesHoje.length;
   const concluidasHoje = atividadesHoje.filter(a=>!!concluidasMap[a._id]).length;
   return (
-    <div style={{padding:"20px 16px 24px"}}>
+    <div style={{paddingBottom:24}}>
+      {window.LongevusAlunoExtras && window.LongevusAlunoExtras.InicioTopo ? (
+        <window.LongevusAlunoExtras.InicioTopo firstName={firstName} treinoHojeLabel={treinoHojeLabel} onIrTreino={onIrTreino} onLogout={onLogout} onIr={onIr} studentId={studentId} studentData={studentData}/>
+      ) : (
+      <div style={{padding:"20px 16px 0"}}>
       <div style={{fontSize:13,color:"#64748b",marginBottom:2}}>{diaLabel}</div>
       <div style={{fontSize:22,fontWeight:800,marginBottom:18,color:"#0f172a"}}>Olá{firstName?`, ${firstName}`:""}!</div>
 
@@ -887,6 +894,9 @@ const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, atividadesSemDa
           <Icon name="chevronRight" size={18} color="#cbd5e1"/>
         </div>
       </Card>
+      </div>
+      )}
+      <div style={{padding:"16px 20px 0"}}>
 
       {totalHoje>0 && (
         <div style={{marginBottom:4}}>
@@ -899,12 +909,13 @@ const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, atividadesSemDa
 
       {atividadesSemData.length>0 && (
         <div style={{marginTop:16}}>
-          <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:0.3,marginBottom:8}}>🔓 Quando você quiser</div>
+          <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:0.3,marginBottom:8}}>Quando você quiser</div>
           {atividadesSemData.map((atv,i)=>(
             <AtividadeCard key={atv._id||i} atividade={atv} concluida={!!concluidasMap[atv._id]} ultimaConclusao={ultimaConclusaoMap?.[atv._id]} onToggle={onToggleAtividade} bibCustom={bibCustom} onSalvarExercicios={onSalvarExercicios} sessaoSalva={getSessaoAtividade(atv._id)}/>
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 };
@@ -1816,7 +1827,8 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
   const firstName = (studentName||"").trim().split(" ")[0] || "";
 
   return (
-    <div style={{minHeight:"100vh",background:"#f8fafc",paddingBottom:88}}>
+    <div style={{minHeight:"100vh",background:"#F4F5F7",paddingBottom:88}}>
+      {!((tab==="inicio"||tab==="alimentacao") && window.LongevusAlunoExtras) && (
       <div style={{background:"#fff",borderBottom:"1.5px solid #e2e8f0",padding:"12px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100,boxShadow:"0 2px 8px rgba(15,23,42,0.04)"}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <img src={__LOGO_ALUNO__} alt="Wellington Brito" style={{width:36,height:36,objectFit:"contain",flexShrink:0}}/>
@@ -1826,6 +1838,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
           <button onClick={onLogout} style={{border:"none",background:"transparent",color:"#94a3b8",fontSize:12,cursor:"pointer",textDecoration:"underline"}}>Sair</button>
         </div>
       </div>
+      )}
 
       {tab==="inicio" && (
         <TelaInicio
@@ -1837,6 +1850,10 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
           ultimaConclusaoMap={ultimaConclusaoMap}
           onToggleAtividade={toggleConcluidaAtividade}
           onIrTreino={()=>setTab("treino")}
+          onLogout={onLogout}
+          onIr={setTab}
+          studentId={studentId}
+          studentData={studentData}
           bibCustom={bibCustom}
           onSalvarExercicios={salvarSessaoAtividade}
           getSessaoAtividade={getSessaoAtividade}
