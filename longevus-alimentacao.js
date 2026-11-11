@@ -1,5 +1,5 @@
 (function() {
-  const { useState, useEffect } = React;
+  const { useState, useEffect, useRef } = React;
   const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
   const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
   const nutriSupa = () => window.__LV_SUPA;
@@ -21,6 +21,23 @@
   const NUTRI_TIPOS_FIXOS = ["cafe", "almoco", "lanche_tarde", "jantar"];
   const NUTRI_LIMITE_DIA = 15;
   const NUTRI_OBJETIVOS = [["manter", "Manter"], ["massa", "Ganhar massa"], ["gordura", "Perder gordura"]];
+  const NUTRI_FATORES = { manter: { prot: 1.2, carb: 3, gord: 0.9 }, massa: { prot: 1.6, carb: 3.5, gord: 1 }, gordura: { prot: 1.5, carb: 2, gord: 0.8 } };
+  const nutriSugerirMacros = (peso, objetivo, kcalRef) => {
+    if (!peso) return null;
+    const fx = NUTRI_FATORES[objetivo] || NUTRI_FATORES.manter;
+    const prot = Math.round(peso * fx.prot / 5) * 5;
+    const kcal = nutriNum(kcalRef);
+    let gord, carb;
+    if (kcal) {
+      gord = Math.max(Math.round(peso * 0.6 / 5) * 5, Math.round(kcal * (objetivo === "massa" ? 0.25 : 0.28) / 9 / 5) * 5);
+      carb = Math.max(Math.round(peso * 1.5 / 10) * 10, Math.round((kcal - prot * 4 - gord * 9) / 4 / 10) * 10);
+    } else {
+      gord = Math.round(peso * fx.gord / 5) * 5;
+      carb = Math.round(peso * fx.carb / 10) * 10;
+    }
+    const total = kcal || prot * 4 + carb * 4 + gord * 9;
+    return { prot, carb, gord, fibra: Math.max(25, Math.round(total / 1e3 * 14)), kcalBase: kcal ? Math.round(kcal) : null };
+  };
   const NUTRI_ESCURO = "#0f172a";
   const NUTRI_LARANJA = "#FF5603";
   const NUTRI_LARANJA_TXT = "#c2410c";
@@ -201,30 +218,45 @@
     return /* @__PURE__ */ React.createElement("div", { style: { background: NUTRI_ESCURO, color: "#f8fafc", borderRadius: 18, padding: 18, marginBottom: 14 } }, eOk ? /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 14 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 10, marginBottom: 10 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#cbd5e1" } }, resta >= 0 ? "Ainda pode consumir" : "Passou da meta em"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 34, fontWeight: 800, color: "#fb923c" } }, nutriFmt(Math.abs(resta)), " kcal")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#cbd5e1", textAlign: "right" } }, "meta", /* @__PURE__ */ React.createElement("br", null), /* @__PURE__ */ React.createElement("b", { style: { color: "#f8fafc" } }, nutriFmt(energia.meta), " kcal"))), /* @__PURE__ */ React.createElement(NutriBarra, { valor: totais.kcal, meta: energia.meta, cor: "#fb923c", fundo: "#334155", altura: 10 }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 13, marginTop: 8 } }, /* @__PURE__ */ React.createElement("span", null, "Consumido ", /* @__PURE__ */ React.createElement("b", null, nutriFmt(totais.kcal), " kcal")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#cbd5e1" } }, qtd, " ", qtd === 1 ? "refeição" : "refeições"))) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 14 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", gap: 6 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 34, fontWeight: 800 } }, nutriFmt(totais.kcal)), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "#cbd5e1" } }, "kcal", m.kcal ? " de " + nutriFmt(m.kcal) : "")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#cbd5e1" } }, qtd, " ", qtd === 1 ? "refeição" : "refeições")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 } }, /* @__PURE__ */ React.createElement("span", { style: { fontWeight: 700 } }, "Proteína"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("b", { style: { color: "#fb923c" } }, nutriFmt(totais.prot), " g"), /* @__PURE__ */ React.createElement("span", { style: { color: "#cbd5e1" } }, m.prot ? " de " + nutriFmt(m.prot) + " g" : ""))), /* @__PURE__ */ React.createElement(NutriBarra, { valor: totais.prot, meta: m.prot || 0, cor: "#fb923c", fundo: "#334155", altura: 10 }), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#cbd5e1", marginTop: 6, marginBottom: 14 } }, m.prot ? faltaProt > 0 ? "Faltam " + faltaProt + " g para a meta de hoje" : "Meta de proteína atingida" : "Defina suas metas para acompanhar o progresso"), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 } }, NUTRI_MACROS.slice(1).map((mc) => /* @__PURE__ */ React.createElement("div", { key: mc.k, style: { background: "#1e293b", borderRadius: 12, padding: "9px 10px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#cbd5e1" } }, mc.nome), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 700, margin: "2px 0 6px" } }, nutriFmt(totais[mc.k]), " g", /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 500, color: "#94a3b8" } }, m[mc.k] ? " / " + nutriFmt(m[mc.k]) : "")), /* @__PURE__ */ React.createElement(NutriBarra, { valor: totais[mc.k], meta: m[mc.k] || 0, cor: "#e2e8f0", fundo: "#334155", altura: 4 })))));
   };
   const NutriStepper = ({ nome, dica, valor, un, passo, onChange }) => /* @__PURE__ */ React.createElement("div", { style: { background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 14, padding: "8px 10px 8px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700 } }, nome), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b" } }, dica)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 4, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("button", { type: "button", "aria-label": "Diminuir " + nome, onClick: () => onChange(Math.max(0, nutriNum(valor) - passo)), style: { width: 40, height: 40, borderRadius: 20, border: "1.5px solid #e2e8f0", background: "#f8fafc", fontSize: 20, cursor: "pointer", color: "#0f172a" } }, "−"), /* @__PURE__ */ React.createElement("input", { inputMode: "decimal", value: valor === "" || valor == null ? "" : String(valor), onChange: (e) => onChange(e.target.value.replace(/[^0-9.,]/g, "")), placeholder: "—", style: { width: 62, height: 40, textAlign: "center", border: "none", background: "transparent", fontSize: 16, fontWeight: 800, fontFamily: "inherit", color: "#0f172a" } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#64748b", width: 26 } }, un), /* @__PURE__ */ React.createElement("button", { type: "button", "aria-label": "Aumentar " + nome, onClick: () => onChange(nutriNum(valor) + passo), style: { width: 40, height: 40, borderRadius: 20, border: "1.5px solid #e2e8f0", background: "#f8fafc", fontSize: 20, cursor: "pointer", color: "#0f172a" } }, "+")));
-  const NutriMetasEditor = ({ studentId, ownerId, metas, papel, pesoSugerido, onSalvo, onCancelar }) => {
+  const NutriMetasEditor = ({ studentId, ownerId, metas, papel, pesoSugerido, kcalRef, objetivoPlano, onSalvo, onCancelar }) => {
     const ini = metas || {};
-    const [f, setF] = useState({
-      peso: String(pesoSugerido && pesoSugerido.v || ini.peso || "").replace(".", ","),
-      objetivo: ini.objetivo || "manter",
-      kcal: ini.kcal || "",
-      prot: ini.prot || "",
-      carb: ini.carb || "",
-      gord: ini.gord || "",
-      fibra: ini.fibra || ""
+    const objPlano = objetivoPlano === "emagrecer" ? "gordura" : objetivoPlano === "massa" ? "massa" : objetivoPlano === "manter" ? "manter" : null;
+    const [f, setF] = useState(() => {
+      const b = {
+        peso: String(pesoSugerido && pesoSugerido.v || ini.peso || "").replace(".", ","),
+        objetivo: ini.objetivo || objPlano || "manter",
+        kcal: ini.kcal || "",
+        prot: ini.prot || "",
+        carb: ini.carb || "",
+        gord: ini.gord || "",
+        fibra: ini.fibra || ""
+      };
+      const sug = nutriSugerirMacros(nutriNum(b.peso), b.objetivo, kcalRef);
+      if (sug) ["prot", "carb", "gord", "fibra"].forEach((k) => {
+        if (!nutriNum(b[k])) {
+          b[k] = sug[k];
+          b.sugerido = true;
+        }
+      });
+      return b;
     });
     const [salvando, setSalvando] = useState(false);
     const [erro, setErro] = useState("");
     const set = (k) => (v) => setF((p) => ({ ...p, [k]: v }));
     const peso = nutriNum(f.peso);
-    const usarBase = () => {
-      if (!peso) {
-        setErro("Informe o peso para calcular a base sugerida.");
+    const aplicarSugestao = (objetivo) => {
+      const sug = nutriSugerirMacros(peso, objetivo, kcalRef);
+      if (!sug) {
+        setF((p) => ({ ...p, objetivo }));
+        setErro("Informe o peso para calcular a sugestão.");
         return;
       }
       setErro("");
-      const fator = f.objetivo === "massa" ? 1.4 : 1.2;
-      setF((p) => ({ ...p, prot: Math.round(peso * fator / 5) * 5, fibra: nutriNum(p.fibra) || 25 }));
+      setF((p) => ({ ...p, objetivo, prot: sug.prot, carb: sug.carb, gord: sug.gord, fibra: sug.fibra, sugerido: true }));
     };
+    const usarBase = () => aplicarSugestao(f.objetivo);
+    const gpk = (k) => peso && nutriNum(f[k]) ? (Math.round(nutriNum(f[k]) / peso * 10) / 10).toString().replace(".", ",") + " g por kg" : "por dia";
+    const nomeObj = (NUTRI_OBJETIVOS.find((o) => o[0] === f.objetivo) || ["", "Manter"])[1];
     const salvar = async () => {
       setSalvando(true);
       setErro("");
@@ -246,8 +278,8 @@
     const quem = ini.atualizadoPor ? "Atualizado " + (ini.atualizadoPor === papel ? "por você" : ini.atualizadoPor === "aluno" ? "pelo aluno" : "pelo professor") + " em " + nutriDataCurta(ini.atualizadoEm) : "";
     return /* @__PURE__ */ React.createElement("div", null, quem && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b", marginBottom: 12 } }, quem), /* @__PURE__ */ React.createElement("div", { style: { background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 14, padding: 14, marginBottom: 12 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 12 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b" } }, "Peso atual"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "baseline", gap: 4 } }, /* @__PURE__ */ React.createElement("input", { inputMode: "decimal", value: String(f.peso || ""), onChange: (e) => set("peso")(e.target.value.replace(/[^0-9.,]/g, "")), placeholder: "—", style: { width: 70, border: "none", borderBottom: "1.5px solid #e2e8f0", fontSize: 18, fontWeight: 800, fontFamily: "inherit", padding: "2px 0", color: "#0f172a", background: "transparent" } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "#64748b" } }, "kg"))), pesoSugerido && pesoSugerido.v ? /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#64748b", textAlign: "right" } }, "Último registro: " + String(pesoSugerido.v).replace(".", ",") + " kg" + (pesoSugerido.date ? " (" + nutriDataCurta(pesoSugerido.date) + ")" : "")) : null), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b", marginBottom: 6 } }, "Objetivo"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 } }, NUTRI_OBJETIVOS.map((o) => {
       const ativo = f.objetivo === o[0];
-      return /* @__PURE__ */ React.createElement("button", { key: o[0], type: "button", onClick: () => set("objetivo")(o[0]), style: { height: 36, padding: "0 14px", borderRadius: 18, border: "1.5px solid " + (ativo ? NUTRI_ESCURO : "#e2e8f0"), background: ativo ? NUTRI_ESCURO : "#fff", color: ativo ? "#fff" : "#0f172a", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, o[1]);
-    })), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: usarBase, style: { width: "100%", height: 42, borderRadius: 21, border: "1.5px solid " + NUTRI_LARANJA, background: "#fff", color: NUTRI_LARANJA_TXT, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "Preencher com base sugerida")), ini.energia && ini.energia.objetivo ? /* @__PURE__ */ React.createElement("div", { style: { background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 14, padding: "10px 14px", marginBottom: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700 } }, "Calorias"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b" } }, "Calculadas todo dia pelo plano energético, com o gasto dos treinos.")) : /* @__PURE__ */ React.createElement(NutriStepper, { nome: "Calorias", dica: "opcional", valor: f.kcal, un: "kcal", passo: 50, onChange: set("kcal") }), /* @__PURE__ */ React.createElement(NutriStepper, { nome: "Proteína", dica: porKg, valor: f.prot, un: "g", passo: 5, onChange: set("prot") }), /* @__PURE__ */ React.createElement(NutriStepper, { nome: "Carboidratos", dica: "por dia", valor: f.carb, un: "g", passo: 10, onChange: set("carb") }), /* @__PURE__ */ React.createElement(NutriStepper, { nome: "Gorduras", dica: "por dia", valor: f.gord, un: "g", passo: 5, onChange: set("gord") }), /* @__PURE__ */ React.createElement(NutriStepper, { nome: "Fibras", dica: "referência geral 25 a 30 g", valor: f.fibra, un: "g", passo: 1, onChange: set("fibra") }), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b", textAlign: "center", margin: "10px 0 12px", lineHeight: 1.5 } }, "A base sugerida é só um ponto de partida. Se houver acompanhamento com nutricionista, use as metas definidas por ele."), erro && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#dc2626", textAlign: "center", marginBottom: 10 } }, erro), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8 } }, onCancelar && /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onCancelar, style: { flex: 1, height: 48, borderRadius: 24, border: "1.5px solid #e2e8f0", background: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", color: "#0f172a" } }, "Cancelar"), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: salvar, disabled: salvando, style: { flex: 1.4, height: 48, borderRadius: 24, border: "none", background: NUTRI_LARANJA, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", opacity: salvando ? 0.6 : 1, fontFamily: "inherit" } }, salvando ? "Salvando..." : "Salvar metas")));
+      return /* @__PURE__ */ React.createElement("button", { key: o[0], type: "button", onClick: () => aplicarSugestao(o[0]), style: { height: 36, padding: "0 14px", borderRadius: 18, border: "1.5px solid " + (ativo ? NUTRI_ESCURO : "#e2e8f0"), background: ativo ? NUTRI_ESCURO : "#fff", color: ativo ? "#fff" : "#0f172a", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, o[1]);
+    })), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: usarBase, style: { width: "100%", height: 42, borderRadius: 21, border: "1.5px solid " + NUTRI_LARANJA, background: "#fff", color: NUTRI_LARANJA_TXT, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "Recalcular sugestão"), f.sugerido && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b", marginTop: 8, lineHeight: 1.45 } }, "Sugestão para " + nomeObj.toLowerCase() + (kcalRef ? ", fechando " + nutriFmt(kcalRef) + " kcal do plano energético" : ", pelo peso") + ". Ajuste o que precisar.")), ini.energia && ini.energia.objetivo ? /* @__PURE__ */ React.createElement("div", { style: { background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 14, padding: "10px 14px", marginBottom: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700 } }, "Calorias"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b" } }, "Calculadas todo dia pelo plano energético, com o gasto dos treinos.")) : /* @__PURE__ */ React.createElement(NutriStepper, { nome: "Calorias", dica: "opcional", valor: f.kcal, un: "kcal", passo: 50, onChange: set("kcal") }), /* @__PURE__ */ React.createElement(NutriStepper, { nome: "Proteína", dica: porKg, valor: f.prot, un: "g", passo: 5, onChange: set("prot") }), /* @__PURE__ */ React.createElement(NutriStepper, { nome: "Carboidratos", dica: gpk("carb"), valor: f.carb, un: "g", passo: 10, onChange: set("carb") }), /* @__PURE__ */ React.createElement(NutriStepper, { nome: "Gorduras", dica: gpk("gord"), valor: f.gord, un: "g", passo: 5, onChange: set("gord") }), /* @__PURE__ */ React.createElement(NutriStepper, { nome: "Fibras", dica: "referência geral 25 a 30 g", valor: f.fibra, un: "g", passo: 1, onChange: set("fibra") }), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b", textAlign: "center", margin: "10px 0 12px", lineHeight: 1.5 } }, "A base sugerida é só um ponto de partida. Se houver acompanhamento com nutricionista, use as metas definidas por ele."), erro && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#dc2626", textAlign: "center", marginBottom: 10 } }, erro), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8 } }, onCancelar && /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onCancelar, style: { flex: 1, height: 48, borderRadius: 24, border: "1.5px solid #e2e8f0", background: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", color: "#0f172a" } }, "Cancelar"), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: salvar, disabled: salvando, style: { flex: 1.4, height: 48, borderRadius: 24, border: "none", background: NUTRI_LARANJA, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", opacity: salvando ? 0.6 : 1, fontFamily: "inherit" } }, salvando ? "Salvando..." : "Salvar metas")));
   };
   const ANTRO_MEMBROS = [["bracoRelaxado", "Braço relaxado"], ["bracoContraido", "Braço contraído"], ["antebraco", "Antebraço"], ["coxa", "Coxa"], ["panturrilha", "Panturrilha"]];
   const ANTRO_TRONCO = [["torax", "Tórax"], ["cintura", "Cintura"], ["abdomen", "Abdômen"], ["quadril", "Quadril"]];
@@ -915,6 +947,11 @@
           metas,
           papel: "professor",
           pesoSugerido: med.peso,
+          kcalRef: (function() {
+            const r = energiaDia(ePlano, eBase, 0);
+            return r && !r.semTmb ? r.meta : null;
+          })(),
+          objetivoPlano: ePlano && ePlano.objetivo,
           onCancelar: () => setEditando(false),
           onSalvo: (m2) => {
             setMetas(m2);
