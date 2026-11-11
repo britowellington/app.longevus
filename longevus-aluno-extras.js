@@ -1051,6 +1051,8 @@
     ["pilates", "Pilates", 3],
     ["yoga", "Yoga / alongamento", 2.5],
     ["corrida", "Corrida leve", 7],
+    ["corrida_moderada", "Corrida moderada", 9],
+    ["corrida_intensa", "Corrida intensa", 11],
     ["outra", "Outra atividade moderada", 4]
   ];
   const ENERGIA_DURACOES = [30, 45, 60, 75, 90];
@@ -1244,7 +1246,7 @@
     const salvar = async () => {
       setSalvando(true);
       setErro("");
-      const a = { id: "at_" + nutriId(), date: dia, tipo, minutos: min, met: def[2], kcal, createdAt: (/* @__PURE__ */ new Date()).toISOString() };
+      const a = { id: "at_" + nutriId(), date: dia, tipo, rotulo: def[1], minutos: min, met: def[2], kcal, createdAt: (/* @__PURE__ */ new Date()).toISOString() };
       const ok = await energiaApi.salvarAtividade(studentId, ownerId, a);
       setSalvando(false);
       if (!ok) {
