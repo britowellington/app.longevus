@@ -764,7 +764,7 @@
     const porDia = {};
     const comPresencial = {};
     (checkins || []).forEach((c) => {
-      if (c.source === "professor_presencial") comPresencial[c.date] = true;
+      if (c.source === "professor_presencial" && nutriNum(c.duracao)) comPresencial[c.date] = true;
     });
     const add = (date, item) => {
       if (!date) return;
@@ -773,7 +773,9 @@
       d.itens.push(item);
     };
     (checkins || []).forEach((c) => {
-      if (c.source !== "professor_presencial" && comPresencial[c.date]) return;
+      const presencial0 = c.source === "professor_presencial";
+      if (!presencial0 && comPresencial[c.date]) return;
+      if (presencial0 && !nutriNum(c.duracao) && (checkins || []).some((o) => o.date === c.date && o.source !== "professor_presencial" && nutriNum(o.duracao))) return;
       const min = nutriNum(c.duracao), met = ENERGIA_MET_ESFORCO[c.esforco] || 4;
       const presencial = c.source === "professor_presencial";
       add(c.date, { rotulo: (presencial ? "Treino presencial" : "Treino") + (min ? " · " + Math.round(min) + " min" : ""), kcal: energiaKcal(met, peso, min), semDuracao: !min, tipo: "treino" });
