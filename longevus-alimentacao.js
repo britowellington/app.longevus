@@ -16,7 +16,8 @@
     ["almoco", "Almoço"],
     ["lanche_tarde", "Lanche da tarde"],
     ["jantar", "Jantar"],
-    ["ceia", "Ceia"]
+    ["ceia", "Ceia"],
+    ["extra", "Extras"]
   ];
   const NUTRI_TIPOS_FIXOS = ["cafe", "almoco", "lanche_tarde", "jantar"];
   const NUTRI_LIMITE_DIA = 15;
