@@ -60,6 +60,14 @@
     const v = Math.round(nutriNum(n));
     return v.toLocaleString("pt-BR");
   };
+  const nutriFmtG = (n) => {
+    const v = nutriNum(n);
+    if (v > 0 && v < 10) {
+      const d = Math.round(v * 10) / 10;
+      return String(d).replace(".", ",");
+    }
+    return nutriFmt(v);
+  };
   const nutriId = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
   const nutriZero = () => ({ kcal: 0, prot: 0, carb: 0, gord: 0, fibra: 0 });
   const nutriSomar = (lista) => (lista || []).reduce((t, i) => ({
@@ -324,7 +332,7 @@
     r.gramas = Math.round(r.gramas);
     return r;
   };
-  const nutriLinhaMacros = (v) => nutriFmt(v.prot) + " g proteína · " + nutriFmt(v.carb) + " g carbo · " + nutriFmt(v.gord) + " g gordura · " + nutriFmt(v.fibra) + " g fibra";
+  const nutriLinhaMacros = (v) => nutriFmtG(v.prot) + " g proteína · " + nutriFmtG(v.carb) + " g carbo · " + nutriFmtG(v.gord) + " g gordura · " + nutriFmtG(v.fibra) + " g fibra";
   const NutriBotao = ({ children, onClick, tipo, disabled, style }) => {
     const s = tipo === "sec" ? { border: "1.5px solid #e2e8f0", background: "#fff", color: "#0f172a" } : { border: "none", background: NUTRI_LARANJA, color: "#fff", boxShadow: "0 2px 8px rgba(255,86,3,0.28)" };
     return /* @__PURE__ */ React.createElement("button", { type: "button", onClick: disabled ? void 0 : onClick, disabled, style: { height: 50, borderRadius: 25, fontSize: 15, fontWeight: 700, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.55 : 1, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", ...s, ...style || {} } }, children);
@@ -532,6 +540,21 @@
     const eBase = energiaBase(studentData, antroLista, med);
     const eEx = energiaExercicio(ckDia, atDia, eBase.peso)[dia] || { kcal: 0, itens: [] };
     const eDia = energiaDia(metas && metas.energia, eBase, eEx.kcal);
+    const metasEf = (function() {
+      const mm = metas || {};
+      if (nutriNum(mm.prot) && nutriNum(mm.carb) && nutriNum(mm.gord) && nutriNum(mm.fibra)) return metas;
+      const e0 = energiaDia(mm.energia, eBase, 0);
+      const kRef = e0 && !e0.semTmb ? e0.meta : nutriNum(mm.kcal);
+      const ob = mm.objetivo || (mm.energia && mm.energia.objetivo === "emagrecer" ? "gordura" : mm.energia && mm.energia.objetivo) || "manter";
+      const peso = nutriNum(med.peso && med.peso.v || mm.peso || eBase.peso);
+      const sug = nutriSugerirMacros(peso, ob, kRef);
+      if (!sug) return metas;
+      const n = { ...mm };
+      ["prot", "carb", "gord", "fibra"].forEach((k) => {
+        if (!nutriNum(n[k])) n[k] = sug[k];
+      });
+      return n;
+    })();
     const apagarAtividade = async (id) => {
       if (!window.confirm("Remover esta atividade?")) return;
       const ok = await energiaApi.removerAtividade(id);
@@ -585,7 +608,7 @@
     }
     if (modo === "cardapio") {
       const eSem = energiaDia(metas && metas.energia, eBase, 0);
-      const mm = metas || {};
+      const mm = metasEf || {};
       const metaDia = { kcal: eSem && !eSem.semTmb ? eSem.meta : nutriNum(mm.kcal), prot: nutriNum(mm.prot), carb: nutriNum(mm.carb), gord: nutriNum(mm.gord), fibra: nutriNum(mm.fibra) };
       return /* @__PURE__ */ React.createElement(
         TelaCardapio,
@@ -641,6 +664,7 @@
         }
       ));
     }
+    const metaKcalDia = eDia && !eDia.semTmb ? eDia.meta : nutriNum(metas && metas.kcal);
     const registrados = {};
     refeicoes.forEach((r) => {
       registrados[r.tipo] = true;
@@ -651,15 +675,15 @@
     if (outros.length) gradeTipos.push({ k: "outros", nome: "Outros", regs: outros });
     const tiposFeitos = gradeTipos.filter((g) => g.regs.length && g.k !== "outros").length;
     const nPrincipais = NUTRI_TIPOS.length - 1;
-    const semMetas = metas && !metas.prot && !metas.kcal && !metas.carb && !metas.gord && !metas.fibra;
+    const semMetas = !metaKcalDia && !(metasEf && (metasEf.prot || metasEf.kcal || metasEf.carb || metasEf.gord || metasEf.fibra));
     const obj = prObjetivo(metas);
     const objTxt = metas && metas.energia && metas.energia.objetivo ? metas.energia.metaFixa ? "Meta do nutricionista" : obj === "emagrecer" ? "Objetivo: emagrecer · déficit de " + nutriFmt(metas.energia.ajuste) + " kcal/dia" : obj === "massa" ? "Objetivo: ganhar massa · +" + nutriFmt(metas.energia.ajuste) + " kcal/dia" : "Objetivo: manter" : obj === "emagrecer" ? "Objetivo: perder gordura" : obj === "massa" ? "Objetivo: ganhar massa" : obj === "manter" ? "Objetivo: manter" : "Seu acompanhamento";
     const cabecalho = /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 12 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11.5, color: PR.cinzaClaro, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, objTxt), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 20, fontWeight: 800 } }, "Calorias")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setModo("cardapio"), style: { height: 34, padding: "0 12px", borderRadius: 18, border: "none", background: PR.laranja, color: "#fff", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" } }, "Cardápio"), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setModo("metas"), style: { height: 34, padding: "0 12px", borderRadius: 18, border: "1px solid " + PR.borda, background: "transparent", color: "#CBD5E1", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "Metas"))), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 4, background: PR.escuro2, borderRadius: 14, padding: 4 } }, [["dia", "Dia"], ["semana", "Semana"], ["mes", "Mês"]].map((a) => /* @__PURE__ */ React.createElement("button", { key: a[0], type: "button", onClick: () => setAba(a[0]), style: { height: 36, borderRadius: 10, border: "none", background: aba === a[0] ? PR.laranja : "transparent", color: aba === a[0] ? "#fff" : "#CBD5E1", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, a[1]))));
-    if (aba !== "dia") return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(AlimPeriodo, { key: aba, modo: aba, studentId, studentData, metas, antroLista, avalLista, cabecalho }));
+    if (aba !== "dia") return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(AlimPeriodo, { key: aba, modo: aba, studentId, studentData, metas: metasEf, antroLista, avalLista, cabecalho }));
     const eOk = eDia && !eDia.semTmb;
     const metaKcal = eOk ? eDia.meta : nutriNum(metas && metas.kcal);
     const resta = metaKcal ? metaKcal - Math.round(totais.kcal) : null;
-    const m = metas || {};
+    const m = metasEf || {};
     const setaDia = (lbl, n, off) => /* @__PURE__ */ React.createElement("button", { type: "button", "aria-label": lbl, disabled: off, onClick: () => setDia((d) => nutriDiaMais(d, n)), style: { width: 30, height: 30, borderRadius: 15, border: "1px solid " + PR.borda, background: "transparent", color: "#CBD5E1", cursor: off ? "default" : "pointer", opacity: off ? 0.3 : 1, fontSize: 15, lineHeight: 1, padding: 0 } }, n < 0 ? "‹" : "›");
     return /* @__PURE__ */ React.createElement("div", { style: { height: PR_ALT, display: "flex", flexDirection: "column", background: PR.fundo } }, /* @__PURE__ */ React.createElement(PrTopo, null, cabecalho, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 4 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } }, setaDia("Dia anterior", -1, false), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontWeight: 700, minWidth: 70, textAlign: "center" } }, tituloDia), setaDia("Próximo dia", 1, ehHoje)), eOk ? /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setModo("deficit"), style: { background: "transparent", border: "none", padding: "6px 0", color: PR.laranja2, fontSize: 12.5, fontWeight: 700, textDecoration: "underline", cursor: "pointer", fontFamily: "inherit" } }, "ver cálculo") : null), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 10 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12.5, color: PR.cinzaClaro } }, resta === null ? "Consumido " + (ehHoje ? "hoje" : "no dia") : resta >= 0 ? "Ainda pode consumir" : "Passou da meta em"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 28, fontWeight: 800, color: PR.laranja2, lineHeight: 1.15 } }, nutriFmt(resta === null ? totais.kcal : Math.abs(resta)) + " kcal")), metaKcal ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11.5, color: PR.cinzaClaro, textAlign: "right", lineHeight: 1.5 } }, "consumido ", /* @__PURE__ */ React.createElement("b", { style: { color: "#F8FAFC" } }, nutriFmt(totais.kcal)), /* @__PURE__ */ React.createElement("br", null), "meta ", /* @__PURE__ */ React.createElement("b", { style: { color: "#F8FAFC" } }, nutriFmt(metaKcal) + " kcal")) : null), metaKcal ? /* @__PURE__ */ React.createElement("div", { style: { marginTop: 8 } }, /* @__PURE__ */ React.createElement(PrBarra, { pct: totais.kcal / metaKcal * 100, fundo: PR.escuro2, alt: 8 })) : null, !metaKcal && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11.5, color: PR.cinzaClaro, marginTop: 6 } }, refeicoes.length + " " + (refeicoes.length === 1 ? "refeição" : "refeições") + " · defina suas metas em Metas"))), /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 auto", minHeight: 0, display: "flex", flexDirection: "column", padding: "10px 18px 4px" } }, semMetas && /* @__PURE__ */ React.createElement(PrCard, { onClick: () => setModo("metas"), style: { marginBottom: 10, padding: "10px 12px", background: "#FFF4EE", boxShadow: "none", border: "1.5px solid #FED7AA", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 800, color: PR.laranjaTxt } }, "Defina suas metas do dia"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: PR.cinza, marginTop: 2 } }, "Calorias, proteína, carboidratos, gorduras e fibras já vêm sugeridos.")), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 6, marginBottom: 10, flexShrink: 0 } }, NUTRI_MACROS.map((mc) => /* @__PURE__ */ React.createElement(PrCard, { key: mc.k, style: { padding: "8px 8px 9px", borderRadius: 14 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: PR.cinza, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, mc.k === "carb" ? "Carbo" : mc.nome), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 800 } }, nutriFmt(totais[mc.k]) + "g"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: PR.cinza, marginBottom: 4 } }, m[mc.k] ? "de " + nutriFmt(m[mc.k]) + "g" : "sem meta"), /* @__PURE__ */ React.createElement(PrBarra, { pct: m[mc.k] ? totais[mc.k] / m[mc.k] * 100 : 0, alt: 4 })))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "0 0 6px", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(PrRotulo, null, ehHoje ? "Refeições de hoje" : "Refeições do dia"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11.5, fontWeight: 800, color: PR.cinza } }, tiposFeitos + " de " + nPrincipais)), carregando ? /* @__PURE__ */ React.createElement("div", { style: { padding: "20px 0", textAlign: "center", color: PR.cinzaClaro, fontSize: 13 } }, "Carregando...") : /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 auto", minHeight: 0, overflowY: "auto" } }, falhou && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#dc2626", marginBottom: 8 } }, "Não consegui carregar os registros. Confira a conexão."), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6 } }, gradeTipos.map((g) => {
       const n = g.regs.length;
@@ -671,7 +695,7 @@
       return /* @__PURE__ */ React.createElement("button", { key: g.k, type: "button", onClick: () => {
         if (n === 1) setDetalhe(g.regs[0]);
         else setGrupo(g);
-      }, style: { height: 50, boxSizing: "border-box", textAlign: "left", background: "#fff", border: "none", borderLeft: "3px solid " + PR.laranja, borderRadius: 13, boxShadow: PR.sombra, padding: "6px 10px", cursor: "pointer", fontFamily: "inherit", color: PR.escuro, minWidth: 0 } }, /* @__PURE__ */ React.createElement("span", { style: { display: "flex", justifyContent: "space-between", gap: 6 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, g.nome), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontWeight: 800 } }, nutriFmt(t.kcal))), /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 11, color: PR.cinza, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, (n === 1 ? (g.regs[0].hora || "").slice(0, 5) : n + " registros") + " · " + nutriFmt(t.prot) + " g proteína"));
+      }, style: { height: 50, boxSizing: "border-box", textAlign: "left", background: "#fff", border: "none", borderLeft: "3px solid " + PR.laranja, borderRadius: 13, boxShadow: PR.sombra, padding: "6px 10px", cursor: "pointer", fontFamily: "inherit", color: PR.escuro, minWidth: 0 } }, /* @__PURE__ */ React.createElement("span", { style: { display: "flex", justifyContent: "space-between", gap: 6 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, g.nome), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontWeight: 800 } }, nutriFmt(t.kcal))), /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 11, color: PR.cinza, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, (n === 1 ? (g.regs[0].hora || "").slice(0, 5) : n + " registros") + " · " + nutriFmtG(t.prot) + " g proteína"));
     }), (function() {
       const n = extras.length;
       const abrir = () => {
@@ -682,7 +706,7 @@
         else setGrupo({ k: "extra", nome: "Extras", regs: extras });
       };
       const t = nutriSomar(extras.map((r) => r.totais || {}));
-      return /* @__PURE__ */ React.createElement("div", { style: { gridColumn: "1 / -1", display: "flex", gap: 7 } }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: abrir, style: { flex: 1, minWidth: 0, height: 42, boxSizing: "border-box", textAlign: "left", background: n ? "#fff" : "transparent", border: n ? "none" : "1.5px dashed #CBD5E1", borderLeft: n ? "3px solid " + PR.verde : void 0, borderRadius: 13, boxShadow: n ? PR.sombra : "none", padding: "4px 10px", cursor: "pointer", fontFamily: "inherit", color: PR.escuro, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 13, fontWeight: 800 } }, n ? "Extras" : "+ Extras"), /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 11, color: PR.cinza, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, n ? (n === 1 ? "1 registro" : n + " registros") + " · " + nutriFmt(t.prot) + " g proteína" : "beliscou algo fora das refeições?")), n ? /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontWeight: 800, whiteSpace: "nowrap" } }, nutriFmt(t.kcal)) : null), n ? /* @__PURE__ */ React.createElement("button", { type: "button", "aria-label": "Adicionar extra", onClick: () => {
+      return /* @__PURE__ */ React.createElement("div", { style: { gridColumn: "1 / -1", display: "flex", gap: 7 } }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: abrir, style: { flex: 1, minWidth: 0, height: 42, boxSizing: "border-box", textAlign: "left", background: n ? "#fff" : "transparent", border: n ? "none" : "1.5px dashed #CBD5E1", borderLeft: n ? "3px solid " + PR.verde : void 0, borderRadius: 13, boxShadow: n ? PR.sombra : "none", padding: "4px 10px", cursor: "pointer", fontFamily: "inherit", color: PR.escuro, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 13, fontWeight: 800 } }, n ? "Extras" : "+ Extras"), /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 11, color: PR.cinza, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, n ? (n === 1 ? "1 registro" : n + " registros") + " · " + nutriFmtG(t.prot) + " g proteína" : "beliscou algo fora das refeições?")), n ? /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontWeight: 800, whiteSpace: "nowrap" } }, nutriFmt(t.kcal)) : null), n ? /* @__PURE__ */ React.createElement("button", { type: "button", "aria-label": "Adicionar extra", onClick: () => {
         setTipoSel("extra");
         setModo("registrar");
       }, style: { width: 42, height: 42, borderRadius: 13, border: "1.5px dashed #CBD5E1", background: "transparent", fontSize: 20, color: PR.escuro, cursor: "pointer", flexShrink: 0, padding: 0 } }, "+") : null);
@@ -1674,33 +1698,79 @@
     return cardNum(q) + (u ? " " + u : "");
   };
   const cardTotaisDia = (d) => nutriSomar(d && d.refeicoes || []);
+  const CARD_SEM_ACENTO = (t) => String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const CARD_DESCRITORES = /\b(cozid[oa]s?|crus?|crua?s?|assad[oa]s?|grelhad[oa]s?|refogad[oa]s?|em cubos|em fil[eé]s?|em tiras|em rodelas|em fatias|em peda[cç]os|em po\b|picad[oa]s?|ralad[oa]s?|desfiad[oa]s?|fatiad[oa]s?|amassad[oa]s?|cortad[oa]s?|descascad[oa]s?|sem pele|sem osso|sem casca|congelad[oa]s?|fresc[oa]s?|de galinha|caipira|prata|nanica|extra ?virgem|filtrada|a gosto|pequen[oa]s?|medi[oa]s?|grandes?|maduras?|madur[oa]s?)\b/g;
+  const cardChaveNome = (nome) => {
+    let t = CARD_SEM_ACENTO(nome).toLowerCase().replace(/\(.*?\)/g, " ");
+    if (/\bclaras?\b/.test(t)) return "clara de ovo";
+    t = t.replace(CARD_DESCRITORES, " ").replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").trim();
+    t = t.split(" ").filter((w) => w && w !== "de" && w !== "do" && w !== "da" && w !== "e").map((w) => w.length > 3 && /s$/.test(w) && !/ss$/.test(w) ? /[oa]es$/.test(w) ? w.slice(0, -3) + "ao" : w.slice(0, -1) : w).join(" ");
+    return t;
+  };
+  const cardNomeLimpo = (nome) => {
+    const n = String(nome || "").replace(/\(.*?\)/g, " ").replace(/\b(cozid[oa]s?|crus?|crua?s?|assad[oa]s?|grelhad[oa]s?|em cubos|em fil[eé]s?|em tiras|em rodelas|picad[oa]s?|ralad[oa]s?|desfiad[oa]s?|fatiad[oa]s?|amassad[oa]s?|de galinha|a gosto)\b/gi, " ").replace(/\s+/g, " ").trim();
+    return n ? n.charAt(0).toUpperCase() + n.slice(1) : String(nome || "");
+  };
+  const CARD_PESO_UN = { ovo: 50, banana: 100, maca: 150, pera: 150, laranja: 180, tomate: 100, cebola: 120, batata: 150, "batata doce": 200, cenoura: 100, limao: 70, abobrinha: 250, pepino: 200, "pao frances": 50, kiwi: 80, mamao: 500, abacate: 350, tangerina: 150, "clara ovo": 33, "clara de ovo": 33 };
+  const CARD_NAO_COMPRA = /^(agua|agua quente|agua gelada|gelo)$/;
   const cardapioCompras = (c) => {
     const mapa = {};
     (c && c.dias || []).forEach((d) => (d.refeicoes || []).forEach((p) => (p.ingredientes || []).forEach((i) => {
       const nome = String(i.nome || "").trim();
       if (!nome) return;
-      const q = nutriNum(i.qtd);
-      const un = q ? String(i.un || "").trim().toLowerCase() : "";
-      const chave = nome.toLowerCase().replace(/\s+/g, " ") + "|" + un;
-      const cat = q ? CARD_CATS.indexOf(i.cat) >= 0 ? i.cat : "Mercearia" : "Temperos";
-      if (!mapa[chave]) mapa[chave] = { chave, nome, un, qtd: 0, cat };
-      mapa[chave].qtd += q;
-    })));
-    const liquido = /azeite|óleo|oleo|vinagre|shoyu|molho|leite|mel\b/i;
-    const itens = Object.values(mapa).map((x) => {
-      let { qtd, un } = x;
-      if (un === "un") qtd = Math.ceil(qtd);
-      if ((un === "col. sopa" || un === "col. chá") && liquido.test(x.nome) && qtd > 4) {
-        qtd = Math.round(qtd * (un === "col. sopa" ? 15 : 5) / 10) * 10;
-        un = "ml";
+      const chave = cardChaveNome(nome);
+      if (!chave || CARD_NAO_COMPRA.test(chave)) return;
+      let un = String(i.un || "").trim().toLowerCase();
+      const q = /gosto/.test(un) ? 0 : nutriNum(i.qtd);
+      if (!mapa[chave]) mapa[chave] = { chave, nomes: {}, cats: {}, g: 0, ml: 0, un: 0, cha: 0, outros: {} };
+      const m = mapa[chave];
+      const limpo = cardNomeLimpo(nome);
+      m.nomes[limpo] = (m.nomes[limpo] || 0) + 1;
+      if (q) {
+        const ct = CARD_CATS.indexOf(i.cat) >= 0 ? i.cat : "Mercearia";
+        m.cats[ct] = (m.cats[ct] || 0) + 1;
       }
-      return { ...x, qtd, un };
+      if (!q) return;
+      if (un === "g" || un === "gr" || un === "gramas") m.g += q;
+      else if (un === "kg") m.g += q * 1e3;
+      else if (un === "ml") m.ml += q;
+      else if (un === "l" || un === "litro" || un === "litros") m.ml += q * 1e3;
+      else if (/col.*sopa/.test(un)) m.cha += q * 3;
+      else if (/col.*ch/.test(un)) m.cha += q;
+      else if (un === "un" || un === "unidade" || un === "unidades" || !un) m.un += q;
+      else m.outros[un] = (m.outros[un] || 0) + q;
+    })));
+    const liquido = /azeite|oleo|vinagre|shoyu|molho|leite|mel\b|suco/;
+    const itens = Object.values(mapa).map((m) => {
+      if (m.cha) {
+        if (m.ml || !m.g && liquido.test(m.chave) && m.cha > 6) {
+          m.ml += m.cha * 5;
+          m.cha = 0;
+        } else if (m.g) {
+          m.g += m.cha * 5;
+          m.cha = 0;
+        }
+      }
+      const pesoUn = CARD_PESO_UN[m.chave];
+      if (m.un && m.g && pesoUn) {
+        m.un += m.g / pesoUn;
+        m.g = 0;
+      }
+      const partes = [];
+      if (m.g) partes.push(m.g >= 1e3 ? cardNum(Math.round(m.g / 100) / 10) + " kg" : (m.g >= 20 ? Math.round(m.g / 10) * 10 : Math.round(m.g)) + " g");
+      if (m.ml) partes.push(m.ml >= 1e3 ? cardNum(Math.round(m.ml / 100) / 10) + " l" : (m.ml >= 20 ? Math.round(m.ml / 10) * 10 : Math.round(m.ml)) + " ml");
+      if (m.un) partes.push(Math.ceil(m.un) + " un");
+      if (m.cha) partes.push(m.cha >= 3 ? cardNum(Math.round(m.cha / 3 * 2) / 2) + " col. sopa" : cardNum(Math.round(m.cha * 2) / 2) + " col. chá");
+      Object.keys(m.outros).forEach((u) => partes.push(cardNum(Math.round(m.outros[u] * 2) / 2) + " " + u));
+      const nome = Object.keys(m.nomes).sort((a, b) => m.nomes[b] - m.nomes[a] || a.length - b.length)[0];
+      const cats = Object.keys(m.cats).sort((a, b) => m.cats[b] - m.cats[a]);
+      return { chave: m.chave, nome, cat: partes.length ? cats[0] || "Mercearia" : "Temperos", qtd: partes.length ? 1 : 0, txt: partes.length ? partes.join(" + ") : "a gosto" };
     });
     return CARD_CATS.map((cat) => ({ cat, itens: itens.filter((x) => x.cat === cat).sort((a, b) => a.nome.localeCompare(b.nome)) })).filter((g) => g.itens.length);
   };
   const cardapioComprasTexto = (c) => {
     const gr = cardapioCompras(c);
-    return "Lista de compras · " + cardapioTitulo(c) + "\n\n" + gr.map((g) => g.cat.toUpperCase() + "\n" + g.itens.map((x) => "- " + x.nome + (x.qtd ? " · " + cardQtd({ qtd: x.qtd, un: x.un }) : "")).join("\n")).join("\n\n");
+    return "Lista de compras · " + cardapioTitulo(c) + "\n\n" + gr.map((g) => g.cat.toUpperCase() + "\n" + g.itens.map((x) => "- " + x.nome + " · " + x.txt).join("\n")).join("\n\n");
   };
   const cardapioTitulo = (c) => {
     const d = c && c.dias || [];
@@ -1964,7 +2034,7 @@
         /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 19, fontWeight: 800 } }, "Lista de compras"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11.5, color: PR.cinzaClaro, marginTop: 1 } }, cardapioTitulo(c) + " · " + (c.alvos || []).length + " refeições por dia"))
       ), /* @__PURE__ */ React.createElement("div", { style: meio }, gr.map((g) => /* @__PURE__ */ React.createElement(CdCard, { key: g.cat, style: { flexShrink: 0 } }, /* @__PURE__ */ React.createElement(CdRot, null, g.cat.toUpperCase()), g.itens.map((x) => {
         const ok = !!(c.compras || {})[x.chave];
-        return /* @__PURE__ */ React.createElement("button", { key: x.chave, type: "button", onClick: () => marcar(x.chave), style: { width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "4px 0", background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit", color: PR.escuro, textAlign: "left" } }, /* @__PURE__ */ React.createElement("span", { "aria-hidden": "true", style: { width: 18, height: 18, borderRadius: 5, border: "1.5px solid " + (ok ? PR.verde : "#CBD5E1"), background: ok ? PR.verde : "#fff", color: "#fff", fontSize: 12, lineHeight: "16px", textAlign: "center", flexShrink: 0 } }, ok ? "✓" : ""), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12.5, textDecoration: ok ? "line-through" : "none", color: ok ? PR.cinza : PR.escuro, flex: 1, minWidth: 0 } }, x.nome), /* @__PURE__ */ React.createElement("b", { style: { fontSize: 12, color: "#475569", whiteSpace: "nowrap" } }, x.qtd ? cardQtd({ qtd: x.qtd, un: x.un }) : "a gosto"));
+        return /* @__PURE__ */ React.createElement("button", { key: x.chave, type: "button", onClick: () => marcar(x.chave), style: { width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "4px 0", background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit", color: PR.escuro, textAlign: "left" } }, /* @__PURE__ */ React.createElement("span", { "aria-hidden": "true", style: { width: 18, height: 18, borderRadius: 5, border: "1.5px solid " + (ok ? PR.verde : "#CBD5E1"), background: ok ? PR.verde : "#fff", color: "#fff", fontSize: 12, lineHeight: "16px", textAlign: "center", flexShrink: 0 } }, ok ? "✓" : ""), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12.5, textDecoration: ok ? "line-through" : "none", color: ok ? PR.cinza : PR.escuro, flex: 1, minWidth: 0 } }, x.nome), /* @__PURE__ */ React.createElement("b", { style: { fontSize: 12, color: "#475569", whiteSpace: "nowrap" } }, x.txt));
       })))), /* @__PURE__ */ React.createElement("div", { style: { ...rodape, fontSize: 10.5, color: PR.cinza, textAlign: "center" } }, "Quantidades aproximadas. Marque o que já comprou.")));
     }
     if (vista === "receita") {
