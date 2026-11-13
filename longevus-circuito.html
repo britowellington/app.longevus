@@ -48,6 +48,24 @@ const fmt = s => { s=Math.max(0,Math.round(s||0)); return Math.floor(s/60)+":"+p
 const fmtLongo = s => { s=Math.round(s||0); const m=Math.floor(s/60); const r=s%60; if(m===0) return r+"s"; return r===0? m+" min" : m+" min "+r+"s"; };
 const fmtData = iso => { try{ const d=new Date(iso); return pad(d.getDate())+"/"+pad(d.getMonth()+1)+"/"+d.getFullYear()+" às "+pad(d.getHours())+":"+pad(d.getMinutes()); }catch(e){ return ""; } };
 const hojeIdx = ()=> { const d=new Date().getDay(); return d===0?6:d-1; };
+const LETRAS = "ABCDEFG";
+const diasOrdenados = t => DIAS.filter(d=>(t&&t.dias||[]).indexOf(d)>=0);
+const letrasTurma = t => diasOrdenados(t).map((d,i)=>({ dia:d, letra:LETRAS[i] }));
+const aulaDaLetra = (aulas,tid,l) => aulas.find(a=>a.turmaId===tid && a.treino===l);
+function proximoTreino(t, aulas){
+  if(!t) return null;
+  const sem = letrasTurma(t);
+  if(!sem.length) return null;
+  if(t.modo==="sequencia"){
+    let ult=null, ultData="";
+    sem.forEach(x=>{ const a=aulaDaLetra(aulas,t.id,x.letra); const h=a&&(a.historico||[])[0]; if(h && h.data>ultData){ ultData=h.data; ult=x.letra; } });
+    const i = ult ? (sem.findIndex(x=>x.letra===ult)+1)%sem.length : 0;
+    return { letra:sem[i].letra, dia:null, aula:aulaDaLetra(aulas,t.id,sem[i].letra) };
+  }
+  const hoje = sem.find(x=>x.dia===DIAS[hojeIdx()]);
+  if(!hoje) return null;
+  return { letra:hoje.letra, dia:hoje.dia, aula:aulaDaLetra(aulas,t.id,hoje.letra) };
+}
 
 async function authHeaders(){
   const { data } = await supa.auth.getSession();
@@ -228,6 +246,44 @@ function TempoCampo({ valor, onChange, presets, min }){
   );
 }
 
+function HoraCampo({ titulo, valor, onChange }){
+  const [aberto,setAberto] = useState(false);
+  const partes = (valor||"").split(":");
+  const [h,setH] = useState(partes[0]||"");
+  const [m,setM] = useState(partes[1]||"00");
+  const abrir = ()=>{ const p=(valor||"").split(":"); setH(p[0]||""); setM(p[1]||"00"); setAberto(true); };
+  const horas = []; for(let i=5;i<=22;i++) horas.push(pad(i));
+  const minutos = []; for(let i=0;i<60;i+=5) minutos.push(pad(i));
+  const chip = on => ({ padding:"10px 0", borderRadius:10, fontSize:15, fontWeight:800, cursor:"pointer", border:"1.5px solid "+(on?O:"#e2e8f0"), background:on?O:"#fff", color:on?"#fff":"#334155", fontVariantNumeric:"tabular-nums" });
+  return (
+    <div>
+      <button onClick={abrir} style={{ ...sInput, textAlign:"left", cursor:"pointer", color:valor?"#0f172a":"#94a3b8", fontWeight:valor?700:400 }}>{valor||"Escolher"}</button>
+      {aberto && (
+        <div onClick={()=>setAberto(false)} style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.55)", zIndex:40, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:"#fff", width:"100%", maxWidth:480, borderRadius:"18px 18px 0 0", padding:"16px 16px 20px", maxHeight:"88vh", overflowY:"auto" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+              <div style={{ fontWeight:800, fontSize:16 }}>{titulo}</div>
+              <div style={{ fontSize:26, fontWeight:900, color:O, fontVariantNumeric:"tabular-nums" }}>{(h||"--")+":"+m}</div>
+            </div>
+            <label style={sLabel}>Hora</label>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:6, marginBottom:14 }}>
+              {horas.map(x=><button key={x} onClick={()=>setH(x)} style={chip(h===x)}>{x}</button>)}
+            </div>
+            <label style={sLabel}>Minutos</label>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:6, marginBottom:16 }}>
+              {minutos.map(x=><button key={x} onClick={()=>setM(x)} style={chip(m===x)}>{x}</button>)}
+            </div>
+            <div style={{ display:"flex", gap:8 }}>
+              <Btn variant="ghost" onClick={()=>{ onChange(""); setAberto(false); }} style={{ flex:1 }}>Limpar</Btn>
+              <Btn disabled={!h} onClick={()=>{ onChange(h+":"+m); setAberto(false); }} style={{ flex:2 }}>Definir</Btn>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ---------- Telas ---------- */
 function Home({ turmas, aulas, online, abrirTurma, novaTurma }){
   const hoje = DIAS[hojeIdx()];
@@ -261,7 +317,7 @@ function Home({ turmas, aulas, online, abrirTurma, novaTurma }){
               <div style={{ fontSize:13, color:"#475569", marginTop:6 }}>
                 {(t.dias||[]).join(", ")}{t.horaInicio?" · "+t.horaInicio+(t.horaFim?" às "+t.horaFim:""):""}
               </div>
-              <div style={{ fontSize:12, color:"#94a3b8", marginTop:6 }}>{qtd} {qtd===1?"aula":"aulas"}</div>
+              <div style={{ fontSize:12, color:"#94a3b8", marginTop:6 }}>{qtd} {qtd===1?"aula":"aulas"}{(()=>{ const p=proximoTreino(t,aulas); if(!p) return ""; return " · "+(p.dia?"Hoje":"Próximo")+": Treino "+p.letra+(p.aula?" ("+p.aula.nome+")":""); })()}</div>
             </div>
           );
         })}
@@ -277,7 +333,7 @@ function Home({ turmas, aulas, online, abrirTurma, novaTurma }){
 }
 
 function EditarTurma({ turma, onSalvar, onExcluir, onVoltar }){
-  const [f,setF] = useState(()=>turma||{ id:uid(), nome:"", local:"", dias:[], horaInicio:"", horaFim:"" });
+  const [f,setF] = useState(()=>turma?{ modo:"dia", ...turma }:{ id:uid(), nome:"", local:"", dias:[], horaInicio:"", horaFim:"", modo:"dia" });
   const set = (k,v)=>setF(x=>({ ...x, [k]:v }));
   const toggleDia = d => set("dias", f.dias.indexOf(d)>=0 ? f.dias.filter(x=>x!==d) : DIAS.filter(x=>f.dias.indexOf(x)>=0||x===d));
   return (
@@ -302,14 +358,28 @@ function EditarTurma({ turma, onSalvar, onExcluir, onVoltar }){
           <div style={{ display:"flex", gap:10 }}>
             <div style={{ flex:1 }}>
               <label style={sLabel}>Início</label>
-              <input type="time" style={sInput} value={f.horaInicio} onChange={e=>set("horaInicio",e.target.value)}/>
+              <HoraCampo titulo="Início" valor={f.horaInicio} onChange={v=>set("horaInicio",v)}/>
             </div>
             <div style={{ flex:1 }}>
               <label style={sLabel}>Fim</label>
-              <input type="time" style={sInput} value={f.horaFim} onChange={e=>set("horaFim",e.target.value)}/>
+              <HoraCampo titulo="Fim" valor={f.horaFim} onChange={v=>set("horaFim",v)}/>
             </div>
           </div>
         </div>
+        {f.dias.length>0 && (
+          <div style={sCard}>
+            <label style={sLabel}>Treinos da semana</label>
+            <div style={{ fontSize:13, color:"#475569", marginBottom:10 }}>
+              {f.dias.length===1?"1 treino":f.dias.length+" treinos diferentes"}: {letrasTurma(f).map(x=>x.dia+" = "+x.letra).join(" · ")}
+            </div>
+            {[["dia","Fixo por dia","Cada dia sempre tem o seu treino. Ex.: segunda é sempre o A."],["sequencia","Em sequência","Segue a ordem A, B, C... a partir da última aula dada. Se pular um dia, nada se perde."]].map(o=>(
+              <div key={o[0]} onClick={()=>set("modo",o[0])} style={{ border:"1.5px solid "+(f.modo===o[0]?O:"#e2e8f0"), background:f.modo===o[0]?"#fff4ee":"#fff", borderRadius:12, padding:"10px 12px", marginBottom:8, cursor:"pointer" }}>
+                <div style={{ fontWeight:800, fontSize:14, color:f.modo===o[0]?O:"#0f172a" }}>{o[1]}</div>
+                <div style={{ fontSize:12, color:"#64748b", marginTop:2 }}>{o[2]}</div>
+              </div>
+            ))}
+          </div>
+        )}
         <Btn full disabled={!f.nome.trim()} onClick={()=>onSalvar({ ...f, nome:f.nome.trim() })}>Salvar turma</Btn>
         {turma && <div style={{ marginTop:10 }}><Btn full variant="danger" onClick={()=>{ if(window.confirm("Excluir a turma? As aulas dela ficam em \"Aulas sem turma\".")) onExcluir(f.id); }}>Excluir turma</Btn></div>}
       </div>
@@ -319,23 +389,54 @@ function EditarTurma({ turma, onSalvar, onExcluir, onVoltar }){
 
 function VerTurma({ turma, aulas, turmas, onVoltar, onEditarTurma, onNovaAula, onEditarAula, onIniciar, onCopiar }){
   const [copiando,setCopiando] = useState(null);
+  const semana = letrasTurma(turma);
+  const ativas = semana.map(x=>x.letra);
+  const prox = proximoTreino(turma, aulas);
+  const ordem = a => { const i=ativas.indexOf(a.treino); return i<0?99:i; };
+  const lista = [...aulas].sort((a,b)=>ordem(a)-ordem(b));
   const titulo = turma ? turma.nome : "Aulas sem turma";
   const sub = turma ? [(turma.dias||[]).join(", "), turma.horaInicio?(turma.horaInicio+(turma.horaFim?" às "+turma.horaFim:"")):""].filter(Boolean).join(" · ") : "";
   return (
     <div>
       <Header titulo={titulo} sub={sub} onBack={onVoltar} direita={turma && <Btn small variant="ghost" onClick={onEditarTurma}>Editar</Btn>}/>
       <div style={{ padding:16 }}>
-        {turma && <Btn full onClick={onNovaAula}>+ Montar aula</Btn>}
+        {prox && prox.aula && (
+          <div style={{ ...sCard, background:"#0f172a", color:"#fff", border:"none" }}>
+            <div style={{ fontSize:12, color:"#94a3b8", fontWeight:700, letterSpacing:0.4 }}>{prox.dia?"TREINO DE HOJE":"PRÓXIMO TREINO"}</div>
+            <div style={{ fontWeight:800, fontSize:18, marginTop:4 }}>Treino {prox.letra} · {prox.aula.nome}</div>
+            <div style={{ marginTop:12 }}><Btn full onClick={()=>onIniciar(prox.aula.id)}>▶ Iniciar Treino {prox.letra}</Btn></div>
+          </div>
+        )}
+        {semana.length>0 && (
+          <div style={sCard}>
+            <div style={{ fontWeight:800, fontSize:15, marginBottom:10 }}>Semana</div>
+            {semana.map(x=>{
+              const a = aulaDaLetra(aulas,turma.id,x.letra);
+              const destaque = prox && prox.letra===x.letra;
+              return (
+                <div key={x.letra} onClick={()=>a?onEditarAula(a.id):onNovaAula(x.letra)} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 0", borderTop:"1px solid #f1f5f9", cursor:"pointer" }}>
+                  <div style={{ width:34, height:34, borderRadius:10, background:destaque?O:"#0f172a", color:"#fff", fontWeight:900, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{x.letra}</div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:12, color:"#94a3b8", fontWeight:700 }}>{turma.modo==="sequencia"?"Treino "+x.letra:x.dia}</div>
+                    <div style={{ fontWeight:700, fontSize:14, color:a?"#0f172a":O }}>{a?a.nome:"+ Montar treino "+x.letra}</div>
+                  </div>
+                  {a && <div style={{ fontSize:13, color:"#64748b", fontWeight:700 }}>{fmt(duracaoTotal(a))}</div>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {turma && <Btn full variant={semana.length?"ghost":undefined} onClick={()=>onNovaAula(null)}>+ Montar aula</Btn>}
         <div style={{ height:16 }}/>
         {aulas.length===0 && <div style={{ ...sCard, textAlign:"center", color:"#64748b", fontSize:14 }}>Nenhuma aula montada ainda.</div>}
-        {aulas.map(a=>{
+        {lista.map(a=>{
           const ult = (a.historico||[])[0];
           return (
             <div key={a.id} style={sCard}>
               <div style={{ display:"flex", justifyContent:"space-between", gap:8 }}>
                 <div>
                   <div style={{ fontWeight:800, fontSize:16 }}>{a.nome}</div>
-                  <div style={{ fontSize:12, color:O, fontWeight:700, marginTop:2 }}>{a.tipo}</div>
+                  <div style={{ fontSize:12, color:O, fontWeight:700, marginTop:2 }}>{ativas.indexOf(a.treino)>=0?"Treino "+a.treino+" · ":""}{a.tipo}</div>
                 </div>
                 <div style={{ textAlign:"right", fontSize:13, color:"#475569" }}>
                   <div style={{ fontWeight:800, fontSize:16 }}>{fmt(duracaoTotal(a))}</div>
@@ -431,14 +532,15 @@ function SeletorExercicio({ onEscolher, onFechar }){
 }
 
 /* ---------- Montar aula ---------- */
-const AULA_NOVA = turmaId => ({
-  id:uid(), turmaId, nome:"", tipo:"Funcional",
+const AULA_NOVA = (turmaId,treino) => ({
+  id:uid(), turmaId, treino:treino||null, nome:"", tipo:"Funcional",
   estacoes:[{ nome:"", obs:"" },{ nome:"", obs:"" },{ nome:"", obs:"" },{ nome:"", obs:"" }],
   sequencia:[{ t:"exec", s:30 }], troca:30, voltas:2, descansoVolta:60, preparacao:10, historico:[]
 });
 
-function EditarAula({ aula, turmaId, onSalvar, onExcluir, onVoltar, onIniciar }){
-  const [f,setF] = useState(()=>aula?JSON.parse(JSON.stringify(aula)):AULA_NOVA(turmaId));
+function EditarAula({ aula, turmaId, turma, treino, aulas, onSalvar, onExcluir, onVoltar, onIniciar }){
+  const [f,setF] = useState(()=>aula?JSON.parse(JSON.stringify(aula)):AULA_NOVA(turmaId,treino));
+  const semana = letrasTurma(turma);
   const [picker,setPicker] = useState(null);
   const set = (k,v)=>setF(x=>({ ...x, [k]:v }));
   const setEst = (i,patch)=>set("estacoes", f.estacoes.map((e,j)=>j===i?{ ...e, ...patch }:e));
@@ -464,6 +566,21 @@ function EditarAula({ aula, turmaId, onSalvar, onExcluir, onVoltar, onIniciar })
               <button key={t} onClick={()=>set("tipo",t)} style={{ padding:"7px 12px", borderRadius:20, fontSize:13, fontWeight:700, cursor:"pointer", border:"1.5px solid "+(f.tipo===t?O:"#e2e8f0"), background:f.tipo===t?O:"#fff", color:f.tipo===t?"#fff":"#475569" }}>{t}</button>
             ))}
           </div>
+          {semana.length>0 && (
+            <div>
+              <div style={{ height:14 }}/>
+              <label style={sLabel}>Treino da semana</label>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                {semana.map(x=>{
+                  const on = f.treino===x.letra;
+                  const outra = (aulas||[]).find(a=>a.turmaId===f.turmaId && a.treino===x.letra && a.id!==f.id);
+                  return <button key={x.letra} onClick={()=>set("treino",on?null:x.letra)} style={{ padding:"7px 12px", borderRadius:20, fontSize:13, fontWeight:800, cursor:"pointer", border:"1.5px solid "+(on?O:"#e2e8f0"), background:on?O:"#fff", color:on?"#fff":(outra?"#94a3b8":"#475569") }}>{x.letra}{turma.modo==="sequencia"?"":" · "+x.dia}</button>;
+                })}
+                <button onClick={()=>set("treino",null)} style={{ padding:"7px 12px", borderRadius:20, fontSize:13, fontWeight:700, cursor:"pointer", border:"1.5px solid "+(!f.treino?O:"#e2e8f0"), background:!f.treino?"#fff4ee":"#fff", color:!f.treino?O:"#475569" }}>Avulsa</button>
+              </div>
+              {f.treino && (aulas||[]).some(a=>a.turmaId===f.turmaId && a.treino===f.treino && a.id!==f.id) && <div style={{ fontSize:12, color:"#b45309", marginTop:8 }}>O treino {f.treino} já tem outra aula. Ao salvar, a anterior passa para avulsa.</div>}
+            </div>
+          )}
         </div>
 
         <div style={{ fontWeight:800, fontSize:15, margin:"20px 0 4px" }}>Estações</div>
@@ -638,7 +755,7 @@ function ModoAula({ aula, onSair, onRegistrar }){
   if(estado==="pronto"){
     return (
       <div style={{ minHeight:"100vh", background:"#0f172a", color:"#fff" }}>
-        <Header titulo={aula.nome} sub={n+" estações · "+voltas+(voltas===1?" volta":" voltas")+" · "+fmtLongo(fases.reduce((a,f)=>a+f.dur,0))} onBack={onSair}/>
+        <Header titulo={(aula.treino?"Treino "+aula.treino+" · ":"")+aula.nome} sub={n+" estações · "+voltas+(voltas===1?" volta":" voltas")+" · "+fmtLongo(fases.reduce((a,f)=>a+f.dur,0))} onBack={onSair}/>
         <div style={{ padding:16 }}>
           <div style={{ fontSize:12, color:"#94a3b8", fontWeight:700, letterSpacing:0.5, marginBottom:8 }}>POSICIONE UM ALUNO EM CADA ESTAÇÃO</div>
           {aula.estacoes.map((e,i)=>(
@@ -782,14 +899,14 @@ function Main(){
   if(view.tela==="turma") return <VerTurma turma={view.id==="__sem"?null:turma(view.id)} aulas={aulasDa(view.id)} turmas={T.itens}
     onVoltar={()=>ir({ tela:"home" })}
     onEditarTurma={()=>ir({ tela:"editTurma", id:view.id })}
-    onNovaAula={()=>ir({ tela:"editAula", turmaId:view.id })}
+    onNovaAula={l=>ir({ tela:"editAula", turmaId:view.id, treino:l||null })}
     onEditarAula={id=>ir({ tela:"editAula", id, turmaId:view.id })}
     onIniciar={id=>ir({ tela:"run", id, turmaId:view.id })}
-    onCopiar={async (a,tid)=>{ await A.salvar({ ...JSON.parse(JSON.stringify(a)), id:uid(), turmaId:tid, nome:a.nome+(tid===a.turmaId?" (cópia)":""), historico:[] }); }}/>;
+    onCopiar={async (a,tid)=>{ const livre = a.treino && !aulaDaLetra(A.itens,tid,a.treino) && letrasTurma(turma(tid)).some(x=>x.letra===a.treino); await A.salvar({ ...JSON.parse(JSON.stringify(a)), id:uid(), turmaId:tid, treino:livre?a.treino:null, nome:a.nome+(tid===a.turmaId?" (cópia)":""), historico:[] }); }}/>;
 
-  if(view.tela==="editAula") return <EditarAula aula={view.id?aula(view.id):null} turmaId={view.turmaId}
+  if(view.tela==="editAula") return <EditarAula aula={view.id?aula(view.id):null} turmaId={view.turmaId} turma={turma(view.turmaId)} treino={view.treino} aulas={A.itens}
     onVoltar={()=>ir({ tela:"turma", id:view.turmaId })}
-    onSalvar={a=>A.salvar(a)}
+    onSalvar={async a=>{ if(a.treino){ for(const o of A.itens.filter(x=>x.turmaId===a.turmaId && x.treino===a.treino && x.id!==a.id)) await A.salvar({ ...o, treino:null }); } return A.salvar(a); }}
     onIniciar={id=>ir({ tela:"run", id, turmaId:view.turmaId })}
     onExcluir={async id=>{ await A.remover(id); ir({ tela:"turma", id:view.turmaId }); }}/>;
 
