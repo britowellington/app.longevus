@@ -181,6 +181,10 @@ const duracaoTotal = aula => montarFases(aula).reduce((a,f)=>a+f.dur,0);
 /* ---------- Biblioteca: aulas iniciais ---------- */
 const BIB_PARAMS = { sequencia:[{ t:"exec", s:40 }], troca:20, voltas:2, descansoVolta:120, preparacao:10 };
 const bibEst = lista => lista.map(x=>({ nome:x[0], obs:x[1] }));
+const CAT_CORE = "Abdômen e Estabilidade do Core";
+const CAT_PADRAO = "Geral";
+const CAT_ALONG = "Alongamento e Mobilidade";
+const CAT_MOB = "Mobilidade Articular";
 const BIB_SEED = [
   { id:"bib_forca_equilibrio", biblioteca:true, turmaId:null, treino:null, nome:"Força e Equilíbrio", tipo:"Funcional", nivel:"Básico",
     objetivo:"Desenvolver força muscular de membros superiores e inferiores, equilíbrio estático e dinâmico, estabilidade corporal e controle postural, contribuindo para a autonomia e segurança nas atividades da vida diária.",
@@ -217,7 +221,115 @@ const BIB_SEED = [
       ["Marcha estacionária com braços ativos","Sem material; executar marcha contínua coordenando braços e pernas."],
       ["Caminhada lateral com miniband","Miniband acima dos joelhos; manter leve flexão dos joelhos e passos controlados."],
       ["Sequência de agachamento e elevação de braços","Sem material; realizar agachamento parcial seguido de elevação dos braços, respeitando a amplitude articular."]
-    ]), ...BIB_PARAMS, historico:[] }
+    ]), ...BIB_PARAMS, historico:[] },
+  { id:"bib_core_abdomen_estabilidade", biblioteca:true, turmaId:null, treino:null, categoria:CAT_CORE, nome:"Abdômen e Estabilidade", tipo:"Funcional", nivel:"Básico",
+    objetivo:"Desenvolver a resistência muscular abdominal e a estabilidade do core, priorizando o controle do tronco, a ativação dos músculos profundos do abdômen e a estabilização lombopélvica durante movimentos simples e controlados.",
+    estacoes:bibEst([
+      ["Contração abdominal com respiração","Colchonete; realizar contração abdominal suave durante a expiração, sem prender a respiração."],
+      ["Marcha abdominal deitado","Colchonete; elevar alternadamente os pés, mantendo controle da região lombar."],
+      ["Prancha na parede","Parede; manter corpo alinhado e abdômen contraído."],
+      ["Elevação alternada de joelhos sentado","Cadeira; elevar um joelho de cada vez, mantendo o tronco estável."],
+      ["Dead bug adaptado","Colchonete; movimentar braço e perna alternados, sem perder o controle do tronco."],
+      ["Inclinação lateral de tronco sentado","Cadeira; realizar inclinações laterais curtas e controladas."],
+      ["Pallof press com elástico","Elástico; estender os braços à frente resistindo à rotação do tronco."],
+      ["Ponte de quadril","Colchonete; elevar o quadril mantendo controle abdominal e pélvico."]
+    ]), sequencia:[{ t:"exec", s:30 }], troca:20, voltas:2, descansoVolta:120, preparacao:10, historico:[] },
+  { id:"bib_core_funcional", biblioteca:true, turmaId:null, treino:null, categoria:CAT_CORE, nome:"Core Funcional", tipo:"Funcional", nivel:"Intermediário",
+    objetivo:"Desenvolver força e resistência muscular do core por meio de exercícios dinâmicos e integrados, estimulando a estabilidade do tronco, o controle rotacional e a coordenação entre membros superiores e inferiores.",
+    estacoes:bibEst([
+      ["Prancha inclinada no banco","Banco firme; manter alinhamento corporal e contração abdominal."],
+      ["Dead bug alternado","Colchonete; alternar braço e perna contrários mantendo estabilidade lombopélvica."],
+      ["Rotação de tronco com bola","Bola leve; realizar rotações controladas, sem forçar a coluna."],
+      ["Pallof press em pé","Elástico; resistir à rotação durante a extensão dos braços."],
+      ["Bird dog","Colchonete; elevar braço e perna contrários mantendo o tronco estável. Oferecer versão em pé com apoio."],
+      ["Marcha com carga unilateral","Halter leve; marchar resistindo à inclinação lateral do tronco."],
+      ["Abdominal curto adaptado","Colchonete; elevar levemente cabeça e ombros, sem tracionar o pescoço. Substituir por contração abdominal se necessário."],
+      ["Caminhada lateral com miniband","Miniband; realizar deslocamentos laterais mantendo controle do tronco e da pelve."]
+    ]), sequencia:[{ t:"exec", s:35 }], troca:20, voltas:2, descansoVolta:120, preparacao:10, historico:[] },
+  { id:"bib_core_controle_motor", biblioteca:true, turmaId:null, treino:null, categoria:CAT_CORE, nome:"Core e Controle Motor", tipo:"Funcional", nivel:"Avançado",
+    objetivo:"Desenvolver resistência e estabilidade dinâmica do core, integrando movimentos de membros superiores e inferiores, controle antirrotacional, estabilidade lombopélvica e coordenação motora em situações de maior exigência funcional.",
+    estacoes:bibEst([
+      ["Prancha inclinada com toque nos ombros","Banco firme; alternar toques nos ombros evitando rotação excessiva do tronco."],
+      ["Bird dog com pausa","Colchonete; sustentar brevemente a extensão contralateral mantendo estabilidade."],
+      ["Pallof press com base reduzida","Elástico; reduzir moderadamente a base de apoio, sem comprometer o equilíbrio."],
+      ["Marcha com transporte unilateral de carga","Halter; caminhar mantendo alinhamento do tronco e controle lateral."],
+      ["Dead bug com bola","Bola leve; manter pressão entre mãos e joelhos enquanto realiza movimentos alternados."],
+      ["Prancha lateral adaptada","Colchonete; apoiar antebraço e joelhos, elevando a pelve. Adaptar conforme tolerância."],
+      ["Agachamento com resistência antirrotacional","Elástico; realizar agachamento controlado mantendo resistência à rotação do tronco."],
+      ["Caminhada com mudanças de direção e carga","Halteres leves; realizar deslocamentos e mudanças de direção controladas, mantendo estabilidade corporal."]
+    ]), sequencia:[{ t:"exec", s:40 }], troca:20, voltas:2, descansoVolta:120, preparacao:10, historico:[] },
+  { id:"bib_along_global_consciencia", biblioteca:true, turmaId:null, treino:null, categoria:CAT_ALONG, nome:"Alongamento Global e Consciência Corporal", tipo:"Alongamento", nivel:"Básico",
+    objetivo:"Promover mobilidade articular e flexibilidade geral, reduzindo a sensação de rigidez muscular e melhorando a consciência corporal, a postura e a qualidade dos movimentos nas atividades diárias.",
+    estacoes:bibEst([
+      ["Mobilidade cervical","Sem material; movimentos suaves de flexão, extensão e rotação cervical, respeitando a amplitude confortável."],
+      ["Mobilidade de ombros","Sem material; movimentos circulares dos ombros e elevação alternada dos braços."],
+      ["Alongamento de peitoral na parede","Parede; apoiar a mão ou antebraço na parede e realizar leve rotação do tronco, sem forçar a articulação do ombro."],
+      ["Alongamento de braços e região posterior dos ombros","Sem material; cruzar um braço à frente do corpo e auxiliar suavemente com o outro."],
+      ["Mobilidade de coluna torácica sentado","Cadeira; realizar rotações suaves do tronco, mantendo os pés apoiados."],
+      ["Alongamento posterior de coxas sentado","Cadeira; estender uma perna à frente e inclinar levemente o tronco, mantendo a coluna confortável."],
+      ["Alongamento de panturrilhas","Parede; posicionar uma perna atrás e manter o calcanhar apoiado no chão."],
+      ["Mobilidade de tornozelos","Cadeira ou apoio fixo; realizar movimentos de flexão, extensão e círculos com os pés."]
+    ]), sequencia:[{ t:"exec", s:30 }], troca:15, voltas:2, descansoVolta:0, preparacao:10, historico:[] },
+  { id:"bib_along_flexibilidade_funcional", biblioteca:true, turmaId:null, treino:null, categoria:CAT_ALONG, nome:"Flexibilidade e Mobilidade Funcional", tipo:"Alongamento", nivel:"Intermediário",
+    objetivo:"Desenvolver flexibilidade muscular e mobilidade articular de forma integrada, melhorando a amplitude dos movimentos, a coordenação e a eficiência dos padrões motores utilizados nas atividades cotidianas.",
+    estacoes:bibEst([
+      ["Mobilidade dinâmica de quadril","Apoio fixo; realizar movimentos controlados de flexão e extensão do quadril, alternando as pernas."],
+      ["Alongamento de flexores do quadril","Cadeira ou apoio; posicionar uma perna à frente e outra atrás, realizando leve deslocamento do quadril para frente."],
+      ["Alongamento de posteriores de coxa em pé","Cadeira; apoiar um calcanhar em uma superfície baixa e inclinar levemente o tronco."],
+      ["Mobilidade torácica com elevação dos braços","Sem material; elevar os braços e realizar movimentos suaves de extensão torácica, sem compensar na região lombar."],
+      ["Rotação de tronco em pé","Sem material; realizar rotações controladas para ambos os lados, mantendo a pelve estável."],
+      ["Alongamento de peitoral e abertura torácica","Parede ou apoio; realizar abertura dos braços e leve expansão do tórax, respeitando os ombros."],
+      ["Alongamento de quadríceps com apoio","Cadeira ou apoio fixo; flexionar o joelho levando o calcanhar em direção aos glúteos, com auxílio se necessário. Oferecer alternativa sentado."],
+      ["Mobilidade integrada de tornozelo e quadril","Apoio fixo; realizar deslocamento controlado do joelho à frente, mantendo o calcanhar no chão, associado à mobilidade do quadril."]
+    ]), sequencia:[{ t:"exec", s:35 }], troca:20, voltas:2, descansoVolta:0, preparacao:10, historico:[] },
+  { id:"bib_along_mobilidade_avancado", biblioteca:true, turmaId:null, treino:null, categoria:CAT_ALONG, nome:"Mobilidade Global e Alongamento Avançado", tipo:"Alongamento", nivel:"Avançado",
+    objetivo:"Aprimorar a mobilidade global, a flexibilidade ativa e o controle corporal por meio de movimentos integrados, ampliando a capacidade de movimentação com estabilidade, coordenação e autonomia funcional.",
+    estacoes:bibEst([
+      ["Mobilidade de quadril em pé com controle unilateral","Apoio fixo; realizar movimentos controlados de flexão, extensão e abertura do quadril, alternando os lados."],
+      ["Alongamento dinâmico de cadeia posterior","Apoio fixo, se necessário; alternar flexão de quadril com extensão controlada dos joelhos, respeitando a amplitude individual."],
+      ["Mobilidade de coluna torácica em quatro apoios","Colchonete; realizar movimentos de rotação torácica com elevação alternada dos braços. Oferecer alternativa sentado."],
+      ["Alongamento de flexores do quadril com controle postural","Colchonete ou apoio; executar posição de avanço com uma perna à frente, mantendo estabilidade e alinhamento corporal. Oferecer alternativa em pé."],
+      ["Mobilidade integrada de ombros e coluna","Bastão leve; realizar elevação e deslocamento controlado do bastão, respeitando a amplitude confortável dos ombros."],
+      ["Alongamento lateral do tronco","Sem material; realizar inclinação lateral controlada, mantendo a pelve estável e sem forçar a coluna."],
+      ["Mobilidade de tornozelo em posição de avanço","Apoio fixo; deslocar o joelho à frente sobre o pé, mantendo o calcanhar apoiado e controlando o movimento."],
+      ["Sequência integrada de mobilidade global","Sem material; combinar movimentos de elevação dos braços, flexão de quadril e extensão controlada do tronco, respeitando a capacidade individual."]
+    ]), sequencia:[{ t:"exec", s:40 }], troca:20, voltas:2, descansoVolta:0, preparacao:10, historico:[] },
+  { id:"bib_mob_global_articular", biblioteca:true, turmaId:null, treino:null, categoria:CAT_MOB, nome:"Mobilidade Global e Articular", tipo:"Mobilidade", nivel:"Básico",
+    objetivo:"Desenvolver a mobilidade das principais articulações do corpo, melhorar a amplitude dos movimentos e reduzir a rigidez articular, favorecendo movimentos mais confortáveis e funcionais nas atividades diárias.",
+    estacoes:bibEst([
+      ["Mobilidade cervical","Sem material; realizar movimentos suaves de rotação e inclinação lateral da cabeça. Evitar movimentos circulares completos e amplitudes forçadas."],
+      ["Mobilidade de ombros","Sem material; realizar círculos com os ombros para frente e para trás, seguidos de elevação e descida dos braços."],
+      ["Mobilidade de cotovelos e punhos","Sem material; realizar flexão e extensão dos cotovelos, acompanhadas de movimentos circulares dos punhos."],
+      ["Rotação torácica sentado","Cadeira; realizar rotações controladas do tronco para ambos os lados, mantendo os pés apoiados."],
+      ["Mobilidade de quadril em pé","Cadeira ou apoio fixo; realizar flexão e extensão alternada do quadril, mantendo estabilidade corporal."],
+      ["Flexão e extensão de joelhos","Cadeira; realizar movimentos alternados de extensão dos joelhos e retorno à posição inicial."],
+      ["Mobilidade de tornozelos","Cadeira ou apoio fixo; executar flexão plantar, dorsiflexão e movimentos circulares dos tornozelos."],
+      ["Transferência de peso lateral","Apoio fixo; transferir o peso do corpo de uma perna para outra, com deslocamento lateral controlado."]
+    ]), sequencia:[{ t:"exec", s:30 }], troca:20, voltas:2, descansoVolta:120, preparacao:10, historico:[] },
+  { id:"bib_mob_funcional_coordenacao", biblioteca:true, turmaId:null, treino:null, categoria:CAT_MOB, nome:"Mobilidade Funcional e Coordenação", tipo:"Mobilidade", nivel:"Intermediário",
+    objetivo:"Aprimorar a mobilidade das articulações por meio de movimentos funcionais integrados, desenvolvendo coordenação, estabilidade, controle postural e maior eficiência nos padrões de movimento.",
+    estacoes:bibEst([
+      ["Mobilidade de ombros com bastão","Bastão leve; segurar o bastão com as duas mãos e realizar elevação e descida dos braços dentro da amplitude confortável."],
+      ["Rotação torácica em pé","Sem material; realizar rotações do tronco para os dois lados, com movimento controlado e sem forçar a região lombar."],
+      ["Mobilidade de quadril com elevação de joelho","Apoio fixo, se necessário; elevar alternadamente os joelhos, controlando a flexão do quadril e a postura."],
+      ["Mobilidade de tornozelo em posição de avanço","Apoio fixo; deslocar o joelho à frente sobre o pé, mantendo o calcanhar apoiado no chão."],
+      ["Agachamento com mobilidade de braços","Sem material; realizar agachamento em amplitude confortável associado à elevação dos braços durante a subida."],
+      ["Mobilidade lateral de tronco","Sem material; realizar inclinações laterais alternadas, mantendo a pelve estável e evitando compensações."],
+      ["Deslocamento lateral com mobilidade de quadril","Cones ou marcadores; realizar passos laterais controlados, associados à flexão leve dos joelhos e ao deslocamento do quadril."],
+      ["Marcha coordenada com movimentos dos braços","Sem material; executar marcha estacionária associada à movimentação alternada dos braços, trabalhando coordenação e mobilidade global."]
+    ]), sequencia:[{ t:"exec", s:35 }], troca:20, voltas:2, descansoVolta:120, preparacao:10, historico:[] },
+  { id:"bib_mob_integrada_controle", biblioteca:true, turmaId:null, treino:null, categoria:CAT_MOB, nome:"Mobilidade Integrada e Controle Motor", tipo:"Mobilidade", nivel:"Avançado",
+    objetivo:"Aprimorar a mobilidade global e o controle motor por meio de movimentos multiarticulares integrados, desenvolvendo estabilidade dinâmica, coordenação entre segmentos corporais e maior domínio das amplitudes articulares.",
+    estacoes:bibEst([
+      ["Agachamento com mobilidade de coluna torácica","Sem material; realizar agachamento em amplitude confortável e, ao retornar, associar rotação torácica controlada com elevação alternada dos braços."],
+      ["Mobilidade de quadril em apoio unilateral","Apoio fixo; equilibrar-se com apoio quando necessário e realizar movimentos controlados de flexão, extensão e abertura do quadril."],
+      ["Mobilidade de ombros com bastão e deslocamento","Bastão leve; realizar elevação dos braços com bastão associada a pequenos deslocamentos laterais dos pés."],
+      ["Avanço alternado com mobilidade de braços","Sem material; realizar avanço curto alternando as pernas, associado à elevação dos braços, respeitando o equilíbrio e a capacidade individual."],
+      ["Mobilidade de coluna em quatro apoios","Colchonete; executar movimentos controlados de flexão e extensão da coluna, sem forçar a amplitude. Oferecer alternativa sentado."],
+      ["Sequência de mobilidade de quadril e tornozelo","Apoio fixo; combinar deslocamento do joelho à frente com movimentos controlados de abertura e extensão do quadril."],
+      ["Rotação torácica com deslocamento lateral","Sem material; realizar deslocamento lateral curto associado à rotação controlada do tronco e movimentação dos braços."],
+      ["Sequência integrada de mobilidade global","Sem material; combinar marcha, elevação dos joelhos, mobilidade de braços, rotação torácica e deslocamentos laterais em uma sequência fluida e coordenada."]
+    ]), sequencia:[{ t:"exec", s:40 }], troca:20, voltas:2, descansoVolta:120, preparacao:10, historico:[] }
 ];
 
 /* ---------- Áudio ---------- */
@@ -571,7 +683,12 @@ function Biblioteca({ aulas, turmas, onVoltar, onNova, onEditar, onIniciar, onUs
   const [usando,setUsando] = useState(null);
   const [busca,setBusca] = useState("");
   const norm = x => (x||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
-  const lista = aulas.filter(a=>!busca || norm(a.nome+" "+a.objetivo+" "+a.nivel+" "+a.tipo).indexOf(norm(busca))>=0).sort((a,b)=>(a.nome||"").localeCompare(b.nome||""));
+  const [cat,setCat] = useState("");
+  const catDe = a => a.categoria||CAT_PADRAO;
+  const cats = Array.from(new Set(aulas.map(catDe))).sort((a,b)=>a===CAT_PADRAO?-1:b===CAT_PADRAO?1:a.localeCompare(b));
+  const ordNivel = a => { const i=NIVEIS.indexOf(a.nivel); return i<0?99:i; };
+  const lista = aulas.filter(a=>(!cat||catDe(a)===cat) && (!busca || norm(a.nome+" "+a.objetivo+" "+a.nivel+" "+a.tipo+" "+catDe(a)).indexOf(norm(busca))>=0)).sort((a,b)=>ordNivel(a)-ordNivel(b)||(a.nome||"").localeCompare(b.nome||""));
+  const grupos = cats.map(c=>({ c, itens:lista.filter(a=>catDe(a)===c) })).filter(g=>g.itens.length);
   return (
     <div>
       <Header titulo="Biblioteca de aulas" sub="Modelos para usar em qualquer turma" onBack={onVoltar}/>
@@ -579,14 +696,26 @@ function Biblioteca({ aulas, turmas, onVoltar, onNova, onEditar, onIniciar, onUs
         <Btn full onClick={onNova}>+ Nova aula na biblioteca</Btn>
         <div style={{ height:12 }}/>
         <input style={sInput} value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar por nome, objetivo ou nível"/>
+        {cats.length>1 && (
+          <div style={{ display:"flex", gap:6, overflowX:"auto", marginTop:10, paddingBottom:2 }}>
+            {[""].concat(cats).map(c=>(
+              <button key={c||"todas"} onClick={()=>setCat(c)} style={{ flexShrink:0, padding:"6px 12px", borderRadius:20, fontSize:12, fontWeight:700, cursor:"pointer", border:"1.5px solid "+(cat===c?O:"#e2e8f0"), background:cat===c?O:"#fff", color:cat===c?"#fff":"#475569" }}>{c||"Todas"}</button>
+            ))}
+          </div>
+        )}
         <div style={{ height:14 }}/>
         {lista.length===0 && <div style={{ ...sCard, textAlign:"center", color:"#64748b", fontSize:14 }}>Nenhuma aula encontrada.</div>}
-        {lista.map(a=>(
-          <CardAula key={a.id} a={a}>
-            <Btn small onClick={()=>setUsando(a)} style={{ flex:1 }}>Usar na turma</Btn>
-            <Btn small variant="ghost" onClick={()=>onIniciar(a.id)}>▶</Btn>
-            <Btn small variant="ghost" onClick={()=>onEditar(a.id)}>Editar</Btn>
-          </CardAula>
+        {grupos.map(g=>(
+          <div key={g.c}>
+            <div style={{ fontSize:12, fontWeight:800, color:"#64748b", letterSpacing:0.5, textTransform:"uppercase", margin:"6px 2px 10px" }}>{g.c} · {g.itens.length}</div>
+            {g.itens.map(a=>(
+              <CardAula key={a.id} a={a}>
+                <Btn small onClick={()=>setUsando(a)} style={{ flex:1 }}>Usar na turma</Btn>
+                <Btn small variant="ghost" onClick={()=>onIniciar(a.id)}>▶</Btn>
+                <Btn small variant="ghost" onClick={()=>onEditar(a.id)}>Editar</Btn>
+              </CardAula>
+            ))}
+          </div>
         ))}
       </div>
       {usando && (
@@ -701,6 +830,18 @@ function EditarAula({ aula, turmaId, turma, treino, aulas, biblioteca, onSalvar,
           <label style={sLabel}>Nome da aula</label>
           <input style={sInput} value={f.nome} onChange={e=>set("nome",e.target.value)} placeholder="Ex.: Circuito Força e Equilíbrio"/>
           <div style={{ height:14 }}/>
+          {f.biblioteca && (
+            <div>
+              <label style={sLabel}>Categoria</label>
+              <input style={sInput} value={f.categoria||""} onChange={e=>set("categoria",e.target.value)} placeholder={CAT_PADRAO}/>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:8 }}>
+                {Array.from(new Set((aulas||[]).filter(a=>a.biblioteca&&a.categoria).map(a=>a.categoria))).map(c=>(
+                  <button key={c} onClick={()=>set("categoria",c)} style={{ padding:"5px 10px", borderRadius:20, fontSize:12, fontWeight:700, cursor:"pointer", border:"1.5px solid "+(f.categoria===c?O:"#e2e8f0"), background:f.categoria===c?"#fff4ee":"#fff", color:f.categoria===c?O:"#475569" }}>{c}</button>
+                ))}
+              </div>
+              <div style={{ height:14 }}/>
+            </div>
+          )}
           <label style={sLabel}>Objetivo da aula</label>
           <textarea rows={3} style={{ ...sInput, resize:"vertical", lineHeight:1.45 }} value={f.objetivo||""} onChange={e=>set("objetivo",e.target.value)} placeholder="Ex.: desenvolver força de membros superiores e inferiores, equilíbrio e controle postural, priorizando a autonomia nas atividades diárias."/>
           <div style={{ height:14 }}/>
