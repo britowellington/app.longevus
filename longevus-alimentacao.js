@@ -906,6 +906,160 @@
       return /* @__PURE__ */ React.createElement("div", { key: d.date, style: { flex: 1, display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 2, height: "100%" } }, /* @__PURE__ */ React.createElement("div", { title: "Meta " + nutriFmt(meta), style: { width: "45%", height: meta ? Math.max(3, Math.round(meta / max * 120)) : 3, background: "#e2e8f0", borderRadius: "4px 4px 0 0" } }), /* @__PURE__ */ React.createElement("div", { title: "Consumido " + nutriFmt(d.consumido), style: { width: "45%", height: d.consumido ? Math.max(3, Math.round(d.consumido / max * 120)) : 3, background: !d.consumido ? "#f1f5f9" : acima ? NUTRI_LARANJA_TXT : NUTRI_LARANJA, opacity: d.hoje ? 0.55 : 1, borderRadius: "4px 4px 0 0" } }));
     })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, marginTop: 6 } }, dias.map((d) => /* @__PURE__ */ React.createElement("div", { key: d.date, style: { flex: 1, textAlign: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b" } }, nutriDiaSemana(d.date)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 9, fontWeight: 700, color: "#0f766e", minHeight: 12 } }, d.sessoes ? "treino" : "")))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 12, fontSize: 11, color: "#64748b", marginTop: 8, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 5 } }, /* @__PURE__ */ React.createElement("span", { style: { width: 10, height: 10, borderRadius: 3, background: "#e2e8f0" } }), "meta"), /* @__PURE__ */ React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 5 } }, /* @__PURE__ */ React.createElement("span", { style: { width: 10, height: 10, borderRadius: 3, background: NUTRI_LARANJA } }), "consumido"), /* @__PURE__ */ React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 5 } }, /* @__PURE__ */ React.createElement("span", { style: { width: 10, height: 10, borderRadius: 3, background: NUTRI_LARANJA_TXT } }), "acima da meta")), comReg.length > 0 && plano.objetivo !== "manter" && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#475569", marginTop: 10, lineHeight: 1.5 } }, (acumulado >= 0 ? "Déficit" : "Superávit") + " acumulado estimado de " + nutriFmt(Math.abs(acumulado)) + " kcal em " + comReg.length + " " + (comReg.length === 1 ? "dia" : "dias") + ", perto de " + (Math.abs(acumulado) / 7700).toFixed(1).replace(".", ",") + " kg."), semDur > 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: NUTRI_LARANJA_TXT, marginTop: 6 } }, semDur + " " + (semDur === 1 ? "treino sem duração registrada, não entrou" : "treinos sem duração registrada, não entraram") + " na conta.")));
   };
+  const CARD_EQUIP = ["Fogão", "Air fryer", "Micro-ondas", "Frigideira", "Forno", "Sem fogo"];
+  const CARD_TEMPOS = [10, 20, 30];
+  const CARD_PESO = { cafe: 0.25, lanche_manha: 0.1, almoco: 0.32, lanche_tarde: 0.12, jantar: 0.28, ceia: 0.08 };
+  const CARD_PADRAO = ["cafe", "almoco", "lanche_tarde", "jantar"];
+  const CARD_CURTO = { cafe: "CAFÉ", lanche_manha: "LAN.", almoco: "ALM.", lanche_tarde: "LAN.", jantar: "JANT.", ceia: "CEIA" };
+  const CARD_DIA_LONGO = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+  const CARD_CATS = ["Proteínas", "Hortifrúti", "Laticínios", "Mercearia", "Temperos"];
+  const cardapioApi = {
+    async listar(studentId) {
+      try {
+        const h = await nutriApi.headers();
+        const r = await fetch(SUPA_URL + "/rest/v1/cardapios?select=id,data,created_at&student_id=eq." + encodeURIComponent(studentId) + "&order=created_at.desc&limit=40", { headers: h });
+        if (!r.ok) return null;
+        const rows = await r.json();
+        return (rows || []).filter((x) => x && x.data).map((x) => ({ ...x.data, id: x.id }));
+      } catch (e) {
+        return null;
+      }
+    },
+    async salvar(studentId, ownerId, c) {
+      try {
+        const h = { ...await nutriApi.headers(), "Prefer": "resolution=merge-duplicates" };
+        const { id, ...data } = c;
+        const r = await fetch(SUPA_URL + "/rest/v1/cardapios", { method: "POST", headers: h, body: JSON.stringify({ id, data, owner_id: ownerId, student_id: studentId, updated_at: (/* @__PURE__ */ new Date()).toISOString() }) });
+        return r.ok;
+      } catch (e) {
+        return false;
+      }
+    },
+    async remover(id) {
+      try {
+        const h = await nutriApi.headers();
+        const r = await fetch(SUPA_URL + "/rest/v1/cardapios?id=eq." + encodeURIComponent(id), { method: "DELETE", headers: h });
+        return r.ok;
+      } catch (e) {
+        return false;
+      }
+    },
+    async gerar(payload) {
+      const h = await nutriApi.headers();
+      const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+      const timer = setTimeout(() => {
+        if (ctrl) ctrl.abort();
+      }, 62e3);
+      let r;
+      try {
+        r = await fetch(SUPA_URL + "/functions/v1/analisar-refeicao", { method: "POST", headers: h, body: JSON.stringify({ modo: "cardapio", ...payload }), signal: ctrl ? ctrl.signal : void 0 });
+      } catch (e) {
+        clearTimeout(timer);
+        throw new Error(e && e.name === "AbortError" ? "Demorou demais para responder." : "Não consegui conectar ao serviço.");
+      }
+      clearTimeout(timer);
+      let j = null;
+      try {
+        j = await r.json();
+      } catch (e) {
+      }
+      if (!r.ok || !j || j.erro || !Array.isArray(j.pratos)) {
+        const msg = j && j.erro || "Falha ao montar (HTTP " + r.status + ")";
+        throw new Error(j && j.detalhe ? msg + "\n\nDetalhe técnico: " + String(j.detalhe).slice(0, 200) : msg);
+      }
+      return j;
+    }
+  };
+  const cardapioAlvos = (tipos, metaDia, unica) => {
+    const base = unica ? Array.from(new Set(CARD_PADRAO.concat(tipos))) : tipos;
+    const soma = base.reduce((t, k) => t + (CARD_PESO[k] || 0.1), 0) || 1;
+    return tipos.map((k) => {
+      const f = (CARD_PESO[k] || 0.1) / soma;
+      return { tipo: k, nome: nutriTipoNome(k), kcal: Math.round(nutriNum(metaDia.kcal) * f), prot: Math.round(nutriNum(metaDia.prot) * f) };
+    });
+  };
+  const cardArred = (v, un) => {
+    const u = String(un || "").toLowerCase();
+    if (u === "g" || u === "ml") return v >= 20 ? Math.round(v / 5) * 5 : Math.max(1, Math.round(v));
+    return Math.max(0.5, Math.round(v * 2) / 2);
+  };
+  const cardapioEscalar = (p, alvoKcal) => {
+    const k = nutriNum(p.kcal);
+    const f = alvoKcal && k ? Math.min(1.3, Math.max(0.75, alvoKcal / k)) : 1;
+    const r1 = (v) => Math.round(nutriNum(v) * f * 10) / 10;
+    return {
+      ...p,
+      alvoKcal: alvoKcal || k,
+      kcal: Math.round(k * f),
+      prot: r1(p.prot),
+      carb: r1(p.carb),
+      gord: r1(p.gord),
+      fibra: r1(p.fibra),
+      ingredientes: (p.ingredientes || []).map((i) => nutriNum(i.qtd) ? { ...i, qtd: cardArred(nutriNum(i.qtd) * f, i.un) } : i)
+    };
+  };
+  const cardapioEncaixar = (alvos, pratos) => {
+    const livres = (pratos || []).slice();
+    return alvos.map((a) => {
+      let i = livres.findIndex((p2) => p2.tipo === a.tipo);
+      if (i < 0) i = 0;
+      const p = livres.splice(i, 1)[0];
+      return p ? { ...cardapioEscalar(p, a.kcal), tipo: a.tipo, alvoProt: a.prot, uid: "pr_" + nutriId() } : null;
+    }).filter(Boolean);
+  };
+  const cardNum = (v) => String(Math.round(v * 10) / 10).replace(".", ",");
+  const cardQtd = (i) => {
+    const q = nutriNum(i.qtd), u = String(i.un || "").trim();
+    if (!q) return u && u !== "a gosto" ? u : "a gosto";
+    const ul = u.toLowerCase();
+    if (ul === "g" && q >= 1e3) return cardNum(q / 1e3) + " kg";
+    if (ul === "ml" && q >= 1e3) return cardNum(q / 1e3) + " l";
+    if (ul === "g" || ul === "ml") return Math.round(q) + " " + ul;
+    return cardNum(q) + (u ? " " + u : "");
+  };
+  const cardTotaisDia = (d) => nutriSomar(d && d.refeicoes || []);
+  const cardapioCompras = (c) => {
+    const mapa = {};
+    (c && c.dias || []).forEach((d) => (d.refeicoes || []).forEach((p) => (p.ingredientes || []).forEach((i) => {
+      const nome = String(i.nome || "").trim();
+      if (!nome) return;
+      const q = nutriNum(i.qtd);
+      const un = q ? String(i.un || "").trim().toLowerCase() : "";
+      const chave = nome.toLowerCase().replace(/\s+/g, " ") + "|" + un;
+      const cat = q ? CARD_CATS.indexOf(i.cat) >= 0 ? i.cat : "Mercearia" : "Temperos";
+      if (!mapa[chave]) mapa[chave] = { chave, nome, un, qtd: 0, cat };
+      mapa[chave].qtd += q;
+    })));
+    const liquido = /azeite|óleo|oleo|vinagre|shoyu|molho|leite|mel\b/i;
+    const itens = Object.values(mapa).map((x) => {
+      let { qtd, un } = x;
+      if (un === "un") qtd = Math.ceil(qtd);
+      if ((un === "col. sopa" || un === "col. chá") && liquido.test(x.nome) && qtd > 4) {
+        qtd = Math.round(qtd * (un === "col. sopa" ? 15 : 5) / 10) * 10;
+        un = "ml";
+      }
+      return { ...x, qtd, un };
+    });
+    return CARD_CATS.map((cat) => ({ cat, itens: itens.filter((x) => x.cat === cat).sort((a, b) => a.nome.localeCompare(b.nome)) })).filter((g) => g.itens.length);
+  };
+  const cardapioComprasTexto = (c) => {
+    const gr = cardapioCompras(c);
+    return "Lista de compras · " + cardapioTitulo(c) + "\n\n" + gr.map((g) => g.cat.toUpperCase() + "\n" + g.itens.map((x) => "- " + x.nome + (x.qtd ? " · " + cardQtd({ qtd: x.qtd, un: x.un }) : "")).join("\n")).join("\n\n");
+  };
+  const cardapioTitulo = (c) => {
+    const d = c && c.dias || [];
+    if (!d.length) return "Cardápio";
+    if (c.periodo === "semana") return "Semana de " + nutriDataCurta(d[0].date) + " a " + nutriDataCurta(d[d.length - 1].date);
+    if (c.periodo === "refeicao") return nutriTipoNome(((d[0].refeicoes || [])[0] || {}).tipo || c.params && c.params.refeicoes && c.params.refeicoes[0]) + " · " + nutriDataCurta(d[0].date);
+    return "Dia " + nutriDataCurta(d[0].date);
+  };
+  const CardapioVer = ({ c }) => {
+    const [aberto, setAberto] = useState(null);
+    return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b", marginBottom: 10, lineHeight: 1.5 } }, "Meta usada: " + nutriFmt(c.meta && c.meta.kcal) + " kcal e " + nutriFmt(c.meta && c.meta.prot) + " g de proteína por dia.", c.params && c.params.gostos && c.params.gostos.length ? " Gosta de: " + c.params.gostos.join(", ") + "." : "", c.params && c.params.naoCome ? " Não come: " + c.params.naoCome + "." : ""), (c.dias || []).map((d) => {
+      const t = cardTotaisDia(d);
+      return /* @__PURE__ */ React.createElement("div", { key: d.date, style: { border: "1.5px solid #e2e8f0", borderRadius: 14, padding: "10px 12px", marginBottom: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 800, marginBottom: 4 } }, /* @__PURE__ */ React.createElement("span", null, nutriDiaSemana(d.date) + " · " + nutriDataCurta(d.date)), /* @__PURE__ */ React.createElement("span", { style: { color: "#64748b", fontWeight: 700 } }, d.pendente ? "não gerado" : nutriFmt(t.kcal) + " kcal · " + nutriFmt(t.prot) + " g prot.")), (d.refeicoes || []).map((p) => /* @__PURE__ */ React.createElement("div", { key: p.uid, style: { borderTop: "1px solid #f1f5f9", padding: "6px 0" } }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setAberto(aberto === p.uid ? null : p.uid), style: { width: "100%", textAlign: "left", background: "transparent", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", color: "#0f172a" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, fontWeight: 700 } }, nutriTipoNome(p.tipo) + ": " + p.nome), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11.5, color: "#64748b" } }, (p.equipamento || "") + " · " + p.minutos + " min · " + nutriFmt(p.kcal) + " kcal · " + nutriFmt(p.prot) + " g prot.")), aberto === p.uid && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#334155", marginTop: 6, lineHeight: 1.5 } }, (p.ingredientes || []).map((i, k) => /* @__PURE__ */ React.createElement("div", { key: k }, "• " + i.nome + " · " + cardQtd(i))), (p.passos || []).map((s, k) => /* @__PURE__ */ React.createElement("div", { key: "s" + k, style: { marginTop: k ? 2 : 6 } }, k + 1 + ". " + s))))));
+    }));
+  };
   const NutriCard = ({ children, style, onClick }) => /* @__PURE__ */ React.createElement("div", { onClick, style: { background: "#fff", borderRadius: 14, border: "1.5px solid #e2e8f0", boxShadow: "0 1px 6px #0001", padding: 18, cursor: onClick ? "pointer" : void 0, ...style || {} } }, children);
   const NutriPainel = ({ st, assessments }) => {
     const [carregando, setCarregando] = useState(true);
@@ -920,6 +1074,8 @@
     const [ckSemana, setCkSemana] = useState([]);
     const [atSemana, setAtSemana] = useState([]);
     const [planoAberto, setPlanoAberto] = useState(false);
+    const [cardapios, setCardapios] = useState(null);
+    const [cardAberto, setCardAberto] = useState(null);
     const hoje = nutriHoje();
     const inicio = nutriDiaMais(hoje, -6);
     useEffect(() => {
@@ -929,6 +1085,7 @@
         setAntroLista(al || []);
         setCkSemana(ck);
         setAtSemana(at);
+        cardapioApi.listar(st.id).then((l) => setCardapios(l));
         setFalhou(lista === null);
         setRefeicoes(lista || []);
         setMetas(m2 || {});
@@ -1035,7 +1192,10 @@
     })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, marginTop: 6 } }, dias.map((d) => /* @__PURE__ */ React.createElement("span", { key: d, style: { flex: 1, textAlign: "center", fontSize: 11, color: "#64748b" } }, nutriDiaSemana(d)))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 8 } }, "Hoje aparece mais claro porque o dia ainda não terminou.")), /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 15, marginBottom: 8 } }, "Últimos registros"), ultimos.length === 0 ? /* @__PURE__ */ React.createElement(NutriCard, { style: { textAlign: "center", padding: 24, color: "#94a3b8", fontSize: 13 } }, "Nenhuma refeição registrada nos últimos 7 dias.") : ultimos.map((r) => {
       const t = r.totais || {};
       const aberto = aberta === r.id;
-      return /* @__PURE__ */ React.createElement(NutriCard, { key: r.id, onClick: () => setAberta(aberto ? null : r.id), style: { padding: "12px 14px", marginBottom: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, fontSize: 14 } }, (r.date === hoje ? "Hoje" : nutriDiaSemana(r.date) + " " + nutriDataCurta(r.date)) + " · " + nutriTipoNome(r.tipo)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b" } }, "P " + nutriFmt(t.prot) + " · C " + nutriFmt(t.carb) + " · G " + nutriFmt(t.gord) + " · F " + nutriFmt(t.fibra) + " g · " + (r.origem === "foto" ? "por foto" : r.origem === "texto" ? "por descrição" : "manual"))), /* @__PURE__ */ React.createElement("span", { style: { fontWeight: 700, fontSize: 14, whiteSpace: "nowrap" } }, nutriFmt(t.kcal), " kcal")), aberto && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 10, borderTop: "1px solid #f1f5f9", paddingTop: 8 } }, (r.itens || []).map((i, idx) => /* @__PURE__ */ React.createElement("div", { key: idx, style: { display: "flex", justifyContent: "space-between", fontSize: 12, padding: "4px 0", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#334155" } }, i.nome, nutriNum(i.gramas) ? " (" + nutriFmt(i.gramas) + " g)" : ""), /* @__PURE__ */ React.createElement("span", { style: { color: "#64748b", whiteSpace: "nowrap" } }, nutriFmt(i.kcal), " kcal · P ", nutriFmt(i.prot))))));
+      return /* @__PURE__ */ React.createElement(NutriCard, { key: r.id, onClick: () => setAberta(aberto ? null : r.id), style: { padding: "12px 14px", marginBottom: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, fontSize: 14 } }, (r.date === hoje ? "Hoje" : nutriDiaSemana(r.date) + " " + nutriDataCurta(r.date)) + " · " + nutriTipoNome(r.tipo)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b" } }, "P " + nutriFmt(t.prot) + " · C " + nutriFmt(t.carb) + " · G " + nutriFmt(t.gord) + " · F " + nutriFmt(t.fibra) + " g · " + (r.origem === "foto" ? "por foto" : r.origem === "texto" ? "por descrição" : r.origem === "cardapio" ? "do cardápio" : "manual"))), /* @__PURE__ */ React.createElement("span", { style: { fontWeight: 700, fontSize: 14, whiteSpace: "nowrap" } }, nutriFmt(t.kcal), " kcal")), aberto && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 10, borderTop: "1px solid #f1f5f9", paddingTop: 8 } }, (r.itens || []).map((i, idx) => /* @__PURE__ */ React.createElement("div", { key: idx, style: { display: "flex", justifyContent: "space-between", fontSize: 12, padding: "4px 0", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#334155" } }, i.nome, nutriNum(i.gramas) ? " (" + nutriFmt(i.gramas) + " g)" : ""), /* @__PURE__ */ React.createElement("span", { style: { color: "#64748b", whiteSpace: "nowrap" } }, nutriFmt(i.kcal), " kcal · P ", nutriFmt(i.prot))))));
+    }), /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 15, margin: "16px 0 8px" } }, "Cardápios do aluno"), cardapios === null ? /* @__PURE__ */ React.createElement(NutriCard, { style: { padding: 12, color: "#94a3b8", fontSize: 13 } }, "Não consegui carregar os cardápios. Confira se o SQL dos cardápios foi rodado.") : cardapios.length === 0 ? /* @__PURE__ */ React.createElement(NutriCard, { style: { textAlign: "center", padding: 20, color: "#94a3b8", fontSize: 13 } }, "O aluno ainda não montou nenhum cardápio.") : cardapios.slice().sort((a, b) => (b.favorito ? 1 : 0) - (a.favorito ? 1 : 0)).map((c) => {
+      const aberto = cardAberto === c.id;
+      return /* @__PURE__ */ React.createElement(NutriCard, { key: c.id, style: { padding: "12px 14px", marginBottom: 8 } }, /* @__PURE__ */ React.createElement("div", { onClick: () => setCardAberto(aberto ? null : c.id), style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, cursor: "pointer" } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, fontSize: 14 } }, (c.favorito ? "♥ " : "") + cardapioTitulo(c)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b" } }, "gerado em " + nutriDataCurta(c.criadoEm) + " · " + (c.alvos || []).length + " refeição(ões) · " + nutriFmt(c.meta && c.meta.kcal) + " kcal/dia")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16, color: "#94a3b8" } }, aberto ? "▴" : "▾")), aberto && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 10, borderTop: "1px solid #f1f5f9", paddingTop: 10 } }, /* @__PURE__ */ React.createElement(CardapioVer, { c })));
     }));
   };
   window.LongevusAlimentacao = { Painel: NutriPainel };
