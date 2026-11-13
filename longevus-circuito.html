@@ -29,6 +29,11 @@ const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 
 const O = "#FF5603";
 const DIAS = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
+const NIVEIS = ["Básico","Básico a intermediário","Intermediário","Intermediário a avançado","Avançado"];
+function NivelBadge({ nivel, escuro }){
+  if(!nivel) return null;
+  return <span style={{ display:"inline-block", fontSize:12, fontWeight:700, color:escuro?"#86efac":"#15803d", background:escuro?"rgba(34,197,94,0.15)":"#dcfce7", padding:"4px 10px", borderRadius:20 }}>Nível {nivel.charAt(0).toLowerCase()+nivel.slice(1)}</span>;
+}
 const TIPOS = ["Funcional","Alongamento","Mobilidade","Cardio","Equilíbrio","Outro"];
 const FASES = {
   prep:      { label:"PREPARE-SE",            cor:"#2563eb" },
@@ -105,12 +110,13 @@ const DB = {
 function useColecao(table, lsKey){
   const [itens,setItens] = useState(()=>LS.get(lsKey,[]));
   const [online,setOnline] = useState(true);
+  const [pronto,setPronto] = useState(false);
   const persist = lista => { setItens(lista); LS.set(lsKey,lista); };
 
   useEffect(()=>{
     (async()=>{
       const remoto = await DB.list(table);
-      if(remoto===null){ setOnline(false); return; }
+      if(remoto===null){ setOnline(false); setPronto(true); return; }
       const local = LS.get(lsKey,[]);
       const pendDel = LS.get(lsKey+"_del",[]);
       for(const id of pendDel){ await DB.remove(table,id); }
@@ -122,6 +128,7 @@ function useColecao(table, lsKey){
         if(!r || (l.updatedAt||0) > (r.updatedAt||0)){ mapa[l.id]=l; await DB.save(table,l); }
       }
       persist(Object.values(mapa));
+      setPronto(true);
     })();
   },[]);
 
@@ -139,7 +146,7 @@ function useColecao(table, lsKey){
     const ok = await DB.remove(table,id);
     if(!ok){ LS.set(lsKey+"_del",[...LS.get(lsKey+"_del",[]),id]); setOnline(false); }
   };
-  return { itens, salvar, remover, online };
+  return { itens, salvar, remover, online, pronto };
 }
 
 /* ---------- Motor do circuito ---------- */
@@ -170,6 +177,48 @@ function montarFases(aula){
 }
 const fechaVolta = (a,p)=> !!a && (a.tipo==="exec"||a.tipo==="desc") && (!p || p.volta!==a.volta);
 const duracaoTotal = aula => montarFases(aula).reduce((a,f)=>a+f.dur,0);
+
+/* ---------- Biblioteca: aulas iniciais ---------- */
+const BIB_PARAMS = { sequencia:[{ t:"exec", s:40 }], troca:20, voltas:2, descansoVolta:120, preparacao:10 };
+const bibEst = lista => lista.map(x=>({ nome:x[0], obs:x[1] }));
+const BIB_SEED = [
+  { id:"bib_forca_equilibrio", biblioteca:true, turmaId:null, treino:null, nome:"Força e Equilíbrio", tipo:"Funcional", nivel:"Básico",
+    objetivo:"Desenvolver força muscular de membros superiores e inferiores, equilíbrio estático e dinâmico, estabilidade corporal e controle postural, contribuindo para a autonomia e segurança nas atividades da vida diária.",
+    estacoes:bibEst([
+      ["Sentar e levantar da cadeira","Cadeira; ajustar altura e permitir apoio das mãos quando necessário."],
+      ["Remada com elástico","Elástico; controlar a fase de retorno e manter estabilidade do tronco."],
+      ["Equilíbrio unipodal assistido","Cadeira ou apoio fixo; alternar os lados e priorizar segurança."],
+      ["Flexão de braços na parede","Parede; controlar amplitude e manter alinhamento corporal."],
+      ["Elevação de panturrilhas","Cadeira para apoio; executar movimento controlado."],
+      ["Desenvolvimento com halteres","Halteres leves; respeitar amplitude confortável dos ombros."],
+      ["Transferência lateral de peso","Apoio fixo; controlar deslocamento lateral do peso corporal."],
+      ["Ponte de quadril","Colchonete; oferecer alternativa em pé para participantes com dificuldade de deitar e levantar."]
+    ]), ...BIB_PARAMS, historico:[] },
+  { id:"bib_agilidade_coordenacao", biblioteca:true, turmaId:null, treino:null, nome:"Agilidade e Coordenação", tipo:"Funcional", nivel:"Intermediário",
+    objetivo:"Desenvolver agilidade, coordenação motora, mobilidade articular, equilíbrio dinâmico e capacidade de reação, estimulando o controle dos movimentos, a orientação espacial e a eficiência dos deslocamentos nas atividades da vida diária.",
+    estacoes:bibEst([
+      ["Caminhada em zigue-zague entre cones","Cones; realizar mudanças controladas de direção, evitando movimentos bruscos."],
+      ["Toque alternado nos alvos","Marcadores coloridos; tocar alvos posicionados à frente e nas laterais com os pés."],
+      ["Marcha com elevação alternada de joelhos","Sem material; coordenar braços e pernas, controlando ritmo e amplitude."],
+      ["Deslocamento lateral entre cones","Cones; manter estabilidade e evitar cruzar as pernas."],
+      ["Caminhada em linha com obstáculos baixos","Obstáculos baixos e estáveis; oferecer apoio próximo e trabalhar controle dos passos."],
+      ["Arremesso e recepção de bola","Bola leve; realizar lançamentos e recepções com parceiro, variando direções dentro de uma amplitude confortável."],
+      ["Sequência de passos sobre marcadores","Marcações no chão ou escada de agilidade; priorizar precisão antes da velocidade."],
+      ["Reação a comandos visuais","Cones coloridos; responder a comandos de cores ou direções, aumentando gradualmente a complexidade."]
+    ]), ...BIB_PARAMS, historico:[] },
+  { id:"bib_resistencia_condicionamento", biblioteca:true, turmaId:null, treino:null, nome:"Resistência e Condicionamento", tipo:"Funcional", nivel:"Intermediário",
+    objetivo:"Desenvolver resistência muscular localizada e capacidade cardiorrespiratória por meio de exercícios funcionais multiarticulares, estimulando a sustentação do esforço físico, a eficiência dos movimentos e a capacidade de realizar atividades cotidianas por períodos prolongados.",
+    estacoes:bibEst([
+      ["Caminhada com transporte de cargas","Halteres leves; caminhar mantendo postura ereta e carga compatível."],
+      ["Agachamento com halter","Halter; controlar amplitude, postura e alinhamento dos joelhos."],
+      ["Remada com elástico","Elástico; executar puxadas controladas, evitando compensações."],
+      ["Subida e descida no step","Step baixo; alternar membros inferiores e utilizar apoio quando necessário."],
+      ["Flexão de braços na parede","Parede; manter controle e alinhamento corporal."],
+      ["Marcha estacionária com braços ativos","Sem material; executar marcha contínua coordenando braços e pernas."],
+      ["Caminhada lateral com miniband","Miniband acima dos joelhos; manter leve flexão dos joelhos e passos controlados."],
+      ["Sequência de agachamento e elevação de braços","Sem material; realizar agachamento parcial seguido de elevação dos braços, respeitando a amplitude articular."]
+    ]), ...BIB_PARAMS, historico:[] }
+];
 
 /* ---------- Áudio ---------- */
 let AC = null;
@@ -285,18 +334,27 @@ function HoraCampo({ titulo, valor, onChange }){
 }
 
 /* ---------- Telas ---------- */
-function Home({ turmas, aulas, online, abrirTurma, novaTurma }){
+function Home({ turmas, aulas, online, abrirTurma, novaTurma, abrirBib }){
   const hoje = DIAS[hojeIdx()];
   const ordenadas = [...turmas].sort((a,b)=>{
     const ha=(a.dias||[]).indexOf(hoje)>=0?0:1, hb=(b.dias||[]).indexOf(hoje)>=0?0:1;
     if(ha!==hb) return ha-hb;
     return (a.horaInicio||"").localeCompare(b.horaInicio||"");
   });
-  const semTurma = aulas.filter(a=>!a.turmaId || !turmas.some(t=>t.id===a.turmaId));
+  const semTurma = aulas.filter(a=>!a.biblioteca && (!a.turmaId || !turmas.some(t=>t.id===a.turmaId)));
+  const nBib = aulas.filter(a=>a.biblioteca).length;
   return (
     <div>
       <Header titulo="Aulas em Circuito" sub={online?"Turmas e circuitos por estação":"Sem conexão · salvando no aparelho"} onBack={irParaApp}/>
       <div style={{ padding:16 }}>
+        <div onClick={abrirBib} style={{ ...sCard, cursor:"pointer", background:"#0f172a", color:"#fff", border:"none", display:"flex", alignItems:"center", gap:12 }}>
+          <div style={{ width:42, height:42, borderRadius:12, background:O, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>📚</div>
+          <div style={{ flex:1 }}>
+            <div style={{ fontWeight:800, fontSize:16 }}>Biblioteca de aulas</div>
+            <div style={{ fontSize:12, color:"#94a3b8", marginTop:2 }}>{nBib} {nBib===1?"aula pronta":"aulas prontas"} para usar em qualquer turma</div>
+          </div>
+          <div style={{ fontSize:20, color:"#94a3b8" }}>›</div>
+        </div>
         <Btn full onClick={novaTurma}>+ Nova turma</Btn>
         <div style={{ height:16 }}/>
         {ordenadas.length===0 && (
@@ -387,8 +445,9 @@ function EditarTurma({ turma, onSalvar, onExcluir, onVoltar }){
   );
 }
 
-function VerTurma({ turma, aulas, turmas, onVoltar, onEditarTurma, onNovaAula, onEditarAula, onIniciar, onCopiar }){
+function VerTurma({ turma, aulas, turmas, biblioteca, onVoltar, onEditarTurma, onNovaAula, onEditarAula, onIniciar, onCopiar, onUsarBib, onSalvarBib }){
   const [copiando,setCopiando] = useState(null);
+  const [slot,setSlot] = useState(undefined);
   const semana = letrasTurma(turma);
   const ativas = semana.map(x=>x.letra);
   const prox = proximoTreino(turma, aulas);
@@ -414,7 +473,7 @@ function VerTurma({ turma, aulas, turmas, onVoltar, onEditarTurma, onNovaAula, o
               const a = aulaDaLetra(aulas,turma.id,x.letra);
               const destaque = prox && prox.letra===x.letra;
               return (
-                <div key={x.letra} onClick={()=>a?onEditarAula(a.id):onNovaAula(x.letra)} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 0", borderTop:"1px solid #f1f5f9", cursor:"pointer" }}>
+                <div key={x.letra} onClick={()=>a?onEditarAula(a.id):setSlot(x.letra)} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 0", borderTop:"1px solid #f1f5f9", cursor:"pointer" }}>
                   <div style={{ width:34, height:34, borderRadius:10, background:destaque?O:"#0f172a", color:"#fff", fontWeight:900, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{x.letra}</div>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ fontSize:12, color:"#94a3b8", fontWeight:700 }}>{turma.modo==="sequencia"?"Treino "+x.letra:x.dia}</div>
@@ -426,39 +485,40 @@ function VerTurma({ turma, aulas, turmas, onVoltar, onEditarTurma, onNovaAula, o
             })}
           </div>
         )}
-        {turma && <Btn full variant={semana.length?"ghost":undefined} onClick={()=>onNovaAula(null)}>+ Montar aula</Btn>}
+        {turma && (
+          <div style={{ display:"flex", gap:8 }}>
+            <Btn variant={semana.length?"ghost":undefined} onClick={()=>onNovaAula(null)} style={{ flex:1 }}>+ Montar aula</Btn>
+            <Btn variant="ghost" onClick={()=>setSlot(null)} style={{ flex:1 }}>📚 Da biblioteca</Btn>
+          </div>
+        )}
         <div style={{ height:16 }}/>
         {aulas.length===0 && <div style={{ ...sCard, textAlign:"center", color:"#64748b", fontSize:14 }}>Nenhuma aula montada ainda.</div>}
-        {lista.map(a=>{
-          const ult = (a.historico||[])[0];
-          return (
-            <div key={a.id} style={sCard}>
-              <div style={{ display:"flex", justifyContent:"space-between", gap:8 }}>
-                <div>
-                  <div style={{ fontWeight:800, fontSize:16 }}>{a.nome}</div>
-                  <div style={{ fontSize:12, color:O, fontWeight:700, marginTop:2 }}>{ativas.indexOf(a.treino)>=0?"Treino "+a.treino+" · ":""}{a.tipo}</div>
-                </div>
-                <div style={{ textAlign:"right", fontSize:13, color:"#475569" }}>
-                  <div style={{ fontWeight:800, fontSize:16 }}>{fmt(duracaoTotal(a))}</div>
-                  <div style={{ fontSize:11, color:"#94a3b8" }}>duração</div>
-                </div>
-              </div>
-              <div style={{ fontSize:13, color:"#64748b", marginTop:8 }}>{(a.estacoes||[]).length} estações · {a.voltas} {a.voltas===1?"volta":"voltas"}</div>
-              {ult && <div style={{ fontSize:12, color:"#94a3b8", marginTop:4 }}>Última vez: {fmtData(ult.data)}</div>}
-              <div style={{ display:"flex", gap:8, marginTop:12 }}>
-                <Btn small onClick={()=>onIniciar(a.id)} style={{ flex:1 }}>▶ Iniciar</Btn>
-                <Btn small variant="ghost" onClick={()=>onEditarAula(a.id)}>Editar</Btn>
-                <Btn small variant="ghost" onClick={()=>setCopiando(a)}>Copiar</Btn>
-              </div>
-            </div>
-          );
-        })}
+        {lista.map(a=>(
+          <CardAula key={a.id} a={a} rotulo={ativas.indexOf(a.treino)>=0?"Treino "+a.treino+" · ":""}>
+            <Btn small onClick={()=>onIniciar(a.id)} style={{ flex:1 }}>▶ Iniciar</Btn>
+            <Btn small variant="ghost" onClick={()=>onEditarAula(a.id)}>Editar</Btn>
+            <Btn small variant="ghost" onClick={()=>setCopiando(a)}>Copiar</Btn>
+          </CardAula>
+        ))}
       </div>
+      {slot!==undefined && (
+        <Folha titulo={slot?"Treino "+slot:"Adicionar da biblioteca"} sub={slot?"Monte do zero ou use uma aula da biblioteca.":"A turma recebe uma cópia da aula escolhida."} onFechar={()=>setSlot(undefined)}>
+          {slot && <div onClick={()=>{ const l=slot; setSlot(undefined); onNovaAula(l); }} style={{ ...sLinha, fontWeight:800, color:O }}>+ Montar do zero</div>}
+          {biblioteca.length===0 && <div style={{ fontSize:14, color:"#64748b", padding:"10px 0" }}>Biblioteca vazia.</div>}
+          {biblioteca.map(b=>(
+            <div key={b.id} onClick={()=>{ onUsarBib(b,slot||null); setSlot(undefined); }} style={sLinha}>
+              <div style={{ fontWeight:700 }}>{b.nome}</div>
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:4 }}><NivelBadge nivel={b.nivel}/><span style={{ fontSize:12, color:"#94a3b8" }}>{(b.estacoes||[]).length} estações · {fmt(duracaoTotal(b))}</span></div>
+            </div>
+          ))}
+        </Folha>
+      )}
       {copiando && (
         <div onClick={()=>setCopiando(null)} style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.5)", zIndex:20, display:"flex", alignItems:"flex-end" }}>
           <div onClick={e=>e.stopPropagation()} style={{ background:"#fff", width:"100%", borderRadius:"18px 18px 0 0", padding:16, maxHeight:"70vh", overflowY:"auto" }}>
             <div style={{ fontWeight:800, fontSize:16, marginBottom:4 }}>Copiar "{copiando.nome}"</div>
-            <div style={{ fontSize:13, color:"#64748b", marginBottom:12 }}>Escolha a turma que vai receber uma cópia.</div>
+            <div style={{ fontSize:13, color:"#64748b", marginBottom:12 }}>Escolha para onde vai a cópia.</div>
+            <div onClick={()=>{ onSalvarBib(copiando); setCopiando(null); }} style={{ padding:"12px 10px", borderBottom:"1px solid #f1f5f9", cursor:"pointer", fontWeight:800, color:O }}>📚 Biblioteca de aulas</div>
             {turmas.map(t=>(
               <div key={t.id} onClick={()=>{ onCopiar(copiando,t.id); setCopiando(null); }} style={{ padding:"12px 10px", borderBottom:"1px solid #f1f5f9", cursor:"pointer", fontWeight:600 }}>
                 {t.nome}{t.id===copiando.turmaId?" (esta turma)":""}
@@ -466,6 +526,87 @@ function VerTurma({ turma, aulas, turmas, onVoltar, onEditarTurma, onNovaAula, o
             ))}
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function CardAula({ a, rotulo, children }){
+  const ult = (a.historico||[])[0];
+  return (
+    <div style={sCard}>
+      <div style={{ display:"flex", justifyContent:"space-between", gap:8 }}>
+        <div>
+          <div style={{ fontWeight:800, fontSize:16 }}>{a.nome}</div>
+          <div style={{ fontSize:12, color:O, fontWeight:700, marginTop:2 }}>{rotulo||""}{a.tipo}</div>
+          {a.nivel && <div style={{ marginTop:6 }}><NivelBadge nivel={a.nivel}/></div>}
+        </div>
+        <div style={{ textAlign:"right", fontSize:13, color:"#475569" }}>
+          <div style={{ fontWeight:800, fontSize:16 }}>{fmt(duracaoTotal(a))}</div>
+          <div style={{ fontSize:11, color:"#94a3b8" }}>duração</div>
+        </div>
+      </div>
+      {a.objetivo && <div style={{ fontSize:13, color:"#334155", marginTop:8, lineHeight:1.45 }}><b>Objetivo:</b> {a.objetivo}</div>}
+      <div style={{ fontSize:13, color:"#64748b", marginTop:8 }}>{(a.estacoes||[]).length} estações · {a.voltas} {a.voltas===1?"volta":"voltas"}</div>
+      {ult && <div style={{ fontSize:12, color:"#94a3b8", marginTop:4 }}>Última vez: {fmtData(ult.data)}</div>}
+      <div style={{ display:"flex", gap:8, marginTop:12 }}>{children}</div>
+    </div>
+  );
+}
+
+function Folha({ titulo, sub, onFechar, children }){
+  return (
+    <div onClick={onFechar} style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.5)", zIndex:20, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:"#fff", width:"100%", maxWidth:520, borderRadius:"18px 18px 0 0", padding:16, maxHeight:"75vh", overflowY:"auto" }}>
+        <div style={{ fontWeight:800, fontSize:16, marginBottom:4 }}>{titulo}</div>
+        {sub && <div style={{ fontSize:13, color:"#64748b", marginBottom:12 }}>{sub}</div>}
+        {children}
+      </div>
+    </div>
+  );
+}
+const sLinha = { padding:"12px 10px", borderBottom:"1px solid #f1f5f9", cursor:"pointer" };
+
+function Biblioteca({ aulas, turmas, onVoltar, onNova, onEditar, onIniciar, onUsar }){
+  const [usando,setUsando] = useState(null);
+  const [busca,setBusca] = useState("");
+  const norm = x => (x||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  const lista = aulas.filter(a=>!busca || norm(a.nome+" "+a.objetivo+" "+a.nivel+" "+a.tipo).indexOf(norm(busca))>=0).sort((a,b)=>(a.nome||"").localeCompare(b.nome||""));
+  return (
+    <div>
+      <Header titulo="Biblioteca de aulas" sub="Modelos para usar em qualquer turma" onBack={onVoltar}/>
+      <div style={{ padding:16 }}>
+        <Btn full onClick={onNova}>+ Nova aula na biblioteca</Btn>
+        <div style={{ height:12 }}/>
+        <input style={sInput} value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar por nome, objetivo ou nível"/>
+        <div style={{ height:14 }}/>
+        {lista.length===0 && <div style={{ ...sCard, textAlign:"center", color:"#64748b", fontSize:14 }}>Nenhuma aula encontrada.</div>}
+        {lista.map(a=>(
+          <CardAula key={a.id} a={a}>
+            <Btn small onClick={()=>setUsando(a)} style={{ flex:1 }}>Usar na turma</Btn>
+            <Btn small variant="ghost" onClick={()=>onIniciar(a.id)}>▶</Btn>
+            <Btn small variant="ghost" onClick={()=>onEditar(a.id)}>Editar</Btn>
+          </CardAula>
+        ))}
+      </div>
+      {usando && (
+        <Folha titulo={"Usar \""+usando.nome+"\""} sub="A turma recebe uma cópia. O modelo da biblioteca continua igual." onFechar={()=>setUsando(null)}>
+          {turmas.length===0 && <div style={{ fontSize:14, color:"#64748b", padding:"8px 0" }}>Crie uma turma primeiro.</div>}
+          {turmas.map(t=>{
+            const sem = letrasTurma(t);
+            return (
+              <div key={t.id} style={{ ...sLinha, cursor:"default" }}>
+                <div style={{ fontWeight:700, marginBottom:8 }}>{t.nome}</div>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                  {sem.map(x=>(
+                    <button key={x.letra} onClick={()=>{ onUsar(usando,t.id,x.letra); setUsando(null); }} style={{ padding:"7px 12px", borderRadius:20, fontSize:13, fontWeight:800, cursor:"pointer", border:"1.5px solid #e2e8f0", background:"#fff", color:"#334155" }}>Treino {x.letra}{t.modo==="sequencia"?"":" · "+x.dia}</button>
+                  ))}
+                  <button onClick={()=>{ onUsar(usando,t.id,null); setUsando(null); }} style={{ padding:"7px 12px", borderRadius:20, fontSize:13, fontWeight:700, cursor:"pointer", border:"1.5px solid #e2e8f0", background:"#fff", color:"#64748b" }}>Avulsa</button>
+                </div>
+              </div>
+            );
+          })}
+        </Folha>
       )}
     </div>
   );
@@ -533,13 +674,13 @@ function SeletorExercicio({ onEscolher, onFechar }){
 
 /* ---------- Montar aula ---------- */
 const AULA_NOVA = (turmaId,treino) => ({
-  id:uid(), turmaId, treino:treino||null, nome:"", tipo:"Funcional",
+  id:uid(), turmaId, treino:treino||null, nome:"", objetivo:"", nivel:"Básico", tipo:"Funcional",
   estacoes:[{ nome:"", obs:"" },{ nome:"", obs:"" },{ nome:"", obs:"" },{ nome:"", obs:"" }],
   sequencia:[{ t:"exec", s:30 }], troca:30, voltas:2, descansoVolta:60, preparacao:10, historico:[]
 });
 
-function EditarAula({ aula, turmaId, turma, treino, aulas, onSalvar, onExcluir, onVoltar, onIniciar }){
-  const [f,setF] = useState(()=>aula?JSON.parse(JSON.stringify(aula)):AULA_NOVA(turmaId,treino));
+function EditarAula({ aula, turmaId, turma, treino, aulas, biblioteca, onSalvar, onExcluir, onVoltar, onIniciar }){
+  const [f,setF] = useState(()=>aula?JSON.parse(JSON.stringify(aula)):(biblioteca?{ ...AULA_NOVA(null,null), biblioteca:true }:AULA_NOVA(turmaId,treino)));
   const semana = letrasTurma(turma);
   const [picker,setPicker] = useState(null);
   const set = (k,v)=>setF(x=>({ ...x, [k]:v }));
@@ -554,11 +695,22 @@ function EditarAula({ aula, turmaId, turma, treino, aulas, onSalvar, onExcluir, 
 
   return (
     <div style={{ paddingBottom:110 }}>
-      <Header titulo={aula?"Editar aula":"Montar aula"} onBack={onVoltar}/>
+      <Header titulo={aula?"Editar aula":"Montar aula"} sub={f.biblioteca?"Biblioteca de aulas":(turma?turma.nome:"")} onBack={onVoltar}/>
       <div style={{ padding:16 }}>
         <div style={sCard}>
           <label style={sLabel}>Nome da aula</label>
           <input style={sInput} value={f.nome} onChange={e=>set("nome",e.target.value)} placeholder="Ex.: Circuito Força e Equilíbrio"/>
+          <div style={{ height:14 }}/>
+          <label style={sLabel}>Objetivo da aula</label>
+          <textarea rows={3} style={{ ...sInput, resize:"vertical", lineHeight:1.45 }} value={f.objetivo||""} onChange={e=>set("objetivo",e.target.value)} placeholder="Ex.: desenvolver força de membros superiores e inferiores, equilíbrio e controle postural, priorizando a autonomia nas atividades diárias."/>
+          <div style={{ height:14 }}/>
+          <label style={sLabel}>Nível</label>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+            {NIVEIS.map(n=>{
+              const on = f.nivel===n;
+              return <button key={n} onClick={()=>set("nivel",on?"":n)} style={{ padding:"7px 12px", borderRadius:20, fontSize:13, fontWeight:700, cursor:"pointer", border:"1.5px solid "+(on?"#16a34a":"#e2e8f0"), background:on?"#dcfce7":"#fff", color:on?"#15803d":"#475569" }}>{n}</button>;
+            })}
+          </div>
           <div style={{ height:14 }}/>
           <label style={sLabel}>Tipo</label>
           <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
@@ -757,6 +909,12 @@ function ModoAula({ aula, onSair, onRegistrar }){
       <div style={{ minHeight:"100vh", background:"#0f172a", color:"#fff" }}>
         <Header titulo={(aula.treino?"Treino "+aula.treino+" · ":"")+aula.nome} sub={n+" estações · "+voltas+(voltas===1?" volta":" voltas")+" · "+fmtLongo(fases.reduce((a,f)=>a+f.dur,0))} onBack={onSair}/>
         <div style={{ padding:16 }}>
+          {(aula.nivel||aula.objetivo) && (
+            <div style={{ background:"rgba(255,255,255,0.06)", borderRadius:12, padding:12, marginBottom:16 }}>
+              <NivelBadge nivel={aula.nivel} escuro/>
+              {aula.objetivo && <div style={{ fontSize:14, lineHeight:1.5, marginTop:aula.nivel?10:0, color:"#e2e8f0" }}><b style={{ color:"#fff" }}>Objetivo da aula:</b> {aula.objetivo}</div>}
+            </div>
+          )}
           <div style={{ fontSize:12, color:"#94a3b8", fontWeight:700, letterSpacing:0.5, marginBottom:8 }}>POSICIONE UM ALUNO EM CADA ESTAÇÃO</div>
           {aula.estacoes.map((e,i)=>(
             <div key={i} style={{ display:"flex", alignItems:"center", gap:10, background:"rgba(255,255,255,0.06)", borderRadius:12, padding:10, marginBottom:8 }}>
@@ -887,16 +1045,49 @@ function Main(){
 
   const turma = id => T.itens.find(t=>t.id===id);
   const aula = id => A.itens.find(a=>a.id===id);
-  const aulasDa = tid => A.itens.filter(a=> tid==="__sem" ? (!a.turmaId || !turma(a.turmaId)) : a.turmaId===tid).sort((a,b)=>(a.nome||"").localeCompare(b.nome||""));
+  const aulasDa = tid => A.itens.filter(a=> !a.biblioteca && (tid==="__sem" ? (!a.turmaId || !turma(a.turmaId)) : a.turmaId===tid)).sort((a,b)=>(a.nome||"").localeCompare(b.nome||""));
+  const bib = A.itens.filter(a=>a.biblioteca).sort((a,b)=>(a.nome||"").localeCompare(b.nome||""));
+  const clone = a => JSON.parse(JSON.stringify(a));
 
-  if(view.tela==="home") return <Home turmas={T.itens} aulas={A.itens} online={T.online&&A.online} abrirTurma={id=>ir({ tela:"turma", id })} novaTurma={()=>ir({ tela:"editTurma" })}/>;
+  useEffect(()=>{
+    if(!A.pronto) return;
+    const feitos = LS.get("circuito_seed_v1",[]);
+    (async()=>{
+      for(const b of BIB_SEED){
+        if(feitos.indexOf(b.id)>=0) continue;
+        if(!A.itens.some(x=>x.id===b.id)) await A.salvar(clone(b));
+        feitos.push(b.id);
+      }
+      LS.set("circuito_seed_v1",feitos);
+    })();
+  },[A.pronto]);
+
+  const liberarLetra = async (tid,letra,exceto) => {
+    if(!letra) return;
+    for(const o of LS.get("circuito_aulas",[]).filter(x=>!x.biblioteca && x.turmaId===tid && x.treino===letra && x.id!==exceto)) await A.salvar({ ...o, treino:null });
+  };
+  const usarBib = async (b,tid,letra) => {
+    await liberarLetra(tid,letra,null);
+    await A.salvar({ ...clone(b), id:uid(), biblioteca:false, origemId:b.id, turmaId:tid, treino:letra||null, historico:[] });
+  };
+
+  if(view.tela==="home") return <Home turmas={T.itens} aulas={A.itens} online={T.online&&A.online} abrirTurma={id=>ir({ tela:"turma", id })} novaTurma={()=>ir({ tela:"editTurma" })} abrirBib={()=>ir({ tela:"bib" })}/>;
+
+  if(view.tela==="bib") return <Biblioteca aulas={bib} turmas={T.itens}
+    onVoltar={()=>ir({ tela:"home" })}
+    onNova={()=>ir({ tela:"editAula", bib:true })}
+    onEditar={id=>ir({ tela:"editAula", id, bib:true })}
+    onIniciar={id=>ir({ tela:"run", id, bib:true })}
+    onUsar={async (b,tid,letra)=>{ await usarBib(b,tid,letra); ir({ tela:"turma", id:tid }); }}/>;
 
   if(view.tela==="editTurma") return <EditarTurma turma={view.id?turma(view.id):null}
     onVoltar={()=>ir(view.id?{ tela:"turma", id:view.id }:{ tela:"home" })}
     onSalvar={async t=>{ const o=await T.salvar(t); ir({ tela:"turma", id:o.id }); }}
     onExcluir={async id=>{ await T.remover(id); ir({ tela:"home" }); }}/>;
 
-  if(view.tela==="turma") return <VerTurma turma={view.id==="__sem"?null:turma(view.id)} aulas={aulasDa(view.id)} turmas={T.itens}
+  if(view.tela==="turma") return <VerTurma turma={view.id==="__sem"?null:turma(view.id)} aulas={aulasDa(view.id)} turmas={T.itens} biblioteca={bib}
+    onUsarBib={(b,letra)=>usarBib(b,view.id,letra)}
+    onSalvarBib={async a=>{ await A.salvar({ ...clone(a), id:uid(), biblioteca:true, turmaId:null, treino:null, historico:[] }); }}
     onVoltar={()=>ir({ tela:"home" })}
     onEditarTurma={()=>ir({ tela:"editTurma", id:view.id })}
     onNovaAula={l=>ir({ tela:"editAula", turmaId:view.id, treino:l||null })}
@@ -904,16 +1095,19 @@ function Main(){
     onIniciar={id=>ir({ tela:"run", id, turmaId:view.id })}
     onCopiar={async (a,tid)=>{ const livre = a.treino && !aulaDaLetra(A.itens,tid,a.treino) && letrasTurma(turma(tid)).some(x=>x.letra===a.treino); await A.salvar({ ...JSON.parse(JSON.stringify(a)), id:uid(), turmaId:tid, treino:livre?a.treino:null, nome:a.nome+(tid===a.turmaId?" (cópia)":""), historico:[] }); }}/>;
 
-  if(view.tela==="editAula") return <EditarAula aula={view.id?aula(view.id):null} turmaId={view.turmaId} turma={turma(view.turmaId)} treino={view.treino} aulas={A.itens}
-    onVoltar={()=>ir({ tela:"turma", id:view.turmaId })}
-    onSalvar={async a=>{ if(a.treino){ for(const o of A.itens.filter(x=>x.turmaId===a.turmaId && x.treino===a.treino && x.id!==a.id)) await A.salvar({ ...o, treino:null }); } return A.salvar(a); }}
-    onIniciar={id=>ir({ tela:"run", id, turmaId:view.turmaId })}
-    onExcluir={async id=>{ await A.remover(id); ir({ tela:"turma", id:view.turmaId }); }}/>;
+  if(view.tela==="editAula"){
+    const volta = view.bib ? { tela:"bib" } : { tela:"turma", id:view.turmaId };
+    return <EditarAula aula={view.id?aula(view.id):null} biblioteca={!!view.bib} turmaId={view.turmaId} turma={view.bib?null:turma(view.turmaId)} treino={view.treino} aulas={A.itens}
+    onVoltar={()=>ir(volta)}
+    onSalvar={async a=>{ if(!a.biblioteca) await liberarLetra(a.turmaId,a.treino,a.id); return A.salvar(a); }}
+    onIniciar={id=>ir({ tela:"run", id, turmaId:view.turmaId, bib:view.bib })}
+    onExcluir={async id=>{ await A.remover(id); ir(volta); }}/>;
+  }
 
   if(view.tela==="run"){
     const a = aula(view.id);
     if(!a) return null;
-    return <ModoAula aula={a} onSair={()=>ir({ tela:"turma", id:view.turmaId })}
+    return <ModoAula aula={a} onSair={()=>ir(view.bib?{ tela:"bib" }:{ tela:"turma", id:view.turmaId })}
       onRegistrar={reg=>{ const atual=aula(view.id)||a; A.salvar({ ...atual, historico:[reg,...(atual.historico||[])].slice(0,30) }); }}/>;
   }
   return null;
@@ -953,7 +1147,7 @@ class ErrorBoundary extends React.Component{
 }
 
 const css = document.createElement("style");
-css.textContent = "*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;color:#0f172a;}input,select,textarea,button{font-family:inherit;}input:focus{outline:none;border-color:#FF5603!important;}";
+css.textContent = "*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;color:#0f172a;}input,select,textarea,button{font-family:inherit;}input:focus,textarea:focus{outline:none;border-color:#FF5603!important;}";
 document.head.appendChild(css);
 ReactDOM.createRoot(document.getElementById("root")).render(<ErrorBoundary><App/></ErrorBoundary>);
 </script>
