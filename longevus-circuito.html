@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#0f172a"/>
+<title>Longevus · Aulas em Circuito</title>
+<script>
+window.addEventListener('error', function(e){
+  var el = document.getElementById('root');
+  var msg = 'ERRO JS\n\n' + (e.message||'') + '\nLinha: ' + (e.lineno||'') + ' Coluna: ' + (e.colno||'') + '\n\n' + (e.error && e.error.stack ? e.error.stack : '');
+  if (el) el.innerHTML = '<pre style="padding:16px;font-family:monospace;color:#b91c1c;white-space:pre-wrap;font-size:12px;background:#fef2f2;margin:0;min-height:100vh;">' + msg.replace(/</g,'&lt;') + '</pre>';
+});
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<script type="text/babel">
+const { useState, useEffect, useRef, useMemo } = React;
+
+const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
+const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
+const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+
+const O = "#FF5603";
+const DIAS = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
+const TIPOS = ["Funcional","Alongamento","Mobilidade","Cardio","Equilíbrio","Outro"];
+const FASES = {
+  prep:      { label:"PREPARE-SE",            cor:"#2563eb" },
+  exec:      { label:"EXECUTE",               cor:"#16a34a" },
+  desc:      { label:"DESCANSE",              cor:"#FF5603" },
+  troca:     { label:"TROQUE DE ESTAÇÃO",     cor:"#0891b2" },
+  voltaRest: { label:"DESCANSO ENTRE VOLTAS", cor:"#7c3aed" }
+};
+
+const LS = {
+  get:(k,d)=>{ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch(e){ return d; } },
+  set:(k,v)=>{ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+};
+const uid = ()=> "c"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const pad = n => (n<10?"0":"")+n;
+const fmt = s => { s=Math.max(0,Math.round(s||0)); return Math.floor(s/60)+":"+pad(s%60); };
+const fmtLongo = s => { s=Math.round(s||0); const m=Math.floor(s/60); const r=s%60; if(m===0) return r+"s"; return r===0? m+" min" : m+" min "+r+"s"; };
+const fmtData = iso => { try{ const d=new Date(iso); return pad(d.getDate())+"/"+pad(d.getMonth()+1)+"/"+d.getFullYear()+" às "+pad(d.getHours())+":"+pad(d.getMinutes()); }catch(e){ return ""; } };
+const hojeIdx = ()=> { const d=new Date().getDay(); return d===0?6:d-1; };
+
+async function authHeaders(){
+  const { data } = await supa.auth.getSession();
+  const token = data?.session?.access_token || SUPA_KEY;
+  return { "apikey":SUPA_KEY, "Authorization":"Bearer "+token, "Content-Type":"application/json" };
+}
+
+const DB = {
+  async list(table){
+    try{
+      const h = await authHeaders();
+      const r = await fetch(SUPA_URL+"/rest/v1/"+table+"?select=id,data,updated_at", { headers:h });
+      if(!r.ok) return null;
+      const rows = await r.json();
+      return rows.map(x=>x.data);
+    }catch(e){ return null; }
+  },
+  async save(table,obj){
+    try{
+      const h = { ...(await authHeaders()), "Prefer":"resolution=merge-duplicates" };
+      const { data:sess } = await supa.auth.getSession();
+      const body = { id:obj.id, owner_id:sess?.session?.user?.id, data:obj, updated_at:new Date().toISOString() };
+      const r = await fetch(SUPA_URL+"/rest/v1/"+table, { method:"POST", headers:h, body:JSON.stringify(body) });
+      return r.ok;
+    }catch(e){ return false; }
+  },
+  async remove(table,id){
+    try{
+      const h = await authHeaders();
+      const r = await fetch(SUPA_URL+"/rest/v1/"+table+"?id=eq."+encodeURIComponent(id), { method:"DELETE", headers:h });
+      return r.ok;
+    }catch(e){ return false; }
+  }
+};
+
+/* ---------- Store com cache local + sincronização ---------- */
+function useColecao(table, lsKey){
+  const [itens,setItens] = useState(()=>LS.get(lsKey,[]));
+  const [online,setOnline] = useState(true);
+  const persist = lista => { setItens(lista); LS.set(lsKey,lista); };
+
+  useEffect(()=>{
+    (async()=>{
+      const remoto = await DB.list(table);
+      if(remoto===null){ setOnline(false); return; }
+      const local = LS.get(lsKey,[]);
+      const pendDel = LS.get(lsKey+"_del",[]);
+      for(const id of pendDel){ await DB.remove(table,id); }
+      LS.set(lsKey+"_del",[]);
+      const mapa = {};
+      remoto.forEach(x=>{ if(x&&x.id&&pendDel.indexOf(x.id)<0) mapa[x.id]=x; });
+      for(const l of local){
+        const r = mapa[l.id];
+        if(!r || (l.updatedAt||0) > (r.updatedAt||0)){ mapa[l.id]=l; await DB.save(table,l); }
+      }
+      persist(Object.values(mapa));
+    })();
+  },[]);
+
+  const salvar = async obj => {
+    const o = { ...obj, updatedAt:Date.now() };
+    const atual = LS.get(lsKey,[]);
+    const lista = atual.some(x=>x.id===o.id) ? atual.map(x=>x.id===o.id?o:x) : [...atual,o];
+    persist(lista);
+    const ok = await DB.save(table,o);
+    setOnline(ok);
+    return o;
+  };
+  const remover = async id => {
+    persist(LS.get(lsKey,[]).filter(x=>x.id!==id));
+    const ok = await DB.remove(table,id);
+    if(!ok){ LS.set(lsKey+"_del",[...LS.get(lsKey+"_del",[]),id]); setOnline(false); }
+  };
+  return { itens, salvar, remover, online };
+}
+
+/* ---------- Motor do circuito ---------- */
+function montarFases(aula){
+  const F = [];
+  const est = aula.estacoes||[];
+  const n = est.length;
+  const seq = (aula.sequencia||[]).filter(s=>s.s>0);
+  if(!n || !seq.length) return F;
+  const voltas = Math.max(1,aula.voltas||1);
+  if(aula.preparacao>0) F.push({ tipo:"prep", dur:aula.preparacao, volta:1, rot:1, serie:0 });
+  const nSeries = seq.filter(s=>s.t==="exec").length;
+  for(let v=1; v<=voltas; v++){
+    for(let r=1; r<=n; r++){
+      let serie=0;
+      seq.forEach(s=>{
+        if(s.t==="exec") serie++;
+        F.push({ tipo:s.t, dur:s.s, volta:v, rot:r, serie:serie, nSeries:nSeries });
+      });
+      const ultimaRot = r===n, ultimaVolta = v===voltas;
+      if(ultimaRot && ultimaVolta) break;
+      if(ultimaRot && aula.descansoVolta>0) F.push({ tipo:"voltaRest", dur:aula.descansoVolta, volta:v+1, rot:1, serie:0 });
+      else if(aula.troca>0) F.push({ tipo:"troca", dur:aula.troca, volta:ultimaRot?v+1:v, rot:ultimaRot?1:r+1, serie:0 });
+    }
+  }
+  while(F.length && F[F.length-1].tipo==="desc") F.pop();
+  return F;
+}
+const fechaVolta = (a,p)=> !!a && (a.tipo==="exec"||a.tipo==="desc") && (!p || p.volta!==a.volta);
+const duracaoTotal = aula => montarFases(aula).reduce((a,f)=>a+f.dur,0);
+
+/* ---------- Áudio ---------- */
+let AC = null;
+function audioInit(){
+  try{
+    if(!AC){ const C = window.AudioContext||window.webkitAudioContext; AC = new C(); }
+    if(AC.state==="suspended") AC.resume();
+  }catch(e){}
+}
+function bip(freq,dur,vol){
+  if(!AC) return;
+  try{
+    const o=AC.createOscillator(), g=AC.createGain();
+    o.type="square"; o.frequency.value=freq;
+    const t=AC.currentTime;
+    g.gain.setValueAtTime(vol||0.25,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(AC.destination);
+    o.start(t); o.stop(t+dur+0.02);
+  }catch(e){}
+}
+const somContagem = ()=>{ bip(880,0.14,0.22); try{navigator.vibrate&&navigator.vibrate(60);}catch(e){} };
+const somInicio = tipo => {
+  if(tipo==="exec"){ bip(1320,0.55,0.3); try{navigator.vibrate&&navigator.vibrate([200,80,200]);}catch(e){} }
+  else { bip(600,0.6,0.28); try{navigator.vibrate&&navigator.vibrate(350);}catch(e){} }
+};
+const somFim = ()=>{ bip(1320,0.25,0.3); setTimeout(()=>bip(1320,0.25,0.3),320); setTimeout(()=>bip(1760,0.7,0.3),640); };
+
+/* ---------- UI base ---------- */
+const sCard = { background:"#fff", borderRadius:14, border:"1px solid #e2e8f0", padding:16, marginBottom:12 };
+const sInput = { width:"100%", padding:"11px 12px", borderRadius:10, border:"1.5px solid #e2e8f0", fontSize:15, background:"#fff", color:"#0f172a" };
+const sLabel = { fontSize:12, fontWeight:700, color:"#64748b", marginBottom:6, display:"block", textTransform:"uppercase", letterSpacing:0.4 };
+
+function Btn({ children, onClick, variant, full, small, disabled, style }){
+  const base = { border:"none", borderRadius:10, fontWeight:700, cursor:disabled?"default":"pointer", fontSize:small?13:15, padding:small?"8px 12px":"12px 16px", width:full?"100%":"auto", opacity:disabled?0.5:1 };
+  const v = variant==="ghost" ? { background:"#f1f5f9", color:"#0f172a" }
+          : variant==="danger" ? { background:"#fef2f2", color:"#dc2626" }
+          : variant==="dark" ? { background:"#0f172a", color:"#fff" }
+          : { background:O, color:"#fff" };
+  return <button disabled={disabled} onClick={onClick} style={{ ...base, ...v, ...(style||{}) }}>{children}</button>;
+}
+
+function Header({ titulo, sub, onBack, direita }){
+  return (
+    <div style={{ position:"sticky", top:0, zIndex:5, background:"#0f172a", color:"#fff", padding:"14px 16px", display:"flex", alignItems:"center", gap:12 }}>
+      <button onClick={onBack} style={{ background:"rgba(255,255,255,0.1)", border:"none", color:"#fff", width:36, height:36, borderRadius:10, fontSize:18, cursor:"pointer" }}>‹</button>
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ fontWeight:800, fontSize:17, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{titulo}</div>
+        {sub && <div style={{ fontSize:12, color:"#94a3b8", marginTop:2 }}>{sub}</div>}
+      </div>
+      {direita}
+    </div>
+  );
+}
+
+function TempoCampo({ valor, onChange, presets, min }){
+  const m = min==null?0:min;
+  const passo = valor>=120?15:5;
+  return (
+    <div>
+      <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+        <button onClick={()=>onChange(Math.max(m,valor-passo))} style={{ width:42, height:42, borderRadius:10, border:"1.5px solid #e2e8f0", background:"#fff", fontSize:20, fontWeight:700, cursor:"pointer" }}>−</button>
+        <div style={{ flex:1, textAlign:"center", fontSize:22, fontWeight:800, fontVariantNumeric:"tabular-nums" }}>{valor===0?"Sem":fmt(valor)}</div>
+        <button onClick={()=>onChange(valor+passo)} style={{ width:42, height:42, borderRadius:10, border:"1.5px solid #e2e8f0", background:"#fff", fontSize:20, fontWeight:700, cursor:"pointer" }}>+</button>
+      </div>
+      {presets && (
+        <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:8 }}>
+          {presets.map(p=>(
+            <button key={p} onClick={()=>onChange(p)} style={{ padding:"5px 10px", borderRadius:20, fontSize:12, fontWeight:700, cursor:"pointer", border:"1.5px solid "+(valor===p?O:"#e2e8f0"), background:valor===p?"#fff4ee":"#fff", color:valor===p?O:"#475569" }}>{p===0?"Sem":fmt(p)}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------- Telas ---------- */
+function Home({ turmas, aulas, online, abrirTurma, novaTurma }){
+  const hoje = DIAS[hojeIdx()];
+  const ordenadas = [...turmas].sort((a,b)=>{
+    const ha=(a.dias||[]).indexOf(hoje)>=0?0:1, hb=(b.dias||[]).indexOf(hoje)>=0?0:1;
+    if(ha!==hb) return ha-hb;
+    return (a.horaInicio||"").localeCompare(b.horaInicio||"");
+  });
+  const semTurma = aulas.filter(a=>!a.turmaId || !turmas.some(t=>t.id===a.turmaId));
+  return (
+    <div>
+      <Header titulo="Aulas em Circuito" sub={online?"Turmas e circuitos por estação":"Sem conexão · salvando no aparelho"} onBack={irParaApp}/>
+      <div style={{ padding:16 }}>
+        <Btn full onClick={novaTurma}>+ Nova turma</Btn>
+        <div style={{ height:16 }}/>
+        {ordenadas.length===0 && (
+          <div style={{ ...sCard, textAlign:"center", color:"#64748b", fontSize:14, lineHeight:1.5 }}>
+            Crie uma turma para cada grupo que você atende. Exemplo: <b>Condomínio Jardins · Ter e Qui · 7h às 8h</b>. Dentro dela você monta as aulas em circuito.
+          </div>
+        )}
+        {ordenadas.map(t=>{
+          const qtd = aulas.filter(a=>a.turmaId===t.id).length;
+          const ehHoje = (t.dias||[]).indexOf(hoje)>=0;
+          return (
+            <div key={t.id} onClick={()=>abrirTurma(t.id)} style={{ ...sCard, cursor:"pointer", borderLeft:"4px solid "+(ehHoje?O:"#cbd5e1") }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:8 }}>
+                <div style={{ fontWeight:800, fontSize:16 }}>{t.nome}</div>
+                {ehHoje && <span style={{ fontSize:11, fontWeight:800, color:O, background:"#fff4ee", padding:"3px 8px", borderRadius:20 }}>HOJE</span>}
+              </div>
+              {t.local && <div style={{ fontSize:13, color:"#64748b", marginTop:4 }}>{t.local}</div>}
+              <div style={{ fontSize:13, color:"#475569", marginTop:6 }}>
+                {(t.dias||[]).join(", ")}{t.horaInicio?" · "+t.horaInicio+(t.horaFim?" às "+t.horaFim:""):""}
+              </div>
+              <div style={{ fontSize:12, color:"#94a3b8", marginTop:6 }}>{qtd} {qtd===1?"aula":"aulas"}</div>
+            </div>
+          );
+        })}
+        {semTurma.length>0 && (
+          <div onClick={()=>abrirTurma("__sem")} style={{ ...sCard, cursor:"pointer", background:"#f8fafc" }}>
+            <div style={{ fontWeight:700 }}>Aulas sem turma</div>
+            <div style={{ fontSize:12, color:"#94a3b8", marginTop:4 }}>{semTurma.length} {semTurma.length===1?"aula":"aulas"}</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EditarTurma({ turma, onSalvar, onExcluir, onVoltar }){
+  const [f,setF] = useState(()=>turma||{ id:uid(), nome:"", local:"", dias:[], horaInicio:"", horaFim:"" });
+  const set = (k,v)=>setF(x=>({ ...x, [k]:v }));
+  const toggleDia = d => set("dias", f.dias.indexOf(d)>=0 ? f.dias.filter(x=>x!==d) : DIAS.filter(x=>f.dias.indexOf(x)>=0||x===d));
+  return (
+    <div>
+      <Header titulo={turma?"Editar turma":"Nova turma"} onBack={onVoltar}/>
+      <div style={{ padding:16 }}>
+        <div style={sCard}>
+          <label style={sLabel}>Nome da turma</label>
+          <input style={sInput} value={f.nome} onChange={e=>set("nome",e.target.value)} placeholder="Ex.: Funcional Jardins 7h"/>
+          <div style={{ height:14 }}/>
+          <label style={sLabel}>Local</label>
+          <input style={sInput} value={f.local} onChange={e=>set("local",e.target.value)} placeholder="Ex.: Condomínio Jardins, salão de festas"/>
+          <div style={{ height:14 }}/>
+          <label style={sLabel}>Dias</label>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+            {DIAS.map(d=>{
+              const on = f.dias.indexOf(d)>=0;
+              return <button key={d} onClick={()=>toggleDia(d)} style={{ padding:"8px 12px", borderRadius:20, fontWeight:700, fontSize:13, cursor:"pointer", border:"1.5px solid "+(on?O:"#e2e8f0"), background:on?O:"#fff", color:on?"#fff":"#475569" }}>{d}</button>;
+            })}
+          </div>
+          <div style={{ height:14 }}/>
+          <div style={{ display:"flex", gap:10 }}>
+            <div style={{ flex:1 }}>
+              <label style={sLabel}>Início</label>
+              <input type="time" style={sInput} value={f.horaInicio} onChange={e=>set("horaInicio",e.target.value)}/>
+            </div>
+            <div style={{ flex:1 }}>
+              <label style={sLabel}>Fim</label>
+              <input type="time" style={sInput} value={f.horaFim} onChange={e=>set("horaFim",e.target.value)}/>
+            </div>
+          </div>
+        </div>
+        <Btn full disabled={!f.nome.trim()} onClick={()=>onSalvar({ ...f, nome:f.nome.trim() })}>Salvar turma</Btn>
+        {turma && <div style={{ marginTop:10 }}><Btn full variant="danger" onClick={()=>{ if(window.confirm("Excluir a turma? As aulas dela ficam em \"Aulas sem turma\".")) onExcluir(f.id); }}>Excluir turma</Btn></div>}
+      </div>
+    </div>
+  );
+}
+
+function VerTurma({ turma, aulas, turmas, onVoltar, onEditarTurma, onNovaAula, onEditarAula, onIniciar, onCopiar }){
+  const [copiando,setCopiando] = useState(null);
+  const titulo = turma ? turma.nome : "Aulas sem turma";
+  const sub = turma ? [(turma.dias||[]).join(", "), turma.horaInicio?(turma.horaInicio+(turma.horaFim?" às "+turma.horaFim:"")):""].filter(Boolean).join(" · ") : "";
+  return (
+    <div>
+      <Header titulo={titulo} sub={sub} onBack={onVoltar} direita={turma && <Btn small variant="ghost" onClick={onEditarTurma}>Editar</Btn>}/>
+      <div style={{ padding:16 }}>
+        {turma && <Btn full onClick={onNovaAula}>+ Montar aula</Btn>}
+        <div style={{ height:16 }}/>
+        {aulas.length===0 && <div style={{ ...sCard, textAlign:"center", color:"#64748b", fontSize:14 }}>Nenhuma aula montada ainda.</div>}
+        {aulas.map(a=>{
+          const ult = (a.historico||[])[0];
+          return (
+            <div key={a.id} style={sCard}>
+              <div style={{ display:"flex", justifyContent:"space-between", gap:8 }}>
+                <div>
+                  <div style={{ fontWeight:800, fontSize:16 }}>{a.nome}</div>
+                  <div style={{ fontSize:12, color:O, fontWeight:700, marginTop:2 }}>{a.tipo}</div>
+                </div>
+                <div style={{ textAlign:"right", fontSize:13, color:"#475569" }}>
+                  <div style={{ fontWeight:800, fontSize:16 }}>{fmt(duracaoTotal(a))}</div>
+                  <div style={{ fontSize:11, color:"#94a3b8" }}>duração</div>
+                </div>
+              </div>
+              <div style={{ fontSize:13, color:"#64748b", marginTop:8 }}>{(a.estacoes||[]).length} estações · {a.voltas} {a.voltas===1?"volta":"voltas"}</div>
+              {ult && <div style={{ fontSize:12, color:"#94a3b8", marginTop:4 }}>Última vez: {fmtData(ult.data)}</div>}
+              <div style={{ display:"flex", gap:8, marginTop:12 }}>
+                <Btn small onClick={()=>onIniciar(a.id)} style={{ flex:1 }}>▶ Iniciar</Btn>
+                <Btn small variant="ghost" onClick={()=>onEditarAula(a.id)}>Editar</Btn>
+                <Btn small variant="ghost" onClick={()=>setCopiando(a)}>Copiar</Btn>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {copiando && (
+        <div onClick={()=>setCopiando(null)} style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.5)", zIndex:20, display:"flex", alignItems:"flex-end" }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:"#fff", width:"100%", borderRadius:"18px 18px 0 0", padding:16, maxHeight:"70vh", overflowY:"auto" }}>
+            <div style={{ fontWeight:800, fontSize:16, marginBottom:4 }}>Copiar "{copiando.nome}"</div>
+            <div style={{ fontSize:13, color:"#64748b", marginBottom:12 }}>Escolha a turma que vai receber uma cópia.</div>
+            {turmas.map(t=>(
+              <div key={t.id} onClick={()=>{ onCopiar(copiando,t.id); setCopiando(null); }} style={{ padding:"12px 10px", borderBottom:"1px solid #f1f5f9", cursor:"pointer", fontWeight:600 }}>
+                {t.nome}{t.id===copiando.turmaId?" (esta turma)":""}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------- Seletor de exercício da biblioteca ---------- */
+let EX_CACHE = null;
+async function carregarExercicios(){
+  if(EX_CACHE) return EX_CACHE;
+  const salvo = LS.get("circuito_ex_cache",null);
+  try{
+    const h = await authHeaders();
+    const rows = []; let from=0;
+    while(true){
+      const r = await fetch(SUPA_URL+"/rest/v1/exercises?select=id,nome,grupo,foto&order=nome.asc", { headers:{ ...h, "Range":from+"-"+(from+999) } });
+      if(!r.ok) break;
+      const page = await r.json();
+      rows.push(...page);
+      if(page.length<1000) break;
+      from+=1000;
+    }
+    if(rows.length){ EX_CACHE=rows; LS.set("circuito_ex_cache",rows); return rows; }
+  }catch(e){}
+  EX_CACHE = salvo||[];
+  return EX_CACHE;
+}
+
+function SeletorExercicio({ onEscolher, onFechar }){
+  const [lista,setLista] = useState(null);
+  const [busca,setBusca] = useState("");
+  const [grupo,setGrupo] = useState("");
+  useEffect(()=>{ carregarExercicios().then(setLista); },[]);
+  const grupos = useMemo(()=>lista?Array.from(new Set(lista.map(e=>e.grupo).filter(Boolean))).sort():[],[lista]);
+  const norm = s => (s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
+  const filtrada = (lista||[]).filter(e=>(!grupo||e.grupo===grupo) && (!busca || norm(e.nome).indexOf(norm(busca))>=0)).slice(0,80);
+  return (
+    <div style={{ position:"fixed", inset:0, background:"#f8fafc", zIndex:30, display:"flex", flexDirection:"column" }}>
+      <Header titulo="Escolher da Biblioteca" onBack={onFechar}/>
+      <div style={{ padding:12, background:"#fff", borderBottom:"1px solid #e2e8f0" }}>
+        <input autoFocus style={sInput} value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar exercício..."/>
+        <div style={{ display:"flex", gap:6, overflowX:"auto", marginTop:8, paddingBottom:2 }}>
+          {[""].concat(grupos).map(g=>(
+            <button key={g||"todos"} onClick={()=>setGrupo(g)} style={{ flexShrink:0, padding:"6px 10px", borderRadius:20, fontSize:12, fontWeight:700, cursor:"pointer", border:"1.5px solid "+(grupo===g?O:"#e2e8f0"), background:grupo===g?O:"#fff", color:grupo===g?"#fff":"#475569" }}>{g||"Todos"}</button>
+          ))}
+        </div>
+      </div>
+      <div style={{ flex:1, overflowY:"auto", padding:12 }}>
+        {lista===null && <div style={{ textAlign:"center", color:"#94a3b8", padding:30 }}>Carregando biblioteca...</div>}
+        {lista && lista.length===0 && <div style={{ textAlign:"center", color:"#94a3b8", padding:30 }}>Biblioteca indisponível agora. Digite o nome do exercício direto na estação.</div>}
+        {filtrada.map(e=>(
+          <div key={e.id} onClick={()=>onEscolher(e)} style={{ display:"flex", alignItems:"center", gap:10, background:"#fff", border:"1px solid #e2e8f0", borderRadius:12, padding:8, marginBottom:8, cursor:"pointer" }}>
+            <div style={{ width:48, height:48, borderRadius:8, background:"#f1f5f9", overflow:"hidden", flexShrink:0 }}>
+              {e.foto && <img src={e.foto} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }}/>}
+            </div>
+            <div style={{ minWidth:0 }}>
+              <div style={{ fontWeight:700, fontSize:14 }}>{e.nome}</div>
+              <div style={{ fontSize:12, color:"#94a3b8" }}>{e.grupo}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Montar aula ---------- */
+const AULA_NOVA = turmaId => ({
+  id:uid(), turmaId, nome:"", tipo:"Funcional",
+  estacoes:[{ nome:"", obs:"" },{ nome:"", obs:"" },{ nome:"", obs:"" },{ nome:"", obs:"" }],
+  sequencia:[{ t:"exec", s:30 }], troca:30, voltas:2, descansoVolta:60, preparacao:10, historico:[]
+});
+
+function EditarAula({ aula, turmaId, onSalvar, onExcluir, onVoltar, onIniciar }){
+  const [f,setF] = useState(()=>aula?JSON.parse(JSON.stringify(aula)):AULA_NOVA(turmaId));
+  const [picker,setPicker] = useState(null);
+  const set = (k,v)=>setF(x=>({ ...x, [k]:v }));
+  const setEst = (i,patch)=>set("estacoes", f.estacoes.map((e,j)=>j===i?{ ...e, ...patch }:e));
+  const moverEst = (i,d)=>{ const j=i+d; if(j<0||j>=f.estacoes.length) return; const a=[...f.estacoes]; const t=a[i]; a[i]=a[j]; a[j]=t; set("estacoes",a); };
+  const setSeq = (i,patch)=>set("sequencia", f.sequencia.map((s,j)=>j===i?{ ...s, ...patch }:s));
+  const addSeq = t => set("sequencia", [...f.sequencia, { t, s:30 }]);
+  const delSeq = i => set("sequencia", f.sequencia.filter((_,j)=>j!==i));
+  const valido = f.nome.trim() && f.estacoes.length>0 && f.estacoes.every(e=>e.nome.trim()) && f.sequencia.some(s=>s.t==="exec"&&s.s>0);
+  const total = duracaoTotal(f);
+  const salvar = async ini => { const o = await onSalvar({ ...f, nome:f.nome.trim() }); if(ini) onIniciar(o.id); };
+
+  return (
+    <div style={{ paddingBottom:110 }}>
+      <Header titulo={aula?"Editar aula":"Montar aula"} onBack={onVoltar}/>
+      <div style={{ padding:16 }}>
+        <div style={sCard}>
+          <label style={sLabel}>Nome da aula</label>
+          <input style={sInput} value={f.nome} onChange={e=>set("nome",e.target.value)} placeholder="Ex.: Circuito Força e Equilíbrio"/>
+          <div style={{ height:14 }}/>
+          <label style={sLabel}>Tipo</label>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+            {TIPOS.map(t=>(
+              <button key={t} onClick={()=>set("tipo",t)} style={{ padding:"7px 12px", borderRadius:20, fontSize:13, fontWeight:700, cursor:"pointer", border:"1.5px solid "+(f.tipo===t?O:"#e2e8f0"), background:f.tipo===t?O:"#fff", color:f.tipo===t?"#fff":"#475569" }}>{t}</button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ fontWeight:800, fontSize:15, margin:"20px 0 4px" }}>Estações</div>
+        <div style={{ fontSize:13, color:"#64748b", marginBottom:10 }}>Cada aluno começa numa estação. A cada troca, todos giram para a próxima.</div>
+        {f.estacoes.map((e,i)=>(
+          <div key={i} style={{ ...sCard, padding:12 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
+              <div style={{ width:28, height:28, borderRadius:8, background:"#0f172a", color:"#fff", fontWeight:800, fontSize:13, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{i+1}</div>
+              {e.foto && <img src={e.foto} alt="" style={{ width:34, height:34, borderRadius:6, objectFit:"cover" }}/>}
+              <input style={{ ...sInput, padding:"9px 10px" }} value={e.nome} onChange={ev=>setEst(i,{ nome:ev.target.value, exId:null, foto:null })} placeholder="Exercício da estação"/>
+            </div>
+            <input style={{ ...sInput, padding:"8px 10px", fontSize:13 }} value={e.obs||""} onChange={ev=>setEst(i,{ obs:ev.target.value })} placeholder="Observação (carga, material, variação)"/>
+            <div style={{ display:"flex", gap:6, marginTop:8 }}>
+              <Btn small variant="ghost" onClick={()=>setPicker(i)} style={{ flex:1 }}>Biblioteca</Btn>
+              <Btn small variant="ghost" onClick={()=>moverEst(i,-1)}>↑</Btn>
+              <Btn small variant="ghost" onClick={()=>moverEst(i,1)}>↓</Btn>
+              <Btn small variant="danger" onClick={()=>set("estacoes",f.estacoes.filter((_,j)=>j!==i))}>✕</Btn>
+            </div>
+          </div>
+        ))}
+        <Btn full variant="ghost" onClick={()=>set("estacoes",[...f.estacoes,{ nome:"", obs:"" }])}>+ Adicionar estação</Btn>
+
+        <div style={{ fontWeight:800, fontSize:15, margin:"20px 0 4px" }}>Em cada estação</div>
+        <div style={{ fontSize:13, color:"#64748b", marginBottom:10 }}>Sequência que o aluno faz antes de trocar. Pode ter mais de uma série.</div>
+        {f.sequencia.map((s,i)=>(
+          <div key={i} style={{ ...sCard, padding:12, borderLeft:"4px solid "+FASES[s.t].cor }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+              <div style={{ fontWeight:800, fontSize:13, color:FASES[s.t].cor }}>{s.t==="exec"?"EXECUÇÃO":"DESCANSO"}</div>
+              {f.sequencia.length>1 && <button onClick={()=>delSeq(i)} style={{ border:"none", background:"none", color:"#94a3b8", fontSize:18, cursor:"pointer" }}>✕</button>}
+            </div>
+            <TempoCampo valor={s.s} min={5} onChange={v=>setSeq(i,{ s:v })} presets={s.t==="exec"?[20,30,40,45,60]:[15,20,30,45,60]}/>
+          </div>
+        ))}
+        <div style={{ display:"flex", gap:8 }}>
+          <Btn small variant="ghost" onClick={()=>addSeq("exec")} style={{ flex:1 }}>+ Execução</Btn>
+          <Btn small variant="ghost" onClick={()=>addSeq("desc")} style={{ flex:1 }}>+ Descanso</Btn>
+        </div>
+
+        <div style={{ fontWeight:800, fontSize:15, margin:"20px 0 10px" }}>Tempos gerais</div>
+        <div style={sCard}>
+          <label style={sLabel}>Tempo para trocar de estação</label>
+          <TempoCampo valor={f.troca} onChange={v=>set("troca",v)} presets={[0,10,15,20,30,45,60]}/>
+          <div style={{ height:18 }}/>
+          <label style={sLabel}>Voltas no circuito</label>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <button onClick={()=>set("voltas",Math.max(1,f.voltas-1))} style={{ width:42, height:42, borderRadius:10, border:"1.5px solid #e2e8f0", background:"#fff", fontSize:20, fontWeight:700, cursor:"pointer" }}>−</button>
+            <div style={{ flex:1, textAlign:"center", fontSize:22, fontWeight:800 }}>{f.voltas}</div>
+            <button onClick={()=>set("voltas",f.voltas+1)} style={{ width:42, height:42, borderRadius:10, border:"1.5px solid #e2e8f0", background:"#fff", fontSize:20, fontWeight:700, cursor:"pointer" }}>+</button>
+          </div>
+          <div style={{ fontSize:12, color:"#94a3b8", marginTop:6, textAlign:"center" }}>Uma volta = cada aluno passa por todas as estações</div>
+          <div style={{ height:18 }}/>
+          <label style={sLabel}>Descanso entre voltas</label>
+          <TempoCampo valor={f.descansoVolta} onChange={v=>set("descansoVolta",v)} presets={[0,30,60,90,120,180]}/>
+          <div style={{ height:18 }}/>
+          <label style={sLabel}>Contagem antes de começar</label>
+          <TempoCampo valor={f.preparacao} onChange={v=>set("preparacao",v)} presets={[0,5,10,15]}/>
+        </div>
+      </div>
+
+      <div style={{ position:"fixed", left:0, right:0, bottom:0, background:"#fff", borderTop:"1px solid #e2e8f0", padding:"10px 16px 14px", zIndex:6 }}>
+        <div style={{ fontSize:12, color:"#64748b", textAlign:"center", marginBottom:8 }}>Duração total: <b style={{ color:"#0f172a" }}>{fmtLongo(total)}</b></div>
+        <div style={{ display:"flex", gap:8 }}>
+          <Btn variant="ghost" disabled={!valido} onClick={()=>salvar(false)} style={{ flex:1 }}>Salvar</Btn>
+          <Btn disabled={!valido} onClick={()=>salvar(true)} style={{ flex:1 }}>Salvar e iniciar</Btn>
+        </div>
+        {aula && <div style={{ textAlign:"center", marginTop:8 }}><button onClick={()=>{ if(window.confirm("Excluir esta aula?")) onExcluir(f.id); }} style={{ border:"none", background:"none", color:"#dc2626", fontSize:13, fontWeight:700, cursor:"pointer" }}>Excluir aula</button></div>}
+      </div>
+
+      {picker!==null && <SeletorExercicio onFechar={()=>setPicker(null)} onEscolher={e=>{ setEst(picker,{ nome:e.nome, exId:e.id, foto:e.foto||null }); setPicker(null); }}/>}
+    </div>
+  );
+}
+
+/* ---------- Modo aula (cronômetro) ---------- */
+function ModoAula({ aula, onSair, onRegistrar }){
+  const [voltas,setVoltas] = useState(aula.voltas);
+  const fases = useMemo(()=>montarFases({ ...aula, voltas }),[aula,voltas]);
+  const [estado,setEstado] = useState("pronto");
+  const [, setTick] = useState(0);
+  const [log,setLog] = useState([]);
+  const [som,setSom] = useState(true);
+  const R = useRef({ idx:0, fim:0, restante:0, inicio:0, pausaIni:0, pausado:0, ultBip:"" });
+  const fasesRef = useRef(fases); fasesRef.current = fases;
+  const somRef = useRef(som); somRef.current = som;
+  const wake = useRef(null);
+  const n = (aula.estacoes||[]).length;
+
+  const pedirWake = async ()=>{ try{ if(navigator.wakeLock) wake.current = await navigator.wakeLock.request("screen"); }catch(e){} };
+  useEffect(()=>{
+    const vis = ()=>{ if(document.visibilityState==="visible"){ audioInit(); if(estadoRef.current==="rodando") pedirWake(); } };
+    document.addEventListener("visibilitychange",vis);
+    return ()=>{ document.removeEventListener("visibilitychange",vis); try{ wake.current&&wake.current.release(); }catch(e){} };
+  },[]);
+  const estadoRef = useRef(estado); estadoRef.current = estado;
+
+  const decorrido = ()=>{ const r=R.current; const agora=r.fimEm||Date.now(); return (agora - r.inicio - r.pausado - (estadoRef.current==="pausado"?agora-r.pausaIni:0))/1000; };
+
+  const registrarVolta = v => setLog(l=>l.some(x=>x.volta===v)?l:[...l,{ volta:v, tempo:Math.round(decorrido()) }]);
+
+  const finalizar = completo => {
+    R.current.fimEm = Date.now();
+    setEstado("fim");
+    try{ wake.current&&wake.current.release(); }catch(e){}
+    if(completo && somRef.current) somFim();
+  };
+
+  const loop = ()=>{
+    const r = R.current; const F = fasesRef.current;
+    if(estadoRef.current!=="rodando") return;
+    const agora = Date.now();
+    let mudou = false;
+    while(agora >= r.fim){
+      const atual = F[r.idx];
+      const prox = F[r.idx+1];
+      if(fechaVolta(atual,prox)) registrarVolta(atual.volta);
+      if(!prox){ r.idx = F.length; finalizar(true); setTick(t=>t+1); return; }
+      r.idx++; r.fim += prox.dur*1000; mudou = true;
+    }
+    const f = F[r.idx];
+    if(mudou && somRef.current) somInicio(f.tipo);
+    const rest = Math.ceil((r.fim-agora)/1000);
+    const chave = r.idx+":"+rest;
+    if(rest>=1 && rest<=3 && f.dur>=5 && r.ultBip!==chave){ r.ultBip=chave; if(somRef.current) somContagem(); }
+    setTick(t=>t+1);
+  };
+
+  useEffect(()=>{
+    if(estado!=="rodando") return;
+    const id = setInterval(loop,200);
+    return ()=>clearInterval(id);
+  },[estado]);
+
+  const iniciar = ()=>{
+    audioInit(); pedirWake();
+    const r = R.current; const agora=Date.now();
+    r.idx=0; r.inicio=agora; r.pausado=0; r.fim=agora+fases[0].dur*1000; r.ultBip="";
+    setLog([]); setEstado("rodando");
+    if(som) somInicio(fases[0].tipo);
+  };
+  const pausar = ()=>{ const r=R.current; r.restante=r.fim-Date.now(); r.pausaIni=Date.now(); setEstado("pausado"); };
+  const continuar = ()=>{ audioInit(); const r=R.current; const agora=Date.now(); r.pausado+=agora-r.pausaIni; r.fim=agora+r.restante; setEstado("rodando"); pedirWake(); };
+  const pular = ()=>{
+    const r=R.current; const F=fasesRef.current;
+    const atual=F[r.idx]; const prox=F[r.idx+1];
+    if(fechaVolta(atual,prox)) registrarVolta(atual.volta);
+    if(!prox){ finalizar(true); return; }
+    r.idx++; const agora=Date.now();
+    if(estadoRef.current==="pausado"){ r.restante=prox.dur*1000; } else { r.fim=agora+prox.dur*1000; if(somRef.current) somInicio(prox.tipo); }
+    r.ultBip=""; setTick(t=>t+1);
+  };
+  const voltar = ()=>{
+    const r=R.current; const F=fasesRef.current; const agora=Date.now();
+    const f=F[r.idx];
+    const passou = estadoRef.current==="pausado" ? f.dur*1000-r.restante : f.dur*1000-(r.fim-agora);
+    if(passou<2500 && r.idx>0) r.idx--;
+    const d=F[r.idx].dur*1000;
+    if(estadoRef.current==="pausado") r.restante=d; else r.fim=agora+d;
+    r.ultBip=""; setTick(t=>t+1);
+  };
+  const encerrar = ()=>{ if(window.confirm("Encerrar a aula agora?")) finalizar(false); };
+  const sair = ()=>{ if((estado==="rodando"||estado==="pausado") && !window.confirm("Sair da aula? O cronômetro será perdido.")) return; try{ wake.current&&wake.current.release(); }catch(e){} onSair(); };
+
+  const salvoRef = useRef(false);
+  useEffect(()=>{
+    if(estado!=="fim" || salvoRef.current) return;
+    salvoRef.current = true;
+    const completo = R.current.idx>=fases.length;
+    onRegistrar({ data:new Date().toISOString(), duracao:Math.round(decorrido()), voltasPlanejadas:voltas, voltasConcluidas:log.length, completa:completo, log });
+  },[estado]);
+
+  /* ---- tela pronto ---- */
+  if(estado==="pronto"){
+    return (
+      <div style={{ minHeight:"100vh", background:"#0f172a", color:"#fff" }}>
+        <Header titulo={aula.nome} sub={n+" estações · "+voltas+(voltas===1?" volta":" voltas")+" · "+fmtLongo(fases.reduce((a,f)=>a+f.dur,0))} onBack={onSair}/>
+        <div style={{ padding:16 }}>
+          <div style={{ fontSize:12, color:"#94a3b8", fontWeight:700, letterSpacing:0.5, marginBottom:8 }}>POSICIONE UM ALUNO EM CADA ESTAÇÃO</div>
+          {aula.estacoes.map((e,i)=>(
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:10, background:"rgba(255,255,255,0.06)", borderRadius:12, padding:10, marginBottom:8 }}>
+              <div style={{ width:30, height:30, borderRadius:8, background:O, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{i+1}</div>
+              <div style={{ minWidth:0 }}>
+                <div style={{ fontWeight:700 }}>{e.nome}</div>
+                {e.obs && <div style={{ fontSize:12, color:"#94a3b8" }}>{e.obs}</div>}
+              </div>
+            </div>
+          ))}
+          <div style={{ fontSize:13, color:"#94a3b8", lineHeight:1.5, margin:"14px 0" }}>
+            Em cada estação: {aula.sequencia.map(s=>(s.t==="exec"?"executa ":"descansa ")+fmt(s.s)).join(", ")}. Troca: {aula.troca>0?fmt(aula.troca):"sem pausa"}. Entre voltas: {aula.descansoVolta>0?fmt(aula.descansoVolta):"sem pausa"}.
+          </div>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", background:"rgba(255,255,255,0.06)", borderRadius:12, padding:"10px 12px", marginBottom:14 }}>
+            <span style={{ fontWeight:700 }}>Bipe</span>
+            <button onClick={()=>setSom(!som)} style={{ border:"none", borderRadius:20, padding:"6px 14px", fontWeight:800, cursor:"pointer", background:som?"#16a34a":"#475569", color:"#fff" }}>{som?"Ligado":"Desligado"}</button>
+          </div>
+          <Btn full onClick={iniciar} style={{ padding:"18px", fontSize:18 }}>▶ Iniciar aula</Btn>
+          <div style={{ fontSize:12, color:"#64748b", textAlign:"center", marginTop:10, lineHeight:1.5 }}>No iPhone, deixe a chave lateral fora do modo silencioso para ouvir o bipe.</div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ---- tela fim ---- */
+  if(estado==="fim"){
+    const completo = R.current.idx>=fases.length;
+    return (
+      <div style={{ minHeight:"100vh", background:"#0f172a", color:"#fff", padding:20, display:"flex", flexDirection:"column", justifyContent:"center" }}>
+        <div style={{ textAlign:"center", fontSize:48 }}>{completo?"🏁":"⏹"}</div>
+        <div style={{ textAlign:"center", fontWeight:800, fontSize:22, marginTop:8 }}>{completo?"Aula concluída":"Aula encerrada"}</div>
+        <div style={{ textAlign:"center", color:"#94a3b8", marginTop:4 }}>{aula.nome}</div>
+        <div style={{ display:"flex", gap:10, margin:"24px 0" }}>
+          <div style={{ flex:1, background:"rgba(255,255,255,0.06)", borderRadius:14, padding:14, textAlign:"center" }}>
+            <div style={{ fontSize:26, fontWeight:800 }}>{log.length}/{voltas}</div>
+            <div style={{ fontSize:12, color:"#94a3b8" }}>voltas</div>
+          </div>
+          <div style={{ flex:1, background:"rgba(255,255,255,0.06)", borderRadius:14, padding:14, textAlign:"center" }}>
+            <div style={{ fontSize:26, fontWeight:800 }}>{fmt(decorrido())}</div>
+            <div style={{ fontSize:12, color:"#94a3b8" }}>tempo total</div>
+          </div>
+        </div>
+        {log.map(l=>(
+          <div key={l.volta} style={{ display:"flex", justifyContent:"space-between", padding:"10px 4px", borderBottom:"1px solid rgba(255,255,255,0.08)", fontSize:14 }}>
+            <span>Volta {l.volta}</span><span style={{ color:"#94a3b8" }}>concluída em {fmt(l.tempo)}</span>
+          </div>
+        ))}
+        <div style={{ fontSize:12, color:"#64748b", textAlign:"center", margin:"16px 0" }}>Registrado no histórico da aula.</div>
+        <Btn full onClick={onSair}>Voltar</Btn>
+      </div>
+    );
+  }
+
+  /* ---- tela rodando / pausado ---- */
+  const r = R.current;
+  const f = fases[Math.min(r.idx,fases.length-1)];
+  const fase = FASES[f.tipo];
+  const restMs = estado==="pausado" ? r.restante : Math.max(0,r.fim-Date.now());
+  const rest = Math.ceil(restMs/1000);
+  const pctFase = 1 - restMs/(f.dur*1000);
+  const totalS = fases.reduce((a,x)=>a+x.dur,0);
+  const feitoS = fases.slice(0,r.idx).reduce((a,x)=>a+x.dur,0) + (f.dur - restMs/1000);
+  const restanteTotal = totalS - feitoS;
+  const ultimos = rest<=3 && estado==="rodando";
+  const prox = fases[r.idx+1];
+  const proxTxt = prox ? (FASES[prox.tipo].label.charAt(0)+FASES[prox.tipo].label.slice(1).toLowerCase()+" · "+fmt(prox.dur)) : "Fim da aula";
+  const infoSerie = f.tipo==="exec" && f.nSeries>1 ? " · Série "+f.serie+" de "+f.nSeries : "";
+
+  return (
+    <div style={{ minHeight:"100vh", background:fase.cor, color:"#fff", display:"flex", flexDirection:"column", transition:"background 0.3s" }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 14px" }}>
+        <button onClick={sair} style={{ background:"rgba(0,0,0,0.2)", border:"none", color:"#fff", borderRadius:10, padding:"8px 12px", fontWeight:700, cursor:"pointer" }}>‹ Sair</button>
+        <div style={{ fontSize:13, fontWeight:700, opacity:0.9 }}>Falta {fmt(restanteTotal)}</div>
+        <button onClick={()=>setSom(!som)} style={{ background:"rgba(0,0,0,0.2)", border:"none", color:"#fff", borderRadius:10, padding:"8px 12px", fontWeight:700, cursor:"pointer" }}>{som?"🔔":"🔕"}</button>
+      </div>
+      <div style={{ height:5, background:"rgba(0,0,0,0.2)", margin:"0 14px", borderRadius:3, overflow:"hidden" }}>
+        <div style={{ height:"100%", width:(Math.min(1,feitoS/totalS)*100)+"%", background:"#fff" }}/>
+      </div>
+
+      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"10px 16px" }}>
+        <div style={{ fontSize:15, fontWeight:700, opacity:0.9 }}>Volta {f.volta} de {voltas} · Rotação {f.rot} de {n}{infoSerie}</div>
+        <div style={{ fontSize:26, fontWeight:900, letterSpacing:1, marginTop:10, textAlign:"center" }}>{estado==="pausado"?"PAUSADO":fase.label}</div>
+        <div style={{ fontSize:"min(42vw,220px)", fontWeight:900, lineHeight:1, fontVariantNumeric:"tabular-nums", marginTop:6, transform:ultimos?"scale(1.06)":"scale(1)", transition:"transform 0.15s" }}>{f.dur>=60||rest>=60?fmt(rest):rest}</div>
+        <div style={{ width:"70%", height:8, background:"rgba(0,0,0,0.2)", borderRadius:4, marginTop:14, overflow:"hidden" }}>
+          <div style={{ height:"100%", width:(Math.max(0,Math.min(1,pctFase))*100)+"%", background:"#fff" }}/>
+        </div>
+        <div style={{ fontSize:14, marginTop:14, opacity:0.9 }}>Depois: {proxTxt}</div>
+        {(f.tipo==="troca"||f.tipo==="voltaRest") && <div style={{ fontSize:14, marginTop:6, fontWeight:700 }}>Todos giram para a próxima estação</div>}
+      </div>
+
+      <div style={{ padding:"0 14px 10px" }}>
+        <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:4 }}>
+          {aula.estacoes.map((e,i)=>(
+            <div key={i} style={{ flexShrink:0, background:"rgba(0,0,0,0.18)", borderRadius:10, padding:"6px 10px", maxWidth:150 }}>
+              <div style={{ fontSize:11, opacity:0.8, fontWeight:700 }}>Estação {i+1}</div>
+              <div style={{ fontSize:13, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{e.nome}</div>
+            </div>
+          ))}
+        </div>
+        {log.length>0 && <div style={{ fontSize:12, marginTop:6, opacity:0.9 }}>{log.map(l=>"Volta "+l.volta+" ✓ "+fmt(l.tempo)).join("   ")}</div>}
+      </div>
+
+      <div style={{ display:"flex", gap:8, padding:"8px 14px 18px" }}>
+        <button onClick={voltar} style={ctrl}>⏮</button>
+        {estado==="rodando"
+          ? <button onClick={pausar} style={{ ...ctrl, flex:2, background:"#fff", color:fase.cor }}>Pausar</button>
+          : <button onClick={continuar} style={{ ...ctrl, flex:2, background:"#fff", color:fase.cor }}>Continuar</button>}
+        <button onClick={pular} style={ctrl}>⏭</button>
+      </div>
+      <div style={{ display:"flex", gap:8, padding:"0 14px 22px" }}>
+        <button onClick={()=>setVoltas(voltas+1)} style={{ ...ctrlSec }}>+ 1 volta</button>
+        <button onClick={encerrar} style={{ ...ctrlSec }}>Encerrar</button>
+      </div>
+    </div>
+  );
+}
+const ctrl = { flex:1, border:"none", borderRadius:14, padding:"16px 0", fontSize:20, fontWeight:800, background:"rgba(0,0,0,0.22)", color:"#fff", cursor:"pointer" };
+const ctrlSec = { flex:1, border:"1.5px solid rgba(255,255,255,0.4)", borderRadius:12, padding:"10px 0", fontSize:14, fontWeight:700, background:"transparent", color:"#fff", cursor:"pointer" };
+
+/* ---------- App ---------- */
+function irParaApp(){ window.location.href = "longevus-app.html"; }
+
+function Main(){
+  const T = useColecao("circuito_turmas","circuito_turmas");
+  const A = useColecao("circuito_aulas","circuito_aulas");
+  const [view,setView] = useState({ tela:"home" });
+  const ir = v => { setView(v); window.scrollTo(0,0); };
+
+  const turma = id => T.itens.find(t=>t.id===id);
+  const aula = id => A.itens.find(a=>a.id===id);
+  const aulasDa = tid => A.itens.filter(a=> tid==="__sem" ? (!a.turmaId || !turma(a.turmaId)) : a.turmaId===tid).sort((a,b)=>(a.nome||"").localeCompare(b.nome||""));
+
+  if(view.tela==="home") return <Home turmas={T.itens} aulas={A.itens} online={T.online&&A.online} abrirTurma={id=>ir({ tela:"turma", id })} novaTurma={()=>ir({ tela:"editTurma" })}/>;
+
+  if(view.tela==="editTurma") return <EditarTurma turma={view.id?turma(view.id):null}
+    onVoltar={()=>ir(view.id?{ tela:"turma", id:view.id }:{ tela:"home" })}
+    onSalvar={async t=>{ const o=await T.salvar(t); ir({ tela:"turma", id:o.id }); }}
+    onExcluir={async id=>{ await T.remover(id); ir({ tela:"home" }); }}/>;
+
+  if(view.tela==="turma") return <VerTurma turma={view.id==="__sem"?null:turma(view.id)} aulas={aulasDa(view.id)} turmas={T.itens}
+    onVoltar={()=>ir({ tela:"home" })}
+    onEditarTurma={()=>ir({ tela:"editTurma", id:view.id })}
+    onNovaAula={()=>ir({ tela:"editAula", turmaId:view.id })}
+    onEditarAula={id=>ir({ tela:"editAula", id, turmaId:view.id })}
+    onIniciar={id=>ir({ tela:"run", id, turmaId:view.id })}
+    onCopiar={async (a,tid)=>{ await A.salvar({ ...JSON.parse(JSON.stringify(a)), id:uid(), turmaId:tid, nome:a.nome+(tid===a.turmaId?" (cópia)":""), historico:[] }); }}/>;
+
+  if(view.tela==="editAula") return <EditarAula aula={view.id?aula(view.id):null} turmaId={view.turmaId}
+    onVoltar={()=>ir({ tela:"turma", id:view.turmaId })}
+    onSalvar={a=>A.salvar(a)}
+    onIniciar={id=>ir({ tela:"run", id, turmaId:view.turmaId })}
+    onExcluir={async id=>{ await A.remover(id); ir({ tela:"turma", id:view.turmaId }); }}/>;
+
+  if(view.tela==="run"){
+    const a = aula(view.id);
+    if(!a) return null;
+    return <ModoAula aula={a} onSair={()=>ir({ tela:"turma", id:view.turmaId })}
+      onRegistrar={reg=>{ const atual=aula(view.id)||a; A.salvar({ ...atual, historico:[reg,...(atual.historico||[])].slice(0,30) }); }}/>;
+  }
+  return null;
+}
+
+function App(){
+  const [session,setSession] = useState(undefined);
+  useEffect(()=>{
+    supa.auth.getSession().then(({ data })=>setSession(data?.session||null));
+    const { data:l } = supa.auth.onAuthStateChange((e,s)=>setSession(s));
+    return ()=>{ l?.subscription?.unsubscribe(); };
+  },[]);
+  if(session===undefined) return <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", color:"#94a3b8" }}>Carregando...</div>;
+  if(!session) return (
+    <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:24, textAlign:"center" }}>
+      <div style={{ fontWeight:800, fontSize:18, marginBottom:8 }}>Entre pelo painel do Longevus</div>
+      <div style={{ color:"#64748b", fontSize:14, marginBottom:16 }}>Faça login no painel e abra Aulas em Circuito pelo menu.</div>
+      <Btn onClick={irParaApp}>Ir para o painel</Btn>
+    </div>
+  );
+  return <Main/>;
+}
+
+class ErrorBoundary extends React.Component{
+  constructor(p){ super(p); this.state={ err:null }; }
+  static getDerivedStateFromError(err){ return { err }; }
+  render(){
+    if(this.state.err) return (
+      <div style={{ padding:24, maxWidth:480, margin:"40px auto" }}>
+        <div style={{ fontWeight:800, fontSize:16, marginBottom:8 }}>Algo quebrou nessa tela</div>
+        <div style={{ fontSize:11, color:"#dc2626", background:"#fef2f2", borderRadius:8, padding:12, fontFamily:"monospace", whiteSpace:"pre-wrap", marginBottom:14 }}>{String(this.state.err?.message||this.state.err)}</div>
+        <button onClick={()=>window.location.reload()} style={{ border:"none", background:O, color:"#fff", borderRadius:9, padding:"10px 18px", fontWeight:700 }}>Recarregar</button>
+      </div>
+    );
+    return this.props.children;
+  }
+}
+
+const css = document.createElement("style");
+css.textContent = "*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;color:#0f172a;}input,select,textarea,button{font-family:inherit;}input:focus{outline:none;border-color:#FF5603!important;}";
+document.head.appendChild(css);
+ReactDOM.createRoot(document.getElementById("root")).render(<ErrorBoundary><App/></ErrorBoundary>);
+</script>
+</body>
+</html>

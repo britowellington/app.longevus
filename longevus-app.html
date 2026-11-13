@@ -9556,6 +9556,7 @@ const menuItems=[
 {id:"cognitivehub",label:"Hub Cognitivo"},
 {id:"extprograma",label:"Gerador de Programa"},
 {id:"extbiblioteca",label:"Biblioteca"},
+{id:"extcircuito",label:"Aulas em Circuito"},
 {id:"documents",label:"Documentos"},
 ]},
 {id:"financeiro",label:"Financeiro",icon:"money"},
@@ -9714,6 +9715,7 @@ return (
 <button key={n.id} onClick={()=>{
   if(n.id==="extprograma"){window.open("longevus-programa.html","_self");return;}
   if(n.id==="extbiblioteca"){window.open("longevus-biblioteca.html","_self");return;}
+  if(n.id==="extcircuito"){window.open("longevus-circuito.html","_self");return;}
   if(n.id==="cognitivehub"){window.open("longevus-hub.html","_self");return;}
   nav(n.id);setMenuOpen(false);
 }} style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,padding:"9px 4px 8px",border:"none",background:"transparent",cursor:"pointer",color:activePage===n.id?"#FF5603":"#94a3b8" }}>
@@ -9750,6 +9752,7 @@ return (
   e.stopPropagation();
   if(it.id==="extprograma"){window.open("longevus-programa.html","_self");return;}
   if(it.id==="extbiblioteca"){window.open("longevus-biblioteca.html","_self");return;}
+  if(it.id==="extcircuito"){window.open("longevus-circuito.html","_self");return;}
   nav(it.id);setMenuOpen(false);
 }} style={{ width:"100%",display:"flex",alignItems:"center",gap:12,padding:"12px 18px 12px 48px",border:"none",background:isActive?"#fff4ee":"#fafbfc",cursor:"pointer",borderBottom:"1px solid #f1f5f9" }}>
 <span style={{ fontSize:13,fontWeight:isActive?700:500,color:isActive?"#FF5603":"#334155" }}>{it.label}</span>
