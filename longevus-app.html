@@ -1245,7 +1245,7 @@ return (
 </Modal>
 );
 };
-const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setPagamentos, receitasExtras, setReceitasExtras, nav }) => {
+const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setPagamentos, receitasExtras, setReceitasExtras, nav, agendaEntries }) => {
   const [finView,setFinView] = useState("alunos");
   const [planoModal,setPlanoModal] = useState(false);
   const [planoEditId,setPlanoEditId] = useState(null);
@@ -1380,7 +1380,33 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
     const inicioD = new Date(fimD); inicioD.setDate(inicioD.getDate()-dias);
     return [toISODateLocal(inicioD), hoje];
   })();
-  const previstoAlunosMes = pagamentos.filter(p=>p.dataPrevista && p.dataPrevista>=periodoInicio && p.dataPrevista<=periodoFimSel && p.status!=="cancelado").reduce((a,p)=>a+(Number(p.valorPrevisto)||0),0);
+  // Projeção: cobranças que ainda não existem porque só são criadas na hora certa
+  // (a próxima mensalidade nasce na baixa da anterior; a aula avulsa vira cobrança quando acontece).
+  const projecoes = (()=>{
+    const out = [];
+    (students||[]).filter(s=>s.billing?.ativo && (s.status||"ativo")==="ativo").forEach(s=>{
+      const b = s.billing;
+      if(b.tipo==="avulso"){
+        const valorAula = Number(b.valorAula)||0;
+        (agendaEntries||[]).filter(e=>e.studentId===s.id && e.date>=hoje && e.date>=periodoInicio && e.date<=periodoFimSel && (e.status==="agendado"||e.status==="confirmada"||!e.status) && !pagamentos.some(p=>p.agendaEntryId===e.id))
+          .forEach(e=>out.push({ sid:s.id, v:valorAula, data:e.date, tipo:"aula" }));
+        return;
+      }
+      if(b.modoCobranca==="porSessao") return;
+      const datas = pagamentos.filter(p=>p.studentId===s.id && p.tipo==="mensal" && p.modoCobranca!=="porSessao" && p.status!=="cancelado" && p.dataPrevista).map(p=>p.dataPrevista).sort();
+      let ancora = datas.length ? datas[datas.length-1] : (b.vencimento||null);
+      if(!ancora) return;
+      if(!datas.length && ancora>=periodoInicio && ancora<=periodoFimSel && ancora>=hoje) out.push({ sid:s.id, v:Number(b.valor)||0, data:ancora, tipo:"mensal" });
+      let prox = proximoVencimentoMensal(b, ancora), guarda = 0;
+      while(prox<=periodoFimSel && guarda<40){
+        if(prox>=periodoInicio && prox>ancora) out.push({ sid:s.id, v:Number(b.valor)||0, data:prox, tipo:"mensal" });
+        prox = proximoVencimentoMensal(b, prox); guarda++;
+      }
+    });
+    return out;
+  })();
+  const projTotal = projecoes.reduce((a,x)=>a+x.v,0);
+  const previstoAlunosMes = projTotal + pagamentos.filter(p=>p.dataPrevista && p.dataPrevista>=periodoInicio && p.dataPrevista<=periodoFimSel && p.status!=="cancelado").reduce((a,p)=>a+(Number(p.valorPrevisto)||0),0);
   const previstoExtrasMes = receitasExtras.filter(r=>r.dataPrevista && r.dataPrevista>=periodoInicio && r.dataPrevista<=periodoFimSel).reduce((a,r)=>a+(Number(r.valorPrevisto)||0),0);
   const previstoMes = previstoAlunosMes + previstoExtrasMes;
   const recebidoAlunosMes = pagamentos.filter(p=>p.status==="pago" && p.dataPagamento && p.dataPagamento>=periodoInicio && p.dataPagamento<=periodoFimSel).reduce((a,p)=>a+(Number(p.valorPago)||0),0);
@@ -1394,7 +1420,7 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
   // Previsto do período dividido em partes que sempre somam o total (cobranças com vencimento no período).
   const cobrPer = pagamentos.filter(p=>p.dataPrevista && p.dataPrevista>=periodoInicio && p.dataPrevista<=periodoFimSel && p.status!=="cancelado");
   const extPer = receitasExtras.filter(r=>r.dataPrevista && r.dataPrevista>=periodoInicio && r.dataPrevista<=periodoFimSel);
-  const partes = { pago:[], desconto:[], avencer:[], atraso:[] };
+  const partes = { pago:[], desconto:[], avencer:projecoes.map(x=>({sid:x.sid,v:x.v,proj:true})), atraso:[] };
   cobrPer.forEach(p=>{
     const prev = Number(p.valorPrevisto)||0;
     if(p.status==="pago"){ const pg=Number(p.valorPago)||0; partes.pago.push({sid:p.studentId,v:pg}); if(prev>pg) partes.desconto.push({sid:p.studentId,v:prev-pg}); }
@@ -1444,6 +1470,7 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
   const agruparPorAluno = (tipo) => {
     const mapa = {};
     if(tipo==="previsto"){
+      projecoes.forEach(x=>{ mapa[x.sid] = (mapa[x.sid]||0) + x.v; });
       pagamentos.filter(p=>p.dataPrevista && p.dataPrevista>=periodoInicio && p.dataPrevista<=periodoFimSel && p.status!=="cancelado")
         .forEach(p=>{ mapa[p.studentId] = (mapa[p.studentId]||0) + (Number(p.valorPrevisto)||0); });
     } else if(tipo==="recebido"){
@@ -1558,6 +1585,7 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
             </div>
           );
         })}
+        {projecoes.length>0 && <div style={{ fontSize:11,color:"#64748b",marginTop:4,lineHeight:1.45 }}>{"A vencer inclui "+projecoes.length+(projecoes.length>1?" cobranças projetadas":" cobrança projetada")+" ("+fmtR(projTotal)+"): próximas mensalidades e aulas avulsas já agendadas. Elas viram cobrança de verdade na hora certa."}</div>}
         <div onClick={()=>setDetalheCard("recebido")} style={{ fontSize:11,color:"#94a3b8",marginTop:6,borderTop:"1px solid #f1f5f9",paddingTop:8,cursor:"pointer" }}>{"Entrou no caixa no período (pela data do pagamento): "}<b style={{ color:"#16a34a" }}>{fmtR(recebidoMes)}</b>{" ›"}</div>
       </Card>
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10 }}>
@@ -9855,7 +9883,7 @@ return (
 }{page==="questionarios"&&<Questionarios students={students} nav={nav} onRefreshCount={refreshPendingCount}/>
 }{page==="extprograma"&&(()=>{window.open("longevus-programa.html","_self");return null;})()}{page==="cognitivehub"&&<CognitiveHub students={students} hubResults={hubResults} setHubResults={setHubResults}/>}{page==="sessions"&&<SessionTracker students={students} programs={programs} sessions={sessions} setSessions={setSessions} nav={nav}/>}{page==="vincular"&&<VincularAlunos students={students} setStudents={setStudents}/>
 }{page==="extraatividades"&&<AtividadesExtras students={students} atividadesExtras={atividadesExtras} setAtividadesExtras={setAtividadesExtras} prefillStudentId={pageProps.studentId} assessments={assessments} checkins={checkins} exerciciosBiblioteca={exerciciosBiblioteca} sessions={sessions}/>
-}{page==="financeiro"&&<Financeiro students={students} setStudents={setStudents} planos={planos} setPlanos={setPlanos} pagamentos={pagamentos} setPagamentos={setPagamentos} receitasExtras={receitasExtras} setReceitasExtras={setReceitasExtras} nav={nav}/>
+}{page==="financeiro"&&<Financeiro students={students} setStudents={setStudents} planos={planos} setPlanos={setPlanos} pagamentos={pagamentos} setPagamentos={setPagamentos} receitasExtras={receitasExtras} setReceitasExtras={setReceitasExtras} nav={nav} agendaEntries={agendaEntries}/>
 }{page==="agenda"&&<Agenda students={students} setStudents={setStudents} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} pagamentos={pagamentos} setPagamentos={setPagamentos} leads={leads} nav={nav}/>
 }{page==="leads"&&<Leads leads={leads} setLeads={setLeads} students={students} setStudents={setStudents} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} nav={nav}/>
 }{page==="condominios"&&(window.ProjetoCondominios?<window.ProjetoCondominios.Page session={session} condos={condos} setCondos={setCondos} condoLeads={condoLeads} setCondoLeads={setCondoLeads} students={students} setStudents={setStudents} nav={nav} pageProps={pageProps} deps={{Card,Btn,Inp,Modal,Badge,I,O,DB,uid,fmt,fmtR,SUPA_URL}}/>:<Card><div style={{fontSize:13,color:"#64748b"}}>O módulo Projeto Condomínios ainda não carregou. Confirme que o arquivo longevus-condominios.js está no mesmo endereço do app e recarregue.</div></Card>)
