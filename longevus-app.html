@@ -1391,7 +1391,56 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
   const emAbertoTotal = emAberto.reduce((a,p)=>a+(Number(p.valorPrevisto)||0),0);
   const pctRealizado = previstoMes>0 ? Math.round((recebidoMes/previstoMes)*100) : (recebidoMes>0?100:0);
   const pagosRecentes = pagamentos.filter(p=>p.status==="pago" && p.origem!=="credito").sort((a,b)=>(b.dataPagamento||"").localeCompare(a.dataPagamento||"")||(b.createdAt||"").localeCompare(a.createdAt||"")).slice(0,8);
-  const TITULOS_DETALHE = { previsto:"Previsto no período", recebido:"Recebido no período", aberto:"Em aberto no período" };
+  // Previsto do período dividido em partes que sempre somam o total (cobranças com vencimento no período).
+  const cobrPer = pagamentos.filter(p=>p.dataPrevista && p.dataPrevista>=periodoInicio && p.dataPrevista<=periodoFimSel && p.status!=="cancelado");
+  const extPer = receitasExtras.filter(r=>r.dataPrevista && r.dataPrevista>=periodoInicio && r.dataPrevista<=periodoFimSel);
+  const partes = { pago:[], desconto:[], avencer:[], atraso:[] };
+  cobrPer.forEach(p=>{
+    const prev = Number(p.valorPrevisto)||0;
+    if(p.status==="pago"){ const pg=Number(p.valorPago)||0; partes.pago.push({sid:p.studentId,v:pg}); if(prev>pg) partes.desconto.push({sid:p.studentId,v:prev-pg}); }
+    else if(p.dataPrevista>=hoje) partes.avencer.push({sid:p.studentId,v:prev});
+    else partes.atraso.push({sid:p.studentId,v:prev});
+  });
+  extPer.forEach(r=>{
+    const prev = Number(r.valorPrevisto)||0;
+    if(r.status==="recebido"){ const pg=Number(r.valorPago)||0; partes.pago.push({sid:null,v:pg}); if(prev>pg) partes.desconto.push({sid:null,v:prev-pg}); }
+    else if(r.dataPrevista>=hoje) partes.avencer.push({sid:null,v:prev});
+    else partes.atraso.push({sid:null,v:prev});
+  });
+  const somaParte = (k) => partes[k].reduce((a,x)=>a+x.v,0);
+  const qtdAlunosParte = (k) => new Set(partes[k].filter(x=>x.sid).map(x=>x.sid)).size;
+  const totPartes = somaParte("pago")+somaParte("desconto")+somaParte("avencer")+somaParte("atraso");
+  const pctParte = (k) => totPartes>0 ? (somaParte(k)/totPartes*100) : 0;
+  // Alunos com mensalidade fixa ativa e nenhuma cobrança em aberto lançada
+  const ativosCob = students.filter(s=>s.billing?.ativo && (s.status||"ativo")==="ativo");
+  const fixos = ativosCob.filter(s=>s.billing?.tipo!=="avulso" && s.billing?.modoCobranca!=="porSessao");
+  const semCobrancaAberta = fixos.filter(s=>s.billing?.vencimento && !pagamentos.some(p=>p.studentId===s.id && p.status==="previsto"));
+  const lancarCobranca = (s) => { setPagamentos(p=>[...p, novoPagamentoMensal(s, s.billing.vencimento, todayStr())]); };
+  const receitaContratada = fixos.reduce((a,s)=>a+(Number(s.billing?.valor)||0),0);
+  const ticketMedio = fixos.length ? receitaContratada/fixos.length : 0;
+  // Alunos por plano
+  const situacaoAluno = (s) => {
+    const abertos = pagamentos.filter(p=>p.studentId===s.id && p.status==="previsto" && p.dataPrevista).sort((a,b)=>a.dataPrevista.localeCompare(b.dataPrevista));
+    if(abertos.length && abertos[0].dataPrevista<hoje) return { txt:"em atraso", bg:"#fee2e2", cor:"#991b1b" };
+    const pagoPer = pagamentos.some(p=>p.studentId===s.id && p.status==="pago" && p.dataPrevista>=periodoInicio && p.dataPrevista<=periodoFimSel);
+    if(pagoPer) return { txt:"pago", bg:"#dcfce7", cor:"#166534" };
+    if(abertos.length) return { txt:"vence "+abertos[0].dataPrevista.slice(8,10)+"/"+abertos[0].dataPrevista.slice(5,7), bg:"#dbeafe", cor:"#1e40af" };
+    return { txt:"sem cobrança", bg:"#fef3c7", cor:"#92400e" };
+  };
+  const gruposPlano = (()=>{
+    const mapa = {};
+    ativosCob.forEach(s=>{
+      const av = s.billing?.tipo==="avulso", ps = !av && s.billing?.modoCobranca==="porSessao";
+      const nome = av ? "Avulso / por aula" : ((s.billing?.plano||"").trim() || "Sem nome de plano");
+      const k = (av?"av|":ps?"ps|":"fx|")+nome;
+      if(!mapa[k]) mapa[k] = { k, nome, tipo: av?"avulso":ps?"porSessao":"fixo", alunos:[], total:0 };
+      mapa[k].alunos.push(s);
+      if(!av && !ps) mapa[k].total += Number(s.billing?.valor)||0;
+    });
+    return Object.values(mapa).sort((a,b)=>(b.total-a.total)||(b.alunos.length-a.alunos.length));
+  })();
+  const [planoAbertoDash,setPlanoAbertoDash] = useState(null);
+  const TITULOS_DETALHE = { previsto:"Previsto no período", recebido:"Recebido no período", aberto:"Em aberto no período", pago:"Recebido das cobranças do período", desconto:"Descontos e ajustes na baixa", avencer:"A vencer no período", atraso:"Em atraso" };
   const agruparPorAluno = (tipo) => {
     const mapa = {};
     if(tipo==="previsto"){
@@ -1400,6 +1449,8 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
     } else if(tipo==="recebido"){
       pagamentos.filter(p=>p.status==="pago" && p.dataPagamento && p.dataPagamento>=periodoInicio && p.dataPagamento<=periodoFimSel)
         .forEach(p=>{ mapa[p.studentId] = (mapa[p.studentId]||0) + (Number(p.valorPago)||0); });
+    } else if(partes[tipo]){
+      partes[tipo].filter(x=>x.sid).forEach(x=>{ mapa[x.sid] = (mapa[x.sid]||0) + x.v; });
     } else if(tipo==="aberto"){
       pagamentos.filter(p=>p.status==="previsto" && p.dataPrevista && p.dataPrevista>=periodoInicio && p.dataPrevista<=periodoFimSel && p.dataPrevista<=hoje)
         .forEach(p=>{ mapa[p.studentId] = (mapa[p.studentId]||0) + (Number(p.valorPrevisto)||0); });
@@ -1408,6 +1459,7 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
     let extrasTotal = 0;
     if(tipo==="previsto") extrasTotal = receitasExtras.filter(r=>r.dataPrevista>=periodoInicio && r.dataPrevista<=periodoFimSel).reduce((a,r)=>a+(Number(r.valorPrevisto)||0),0);
     if(tipo==="recebido") extrasTotal = receitasExtras.filter(r=>r.status==="recebido" && r.dataPagamento>=periodoInicio && r.dataPagamento<=periodoFimSel).reduce((a,r)=>a+(Number(r.valorPago)||0),0);
+    if(partes[tipo]) extrasTotal = partes[tipo].filter(x=>!x.sid).reduce((a,x)=>a+x.v,0);
     if(tipo==="aberto") extrasTotal = receitasExtras.filter(r=>r.status==="previsto" && r.dataPrevista>=periodoInicio && r.dataPrevista<=periodoFimSel).reduce((a,r)=>a+(Number(r.valorPrevisto)||0),0);
     if(extrasTotal>0) linhas.push({ studentId:null, nome:"Outras receitas (extras)", total:extrasTotal });
     return linhas;
@@ -1477,28 +1529,91 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
         </div>
         <button onClick={()=>setMesOffset(o=>o+1)} aria-label="Mês seguinte" style={{ border:"none",background:"#f1f5f9",borderRadius:9,width:36,height:36,fontSize:18,fontWeight:800,color:"#334155",cursor:"pointer" }}>›</button>
       </div>}
-      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10 }}>
-        <Card onClick={()=>setDetalheCard("previsto")} style={{ padding:"14px 16px",cursor:"pointer" }}>
-          <div style={{ fontSize:11,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:4 }}>Previsto no período</div>
-          <div style={{ fontWeight:900,fontSize:20,color:"#0f172a" }}>{fmtR(previstoMes)}</div>
-          {previstoExtrasMes>0 && <div style={{ fontSize:10,color:"#94a3b8",marginTop:3 }}>Alunos {fmtR(previstoAlunosMes)} · Extras {fmtR(previstoExtrasMes)}</div>}
-        </Card>
-        <Card onClick={()=>setDetalheCard("recebido")} style={{ padding:"14px 16px",cursor:"pointer" }}>
-          <div style={{ fontSize:11,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:4 }}>Recebido real</div>
-          <div style={{ fontWeight:900,fontSize:20,color:"#16a34a" }}>{fmtR(recebidoMes)}</div>
-          {recebidoExtrasMes>0 && <div style={{ fontSize:10,color:"#94a3b8",marginTop:3 }}>Alunos {fmtR(recebidoAlunosMes)} · Extras {fmtR(recebidoExtrasMes)}</div>}
-        </Card>
+      <Card style={{ padding:"14px 16px",marginBottom:10 }}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10 }}>
+          <div onClick={()=>setDetalheCard("previsto")} style={{ cursor:"pointer" }}>
+            <div style={{ fontSize:11,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:4 }}>{periodo==="mes"?"Previsto no mês":"Previsto no período"}</div>
+            <div style={{ fontWeight:900,fontSize:22,color:"#0f172a" }}>{fmtR(previstoMes)}</div>
+            {previstoExtrasMes>0 && <div style={{ fontSize:10,color:"#94a3b8",marginTop:3 }}>Alunos {fmtR(previstoAlunosMes)} · Extras {fmtR(previstoExtrasMes)}</div>}
+          </div>
+          <div style={{ textAlign:"right" }}>
+            <div style={{ fontSize:11,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:4 }}>Realizado</div>
+            <div style={{ fontWeight:900,fontSize:22,color:"#16a34a" }}>{(totPartes>0?Math.round(somaParte("pago")/totPartes*100):0)+"%"}</div>
+          </div>
+        </div>
+        <div style={{ display:"flex",height:14,borderRadius:7,overflow:"hidden",margin:"12px 0 6px",background:"#f1f5f9" }}>
+          <div style={{ width:pctParte("pago")+"%",background:"#16a34a" }}/>
+          <div style={{ width:pctParte("desconto")+"%",background:"#cbd5e1" }}/>
+          <div style={{ width:pctParte("avencer")+"%",background:"#3b82f6" }}/>
+          <div style={{ width:pctParte("atraso")+"%",background:"#dc2626" }}/>
+        </div>
+        {[["pago","Recebido","#16a34a"],["desconto","Descontos e ajustes na baixa","#cbd5e1"],["avencer","A vencer"+(periodo==="mes"?" até "+fmt(periodoFimSel).slice(0,5):""),"#3b82f6"],["atraso","Em atraso","#dc2626"]].map(x=>{
+          const n = qtdAlunosParte(x[0]);
+          return (
+            <div key={x[0]} onClick={()=>somaParte(x[0])>0&&setDetalheCard(x[0])} style={{ display:"flex",alignItems:"center",gap:8,fontSize:13,padding:"6px 0",cursor:somaParte(x[0])>0?"pointer":"default" }}>
+              <span style={{ width:10,height:10,borderRadius:3,background:x[2],flexShrink:0 }}/>
+              <span style={{ color:x[0]==="atraso"&&somaParte("atraso")>0?"#dc2626":"#334155" }}>{x[1]+(n>0&&x[0]!=="pago"?" ("+n+")":"")}</span>
+              <b style={{ marginLeft:"auto",color:x[0]==="atraso"&&somaParte("atraso")>0?"#dc2626":"#0f172a" }}>{fmtR(somaParte(x[0]))}</b>
+              {somaParte(x[0])>0 && <span style={{ color:"#cbd5e1",fontSize:14 }}>›</span>}
+            </div>
+          );
+        })}
+        <div onClick={()=>setDetalheCard("recebido")} style={{ fontSize:11,color:"#94a3b8",marginTop:6,borderTop:"1px solid #f1f5f9",paddingTop:8,cursor:"pointer" }}>{"Entrou no caixa no período (pela data do pagamento): "}<b style={{ color:"#16a34a" }}>{fmtR(recebidoMes)}</b>{" ›"}</div>
+      </Card>
+      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10 }}>
+        <Card style={{ padding:"10px 10px" }}><div style={{ fontSize:10,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:3 }}>Receita mensal</div><div style={{ fontWeight:900,fontSize:15 }}>{fmtR(receitaContratada).replace(",00","")}</div><div style={{ fontSize:10,color:"#94a3b8" }}>mensalidades fixas</div></Card>
+        <Card style={{ padding:"10px 10px" }}><div style={{ fontSize:10,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:3 }}>Pagantes</div><div style={{ fontWeight:900,fontSize:15 }}>{ativosCob.length}</div><div style={{ fontSize:10,color:"#94a3b8" }}>com cobrança ativa</div></Card>
+        <Card style={{ padding:"10px 10px" }}><div style={{ fontSize:10,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:3 }}>Ticket médio</div><div style={{ fontWeight:900,fontSize:15 }}>{fmtR(Math.round(ticketMedio)).replace(",00","")}</div><div style={{ fontSize:10,color:"#94a3b8" }}>mensalidade fixa</div></Card>
       </div>
-      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:18 }}>
-        <Card style={{ padding:"14px 16px" }}>
-          <div style={{ fontSize:11,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:4 }}>% realizado no período</div>
-          <div style={{ fontWeight:900,fontSize:20,color:"#0f172a" }}>{pctRealizado}%</div>
-        </Card>
-        <Card onClick={()=>setDetalheCard("aberto")} style={{ padding:"14px 16px",cursor:"pointer",background:emAbertoVencidos.length>0?"#fef2f2":"#fff",borderColor:emAbertoVencidos.length>0?"#fecaca":"#e2e8f0" }}>
-          <div style={{ fontSize:11,color:emAbertoVencidos.length>0?"#dc2626":"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:4 }}>Em aberto</div>
-          <div style={{ fontWeight:900,fontSize:20,color:emAbertoVencidos.length>0?"#dc2626":"#0f172a" }}>{fmtR(emAbertoTotal)}</div>
-        </Card>
-      </div>
+      {semCobrancaAberta.length>0 &&
+      <Card style={{ padding:"12px 14px",marginBottom:10,background:"#fffbeb",borderColor:"#fde68a" }}>
+        <div style={{ fontSize:13,fontWeight:800,color:"#92400e",marginBottom:6 }}>{"⚠ "+semCobrancaAberta.length+(semCobrancaAberta.length>1?" alunos com mensalidade ativa e nenhuma cobrança em aberto":" aluno com mensalidade ativa e nenhuma cobrança em aberto")}</div>
+        {semCobrancaAberta.map(s=>(
+          <div key={s.id} style={{ display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,padding:"5px 0",borderTop:"1px solid #fde68a" }}>
+            <span onClick={()=>nav("studentDetail",{studentId:s.id})} style={{ fontSize:12,color:"#92400e",cursor:"pointer" }}>{s.name+" · "+(s.billing.vencimento<hoje?"venceu ":"vence ")+fmt(s.billing.vencimento)+" · "+fmtR(s.billing.valor)}</span>
+            <button onClick={()=>lancarCobranca(s)} style={{ border:"none",background:"none",color:"#C2410C",fontSize:12,fontWeight:800,textDecoration:"underline",cursor:"pointer",flexShrink:0,padding:0 }}>Lançar cobrança</button>
+          </div>
+        ))}
+      </Card>}
+      {gruposPlano.length>0 && <>
+      <div style={{ fontSize:12,fontWeight:700,color:"#475569",margin:"16px 0 8px",textTransform:"uppercase" }}>Alunos por plano</div>
+      {gruposPlano.map(g=>{
+        const aberto = planoAbertoDash===g.k;
+        const pct = g.tipo==="fixo" && receitaContratada>0 ? Math.round(g.total/receitaContratada*100) : null;
+        const larg = pct!==null ? pct : Math.round(g.alunos.length/Math.max(1,ativosCob.length)*100);
+        const valores = Array.from(new Set(g.alunos.map(s=>g.tipo==="fixo"?Number(s.billing?.valor)||0:g.tipo==="porSessao"?Number(s.billing?.valorSessao)||0:Number(s.billing?.valorAula)||0)));
+        const sub = g.alunos.length+(g.alunos.length>1?" alunos":" aluno")+(valores.length===1&&valores[0]>0?" · "+fmtR(valores[0]).replace(",00","")+(g.tipo==="fixo"?" cada":g.tipo==="porSessao"?" por sessão":" por aula"):"");
+        return (
+          <Card key={g.k} style={{ padding:"12px 14px",marginBottom:8 }}>
+            <div onClick={()=>setPlanoAbertoDash(aberto?null:g.k)} style={{ cursor:"pointer" }}>
+              <div style={{ display:"flex",justifyContent:"space-between",gap:8 }}>
+                <span style={{ fontSize:14,fontWeight:800,minWidth:0 }}>{g.nome}</span>
+                <span style={{ fontSize:14,fontWeight:800,whiteSpace:"nowrap" }}>{g.tipo==="fixo"?fmtR(g.total).replace(",00","")+"/mês":g.tipo==="porSessao"?"por sessão":"por aula"}</span>
+              </div>
+              <div style={{ display:"flex",justifyContent:"space-between",gap:8,fontSize:12,color:"#64748b",marginTop:2 }}>
+                <span>{sub}</span><span>{(pct!==null?pct+"% da receita ":"")+(aberto?"▴":"▾")}</span>
+              </div>
+              <div style={{ height:8,borderRadius:4,background:"#f1f5f9",marginTop:8 }}><div style={{ width:larg+"%",height:8,borderRadius:4,background:O }}/></div>
+            </div>
+            {aberto && <div style={{ marginTop:8 }}>
+              {g.alunos.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(s=>{
+                const sit = situacaoAluno(s);
+                const val = g.tipo==="fixo"?Number(s.billing?.valor)||0:g.tipo==="porSessao"?Number(s.billing?.valorSessao)||0:Number(s.billing?.valorAula)||0;
+                return (
+                  <div key={s.id} onClick={()=>nav("studentDetail",{studentId:s.id})} style={{ display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,fontSize:13,padding:"8px 0",borderTop:"1px solid #f1f5f9",cursor:"pointer" }}>
+                    <span style={{ minWidth:0 }}>{s.name}</span>
+                    <span style={{ display:"flex",alignItems:"center",gap:6,flexShrink:0 }}>
+                      <span style={{ fontSize:10.5,fontWeight:700,padding:"2px 7px",borderRadius:99,background:sit.bg,color:sit.cor }}>{sit.txt}</span>
+                      <span style={{ fontWeight:700 }}>{fmtR(val).replace(",00","")}</span>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>}
+          </Card>
+        );
+      })}
+      </>}
       {(previstoPorMes.some(v=>v>0)||pagoPorMes.some(v=>v>0)) &&
       <div style={{ marginBottom:18 }}>
         <div style={{ fontSize:12,fontWeight:700,color:"#475569",marginBottom:8 }}>Previsto x Recebido — últimos 6 meses</div>
