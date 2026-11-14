@@ -19,7 +19,7 @@
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="longevus-aluno-extras.js?v=15"></script>
+<script src="longevus-aluno-extras.js?v=16"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -870,7 +870,7 @@ const ProgressoAtividades = ({concluidas, total}) => {
   );
 };
 
-const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, atividadesSemData, concluidasMap, ultimaConclusaoMap, onToggleAtividade, onIrTreino, bibCustom, onSalvarExercicios, getSessaoAtividade, onLogout, onIr, studentId, studentData}) => {
+const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, atividadesSemData, concluidasMap, ultimaConclusaoMap, onToggleAtividade, onIrTreino, bibCustom, onSalvarExercicios, getSessaoAtividade, onLogout, onIr, studentId, studentData, semTreino}) => {
   const hoje = new Date();
   const diaLabel = DIAS_SEMANA_LONGO[hoje.getDay()]+", "+hoje.getDate()+" de "+MESES_NOME[hoje.getMonth()];
   const totalHoje = atividadesHoje.length;
@@ -920,7 +920,7 @@ const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, atividadesSemDa
   );
   return (
     <div style={{height:"calc(100dvh - 66px - env(safe-area-inset-bottom))",display:"flex",flexDirection:"column",overflowY:"auto"}}>
-      <XX.InicioTopo firstName={firstName} treinoHojeLabel={treinoHojeLabel} onIrTreino={onIrTreino} onLogout={onLogout} onIr={onIr} studentId={studentId} studentData={studentData}/>
+      <XX.InicioTopo firstName={firstName} treinoHojeLabel={treinoHojeLabel} semTreino={semTreino} onIrTreino={onIrTreino} onLogout={onLogout} onIr={onIr} studentId={studentId} studentData={studentData}/>
       <div style={{flexShrink:0,padding:"12px 18px 4px"}}>
         {totalHoje>0 && (
           <div style={{marginBottom:6}}>
@@ -1679,19 +1679,6 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
     return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14}}>Carregando seu treino...</div>;
   }
 
-  if(notFound || !prog){
-    return (
-      <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20,background:"#f8fafc"}}>
-        <Card style={{maxWidth:380,width:"100%",padding:"32px 26px",textAlign:"center"}}>
-          <div style={{width:56,height:56,borderRadius:16,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px"}}><Icon name="note" size={26} color="#FF5603"/></div>
-          <div style={{fontWeight:700,fontSize:15,marginBottom:8}}>Nenhum treino disponível ainda</div>
-          <div style={{fontSize:13,color:"#64748b",marginBottom:20,lineHeight:1.5}}>Seu personal ainda não montou seu programa, ou ele ainda não foi sincronizado. Fale com ele se achar que isso é um engano.</div>
-          <Btn variant="secondary" full onClick={onLogout}>Sair</Btn>
-        </Card>
-      </div>
-    );
-  }
-
   const hojeISO = toISODate(new Date());
   const atividadesHoje = atividades.filter(a=>a && a.date===hojeISO);
   const atividadesSemData = atividades.filter(a=>a && a.semData);
@@ -1719,7 +1706,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
   const requiredPerBlock = requiredParaBloco(blocoIdx);
   const treinoAtivo = treinosUnicos[treinoIdx] || treinosUnicos[0];
   const td = TREINO_DEFS[treinoAtivo];
-  const sessao = ((prog.prescricao||{})[blocoAtivo.key]||{})[treinoAtivo] || {inicial:[],principal:[],final:[]};
+  const sessao = ((prog?.prescricao||{})[blocoAtivo.key]||{})[treinoAtivo] || {inicial:[],principal:[],final:[]};
 
   const allKeys = [];
   MOMENTOS.forEach(([mk])=>{ (sessao[mk]||[]).forEach((_,idx)=>allKeys.push(mk+"-"+idx)); });
@@ -1873,6 +1860,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
           onIr={setTab}
           studentId={studentId}
           studentData={studentData}
+          semTreino={!prog}
           bibCustom={bibCustom}
           onSalvarExercicios={salvarSessaoAtividade}
           getSessaoAtividade={getSessaoAtividade}
@@ -1883,7 +1871,20 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
       {tab==="avaliacao" && <div>{window.LongevusAlunoExtras && <window.LongevusAlunoExtras.AntroAluno studentId={studentId} ownerId={ownerId} studentData={studentData}/>}<TelaAvaliacao studentId={studentId} studentData={studentData}/></div>}
       {tab==="alimentacao" && (window.LongevusAlunoExtras ? <window.LongevusAlunoExtras.TelaAlimentacao studentId={studentId} ownerId={ownerId} studentData={studentData}/> : <div style={{padding:32,textAlign:"center",color:"#94a3b8",fontSize:14}}>Não consegui carregar esta tela. Feche e abra o app de novo.</div>)}
 
-      {tab==="treino" && showPreCheckinGate && (
+      {tab==="treino" && !prog && (
+        <div style={{padding:"24px 18px"}}>
+          <Card style={{padding:"28px 22px",textAlign:"center"}}>
+            <div style={{width:56,height:56,borderRadius:16,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px"}}><Icon name="note" size={26} color="#FF5603"/></div>
+            <div style={{fontWeight:800,fontSize:16,marginBottom:8}}>Seu treino está em preparação</div>
+            <div style={{fontSize:13,color:"#64748b",lineHeight:1.55,marginBottom:18}}>O Wellington está montando seu programa a partir do seu questionário. Assim que ficar pronto, ele aparece aqui. Enquanto isso, você já pode usar o app.</div>
+            <div style={{display:"flex",gap:8}}>
+              <Btn variant="secondary" full onClick={()=>setTab("alimentacao")}>Calorias</Btn>
+              <Btn variant="secondary" full onClick={()=>setTab("avaliacao")}>Avaliação</Btn>
+            </div>
+          </Card>
+        </div>
+      )}
+      {tab==="treino" && prog && showPreCheckinGate && (
         <div style={{padding:"16px 18px"}}>
           <Card style={{padding:0,overflow:"hidden"}}>
             <div style={{background:"linear-gradient(135deg,#FF5603,#ff8c42)",padding:"18px 16px",display:"flex",alignItems:"center",gap:12}}>
@@ -1995,7 +1996,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
         </div>
       )}
 
-      {tab==="treino" && !showPreCheckinGate && (
+      {tab==="treino" && prog && !showPreCheckinGate && (
       <div style={{padding:"16px 16px 0"}}>
         {atividadesHoje.length>0 && (
           <div style={{marginBottom:10}}>
