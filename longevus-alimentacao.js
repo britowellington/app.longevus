@@ -57,6 +57,14 @@
     const v = Math.round(nutriNum(n));
     return v.toLocaleString("pt-BR");
   };
+  const nutriFmtG = (n) => {
+    const v = nutriNum(n);
+    if (v > 0 && v < 10) {
+      const d = Math.round(v * 10) / 10;
+      return String(d).replace(".", ",");
+    }
+    return nutriFmt(v);
+  };
   const nutriId = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
   const nutriZero = () => ({ kcal: 0, prot: 0, carb: 0, gord: 0, fibra: 0 });
   const nutriSomar = (lista) => (lista || []).reduce((t, i) => ({
@@ -783,7 +791,9 @@
     });
     (atividades || []).forEach((a) => {
       const def = ENERGIA_ATIVIDADES.find((x) => x[0] === a.tipo) || [a.tipo, a.rotulo || "Atividade", a.met || 4];
-      add(a.date, { id: a.id, rotulo: def[1] + " · " + Math.round(nutriNum(a.minutos)) + " min", kcal: energiaKcal(def[2], peso, nutriNum(a.minutos)), tipo: "extra" });
+      const minA = Math.round(nutriNum(a.minutos));
+      const doRelogio = a.fonte === "relogio" && nutriNum(a.kcal) > 0;
+      add(a.date, { id: a.id, rotulo: def[1] + (minA ? " · " + minA + " min" : "") + (doRelogio ? " · relógio" : ""), kcal: doRelogio ? Math.round(nutriNum(a.kcal)) : energiaKcal(def[2], peso, minA), tipo: "extra" });
     });
     return porDia;
   };
@@ -868,17 +878,29 @@
     const linha = (rot, val, cor, forte, borda) => /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", gap: 10, padding: "6px 0", borderTop: borda ? "1px solid #f1f5f9" : "none", fontSize: forte ? 15 : 14 } }, /* @__PURE__ */ React.createElement("span", { style: { fontWeight: forte ? 800 : 500 } }, rot), /* @__PURE__ */ React.createElement("b", { style: { color: cor || NUTRI_ESCURO, whiteSpace: "nowrap" } }, val));
     return /* @__PURE__ */ React.createElement("div", { style: { background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 14, padding: "12px 14px", marginBottom: 14 } }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setAberto((a) => !a), "aria-expanded": aberto, style: { width: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", display: "flex", justifyContent: "space-between", alignItems: "center", color: NUTRI_ESCURO } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 14, fontWeight: 800 } }, "Como sua meta foi calculada"), /* @__PURE__ */ React.createElement("span", { "aria-hidden": "true", style: { fontSize: 12, color: "#64748b" } }, aberto ? "▲" : "▼")), aberto && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 8 } }, linha("Metabolismo em repouso", nutriFmt(e.tmb.v)), linha("Rotina do dia a dia", "+ " + nutriFmt(e.rotinaExtra)), (itens || []).map((it, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "6px 0", fontSize: 14 } }, /* @__PURE__ */ React.createElement("span", null, it.rotulo, it.semDuracao ? /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#64748b" } }, " · sem duração") : null), /* @__PURE__ */ React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement("b", { style: { color: "#0f766e", whiteSpace: "nowrap" } }, "+ " + nutriFmt(it.kcal)), it.tipo === "extra" && onApagarAtividade && /* @__PURE__ */ React.createElement("button", { type: "button", "aria-label": "Remover " + it.rotulo, onClick: () => onApagarAtividade(it.id), style: { width: 28, height: 28, borderRadius: 14, border: "none", background: "#f1f5f9", color: "#64748b", cursor: "pointer", fontSize: 14 } }, "×")))), linha("Gasto estimado", nutriFmt(e.gasto), null, false, true), e.sinal !== 0 && linha(e.sinal < 0 ? "Déficit definido pelo seu personal" : "Superávit definido pelo seu personal", (e.sinal < 0 ? "- " : "+ ") + nutriFmt(e.ajuste), NUTRI_LARANJA_TXT), e.fixa && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b", padding: "4px 0" } }, "Sua meta foi definida pelo seu nutricionista e não muda com o exercício."), linha("Meta do dia", nutriFmt(e.meta) + " kcal", null, true, true), e.travou && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b", marginTop: 4 } }, "A meta nunca fica abaixo do seu metabolismo em repouso."), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b", marginTop: 6, lineHeight: 1.45 } }, "Nos dias com treino a meta sobe. Todos os valores são estimativas.")));
   };
+  const ENERGIA_TEMPOS = [15, 20, 30, 45, 60, 90];
   const EnergiaAtividadeForm = ({ dia, peso, studentId, ownerId, onSalvo, onCancelar }) => {
     const [tipo, setTipo] = useState("caminhada");
     const [min, setMin] = useState(30);
+    const [minTxt, setMinTxt] = useState("");
+    const [fonte, setFonte] = useState("estimado");
+    const [kcalTxt, setKcalTxt] = useState("");
     const [salvando, setSalvando] = useState(false);
     const [erro, setErro] = useState("");
     const def = ENERGIA_ATIVIDADES.find((x) => x[0] === tipo);
-    const kcal = energiaKcal(def[2], peso, min);
+    const minutos = minTxt !== "" ? Math.round(nutriNum(minTxt)) : min;
+    const relogio = fonte === "relogio";
+    const kcalRel = Math.round(nutriNum(kcalTxt));
+    const kcal = relogio ? kcalRel : energiaKcal(def[2], peso, minutos);
+    const podeSalvar = relogio ? kcalRel > 0 && kcalRel <= 3e3 : !!peso && minutos > 0 && minutos <= 600;
     const salvar = async () => {
+      if (!podeSalvar) {
+        setErro(relogio ? "Digite as calorias que o relógio mostrou." : "Escolha ou digite o tempo da atividade.");
+        return;
+      }
       setSalvando(true);
       setErro("");
-      const a = { id: "at_" + nutriId(), date: dia, tipo, rotulo: def[1], minutos: min, met: def[2], kcal, createdAt: (/* @__PURE__ */ new Date()).toISOString() };
+      const a = { id: "at_" + nutriId(), date: dia, tipo, rotulo: def[1], minutos: minutos > 0 ? minutos : null, met: def[2], kcal, fonte, createdAt: (/* @__PURE__ */ new Date()).toISOString() };
       const ok = await energiaApi.salvarAtividade(studentId, ownerId, a);
       setSalvando(false);
       if (!ok) {
@@ -887,7 +909,14 @@
       }
       onSalvo(a);
     };
-    return /* @__PURE__ */ React.createElement("div", { style: { padding: "18px 16px 24px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 20, fontWeight: 800, marginBottom: 2 } }, "Outra atividade"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#64748b", marginBottom: 14 } }, "O que você fez fora do treino com o personal."), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6, marginBottom: 14 } }, ENERGIA_ATIVIDADES.map((a) => /* @__PURE__ */ React.createElement(EnergiaChip, { key: a[0], ativo: tipo === a[0], onClick: () => setTipo(a[0]) }, a[1]))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, marginBottom: 6 } }, "Por quanto tempo?"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 14 } }, [15, 20, 30, 45, 60, 90].map((m) => /* @__PURE__ */ React.createElement(EnergiaChip, { key: m, ativo: min === m, onClick: () => setMin(m), style: { flex: 1, padding: "0 2px" } }, m + " min"))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "baseline", background: "#ecfdf5", borderRadius: 12, padding: "12px 14px", marginBottom: 14 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "#065f46" } }, "Gasto estimado"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20, fontWeight: 800, color: "#065f46" } }, peso ? nutriFmt(kcal) + " kcal" : "—")), !peso && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#dc2626", marginBottom: 10 } }, "Precisamos do seu peso para calcular. Peça ao seu personal para registrar uma avaliação."), erro && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#dc2626", textAlign: "center", marginBottom: 10 } }, erro), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8 } }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onCancelar, style: { flex: 1, height: 50, borderRadius: 25, border: "1.5px solid #e2e8f0", background: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", color: NUTRI_ESCURO } }, "Cancelar"), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: salvar, disabled: salvando || !peso, style: { flex: 1.4, height: 50, borderRadius: 25, border: "none", background: NUTRI_LARANJA, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", opacity: salvando || !peso ? 0.55 : 1, fontFamily: "inherit" } }, salvando ? "Salvando..." : "Salvar atividade")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", textAlign: "center", marginTop: 12 } }, "Cálculo pelo seu peso e pela intensidade típica da atividade. É uma estimativa."));
+    const campo = { height: 44, borderRadius: 12, border: "1.5px solid #e2e8f0", padding: "0 12px", fontSize: 16, fontWeight: 700, fontFamily: "inherit", color: NUTRI_ESCURO, boxSizing: "border-box", background: "#fff" };
+    return /* @__PURE__ */ React.createElement("div", { style: { padding: "14px 16px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 20, fontWeight: 800, marginBottom: 2 } }, "Outra atividade"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#64748b", marginBottom: 8 } }, "O que você fez fora do treino com o personal."), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6, marginBottom: 12 } }, ENERGIA_ATIVIDADES.map((a) => /* @__PURE__ */ React.createElement(EnergiaChip, { key: a[0], ativo: tipo === a[0], onClick: () => setTipo(a[0]), style: { minHeight: 40, fontSize: 12, lineHeight: 1.15, padding: "2px 4px" } }, a[0] === "outra" ? "Outra moderada" : a[1]))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, marginBottom: 6 } }, "Por quanto tempo?", relogio ? /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, fontWeight: 600, color: "#64748b" } }, " (opcional)") : null), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 6 } }, ENERGIA_TEMPOS.map((m) => /* @__PURE__ */ React.createElement(EnergiaChip, { key: m, ativo: minTxt === "" && min === m, onClick: () => {
+      setMin(m);
+      setMinTxt("");
+    }, style: { flex: 1, padding: "0 2px", minHeight: 40 } }, m + " min"))), /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 12, fontSize: 13, color: "#475569" } }, "Outro tempo:", /* @__PURE__ */ React.createElement("input", { inputMode: "numeric", value: minTxt, onChange: (e) => setMinTxt(e.target.value.replace(/[^0-9]/g, "").slice(0, 3)), placeholder: "ex.: 37", "aria-label": "Outro tempo em minutos", style: { ...campo, width: 90, height: 40, border: "1.5px solid " + (minTxt !== "" ? NUTRI_ESCURO : "#e2e8f0") } }), "min"), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, background: "#f1f5f9", borderRadius: 12, padding: 3, marginBottom: 8 } }, [["estimado", "Calcular pelo tempo"], ["relogio", "Tenho do relógio"]].map((o) => /* @__PURE__ */ React.createElement("button", { key: o[0], type: "button", onClick: () => {
+      setFonte(o[0]);
+      setErro("");
+    }, style: { height: 36, borderRadius: 10, border: "none", background: fonte === o[0] ? NUTRI_ESCURO : "transparent", color: fonte === o[0] ? "#fff" : "#475569", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, o[1]))), relogio ? /* @__PURE__ */ React.createElement("div", { style: { background: "#ecfdf5", borderRadius: 12, padding: "10px 14px", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "#065f46" } }, "Calorias do relógio"), /* @__PURE__ */ React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement("input", { inputMode: "numeric", value: kcalTxt, onChange: (e) => setKcalTxt(e.target.value.replace(/[^0-9]/g, "").slice(0, 4)), placeholder: "ex.: 320", "aria-label": "Calorias do relógio", style: { ...campo, width: 96, textAlign: "right" } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: "#065f46" } }, "kcal"))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11.5, color: "#065f46", marginTop: 6, lineHeight: 1.4 } }, "Use as calorias ", /* @__PURE__ */ React.createElement("b", null, "ativas"), ' da atividade (no relógio aparecem como "ativas" ou "de movimento").')) : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "baseline", background: "#ecfdf5", borderRadius: 12, padding: "12px 14px", marginBottom: 12 } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 13, color: "#065f46" } }, "Gasto estimado"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 20, fontWeight: 800, color: "#065f46" } }, peso && minutos > 0 ? nutriFmt(kcal) + " kcal" : "—")), !relogio && !peso && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#dc2626", marginBottom: 10 } }, "Precisamos do seu peso para calcular. Peça ao seu personal para registrar uma avaliação, ou use as calorias do relógio."), erro && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#dc2626", textAlign: "center", marginBottom: 10 } }, erro), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8 } }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onCancelar, style: { flex: 1, height: 48, borderRadius: 24, border: "1.5px solid #e2e8f0", background: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", color: NUTRI_ESCURO } }, "Cancelar"), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: salvar, disabled: salvando, style: { flex: 1.4, height: 48, borderRadius: 24, border: "none", background: NUTRI_LARANJA, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", opacity: salvando || !podeSalvar ? 0.55 : 1, fontFamily: "inherit" } }, salvando ? "Salvando..." : "Salvar atividade")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", textAlign: "center", marginTop: 10 } }, relogio ? "O valor do relógio entra no seu gasto do dia como foi digitado." : "Cálculo pelo seu peso e pela intensidade típica da atividade. É uma estimativa."));
   };
   const EnergiaSemana = ({ dias, plano }) => {
     const comReg = dias.filter((d) => d.consumido > 0 && d.e && !d.e.semTmb && !d.hoje);
@@ -1018,33 +1047,79 @@
     return cardNum(q) + (u ? " " + u : "");
   };
   const cardTotaisDia = (d) => nutriSomar(d && d.refeicoes || []);
+  const CARD_SEM_ACENTO = (t) => String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const CARD_DESCRITORES = /\b(cozid[oa]s?|crus?|crua?s?|assad[oa]s?|grelhad[oa]s?|refogad[oa]s?|em cubos|em fil[eé]s?|em tiras|em rodelas|em fatias|em peda[cç]os|em po\b|picad[oa]s?|ralad[oa]s?|desfiad[oa]s?|fatiad[oa]s?|amassad[oa]s?|cortad[oa]s?|descascad[oa]s?|sem pele|sem osso|sem casca|congelad[oa]s?|fresc[oa]s?|de galinha|caipira|prata|nanica|extra ?virgem|filtrada|a gosto|pequen[oa]s?|medi[oa]s?|grandes?|maduras?|madur[oa]s?)\b/g;
+  const cardChaveNome = (nome) => {
+    let t = CARD_SEM_ACENTO(nome).toLowerCase().replace(/\(.*?\)/g, " ");
+    if (/\bclaras?\b/.test(t)) return "clara de ovo";
+    t = t.replace(CARD_DESCRITORES, " ").replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").trim();
+    t = t.split(" ").filter((w) => w && w !== "de" && w !== "do" && w !== "da" && w !== "e").map((w) => w.length > 3 && /s$/.test(w) && !/ss$/.test(w) ? /[oa]es$/.test(w) ? w.slice(0, -3) + "ao" : w.slice(0, -1) : w).join(" ");
+    return t;
+  };
+  const cardNomeLimpo = (nome) => {
+    const n = String(nome || "").replace(/\(.*?\)/g, " ").replace(/\b(cozid[oa]s?|crus?|crua?s?|assad[oa]s?|grelhad[oa]s?|em cubos|em fil[eé]s?|em tiras|em rodelas|picad[oa]s?|ralad[oa]s?|desfiad[oa]s?|fatiad[oa]s?|amassad[oa]s?|de galinha|a gosto)\b/gi, " ").replace(/\s+/g, " ").trim();
+    return n ? n.charAt(0).toUpperCase() + n.slice(1) : String(nome || "");
+  };
+  const CARD_PESO_UN = { ovo: 50, banana: 100, maca: 150, pera: 150, laranja: 180, tomate: 100, cebola: 120, batata: 150, "batata doce": 200, cenoura: 100, limao: 70, abobrinha: 250, pepino: 200, "pao frances": 50, kiwi: 80, mamao: 500, abacate: 350, tangerina: 150, "clara ovo": 33, "clara de ovo": 33 };
+  const CARD_NAO_COMPRA = /^(agua|agua quente|agua gelada|gelo)$/;
   const cardapioCompras = (c) => {
     const mapa = {};
     (c && c.dias || []).forEach((d) => (d.refeicoes || []).forEach((p) => (p.ingredientes || []).forEach((i) => {
       const nome = String(i.nome || "").trim();
       if (!nome) return;
-      const q = nutriNum(i.qtd);
-      const un = q ? String(i.un || "").trim().toLowerCase() : "";
-      const chave = nome.toLowerCase().replace(/\s+/g, " ") + "|" + un;
-      const cat = q ? CARD_CATS.indexOf(i.cat) >= 0 ? i.cat : "Mercearia" : "Temperos";
-      if (!mapa[chave]) mapa[chave] = { chave, nome, un, qtd: 0, cat };
-      mapa[chave].qtd += q;
-    })));
-    const liquido = /azeite|óleo|oleo|vinagre|shoyu|molho|leite|mel\b/i;
-    const itens = Object.values(mapa).map((x) => {
-      let { qtd, un } = x;
-      if (un === "un") qtd = Math.ceil(qtd);
-      if ((un === "col. sopa" || un === "col. chá") && liquido.test(x.nome) && qtd > 4) {
-        qtd = Math.round(qtd * (un === "col. sopa" ? 15 : 5) / 10) * 10;
-        un = "ml";
+      const chave = cardChaveNome(nome);
+      if (!chave || CARD_NAO_COMPRA.test(chave)) return;
+      let un = String(i.un || "").trim().toLowerCase();
+      const q = /gosto/.test(un) ? 0 : nutriNum(i.qtd);
+      if (!mapa[chave]) mapa[chave] = { chave, nomes: {}, cats: {}, g: 0, ml: 0, un: 0, cha: 0, outros: {} };
+      const m = mapa[chave];
+      const limpo = cardNomeLimpo(nome);
+      m.nomes[limpo] = (m.nomes[limpo] || 0) + 1;
+      if (q) {
+        const ct = CARD_CATS.indexOf(i.cat) >= 0 ? i.cat : "Mercearia";
+        m.cats[ct] = (m.cats[ct] || 0) + 1;
       }
-      return { ...x, qtd, un };
+      if (!q) return;
+      if (un === "g" || un === "gr" || un === "gramas") m.g += q;
+      else if (un === "kg") m.g += q * 1e3;
+      else if (un === "ml") m.ml += q;
+      else if (un === "l" || un === "litro" || un === "litros") m.ml += q * 1e3;
+      else if (/col.*sopa/.test(un)) m.cha += q * 3;
+      else if (/col.*ch/.test(un)) m.cha += q;
+      else if (un === "un" || un === "unidade" || un === "unidades" || !un) m.un += q;
+      else m.outros[un] = (m.outros[un] || 0) + q;
+    })));
+    const liquido = /azeite|oleo|vinagre|shoyu|molho|leite|mel\b|suco/;
+    const itens = Object.values(mapa).map((m) => {
+      if (m.cha) {
+        if (m.ml || !m.g && liquido.test(m.chave) && m.cha > 6) {
+          m.ml += m.cha * 5;
+          m.cha = 0;
+        } else if (m.g) {
+          m.g += m.cha * 5;
+          m.cha = 0;
+        }
+      }
+      const pesoUn = CARD_PESO_UN[m.chave];
+      if (m.un && m.g && pesoUn) {
+        m.un += m.g / pesoUn;
+        m.g = 0;
+      }
+      const partes = [];
+      if (m.g) partes.push(m.g >= 1e3 ? cardNum(Math.round(m.g / 100) / 10) + " kg" : (m.g >= 20 ? Math.round(m.g / 10) * 10 : Math.round(m.g)) + " g");
+      if (m.ml) partes.push(m.ml >= 1e3 ? cardNum(Math.round(m.ml / 100) / 10) + " l" : (m.ml >= 20 ? Math.round(m.ml / 10) * 10 : Math.round(m.ml)) + " ml");
+      if (m.un) partes.push(Math.ceil(m.un) + " un");
+      if (m.cha) partes.push(m.cha >= 3 ? cardNum(Math.round(m.cha / 3 * 2) / 2) + " col. sopa" : cardNum(Math.round(m.cha * 2) / 2) + " col. chá");
+      Object.keys(m.outros).forEach((u) => partes.push(cardNum(Math.round(m.outros[u] * 2) / 2) + " " + u));
+      const nome = Object.keys(m.nomes).sort((a, b) => m.nomes[b] - m.nomes[a] || a.length - b.length)[0];
+      const cats = Object.keys(m.cats).sort((a, b) => m.cats[b] - m.cats[a]);
+      return { chave: m.chave, nome, cat: partes.length ? cats[0] || "Mercearia" : "Temperos", qtd: partes.length ? 1 : 0, txt: partes.length ? partes.join(" + ") : "a gosto" };
     });
     return CARD_CATS.map((cat) => ({ cat, itens: itens.filter((x) => x.cat === cat).sort((a, b) => a.nome.localeCompare(b.nome)) })).filter((g) => g.itens.length);
   };
   const cardapioComprasTexto = (c) => {
     const gr = cardapioCompras(c);
-    return "Lista de compras · " + cardapioTitulo(c) + "\n\n" + gr.map((g) => g.cat.toUpperCase() + "\n" + g.itens.map((x) => "- " + x.nome + (x.qtd ? " · " + cardQtd({ qtd: x.qtd, un: x.un }) : "")).join("\n")).join("\n\n");
+    return "Lista de compras · " + cardapioTitulo(c) + "\n\n" + gr.map((g) => g.cat.toUpperCase() + "\n" + g.itens.map((x) => "- " + x.nome + " · " + x.txt).join("\n")).join("\n\n");
   };
   const cardapioTitulo = (c) => {
     const d = c && c.dias || [];
