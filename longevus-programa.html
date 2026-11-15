@@ -789,9 +789,14 @@ const getYtId = url => {
 
 // Miniatura do exercício: GIF/foto primeiro, depois capa do YouTube, depois ícone.
 // Se a imagem falhar ao carregar (link quebrado), cai automaticamente pra próxima opção.
+// Link reserva: se o jsDelivr falhar, busca o mesmo GIF direto do GitHub.
+const gifReserva = url => {
+  const m = (url||"").match(/^https:\/\/cdn\.jsdelivr\.net\/gh\/([^/]+)\/([^/@]+)@([^/]+)\/(.+)$/);
+  return m ? "https://raw.githubusercontent.com/"+m[1]+"/"+m[2]+"/"+m[3]+"/"+m[4] : null;
+};
 const ExThumb = ({ ex, w=64, h=48, iconSize=20 }) => {
   const fontes = [];
-  if (ex?.foto) fontes.push(ex.foto);
+  if (ex?.foto) { fontes.push(ex.foto); const r = gifReserva(ex.foto); if (r) fontes.push(r); }
   const yt = getYtId(ex?.video);
   if (yt) fontes.push("https://img.youtube.com/vi/"+yt+"/mqdefault.jpg");
   const chave = fontes.join("|");
@@ -850,7 +855,7 @@ const MetodoSelo = ({item, items, idx}) => {
 const ExDetalheModal =({ ex, onClose }) => (
   <Modal title={ex.nome} onClose={onClose}>
     {ex.foto && (
-      <img src={ex.foto} alt={ex.nome} onError={e=>{e.currentTarget.style.display="none";}} style={{width:"100%",maxHeight:400,objectFit:"contain",background:"#fff",borderRadius:10,marginBottom:14,display:"block"}}/>
+      <img src={ex.foto} alt={ex.nome} onError={e=>{const el=e.currentTarget,r=gifReserva(ex.foto);if(r&&!el.dataset.r){el.dataset.r="1";el.src=r;}else el.style.display="none";}} style={{width:"100%",maxHeight:400,objectFit:"contain",background:"#fff",borderRadius:10,marginBottom:14,display:"block"}}/>
     )}
     {ex.video && getYtId(ex.video) && (
       <div style={{marginBottom:14,borderRadius:10,overflow:"hidden",position:"relative",paddingBottom:"56.25%",height:0}}>
