@@ -738,7 +738,7 @@ const ExCard=({ex,onEdit,onDelete,onView,isAdmin,onClassificar,onFotoOk})=>{
   const gc=GC[ex.grupo]||GC.Outro;
   const nc=ex.nivel==="Básico"?"#16a34a":ex.nivel==="Intermediário"?O:"#7e22ce";
   return(<Card style={{padding:0,overflow:"hidden",marginBottom:9}}>
-    {ex.foto&&<img src={ex.foto} alt={ex.nome} onLoad={()=>onFotoOk&&onFotoOk(ex.id)} onError={onErroGif(ex.foto)} style={{width:"100%",height:110,objectFit:"cover",display:"block"}}/>}
+    {ex.foto&&<img src={ex.foto} alt={ex.nome} loading="lazy" decoding="async" onLoad={()=>onFotoOk&&onFotoOk(ex.id)} onError={onErroGif(ex.foto)} style={{width:"100%",height:110,objectFit:"cover",display:"block"}}/>}
     <div style={{padding:"10px 12px"}}>
       <div style={{fontWeight:800,fontSize:13,marginBottom:4}}>{ex.nome}</div>
       <div style={{display:"flex",gap:3,flexWrap:"wrap",marginBottom:4}}>
@@ -943,23 +943,28 @@ function AppInner({billing}){
   const [editEx,setEditEx]=useState(null);
   const [verEx,setVerEx]=useState(null);
   const [fmid,setFmid]=useState("Todos"); // Todos | Sem GIF | Quebrados
+  const [limite,setLimite]=useState(40); // quantos cards mostrar por vez (alivia a memória do celular)
+  useEffect(()=>{setLimite(40);},[search,fg,fm,fn,fms,fmid]);
   const [quebrados,setQuebrados]=useState(null); // Set de ids com GIF/foto que não carrega
   const [verif,setVerif]=useState(null); // {feito,total} durante a verificação
 
-  // Testa o carregamento de cada GIF/foto cadastrado (3 por vez).
-  // Só marca como quebrado quando o link responde com erro. GIF lento (internet do celular) não conta.
+  // Confere cada link só perguntando ao servidor se o arquivo existe (HEAD), sem baixar o GIF.
+  // Assim não pesa na memória do celular. Só marca como quebrado quando o servidor responde erro (404 etc.).
   const verificarGifs=async()=>{
     const lista=biblioteca.filter(e=>e.foto&&!e.foto.startsWith("data:image"));
     const ruins=new Set();
     let feito=0;
     setVerif({feito:0,total:lista.length});
-    const testar=url=>new Promise(res=>{
-      const img=new Image();
-      const t=setTimeout(()=>{img.onload=img.onerror=null;res(true);},30000);
-      img.onload=()=>{clearTimeout(t);res(true);};
-      img.onerror=()=>{clearTimeout(t);res(false);};
-      img.src=url;
-    });
+    const testar=async url=>{
+      const ctrl=new AbortController();
+      const t=setTimeout(()=>ctrl.abort(),15000);
+      try{
+        const r=await fetch(url,{method:"HEAD",signal:ctrl.signal,cache:"no-store"});
+        return r.ok;
+      }catch(e){
+        return true; // sem resposta (internet lenta) não conta como quebrado
+      }finally{clearTimeout(t);}
+    };
     let pos=0;
     const worker=async()=>{
       while(pos<lista.length){
@@ -972,7 +977,7 @@ function AppInner({billing}){
         setVerif({feito,total:lista.length});
       }
     };
-    await Promise.all(Array.from({length:3},worker));
+    await Promise.all(Array.from({length:6},worker));
     setQuebrados(ruins);
     setVerif(null);
     setFmid(ruins.size>0?"Quebrados":"Todos");
@@ -1104,7 +1109,8 @@ function AppInner({billing}){
           </div>
         </div>
         <div style={{fontSize:10,color:"#94a3b8",marginBottom:9}}>{filtered.length} exercício{filtered.length!==1?"s":""} encontrado{filtered.length!==1?"s":""}</div>
-        {filtered.length===0?(<Card style={{textAlign:"center",padding:36}}><div style={{fontSize:32,marginBottom:8}}>📚</div><div style={{fontWeight:700,fontSize:14,marginBottom:4}}>{biblioteca.length===0?"Biblioteca vazia":"Nenhum encontrado"}</div><div style={{color:"#94a3b8",fontSize:11,marginBottom:14}}>{biblioteca.length===0?"Cadastre exercícios.":"Tente outra busca."}</div>{biblioteca.length===0&&<Btn onClick={()=>{setEditEx(null);setModal("form");}}>Cadastrar primeiro</Btn>}</Card>):filtered.map(ex=>(<ExCard key={ex.id} ex={ex} isAdmin={billing?.is_admin} onEdit={ex=>{setEditEx(ex);setModal("form");}} onDelete={delEx} onView={ex=>{setVerEx(ex);setModal("ver");}} onClassificar={classificarMusculo} onFotoOk={id=>setQuebrados(q=>{if(!q||!q.has(id))return q;const n=new Set(q);n.delete(id);return n;})}/>))}
+        {filtered.length===0?(<Card style={{textAlign:"center",padding:36}}><div style={{fontSize:32,marginBottom:8}}>📚</div><div style={{fontWeight:700,fontSize:14,marginBottom:4}}>{biblioteca.length===0?"Biblioteca vazia":"Nenhum encontrado"}</div><div style={{color:"#94a3b8",fontSize:11,marginBottom:14}}>{biblioteca.length===0?"Cadastre exercícios.":"Tente outra busca."}</div>{biblioteca.length===0&&<Btn onClick={()=>{setEditEx(null);setModal("form");}}>Cadastrar primeiro</Btn>}</Card>):filtered.slice(0,limite).map(ex=>(<ExCard key={ex.id} ex={ex} isAdmin={billing?.is_admin} onEdit={ex=>{setEditEx(ex);setModal("form");}} onDelete={delEx} onView={ex=>{setVerEx(ex);setModal("ver");}} onClassificar={classificarMusculo} onFotoOk={id=>setQuebrados(q=>{if(!q||!q.has(id))return q;const n=new Set(q);n.delete(id);return n;})}/>))}
+        {filtered.length>limite&&<Btn variant="secondary" full onClick={()=>setLimite(l=>l+40)}>Mostrar mais ({filtered.length-limite} restantes)</Btn>}
       </div>
     </div>
     {modal==="form"&&(<Modal title={editEx?"Editar Exercício":"Novo Exercício"} onClose={()=>{setModal(null);setEditEx(null);}}><ExForm initial={editEx} onSave={saveEx} onCancel={()=>{setModal(null);setEditEx(null);}}/></Modal>)}
