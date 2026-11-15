@@ -1455,6 +1455,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
   const [loading,setLoading]=useState(true);
   const [prog,setProg]=useState(null);
   const [notFound,setNotFound]=useState(false);
+  const [treinoOculto,setTreinoOculto]=useState(false);
   const [blocoIdx,setBlocoIdx]=useState(0);
   const [treinoIdx,setTreinoIdx]=useState(0);
   const [showCheckin,setShowCheckin]=useState(false);
@@ -1492,12 +1493,18 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
     (async()=>{
       try{
         const headers = await authedHeaders();
-        const r = await fetch(SUPA_URL+"/rest/v1/programs?select=*&student_id=eq."+encodeURIComponent(studentId)+"&order=updated_at.desc&limit=1", { headers });
+        const r = await fetch(SUPA_URL+"/rest/v1/programs?select=*&student_id=eq."+encodeURIComponent(studentId)+"&order=updated_at.desc&limit=20", { headers });
         if(r.ok){
           const rows = await r.json();
-          if(rows && rows.length>0){
-            const p = rows[0].data;
-            setProg(p);
+          // Mesma ordem do painel do personal (criadoEm mais recente primeiro).
+          // Programas marcados como ocultoAluno ficam visíveis só para o personal.
+          const lista = (rows||[]).map(x=>x && x.data).filter(Boolean);
+          lista.sort((a,b)=>(b.criadoEm||"").localeCompare(a.criadoEm||""));
+          const visivel = lista.find(x=>x.ocultoAluno!==true);
+          if(visivel){
+            setProg(visivel);
+          } else if(lista.length>0){
+            setTreinoOculto(true);
           } else {
             setNotFound(true);
           }
@@ -1871,7 +1878,20 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
       {tab==="avaliacao" && <div>{window.LongevusAlunoExtras && <window.LongevusAlunoExtras.AntroAluno studentId={studentId} ownerId={ownerId} studentData={studentData}/>}<TelaAvaliacao studentId={studentId} studentData={studentData}/></div>}
       {tab==="alimentacao" && (window.LongevusAlunoExtras ? <window.LongevusAlunoExtras.TelaAlimentacao studentId={studentId} ownerId={ownerId} studentData={studentData}/> : <div style={{padding:32,textAlign:"center",color:"#94a3b8",fontSize:14}}>Não consegui carregar esta tela. Feche e abra o app de novo.</div>)}
 
-      {tab==="treino" && !prog && (
+      {tab==="treino" && !prog && treinoOculto && (
+        <div style={{padding:"24px 18px"}}>
+          <Card style={{padding:"28px 22px",textAlign:"center"}}>
+            <div style={{width:56,height:56,borderRadius:16,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px"}}><Icon name="note" size={26} color="#FF5603"/></div>
+            <div style={{fontWeight:800,fontSize:16,marginBottom:8}}>Seu treino é conduzido presencialmente</div>
+            <div style={{fontSize:13,color:"#64748b",lineHeight:1.55,marginBottom:18}}>O Wellington acompanha cada sessão com você. Quando for a hora, ele libera o treino aqui no app. Enquanto isso, suas calorias e sua avaliação estão disponíveis.</div>
+            <div style={{display:"flex",gap:8}}>
+              <Btn variant="secondary" full onClick={()=>setTab("alimentacao")}>Calorias</Btn>
+              <Btn variant="secondary" full onClick={()=>setTab("avaliacao")}>Avaliação</Btn>
+            </div>
+          </Card>
+        </div>
+      )}
+      {tab==="treino" && !prog && !treinoOculto && (
         <div style={{padding:"24px 18px"}}>
           <Card style={{padding:"28px 22px",textAlign:"center"}}>
             <div style={{width:56,height:56,borderRadius:16,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px"}}><Icon name="note" size={26} color="#FF5603"/></div>

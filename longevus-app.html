@@ -2400,6 +2400,14 @@ return (
 {currentProgram.divisao?.label&&<Badge color="#6366f1" bg="#eef2ff">{currentProgram.divisao.label}</Badge>}
 </div>
 <div style={{ fontSize:12,color:"#94a3b8",marginBottom:12 }}>{currentProgram.freq}x/semana · {currentProgram.semanas||24} semanas · criado em {fmt(currentProgram.criadoEm)}</div>
+<button onClick={()=>{const ocultar=currentProgram.ocultoAluno!==true;if(!window.confirm(ocultar?"Ocultar este treino do aluno? Ele continua vendo calorias, avaliação e o resto do app.":"Liberar este treino para o aluno ver no app dele?"))return;setPrograms(prev=>prev.map(p=>p.id===currentProgram.id?{...p,ocultoAluno:ocultar}:p));}} style={{ width:"100%",display:"flex",alignItems:"center",gap:10,border:"1.5px solid "+(currentProgram.ocultoAluno===true?"#fed7aa":"#bbf7d0"),background:currentProgram.ocultoAluno===true?"#fff7ed":"#f0fdf4",borderRadius:10,padding:"10px 12px",marginBottom:14,cursor:"pointer",textAlign:"left",fontFamily:"inherit" }}>
+<I n="eye" c={currentProgram.ocultoAluno===true?"#ea580c":"#16a34a"} s={18}/>
+<div style={{ flex:1,minWidth:0 }}>
+<div style={{ fontSize:13,fontWeight:700,color:currentProgram.ocultoAluno===true?"#9a3412":"#166534" }}>{currentProgram.ocultoAluno===true?"Visível só para você":"Visível para o aluno"}</div>
+<div style={{ fontSize:11,color:"#64748b",marginTop:1 }}>{currentProgram.ocultoAluno===true?"Toque para liberar o treino no app do aluno":"Toque para ocultar o treino do aluno"}</div>
+</div>
+<span style={{ fontSize:11,fontWeight:800,color:"#fff",background:currentProgram.ocultoAluno===true?"#ea580c":"#16a34a",borderRadius:7,padding:"4px 9px",flexShrink:0 }}>{currentProgram.ocultoAluno===true?"Liberar":"Ocultar"}</span>
+</button>
 <div style={{ display:"flex",gap:6,flexWrap:"wrap",marginBottom:14 }}>
 {(currentProgram.divisao?.sequencia||[]).map((t,i)=>(
 <span key={i} style={{ fontSize:11,fontWeight:700,color:"#64748b",background:"#f1f5f9",borderRadius:7,padding:"4px 9px" }}>D{i+1}: {t}</span>
@@ -2424,7 +2432,10 @@ return (
 <div style={{ fontWeight:700,fontSize:13 }}>{p.titulo||"Programa de Treino"}</div>
 <div style={{ fontSize:11,color:"#94a3b8",marginTop:1 }}>{p.divisao?.label||"—"} · {p.freq}x/semana · criado em {fmt(p.criadoEm)}</div>
 </div>
+<div style={{ display:"flex",gap:4,flexShrink:0 }}>
+<button onClick={e=>{e.stopPropagation();const ocultar=p.ocultoAluno!==true;setPrograms(prev=>prev.map(x=>x.id===p.id?{...x,ocultoAluno:ocultar}:x));}} title={p.ocultoAluno===true?"Liberar para o aluno":"Ocultar do aluno"} style={{ border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,borderRadius:7,padding:"3px 8px",color:p.ocultoAluno===true?"#ea580c":"#16a34a",background:p.ocultoAluno===true?"#fff7ed":"#f0fdf4" }}>{p.ocultoAluno===true?"Oculto":"Visível"}</button>
 {p.origem==="consultoria"&&<Badge color="#7c3aed" bg="#f5f3ff">Consultoria</Badge>}
+</div>
 </div>
 </Card>
 ))}
