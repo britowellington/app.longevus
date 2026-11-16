@@ -398,6 +398,8 @@ const TREINO_DEFS={
   ALTC:{label:"Treino C",cor:"#65a30d",bg:"#f7fee7",border:"#d9f99d",desc:"Alternado por segmento: Quadríceps, Bíceps, Panturrilha, Peitoral, Dorsal, Core, Glúteos, Funcional"},
 };
 
+// Nome do exercício personalizado pelo professor para este aluno (prog.nomesExercicios = {exId: nome})
+const NomesExCtx=React.createContext(null);
 const nomeTreinoDe=(prog,t)=>((prog&&prog.nomesTreinos&&prog.nomesTreinos[t])||"").trim()||TREINO_DEFS[t]?.label||t;
 const TREINOS_ALTERNADOS=["EMP","PUX","ALTA","ALTB","ALTC"];
 const treinosDoBloco=(prog,bloco)=>(bloco&&bloco.treinos&&bloco.treinos.some(t=>TREINOS_ALTERNADOS.includes(t)))?bloco.treinos:[...new Set(prog?.divisao?.sequencia||bloco?.treinos||["A"])];
@@ -498,8 +500,8 @@ const getMonthDates = (year, month) => {
   return Array.from({length:lastDay}, (_,i)=>new Date(year, month, i+1));
 };
 
-const ExDetalheModal = ({ex, cogEx, onClose}) => (
-  <Modal title={ex ? ex.nome : (cogEx?.nome||"Exercício")} onClose={onClose}>
+const ExDetalheModal = ({ex, cogEx, onClose, nome}) => (
+  <Modal title={nome || (ex ? ex.nome : (cogEx?.nome||"Exercício"))} onClose={onClose}>
     {ex && ex.video && getYtId(ex.video) && (
       <div style={{marginBottom:14,borderRadius:10,overflow:"hidden",position:"relative",paddingBottom:"56.25%",height:0}}>
         <iframe src={"https://www.youtube.com/embed/"+getYtId(ex.video)} style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",border:"none"}} allowFullScreen/>
@@ -709,7 +711,9 @@ const ExercicioItem = ({item, bibCustom, checked, onToggle, carga, onCargaChange
   const isCog = item.isCognitivo || item.exId==="cognitivo";
   const cogEx = isCog ? COGNITIVOS.find(c=>c.id===item.cogId) : null;
   const ex = !isCog ? (bibCustom.find(e=>e.id===item.exId) || EXERCISES.find(e=>e.id===item.exId)) : null;
-  const nome = isCog ? (cogEx?.nome||"Exercício Cognitivo") : (ex?.nome||"Exercício");
+  const nomesEx = React.useContext(NomesExCtx);
+  const nomePers = (!isCog && ex && nomesEx && (nomesEx[ex.id]||"").trim()) || "";
+  const nome = isCog ? (cogEx?.nome||"Exercício Cognitivo") : (nomePers || ex?.nome || "Exercício");
   const iconeCustom = !isCog ? ex?.icone : null; // ícone específico cadastrado na biblioteca (mantido)
   const cor = isCog ? (cogEx?.cor||"#FF5603") : "#0f172a";
   const ytId = ex && getYtId(ex.video);
@@ -754,7 +758,7 @@ const ExercicioItem = ({item, bibCustom, checked, onToggle, carga, onCargaChange
             </button>
           )}
         </div>
-        {showDetail && <ExDetalheModal ex={ex} onClose={()=>setShowDetail(false)}/>}
+        {showDetail && <ExDetalheModal ex={ex} nome={nomePers||undefined} onClose={()=>setShowDetail(false)}/>}
       </Card>
     );
   }
@@ -796,7 +800,7 @@ const ExercicioItem = ({item, bibCustom, checked, onToggle, carga, onCargaChange
           {ytId && <Icon name="play" size={12}/>} {ytId ? "Ver vídeo e detalhes" : "Ver detalhes"}
         </button>
       )}
-      {showDetail && <ExDetalheModal ex={ex} onClose={()=>setShowDetail(false)}/>}
+      {showDetail && <ExDetalheModal ex={ex} nome={nomePers||undefined} onClose={()=>setShowDetail(false)}/>}
     </Card>
   );
 };
@@ -1764,7 +1768,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
         const it = (sessao[mk]||[])[Number(idxStr)];
         if(!it || it.isCognitivo || it.exId==="cognitivo") return;
         const ex = bibCustom.find(e=>e.id===it.exId) || EXERCISES.find(e=>e.id===it.exId);
-        cargasPreenchidas[k] = { exId: it.exId, nome: ex?.nome||"Exercício", carga: v };
+        cargasPreenchidas[k] = { exId: it.exId, nome: ((prog&&prog.nomesExercicios&&prog.nomesExercicios[it.exId])||"").trim() || ex?.nome || "Exercício", carga: v };
       });
       const data = {
         studentId, programId: prog.id, blocoKey: blocoAtivo.key, treinoKey: treinoAtivo,
@@ -1840,6 +1844,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
   const firstName = (studentName||"").trim().split(" ")[0] || "";
 
   return (
+    <NomesExCtx.Provider value={(prog&&prog.nomesExercicios)||null}>
     <div style={{minHeight:"100dvh",boxSizing:"border-box",background:"#F4F5F7",paddingBottom:((tab==="inicio"||tab==="alimentacao")&&window.LongevusAlunoExtras)?0:88}}>
       {!((tab==="inicio"||tab==="alimentacao") && window.LongevusAlunoExtras) && (
       <div style={{background:"#fff",borderBottom:"1.5px solid #e2e8f0",padding:"12px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100,boxShadow:"0 2px 8px rgba(15,23,42,0.04)"}}>
@@ -2267,6 +2272,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
         );
       })()}
     </div>
+    </NomesExCtx.Provider>
   );
 };
 

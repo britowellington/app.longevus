@@ -873,8 +873,12 @@ const ExDetalheModal =({ ex, onClose }) => (
 );
 
 // ─── MOMENTO EDITÁVEL ─────────────────────────────────────────────────────────
+// Nome do exercício personalizado por programa do aluno (prog.nomesExercicios = {exId: nome})
+const NomesExCtx=React.createContext(null);
+const nomeExDe=(ctx,ex)=>{if(!ex)return "";const n=ctx&&ctx.nomes&&ctx.nomes[ex.id];return (n&&n.trim())?n.trim():ex.nome;};
 const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForward,onRemoveForward,onAddForward,onMoveForward,onFieldForward,onMetodoForward})=>{
   const [editIdx,setEditIdx]=useState(null);
+  const nCtx=React.useContext(NomesExCtx);
   const [msgMetodo,setMsgMetodo]=useState("");
   const [buscaTroca,setBuscaTroca]=useState("");
   const [trocaTodos,setTrocaTodos]=useState(false);
@@ -1003,7 +1007,8 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
               <div style={{flex:1}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:2}}>
                   <div style={{fontWeight:700,fontSize:13,flex:1,marginRight:6,color:isCog?"#065f46":"#0f172a"}}>
-                    {isCog?(cogEx?.nome||"Exercício Cognitivo"):ex?.nome||"Exercício"}
+                    {isCog?(cogEx?.nome||"Exercício Cognitivo"):(ex?nomeExDe(nCtx,ex):"Exercício")}
+                    {!isCog&&ex&&nomeExDe(nCtx,ex)!==ex.nome&&<div style={{fontSize:10,fontWeight:600,color:"#94a3b8",marginTop:1}}>Original: {ex.nome}</div>}
                   </div>
                   <div style={{display:"flex",gap:4}}>
                     <button onClick={()=>moveItem(idx,-1)} disabled={idx===0} title="Mover pra cima" style={{border:"1.5px solid #e2e8f0",background:idx===0?"#f8fafc":"#fff",borderRadius:7,padding:"3px 6px",fontSize:11,fontWeight:700,color:idx===0?"#e2e8f0":"#64748b",cursor:idx===0?"default":"pointer"}}>↑</button>
@@ -1038,6 +1043,13 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
             {verExEdit&&verExEdit.id===ex?.id&&<ExDetalheModal ex={verExEdit} onClose={()=>setVerExEdit(null)}/>}
             {isEdit&&(
               <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid #f1f5f9"}}>
+                {!isCog&&ex&&nCtx&&nCtx.renomear&&(
+                  <div style={{marginBottom:12}}>
+                    <div style={{fontSize:11,fontWeight:700,color:"#64748b",marginBottom:4,textTransform:"uppercase"}}>Nome para este aluno</div>
+                    <input value={(nCtx.nomes||{})[ex.id]||""} onChange={e=>nCtx.renomear(ex.id,e.target.value)} placeholder={ex.nome} style={{width:"100%",padding:"9px 12px",borderRadius:9,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:13,fontFamily:"inherit",boxSizing:"border-box"}}/>
+                    <div style={{fontSize:10,color:"#94a3b8",marginTop:4,lineHeight:1.5}}>Vale em todos os blocos e treinos deste programa, só para este aluno. Deixe vazio para usar o nome original.</div>
+                  </div>
+                )}
                 {isCog?(
                   <div>
                     <div style={{fontSize:11,fontWeight:700,color:"#64748b",marginBottom:6,textTransform:"uppercase"}}>Trocar módulo cognitivo</div>
@@ -1152,6 +1164,7 @@ const MomentoEditavel=({momentoMeta,items,onChange,blocoKey,bibCustom,onSwapForw
 // ─── TREINO COM 3 MOMENTOS ────────────────────────────────────────────────────
 const TreinoMomentos=({treinoKey,blocoKey,sessao,onChange,bibCustom,editMode,onSwapForward,onRemoveForward,onAddForward,onMoveForward,onFieldForward,onMetodoForward})=>{
   const tDef=TREINO_DEFS[treinoKey];
+  const nCtxV=React.useContext(NomesExCtx);
   const [momentoIdx,setMomentoIdx]=useState(0);
   const [verEx,setVerEx]=useState(null);
   const m=MOMENTOS[momentoIdx];
@@ -1184,7 +1197,8 @@ const TreinoMomentos=({treinoKey,blocoKey,sessao,onChange,bibCustom,editMode,onS
                   <ExThumb ex={ex} w={64} h={48}/>
                 )}
                 <div style={{flex:1}}>
-                  <div style={{fontWeight:700,fontSize:13,color:isCog?(cogEx?.cor||"#FF5603"):"#0f172a"}}>{isCog?(cogEx?.nome||"Exercício Cognitivo"):ex?.nome||"Exercício"}</div>
+                  <div style={{fontWeight:700,fontSize:13,color:isCog?(cogEx?.cor||"#FF5603"):"#0f172a"}}>{isCog?(cogEx?.nome||"Exercício Cognitivo"):(ex?nomeExDe(nCtxV,ex):"Exercício")}</div>
+                  {!isCog&&ex&&nomeExDe(nCtxV,ex)!==ex.nome&&<div style={{fontSize:10,fontWeight:600,color:"#94a3b8"}}>Original: {ex.nome}</div>}
                   <div style={{fontSize:11,color:"#94a3b8",marginBottom:5}}>{isCog?`🧩 Hub Cognitivo · ${cogEx?.duracao||"5 min"}`:[ex?.grupo||ex?.cat,ex?.foco].filter(Boolean).join(" · ")||"—"}</div>
                   {isCog?(
                     <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
@@ -1611,7 +1625,8 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
   const [modeloFeedback,setModeloFeedback]=useState("");
   const [sequencia,setSequencia]=useState(null);
   const [nomes,setNomes]=useState({});
-  useEffect(()=>{if(prog){setPrescricao(JSON.parse(JSON.stringify(prog.prescricao||{})));setSequencia([...(prog.divisao?.sequencia||["A"])]);setNomes({...(prog.nomesTreinos||{})});}},[programId]);
+  const [nomesEx,setNomesEx]=useState({});
+  useEffect(()=>{if(prog){setPrescricao(JSON.parse(JSON.stringify(prog.prescricao||{})));setSequencia([...(prog.divisao?.sequencia||["A"])]);setNomes({...(prog.nomesTreinos||{})});setNomesEx({...(prog.nomesExercicios||{})});}},[programId]);
   if(!prog||!prescricao)return null;
   const abrirModeloModal=()=>{setModeloNome(prog.titulo||"Periodização");setModeloFeedback("");setModeloModal(true);};
   const confirmarSalvarModelo=async()=>{
@@ -1694,6 +1709,7 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
     setSequencia(s=>{const n=[...(s||seqAtual)];[n[i],n[j]]=[n[j],n[i]];return n;});
     setTreinoIdx(0);
   };
+  const renomearEx=(id,v)=>setNomesEx(n=>{const x={...n};if(v)x[id]=v;else delete x[id];return x;});
   const saveEdits=()=>{
     const fresh=LS.get("longevus_programs",programs);
     const nomesLimpos={};
@@ -1718,10 +1734,11 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
       seqUnicos.forEach(t=>{if(inativaNova[bKey]&&inativaNova[bKey][t])delete inativaNova[bKey][t];});
       if(!Object.keys(inativaNova[bKey]||{}).length)delete inativaNova[bKey];
     });
-    const editedProg={...prog,prescricao:prescFinal,prescricaoInativa:Object.keys(inativaNova).length?inativaNova:null,freq:seqAtual.length,divisao:divisaoNova,nomesTreinos:Object.keys(nomesLimpos).length?nomesLimpos:null,...(prog.blocosConfig?{blocosConfig:blocosConfigNovo}:{})};
+    const nomesExLimpos={};Object.keys(nomesEx).forEach(k=>{const v=(nomesEx[k]||"").trim();if(v)nomesExLimpos[k]=v;});
+    const editedProg={...prog,prescricao:prescFinal,prescricaoInativa:Object.keys(inativaNova).length?inativaNova:null,freq:seqAtual.length,divisao:divisaoNova,nomesTreinos:Object.keys(nomesLimpos).length?nomesLimpos:null,nomesExercicios:nomesExLimpos,...(prog.blocosConfig?{blocosConfig:blocosConfigNovo}:{})};
     const u=fresh.map(p=>p.id===prog.id?editedProg:p);setPrograms(u);LS.set("longevus_programs",u);ProgDB.save(editedProg);setEditMode(false);
   };
-  const cancelEdit=()=>{setPrescricao(JSON.parse(JSON.stringify(prog.prescricao)));setSequencia([...(prog.divisao?.sequencia||["A"])]);setNomes({...(prog.nomesTreinos||{})});setTreinoIdx(0);setEditMode(false);};
+  const cancelEdit=()=>{setPrescricao(JSON.parse(JSON.stringify(prog.prescricao)));setSequencia([...(prog.divisao?.sequencia||["A"])]);setNomes({...(prog.nomesTreinos||{})});setNomesEx({...(prog.nomesExercicios||{})});setTreinoIdx(0);setEditMode(false);};
   const deletePrograma=()=>{if(!window.confirm("Remover?"))return;const fresh=LS.get("longevus_programs",programs);const u=fresh.filter(p=>p.id!==prog.id);setPrograms(u);LS.set("longevus_programs",u);ProgDB.remove(prog.id);nav("lista");};
   const updateSessao=(bKey,tKey,sessao)=>setPrescricao(p=>({...p,[bKey]:{...(p[bKey]||{}),[tKey]:sessao}}));
   // Quando o professor edita exercícios num bloco (troca, exclui ou adiciona), aplica a mesma
@@ -1882,6 +1899,7 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
       <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
         {treinosUnicos.map((t,i)=>{const td=TREINO_DEFS[t];return(<button key={t} onClick={()=>setTreinoIdx(i)} style={{flex:1,minWidth:60,border:`1.5px solid ${treinoIdx===i?td.cor:td.border}`,borderRadius:9,padding:"7px 6px",fontSize:11,fontWeight:700,cursor:"pointer",background:treinoIdx===i?td.bg:"#fff",color:treinoIdx===i?td.cor:"#64748b",textAlign:"center",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{nomeT(t)}</button>);})}
       </div>
+      <NomesExCtx.Provider value={{nomes:nomesEx,renomear:editMode?renomearEx:null}}>
       <TreinoMomentos
         key={blocoAtivo.key+"-"+treinoAtivo+"-"+editMode}
         treinoKey={treinoAtivo}
@@ -1897,6 +1915,7 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
         onFieldForward={(mk,idx,exId,field,val)=>propagarCampoCiclo(treinoAtivo,mk,idx,exId,field,val)}
         onMetodoForward={(mk,patches)=>propagarMetodoCiclo(treinoAtivo,mk,patches)}
       />
+      </NomesExCtx.Provider>
       <div style={{marginTop:16,paddingTop:14,borderTop:"1px solid #f1f5f9"}}>
         <Btn variant="danger" full onClick={deletePrograma}>🗑 Remover programa</Btn>
       </div>
