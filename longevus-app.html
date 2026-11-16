@@ -921,7 +921,57 @@ return (
 </div>
 );
 };
-const Dashboard = ({ students, assessments, dailyLogs, pagamentos, receitasExtras, nav }) => {
+const Avisos360 = ({ students, setStudents, nav }) => {
+const [avisos,setAvisos]=useState([]);
+useEffect(()=>{
+(async()=>{
+try {
+const headers = await DB.authHeaders();
+const r = await fetch(SUPA_URL+"/rest/v1/l360_avisos?select=id,student_id,created_at&visto=eq.false&order=created_at.desc&limit=50", { headers });
+if(r.ok){ const rows = await r.json(); setAvisos(rows||[]); }
+} catch(e) {}
+})();
+},[]);
+const marcarAluno = async (sid) => {
+setAvisos(p=>p.filter(a=>String(a.student_id)!==String(sid)));
+try {
+const headers = await DB.authHeaders();
+await fetch(SUPA_URL+"/rest/v1/l360_avisos?student_id=eq."+encodeURIComponent(sid)+"&visto=eq.false", { method:"PATCH", headers:{ ...headers, "Prefer":"return=minimal" }, body: JSON.stringify({ visto:true }) });
+} catch(e) {}
+};
+const liberar = (sid) => {
+const hoje = todayStr();
+setStudents(p=>p.map(x=>{
+if(String(x.id)!==String(sid)) return x;
+const l = x.l360 || {};
+const base = (l.status==="pago" && l.vencimento && l.vencimento>hoje) ? l.vencimento : hoje;
+const d = new Date(base+"T12:00:00"); d.setDate(d.getDate()+30);
+return { ...x, l360:{ ...l, status:"pago", vencimento:toISODateLocal(d), atualizadoEm:new Date().toISOString() } };
+}));
+marcarAluno(sid);
+};
+const vistos = {};
+const lista = avisos.filter(a=>{ const k=String(a.student_id); if(vistos[k]) return false; vistos[k]=true; return true; }).map(a=>({ a, st:students.find(s=>String(s.id)===String(a.student_id)) })).filter(x=>x.st);
+if(!lista.length) return null;
+return (
+<div style={{ marginBottom:22 }}>
+<div style={{ fontSize:12,fontWeight:700,color:"#64748b",marginBottom:8 }}>Longevus 360 · pagamentos avisados</div>
+<div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+{lista.map(({a,st})=>(
+<Card key={a.id} style={{ padding:"10px 14px",background:"#fff7ed",border:"1.5px solid #fed7aa" }}>
+<div onClick={()=>nav("studentDetail",{id:st.id})} style={{ fontSize:13,fontWeight:700,color:"#9a3412",cursor:"pointer" }}>{st.name} avisou que pagou o 360</div>
+<div style={{ fontSize:11,color:"#64748b",marginTop:2 }}>{"Em "+new Date(a.created_at).toLocaleDateString("pt-BR")+" às "+new Date(a.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})+". Confira no banco antes de liberar."}</div>
+<div style={{ display:"flex",gap:8,marginTop:8 }}>
+<button onClick={()=>liberar(st.id)} style={{ flex:1,padding:"8px",borderRadius:9,border:"none",background:"#FF5603",color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>Confirmar e liberar 30 dias</button>
+<button onClick={()=>marcarAluno(st.id)} style={{ flex:0.7,padding:"8px",borderRadius:9,border:"1.5px solid #fed7aa",background:"#fff",color:"#9a3412",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>Ainda não caiu</button>
+</div>
+</Card>
+))}
+</div>
+</div>
+);
+};
+const Dashboard = ({ students, setStudents, assessments, dailyLogs, pagamentos, receitasExtras, nav }) => {
 const recent = [...assessments].sort((a,b)=>b.date?.localeCompare(a.date)).slice(0,4);
 const hoje = todayStr();
 const anoMes = hoje.slice(0,7);
@@ -948,6 +998,7 @@ return (
 <div style={{ fontSize:22,fontWeight:800,color:"#0f172a" }}>Olá, Professor 👋</div>
 <div style={{ fontSize:13,color:"#64748b",marginTop:3 }}>{new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"})}</div>
 </div>
+{setStudents && <Avisos360 students={students} setStudents={setStudents} nav={nav}/>}
 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:16 }}>
 {[["Alunos",ativos.length,"#6366f1"],["Aval.",assessments.length,O],["Reavaliar",ativos.filter(s=>{const ult=[...assessments].filter(a=>a.studentId===s.id).sort((a,b)=>b.date?.localeCompare(a.date))[0];if(!ult)return false;const dias=(new Date(hoje)-new Date(ult.date))/86400000;return dias>=75;}).length,"#d97706"]].map(([l,v,c])=>(
 <Card key={l} style={{ padding:"14px 10px",textAlign:"center" }}>
@@ -2356,6 +2407,34 @@ return (
         </div>
         <Btn sm onClick={()=>setBaixaAberta(true)}>Dar baixa</Btn>
       </div>
+    </Card>
+  );
+})()}
+{(()=>{
+  const l = st.l360 || {};
+  const status = l.status || "bloqueado";
+  const hoje = todayStr();
+  const vencido = status==="pago" && (!l.vencimento || l.vencimento<hoje);
+  const mais30 = (base) => { const d=new Date(((base && base>hoje)?base:hoje)+"T12:00:00"); d.setDate(d.getDate()+30); return toISODateLocal(d); };
+  const set360 = (novo) => setStudents(p=>p.map(x=>x.id===st.id?{...x,l360:{...(x.l360||{}),...novo,atualizadoEm:new Date().toISOString()}}:x));
+  const escolher = (k) => {
+    if(k===status) return;
+    if(k==="pago") set360({ status:"pago", vencimento:mais30(hoje) });
+    else set360({ status:k });
+  };
+  const sub = status==="bonus" ? "Liberado de bônus enquanto o plano principal estiver ativo." : status==="pago" ? (vencido ? "Venceu em "+fmt(l.vencimento)+". O cadeado voltou para o aluno." : "Pago · acesso até "+fmt(l.vencimento)+".") : "O aluno vê o cadeado e a oferta com o Pix.";
+  return (
+    <Card style={{ padding:"12px 14px",marginBottom:16 }}>
+      <div style={{ display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,marginBottom:8 }}>
+        <div style={{ fontSize:12,fontWeight:700,color:"#334155" }}>Longevus 360</div>
+        <div style={{ fontSize:11,color:vencido?"#dc2626":"#64748b",textAlign:"right" }}>{sub}</div>
+      </div>
+      <div style={{ display:"flex",gap:6 }}>
+        {[["bloqueado","Bloqueado"],["bonus","Bônus"],["pago","Pago"]].map(([k,lb])=>(
+          <button key={k} onClick={()=>escolher(k)} style={{ flex:1,padding:"8px 4px",borderRadius:9,border:"1.5px solid "+(status===k?"#FF5603":"#e2e8f0"),background:status===k?"#fff4ee":"#fff",color:status===k?"#c2410c":"#64748b",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>{lb}</button>
+        ))}
+      </div>
+      {status==="pago" && <button onClick={()=>{ if(window.confirm("Renovar o Longevus 360 por mais 30 dias?")) set360({ status:"pago", vencimento:mais30(l.vencimento) }); }} style={{ width:"100%",marginTop:8,padding:"8px",borderRadius:9,border:"1.5px dashed #fed7aa",background:"#fff",color:"#c2410c",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>Renovar +30 dias</button>}
     </Card>
   );
 })()}
@@ -9289,6 +9368,36 @@ const [msg,setMsg]=useState("");
 const [pwd,setPwd]=useState({ nova:"", confirmar:"" });
 const [pwdMsg,setPwdMsg]=useState("");
 const [pwdSaving,setPwdSaving]=useState(false);
+const [c360,setC360]=useState({ ativo:false, nome:"Longevus 360", valor:"", beneficios:"" });
+const [saving360,setSaving360]=useState(false);
+const [msg360,setMsg360]=useState("");
+useEffect(()=>{
+(async()=>{
+try {
+const headers = await DB.authHeaders();
+const r = await fetch(SUPA_URL+"/rest/v1/professionals?select=l360&id=eq."+session.user.id, { headers });
+if(!r.ok) return;
+const rows = await r.json();
+const c = (rows && rows[0] && rows[0].l360) || {};
+setC360({ ativo:!!c.ativo, nome:c.nome||"Longevus 360", valor:c.valor?String(c.valor).replace(".",","):"", beneficios:Array.isArray(c.beneficios)?c.beneficios.join("\n"):"" });
+} catch(e) {}
+})();
+},[session]);
+const save360 = async () => {
+setSaving360(true); setMsg360("");
+try {
+const headers = await DB.authHeaders();
+const valor = parseFloat(String(c360.valor||"").replace(",","."))||0;
+const beneficios = String(c360.beneficios||"").split("\n").map(x=>x.trim()).filter(Boolean);
+const r = await fetch(SUPA_URL+"/rest/v1/professionals?id=eq."+session.user.id, {
+method:"PATCH", headers: { ...headers, "Prefer":"return=minimal" },
+body: JSON.stringify({ l360:{ ativo:!!c360.ativo, nome:(c360.nome||"").trim()||"Longevus 360", valor, beneficios } })
+});
+if(!r.ok) throw new Error("http");
+setMsg360("Longevus 360 salvo!");
+} catch(e) { setMsg360("Erro ao salvar. Confira se o SQL do Longevus 360 foi rodado."); }
+setSaving360(false);
+};
 const changePassword = async () => {
 setPwdMsg("");
 if (pwd.nova.length<6) { setPwdMsg("Erro: a senha deve ter pelo menos 6 caracteres."); return; }
@@ -9409,6 +9518,31 @@ return (
 </div>
 {msg && <div style={{ fontSize:12,color: msg.includes("Erro")?"#dc2626":"#16a34a",marginBottom:10 }}>{msg}</div>}
 <Btn full onClick={save} disabled={saving}>{saving?"Salvando...":"Salvar chave Pix"}</Btn>
+</Card>
+<Card style={{ marginTop:16 }}>
+<div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:4 }}>
+<div style={{ fontWeight:800,fontSize:16 }}>Longevus 360</div>
+<button type="button" onClick={()=>setC360(c=>({...c,ativo:!c.ativo}))} aria-label="Oferecer aos alunos" style={{ width:46,height:26,borderRadius:13,border:"none",background:c360.ativo?"#FF5603":"#cbd5e1",position:"relative",cursor:"pointer",flexShrink:0 }}>
+<span style={{ position:"absolute",top:3,left:c360.ativo?23:3,width:20,height:20,borderRadius:10,background:"#fff",transition:"left 0.2s" }}/>
+</button>
+</div>
+<div style={{ fontSize:12,color:"#64748b",marginBottom:14,lineHeight:1.5 }}>{c360.ativo?"Ligado: a aba Calorias fica com cadeado para quem não tem o 360. Libere por aluno na ficha dele (bônus ou pago).":"Desligado: a aba Calorias continua livre para todos os alunos."}</div>
+<div style={{ marginBottom:14 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Nome do plano</label>
+<input value={c360.nome} onChange={e=>setC360(c=>({...c,nome:e.target.value}))} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
+</div>
+<div style={{ marginBottom:14 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Valor mensal (R$)</label>
+<input inputMode="decimal" placeholder="Ex: 49,00" value={c360.valor} onChange={e=>setC360(c=>({...c,valor:e.target.value.replace(/[^0-9.,]/g,"")}))} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
+<div style={{ fontSize:11,color:"#94a3b8",marginTop:4 }}>Esse valor entra no Pix da tela de oferta. Para quem ganha de bônus, ele aparece riscado como referência.</div>
+</div>
+<div style={{ marginBottom:14 }}>
+<label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Benefícios (um por linha)</label>
+<textarea rows={5} placeholder={"Registro da refeição por foto\nMetas diárias para o seu objetivo\nDéficit dividido entre alimentação e treino\nCardápios práticos com o que tem em casa\nAcompanhamento direto do seu personal"} value={c360.beneficios} onChange={e=>setC360(c=>({...c,beneficios:e.target.value}))} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box",fontFamily:"inherit",resize:"vertical" }}/>
+<div style={{ fontSize:11,color:"#94a3b8",marginTop:4 }}>Em branco, o app usa os 5 benefícios padrão.</div>
+</div>
+{msg360 && <div style={{ fontSize:12,color: msg360.includes("Erro")?"#dc2626":"#16a34a",marginBottom:10 }}>{msg360}</div>}
+<Btn full onClick={save360} disabled={saving360}>{saving360?"Salvando...":"Salvar Longevus 360"}</Btn>
 </Card>
 <Card style={{ marginTop:16 }}>
 <div style={{ fontWeight:800,fontSize:16,marginBottom:14 }}>Alterar senha</div>
@@ -9882,7 +10016,7 @@ return (
 </div>
 )}
 <div style={{ padding:"20px 16px",maxWidth:640,margin:"0 auto" }}>
-{page==="dashboard"&&<Dashboard students={students} assessments={assessments} dailyLogs={dailyLogs} pagamentos={pagamentos} receitasExtras={receitasExtras} nav={nav}/>}
+{page==="dashboard"&&<Dashboard students={students} setStudents={setStudents} assessments={assessments} dailyLogs={dailyLogs} pagamentos={pagamentos} receitasExtras={receitasExtras} nav={nav}/>}
 {page==="students"&&<Students students={students} setStudents={setStudents} planos={planos} setPagamentos={setPagamentos} nav={nav}/>}
 {page==="studentDetail"&&<StudentDetail studentId={pageProps.studentId} students={students} setStudents={setStudents} assessments={assessments} setAssessments={setAssessments} programs={programs} setPrograms={setPrograms} dailyLogs={dailyLogs} documents={documents} checkins={checkins} sessions={sessions} setSessions={setSessions} exerciciosBiblioteca={exerciciosBiblioteca} planos={planos} professorFeedbacks={professorFeedbacks} setProfessorFeedbacks={setProfessorFeedbacks} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} pagamentos={pagamentos} setPagamentos={setPagamentos} ultimoAcesso={ultimoAcesso} initialTab={pageProps.initialTab} nav={nav}/>}
 {page==="assessments"&&<AssessmentsList assessments={assessments} students={students} setAssessments={setAssessments} nav={nav}/>}

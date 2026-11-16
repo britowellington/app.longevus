@@ -19,7 +19,7 @@
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="longevus-aluno-extras.js?v=16"></script>
+<script src="longevus-aluno-extras.js?v=17"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -835,7 +835,7 @@ const MOMENTOS = [["inicial","Aquecimento","#22c55e"],["principal","Principal","
 
 // ── Meu Treino ───────────────────────────────────────────────────────────────
 // ── Navegação inferior (Início / Treino / Programação) ───────────────────────
-const BottomNav = ({tab, setTab}) => {
+const BottomNav = ({tab, setTab, trava360}) => {
   const items = [
     {key:"inicio", label:"Início", icon:"home"},
     {key:"treino", label:"Treino", icon:"dumbbell"},
@@ -849,7 +849,7 @@ const BottomNav = ({tab, setTab}) => {
         const active = tab===it.key;
         return (
           <button key={it.key} onClick={()=>setTab(it.key)} style={{border:"none",background:"transparent",display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"4px 6px",cursor:"pointer",minWidth:0}}>
-            <Icon name={it.icon} size={22} color={active?"#FF5603":"#94a3b8"}/>
+            <Icon name={(trava360 && it.key==="alimentacao")?"lock":it.icon} size={22} color={active?"#FF5603":"#94a3b8"}/>
             <span style={{fontSize:10,fontWeight:700,color:active?"#FF5603":"#94a3b8"}}>{it.label}</span>
           </button>
         );
@@ -874,7 +874,7 @@ const ProgressoAtividades = ({concluidas, total}) => {
   );
 };
 
-const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, atividadesSemData, concluidasMap, ultimaConclusaoMap, onToggleAtividade, onIrTreino, bibCustom, onSalvarExercicios, getSessaoAtividade, onLogout, onIr, studentId, studentData, semTreino}) => {
+const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, atividadesSemData, concluidasMap, ultimaConclusaoMap, onToggleAtividade, onIrTreino, bibCustom, onSalvarExercicios, getSessaoAtividade, onLogout, onIr, studentId, studentData, semTreino, l360}) => {
   const hoje = new Date();
   const diaLabel = DIAS_SEMANA_LONGO[hoje.getDay()]+", "+hoje.getDate()+" de "+MESES_NOME[hoje.getMonth()];
   const totalHoje = atividadesHoje.length;
@@ -924,7 +924,7 @@ const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, atividadesSemDa
   );
   return (
     <div style={{height:"calc(100dvh - 66px - env(safe-area-inset-bottom))",display:"flex",flexDirection:"column",overflowY:"auto"}}>
-      <XX.InicioTopo firstName={firstName} treinoHojeLabel={treinoHojeLabel} semTreino={semTreino} onIrTreino={onIrTreino} onLogout={onLogout} onIr={onIr} studentId={studentId} studentData={studentData}/>
+      <XX.InicioTopo firstName={firstName} treinoHojeLabel={treinoHojeLabel} semTreino={semTreino} onIrTreino={onIrTreino} onLogout={onLogout} onIr={onIr} studentId={studentId} studentData={studentData} l360={l360}/>
       <div style={{flexShrink:0,padding:"12px 18px 4px"}}>
         {totalHoje>0 && (
           <div style={{marginBottom:6}}>
@@ -1455,7 +1455,7 @@ const TelaAvaliacao = ({studentId, studentData}) => {
 
 window.__LV_SUPA = supa;
 window.__LV_Modal = Modal;
-const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, contratoAssinatura, onLogout}) => {
+const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, contratoAssinatura, onLogout, acesso360, profPix}) => {
   const [loading,setLoading]=useState(true);
   const [prog,setProg]=useState(null);
   const [notFound,setNotFound]=useState(false);
@@ -1873,6 +1873,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
           studentId={studentId}
           studentData={studentData}
           semTreino={!prog}
+          l360={acesso360}
           bibCustom={bibCustom}
           onSalvarExercicios={salvarSessaoAtividade}
           getSessaoAtividade={getSessaoAtividade}
@@ -1881,7 +1882,8 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
 
       {tab==="programacao" && <TelaProgramacao atividades={atividades} concluidasMap={concluidasMap} onToggleAtividade={toggleConcluidaAtividade} bibCustom={bibCustom} onSalvarExercicios={salvarSessaoAtividade} getSessaoAtividade={getSessaoAtividade}/>}
       {tab==="avaliacao" && <div>{window.LongevusAlunoExtras && <window.LongevusAlunoExtras.AntroAluno studentId={studentId} ownerId={ownerId} studentData={studentData}/>}<TelaAvaliacao studentId={studentId} studentData={studentData}/></div>}
-      {tab==="alimentacao" && (window.LongevusAlunoExtras ? <window.LongevusAlunoExtras.TelaAlimentacao studentId={studentId} ownerId={ownerId} studentData={studentData}/> : <div style={{padding:32,textAlign:"center",color:"#94a3b8",fontSize:14}}>Não consegui carregar esta tela. Feche e abra o app de novo.</div>)}
+      {tab==="alimentacao" && acesso360 && acesso360.bloqueado && <Oferta360 acesso={acesso360} profPix={profPix} studentName={studentName} studentId={studentId} ownerId={ownerId} onVoltar={()=>setTab("inicio")}/>}
+      {tab==="alimentacao" && !(acesso360 && acesso360.bloqueado) && (window.LongevusAlunoExtras ? <window.LongevusAlunoExtras.TelaAlimentacao studentId={studentId} ownerId={ownerId} studentData={studentData}/> : <div style={{padding:32,textAlign:"center",color:"#94a3b8",fontSize:14}}>Não consegui carregar esta tela. Feche e abra o app de novo.</div>)}
 
       {tab==="treino" && !prog && treinoOculto && (
         <div style={{padding:"24px 18px"}}>
@@ -2163,7 +2165,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
       </div>
       )}
 
-      <BottomNav tab={tab} setTab={setTab}/>
+      <BottomNav tab={tab} setTab={setTab} trava360={!!(acesso360 && acesso360.bloqueado)}/>
 
       {showCheckin && (
         <Modal title="Como foi seu treino?" onClose={()=>{}}>
@@ -2346,6 +2348,88 @@ const AvisoVencimentoModal = ({billing, profPix, studentName, diasParaVencer, on
         </div>
         <PixPagamentoCard billing={billing} profPix={profPix} studentName={studentName}/>
         <button onClick={onClose} style={{marginTop:16,width:"100%",maxWidth:360,padding:"12px",borderRadius:10,background:"#f1f5f9",color:"#475569",fontWeight:700,fontSize:13,border:"none",cursor:"pointer"}}>Continuar para o app</button>
+      </div>
+    </div>
+  );
+};
+
+// ── Longevus 360: oferta com Pix quando o acesso está bloqueado ─────────────
+const L360_BENEF_PADRAO = ["Registro da refeição por foto","Metas diárias para o seu objetivo","Déficit dividido entre alimentação e treino","Cardápios práticos com o que tem em casa","Acompanhamento direto do seu personal"];
+const Oferta360 = ({acesso, profPix, studentName, studentId, ownerId, onVoltar}) => {
+  const cfg = (acesso && acesso.cfg) || {};
+  const nome = cfg.nome || "Longevus 360";
+  const valor = Number(cfg.valor) || 0;
+  const lista = Array.isArray(cfg.beneficios) ? cfg.beneficios.filter(Boolean) : [];
+  const benef = lista.length ? lista : L360_BENEF_PADRAO;
+  const qrRef = useRef(null);
+  const [copiado,setCopiado]=useState(false);
+  const [avisado,setAvisado]=useState(false);
+  const pixKey = profPix?.pix_key;
+  const payload = (pixKey && valor) ? buildPixPayload({
+    pixKey,
+    merchantName: profPix?.pix_merchant_name || profPix?.nome,
+    merchantCity: profPix?.pix_merchant_city,
+    amount: valor,
+    txid: "L360"+(studentName||"").replace(/\s/g,"").slice(0,10),
+  }) : null;
+  useEffect(()=>{
+    if(payload && qrRef.current && window.QRCode){
+      qrRef.current.innerHTML="";
+      new window.QRCode(qrRef.current, { text: payload, width: 150, height: 150, colorDark:"#0f172a", colorLight:"#ffffff" });
+    }
+  },[payload]);
+  const copiar = () => {
+    if(!payload) return;
+    navigator.clipboard?.writeText(payload).then(()=>{ setCopiado(true); setTimeout(()=>setCopiado(false),2500); });
+  };
+  const msg = "Oi! Acabei de fazer o pagamento do "+nome+", pode liberar meu acesso?";
+  const whatsappUrl = profPix?.whatsapp ? "https://wa.me/55"+profPix.whatsapp.replace(/\D/g,"")+"?text="+encodeURIComponent(msg) : null;
+  const avisar = () => {
+    setAvisado(true);
+    (async()=>{
+      try{
+        const { data } = await supa.auth.getSession();
+        const token = data?.session?.access_token || SUPA_KEY;
+        await fetch(SUPA_URL+"/rest/v1/l360_avisos", { method:"POST", headers:{ "apikey":SUPA_KEY, "Authorization":"Bearer "+token, "Content-Type":"application/json", "Prefer":"return=minimal" }, body: JSON.stringify({ id:"av_"+studentId+"_"+Date.now(), owner_id:String(ownerId), student_id:String(studentId) }) });
+      } catch(e){}
+    })();
+  };
+  const valorTxt = "R$ "+valor.toFixed(2).replace(".",",");
+  return (
+    <div style={{height:"calc(100dvh - 66px - env(safe-area-inset-bottom))",display:"flex",flexDirection:"column",background:"#F4F5F7"}}>
+      <div style={{background:"#0F172A",color:"#F8FAFC",padding:"14px 18px 16px",borderRadius:"0 0 26px 26px",flexShrink:0}}>
+        <button type="button" onClick={onVoltar} style={{background:"transparent",border:"none",padding:"4px 0",color:"#CBD5E1",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>‹ Voltar</button>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginTop:6}}>
+          <Icon name="lock" size={18} color="#FF7A3D"/>
+          <div style={{fontSize:20,fontWeight:800}}>{nome}</div>
+        </div>
+        <div style={{fontSize:12.5,color:"#CBD5E1",marginTop:4,lineHeight:1.45}}>{acesso && acesso.vencido ? "Seu acesso venceu. Renove para continuar acompanhando suas calorias, macros e seu déficit do dia." : "Seu treino e sua alimentação conversando todos os dias, acompanhados pelo seu personal."}</div>
+        <div style={{display:"flex",flexDirection:"column",gap:5,marginTop:10}}>
+          {benef.map((b,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:8,fontSize:12.5}}><Icon name="check" size={14} color="#FF7A3D"/><span>{b}</span></div>
+          ))}
+        </div>
+      </div>
+      <div style={{flex:"1 1 auto",minHeight:0,overflowY:"auto",padding:"12px 18px 10px",display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
+        <div style={{width:"100%",background:"#fff",borderRadius:16,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",boxShadow:"0 1px 2px rgba(15,23,42,0.06)"}}>
+          <div>
+            <div style={{fontSize:11.5,color:"#64748B"}}>Mensalidade</div>
+            <div style={{fontSize:22,fontWeight:800,color:"#0F172A"}}>{valor ? valorTxt : "Consulte"}</div>
+          </div>
+          <span style={{fontSize:11,fontWeight:700,color:"#C2410C",background:"#FFF4EE",borderRadius:20,padding:"4px 10px"}}>Renova a cada 30 dias</span>
+        </div>
+        {payload ? (
+          <>
+            <div ref={qrRef} style={{display:"flex",justifyContent:"center",background:"#fff",borderRadius:14,padding:10}}/>
+            <button onClick={copiar} style={{width:"100%",height:44,borderRadius:22,border:"none",background:copiado?"#16a34a":"#FF5603",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"inherit"}}>{copiado?"Código copiado":"Copiar código Pix"}</button>
+          </>
+        ) : (
+          <div style={{width:"100%",boxSizing:"border-box",background:"#fef9c3",border:"1.5px solid #fde68a",borderRadius:12,padding:"10px 12px",fontSize:12,color:"#92400e",lineHeight:1.5}}>Fale com seu personal para liberar o {nome}.</div>
+        )}
+        {whatsappUrl && (
+          <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" onClick={avisar} style={{display:"block",width:"100%",boxSizing:"border-box",height:44,lineHeight:"44px",textAlign:"center",borderRadius:22,background:avisado?"#f0fdf4":"#16a34a",color:avisado?"#15803d":"#fff",border:avisado?"1.5px solid #bbf7d0":"none",fontWeight:800,fontSize:14,textDecoration:"none"}}>{avisado?"Aviso enviado ao seu personal":"Avisar que já paguei"}</a>
+        )}
+        <div style={{fontSize:11,color:"#94A3B8",textAlign:"center",lineHeight:1.4}}>Seu personal confirma o pagamento e libera o acesso.</div>
       </div>
     </div>
   );
@@ -2632,6 +2716,7 @@ function App(){
   const [linkChecked,setLinkChecked]=useState(false);
   const [bibCustom,setBibCustom]=useState([]);
   const [profPix,setProfPix]=useState(null);
+  const [cfg360,setCfg360]=useState(null);
   const [avisoFechado,setAvisoFechado]=useState(false);
   const [contratoModelos,setContratoModelos]=useState(undefined);
   const [contratoAssinatura,setContratoAssinatura]=useState(undefined);
@@ -2730,6 +2815,18 @@ function App(){
           const rows = await r.json();
           setProfPix(rows && rows.length>0 ? rows[0] : null);
         }
+      } catch(e){}
+    })();
+  },[session,ownerId]);
+
+  useEffect(()=>{
+    if(!session || !ownerId) return;
+    (async()=>{
+      try{
+        const token = session.access_token || SUPA_KEY;
+        const headers = { "apikey": SUPA_KEY, "Authorization": "Bearer "+token, "Content-Type": "application/json" };
+        const r = await fetch(SUPA_URL+"/rest/v1/rpc/get_longevus360_config", { method:"POST", headers, body: JSON.stringify({ prof_id: ownerId }) });
+        if(r.ok){ const c = await r.json(); setCfg360(c && typeof c==="object" ? c : {}); }
       } catch(e){}
     })();
   },[session,ownerId]);
@@ -2921,6 +3018,14 @@ function App(){
   const billingBloqueado = !!(billing?.ativo && diasParaVencer!==null && diasParaVencer < -toleranciaDias);
   const avisoDias = profPix?.aviso_vencimento_dias ?? 7;
   const dentroDoAviso = !!(billing?.ativo && !billingBloqueado && diasParaVencer!==null && diasParaVencer<=avisoDias);
+  let acesso360 = { ativo:false, bloqueado:false };
+  if(cfg360 && cfg360.ativo){
+    const s360 = studentData?.l360 || {};
+    const dias360 = s360.vencimento ? Math.round((new Date(s360.vencimento)-new Date(hoje))/86400000) : null;
+    const pagoOk = s360.status==="pago" && dias360!==null && dias360 >= -toleranciaDias;
+    const status360 = s360.status==="bonus" ? "bonus" : pagoOk ? "pago" : "bloqueado";
+    acesso360 = { ativo:true, status:status360, bloqueado:status360==="bloqueado", dias:dias360, avisoDias, vencido:s360.status==="pago" && !pagoOk, cfg:cfg360 };
+  }
 
   if(billing?.pendente){
     return <PrimeiroPagamento billing={billing} profPix={profPix} studentName={studentName} onLogout={onLogout}/>;
@@ -2935,7 +3040,7 @@ function App(){
       {dentroDoAviso && !avisoFechado && (
         <AvisoVencimentoModal billing={billing} profPix={profPix} studentName={studentName} diasParaVencer={diasParaVencer} onClose={()=>setAvisoFechado(true)}/>
       )}
-      <MeuTreino studentId={studentId} ownerId={ownerId} studentName={studentName} studentData={studentData} bibCustom={bibCustom} contratoAssinatura={contratoAssinatura} onLogout={onLogout}/>
+      <MeuTreino studentId={studentId} ownerId={ownerId} studentName={studentName} studentData={studentData} bibCustom={bibCustom} contratoAssinatura={contratoAssinatura} onLogout={onLogout} acesso360={acesso360} profPix={profPix}/>
     </>
   );
 }
