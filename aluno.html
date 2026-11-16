@@ -19,7 +19,7 @@
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="longevus-aluno-extras.js?v=18"></script>
+<script src="longevus-aluno-extras.js?v=20"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -455,6 +455,7 @@ const ICON_PATHS = {
   note: <g><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></g>,
   play: <polygon points="6 3 20 12 6 21 6 3"/>,
   x: <g><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></g>,
+  activity: <path d="M3 12h4l3-8 4 16 3-8h4"/>,
   target: <g><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></g>,
   wrench: <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>,
   clock: <g><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></g>,
@@ -877,7 +878,7 @@ const ProgressoAtividades = ({concluidas, total}) => {
   );
 };
 
-const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, atividadesSemData, concluidasMap, ultimaConclusaoMap, onToggleAtividade, onIrTreino, bibCustom, onSalvarExercicios, getSessaoAtividade, onLogout, onIr, studentId, studentData, semTreino, l360}) => {
+const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, atividadesSemData, concluidasMap, ultimaConclusaoMap, onToggleAtividade, onIrTreino, bibCustom, onSalvarExercicios, getSessaoAtividade, onLogout, onIr, studentId, studentData, semTreino, l360, onAtividadeExtra}) => {
   const hoje = new Date();
   const diaLabel = DIAS_SEMANA_LONGO[hoje.getDay()]+", "+hoje.getDate()+" de "+MESES_NOME[hoje.getMonth()];
   const totalHoje = atividadesHoje.length;
@@ -935,12 +936,20 @@ const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, atividadesSemDa
             {faixa(atividadesHoje, (atv)=><AtividadeCard atividade={atv} destaque concluida={!!concluidasMap[atv._id]} onToggle={onToggleAtividade} bibCustom={bibCustom} onSalvarExercicios={onSalvarExercicios} sessaoSalva={getSessaoAtividade(atv._id)}/>)}
           </div>
         )}
-        {atividadesSemData.length>0 && (
-          <div>
-            <div style={{fontSize:11.5,fontWeight:700,letterSpacing:"0.08em",color:"#64748B",textTransform:"uppercase",marginBottom:6}}>{"Quando você quiser"+(atividadesSemData.length>1?" · deslize para o lado":"")}</div>
-            {faixa(atividadesSemData, (atv)=><AtividadeCard atividade={atv} concluida={!!concluidasMap[atv._id]} ultimaConclusao={ultimaConclusaoMap?.[atv._id]} onToggle={onToggleAtividade} bibCustom={bibCustom} onSalvarExercicios={onSalvarExercicios} sessaoSalva={getSessaoAtividade(atv._id)}/>)}
-          </div>
-        )}
+        <div>
+          <div style={{fontSize:11.5,fontWeight:700,letterSpacing:"0.08em",color:"#64748B",textTransform:"uppercase",marginBottom:6}}>{"Quando você quiser"+(atividadesSemData.length>1?" · deslize para o lado":"")}</div>
+            {atividadesSemData.length>0 && faixa(atividadesSemData, (atv)=><AtividadeCard atividade={atv} concluida={!!concluidasMap[atv._id]} ultimaConclusao={ultimaConclusaoMap?.[atv._id]} onToggle={onToggleAtividade} bibCustom={bibCustom} onSalvarExercicios={onSalvarExercicios} sessaoSalva={getSessaoAtividade(atv._id)}/>)}
+          {onAtividadeExtra && (
+            <div style={{marginTop:atividadesSemData.length>0?8:0,background:"#fff",borderRadius:16,padding:"12px 14px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 1px 2px rgba(15,23,42,0.06)"}}>
+              <div style={{width:38,height:38,borderRadius:11,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon name="activity" size={20} color="#FF5603"/></div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:14.5,fontWeight:800,color:"#0F172A"}}>Atividade extra</div>
+                <div style={{fontSize:12,color:"#64748B",marginTop:1}}>Registre o que fez fora do treino</div>
+              </div>
+              <button type="button" onClick={onAtividadeExtra} style={{flexShrink:0,background:"#FF5603",color:"#fff",border:"none",borderRadius:12,padding:"9px 14px",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>Registrar</button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1487,6 +1496,8 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
   const [showCelebration,setShowCelebration]=useState(false);
   const [saveError,setSaveError]=useState("");
   const [tab,setTab]=useState("inicio"); // inicio | treino | programacao | avaliacao
+  const [abrirAtiv,setAbrirAtiv]=useState(false);
+  const irAtividadeExtra = () => { setAbrirAtiv(true); setTab("alimentacao"); };
   const [atividades,setAtividades]=useState([]);
   const [historico,setHistorico]=useState([]); // conclusões de atividades extras: [{id, atividadeId, date}]
 
@@ -1877,6 +1888,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
           studentData={studentData}
           semTreino={!prog}
           l360={acesso360}
+          onAtividadeExtra={irAtividadeExtra}
           bibCustom={bibCustom}
           onSalvarExercicios={salvarSessaoAtividade}
           getSessaoAtividade={getSessaoAtividade}
@@ -1886,7 +1898,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
       {tab==="programacao" && <TelaProgramacao atividades={atividades} concluidasMap={concluidasMap} onToggleAtividade={toggleConcluidaAtividade} bibCustom={bibCustom} onSalvarExercicios={salvarSessaoAtividade} getSessaoAtividade={getSessaoAtividade}/>}
       {tab==="avaliacao" && <div>{window.LongevusAlunoExtras && <window.LongevusAlunoExtras.AntroAluno studentId={studentId} ownerId={ownerId} studentData={studentData}/>}<TelaAvaliacao studentId={studentId} studentData={studentData}/></div>}
       {tab==="alimentacao" && acesso360 && acesso360.bloqueado && <Oferta360 acesso={acesso360} profPix={profPix} studentName={studentName} studentId={studentId} ownerId={ownerId} onVoltar={()=>setTab("inicio")}/>}
-      {tab==="alimentacao" && !(acesso360 && acesso360.bloqueado) && (window.LongevusAlunoExtras ? <window.LongevusAlunoExtras.TelaAlimentacao studentId={studentId} ownerId={ownerId} studentData={studentData}/> : <div style={{padding:32,textAlign:"center",color:"#94a3b8",fontSize:14}}>Não consegui carregar esta tela. Feche e abra o app de novo.</div>)}
+      {tab==="alimentacao" && !(acesso360 && acesso360.bloqueado) && (window.LongevusAlunoExtras ? <window.LongevusAlunoExtras.TelaAlimentacao studentId={studentId} ownerId={ownerId} studentData={studentData} abrirAtividade={abrirAtiv} onAtividadeAberta={()=>setAbrirAtiv(false)}/> : <div style={{padding:32,textAlign:"center",color:"#94a3b8",fontSize:14}}>Não consegui carregar esta tela. Feche e abra o app de novo.</div>)}
 
       {tab==="treino" && !prog && treinoOculto && (
         <div style={{padding:"24px 18px"}}>
@@ -1897,6 +1909,9 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
             <div style={{display:"flex",gap:8}}>
               <Btn variant="secondary" full onClick={()=>setTab("alimentacao")}>Calorias</Btn>
               <Btn variant="secondary" full onClick={()=>setTab("avaliacao")}>Avaliação</Btn>
+            </div>
+            <div style={{marginTop:8}}>
+              <Btn full onClick={irAtividadeExtra}>Registrar atividade extra</Btn>
             </div>
           </Card>
         </div>
@@ -1910,6 +1925,9 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
             <div style={{display:"flex",gap:8}}>
               <Btn variant="secondary" full onClick={()=>setTab("alimentacao")}>Calorias</Btn>
               <Btn variant="secondary" full onClick={()=>setTab("avaliacao")}>Avaliação</Btn>
+            </div>
+            <div style={{marginTop:8}}>
+              <Btn full onClick={irAtividadeExtra}>Registrar atividade extra</Btn>
             </div>
           </Card>
         </div>
@@ -2145,6 +2163,13 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
                 <Icon name="check" size={16} style={{marginTop:2,flexShrink:0}}/>
                 <span>Treino concluído! Na próxima vez, seu treino {(()=>{const nx=treinosUnicos[(treinoIdx+1)%treinosUnicos.length];return nomeTreinoDe(prog,nx);})()} vai abrir direto.</span>
               </div>
+            ) : null}
+            {savedToday ? (
+              <Card style={{marginTop:10,padding:"14px"}}>
+                <div style={{fontSize:14,fontWeight:800,color:"#0F172A"}}>Fez mais alguma atividade hoje?</div>
+                <div style={{fontSize:12,color:"#64748b",lineHeight:1.45,margin:"3px 0 10px"}}>Caminhada, pilates, dança ou uma musculação por conta própria. Tudo soma no seu dia.</div>
+                <button type="button" onClick={irAtividadeExtra} style={{width:"100%",height:42,borderRadius:12,border:"1.5px solid #FF5603",background:"#fff",color:"#c2410c",fontWeight:800,fontSize:13.5,cursor:"pointer",fontFamily:"inherit"}}>Registrar atividade extra</button>
+              </Card>
             ) : (
               <>
                 <Btn full onClick={concluirTreino} disabled={saving || doneCount===0}>
@@ -2272,6 +2297,9 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
                 </div>
               )}
               <Btn full onClick={()=>setShowCelebration(false)}>Continuar</Btn>
+              <div style={{marginTop:8}}>
+                <Btn variant="secondary" full onClick={()=>{ setShowCelebration(false); irAtividadeExtra(); }}>Registrar atividade extra</Btn>
+              </div>
             </div>
           </Modal>
         );
