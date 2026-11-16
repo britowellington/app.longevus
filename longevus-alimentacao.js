@@ -1148,8 +1148,40 @@
     if (p >= 1) return { cor: "#16A34A", txt: "#15803D", bg: "#F0FDF4", borda: "#BBF7D0", rot: "meta atingida" };
     return null;
   };
-  const NutriDiaDetalhe = ({ dia, dias, hoje, refeicoes, metas, e, ex, onVoltar, onTrocar }) => {
+  const nutriApagarVarios = async (tabela, ids) => {
+    const apagados = [];
+    let h = null;
+    try { h = { ...await nutriApi.headers(), "Prefer": "return=representation" }; } catch (e) { return apagados; }
+    for (const id of ids) {
+      try {
+        const r = await fetch(SUPA_URL + "/rest/v1/" + tabela + "?id=eq." + encodeURIComponent(id), { method: "DELETE", headers: h });
+        if (r.ok) {
+          const rows = await r.json().catch(() => []);
+          if (Array.isArray(rows) && rows.length) apagados.push(id);
+        }
+      } catch (e) {}
+    }
+    return apagados;
+  };
+  const NutriSelBarra = ({ n, apagando, onExcluir }) => React.createElement("button", { type: "button", disabled: !n || apagando, onClick: onExcluir, style: { position: "sticky", bottom: 76, zIndex: 5, width: "100%", height: 46, marginTop: 10, borderRadius: 23, border: "none", background: n ? "#dc2626" : "#cbd5e1", color: "#fff", fontWeight: 800, fontSize: 14, cursor: n && !apagando ? "pointer" : "default", fontFamily: "inherit", boxShadow: "0 4px 12px rgba(15,23,42,0.15)" } }, apagando ? "Excluindo..." : n ? "Excluir " + n + (n === 1 ? " registro" : " registros") : "Toque nos registros para selecionar");
+  const NutriCheck = ({ on }) => React.createElement("span", { "aria-hidden": "true", style: { width: 22, height: 22, borderRadius: 7, flexShrink: 0, border: "2px solid " + (on ? "#dc2626" : "#cbd5e1"), background: on ? "#dc2626" : "#fff", color: "#fff", fontSize: 13, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" } }, on ? "✓" : "");
+  const NutriDiaDetalhe = ({ dia, dias, hoje, refeicoes, metas, e, ex, onVoltar, onTrocar, onApagar }) => {
     const [grupoAberto, setGrupoAberto] = useState(null);
+    const [selModo, setSelModo] = useState(false);
+    const [sel, setSel] = useState({});
+    const [apagando, setApagando] = useState(false);
+    const nSel = Object.keys(sel).filter((k) => sel[k]).length;
+    const alternar = (k) => setSel((p) => ({ ...p, [k]: !p[k] }));
+    const excluir = async () => {
+      const ks = Object.keys(sel).filter((k) => sel[k]);
+      if (!ks.length || !window.confirm("Excluir " + ks.length + (ks.length === 1 ? " registro" : " registros") + "? Não dá para desfazer.")) return;
+      setApagando(true);
+      const falhas = await onApagar(ks.filter((k) => k.indexOf("r:") === 0).map((k) => k.slice(2)), ks.filter((k) => k.indexOf("a:") === 0).map((k) => k.slice(2)));
+      setApagando(false);
+      setSel({});
+      setSelModo(false);
+      if (falhas) alert(falhas + (falhas === 1 ? " registro não foi excluído." : " registros não foram excluídos.") + " Confira a conexão ou a permissão no Supabase.");
+    };
     const h = React.createElement;
     const m = metas || {};
     const regs = (refeicoes || []).filter((r) => r.date === dia);
@@ -1175,7 +1207,7 @@
     return h("div", null,
       h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 10 } },
         h("button", { type: "button", onClick: onVoltar, style: { background: "transparent", border: "none", padding: "6px 0", color: NUTRI_LARANJA_TXT, fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit" } }, "‹ Voltar aos gráficos"),
-        h("div", { style: { display: "flex", gap: 6 } }, seta(-1), seta(1))),
+        h("div", { style: { display: "flex", gap: 6, alignItems: "center" } }, onApagar && h("button", { type: "button", onClick: () => { setSelModo(!selModo); setSel({}); }, style: { height: 36, padding: "0 12px", borderRadius: 18, border: "1.5px solid " + (selModo ? "#fecaca" : "#e2e8f0"), background: "#fff", color: selModo ? "#dc2626" : NUTRI_ESCURO, fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, selModo ? "Cancelar" : "Selecionar"), !selModo && seta(-1), !selModo && seta(1))),
       h("div", { style: { background: NUTRI_ESCURO, color: "#f8fafc", borderRadius: 18, padding: "16px 16px 18px" } },
         h("div", { style: { fontSize: 18, fontWeight: 800 } }, titulo),
         h("div", { style: { fontSize: 12, color: "#94A3B8", marginTop: 2 } }, regs.length + (regs.length === 1 ? " refeição registrada" : " refeições registradas") + (dia === hoje ? " · dia em andamento" : "")),
@@ -1198,7 +1230,16 @@
           h("div", { style: { fontSize: 11, marginTop: 5, color: es ? es.txt : "#64748b", fontWeight: es ? 800 : 400 } }, es ? es.rot + " · meta " + nutriFmt(mt) + " g" : mt ? "meta " + nutriFmt(mt) + " g" : "sem meta definida"));
       })),
       rotulo("Refeições do dia"),
-      grupos.length === 0 ? h(NutriCard, { style: { textAlign: "center", padding: 20, color: "#94a3b8", fontSize: 13 } }, "Nenhuma refeição registrada neste dia.") : grupos.map((g) => {
+      grupos.length === 0 ? h(NutriCard, { style: { textAlign: "center", padding: 20, color: "#94a3b8", fontSize: 13 } }, "Nenhuma refeição registrada neste dia.") : selModo ? regs.slice().sort((a, b) => (a.hora || "").localeCompare(b.hora || "")).map((r) => {
+        const t = r.totais || {};
+        const k = "r:" + r.id;
+        return h(NutriCard, { key: r.id, onClick: () => alternar(k), style: { padding: "12px 14px", marginBottom: 8, display: "flex", alignItems: "center", gap: 12, border: "1.5px solid " + (sel[k] ? "#fecaca" : "#e2e8f0"), background: sel[k] ? "#fef2f2" : "#fff" } },
+          h(NutriCheck, { on: !!sel[k] }),
+          h("div", { style: { flex: 1, minWidth: 0 } },
+            h("div", { style: { fontWeight: 700, fontSize: 14 } }, nutriTipoNome(r.tipo) + (r.hora ? " · " + r.hora : "")),
+            h("div", { style: { fontSize: 12, color: "#64748b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, (r.itens || []).map((i) => i.nome).filter(Boolean).join(", ") || "P " + nutriFmt(t.prot) + " · C " + nutriFmt(t.carb) + " · G " + nutriFmt(t.gord))),
+          h("span", { style: { fontWeight: 700, fontSize: 14, whiteSpace: "nowrap" } }, nutriFmt(t.kcal) + " kcal"));
+      }) : grupos.map((g) => {
         const tg = nutriSomar(g.regs.map((r) => r.totais || {}));
         const aberto = grupoAberto === g.k;
         return h(NutriCard, { key: g.k, onClick: () => setGrupoAberto(aberto ? null : g.k), style: { padding: "12px 14px", marginBottom: 8 } },
@@ -1213,11 +1254,14 @@
       }),
       semReg.length > 0 && h("div", { style: { fontSize: 12, color: "#94a3b8", margin: "2px 2px 0" } }, "Sem registro: " + semReg.join(", ") + "."),
       rotulo("Atividades" + (kcalAt ? " · " + nutriFmt(kcalAt) + " kcal" : "")),
-      itensAt.length === 0 ? h(NutriCard, { style: { textAlign: "center", padding: 16, color: "#94a3b8", fontSize: 13 } }, "Nenhuma atividade registrada neste dia.") : h(NutriCard, { style: { padding: "6px 14px" } }, itensAt.map((it, i) => h("div", { key: i, style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "9px 0", borderTop: i ? "1px solid #f1f5f9" : "none", fontSize: 13 } },
-        h("span", null, it.rotulo, it.semDuracao ? h("span", { style: { fontSize: 11, color: "#64748b" } }, " · sem duração") : null),
+      itensAt.length === 0 ? h(NutriCard, { style: { textAlign: "center", padding: 16, color: "#94a3b8", fontSize: 13 } }, "Nenhuma atividade registrada neste dia.") : h(NutriCard, { style: { padding: "6px 14px" } }, itensAt.map((it, i) => h("div", { key: i, onClick: selModo && it.tipo === "extra" && it.id ? () => alternar("a:" + it.id) : void 0, style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "9px 0", borderTop: i ? "1px solid #f1f5f9" : "none", fontSize: 13, cursor: selModo && it.tipo === "extra" ? "pointer" : "default", opacity: selModo && it.tipo !== "extra" ? 0.5 : 1 } },
+        selModo && it.tipo === "extra" && it.id ? h(NutriCheck, { on: !!sel["a:" + it.id] }) : null,
+        h("span", { style: { flex: 1 } }, it.rotulo, it.semDuracao ? h("span", { style: { fontSize: 11, color: "#64748b" } }, " · sem duração") : null),
         h("span", { style: { display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" } },
           h("b", null, nutriFmt(it.kcal) + " kcal"),
-          h("span", { style: { fontSize: 10, fontWeight: 800, borderRadius: 10, padding: "2px 7px", background: it.tipo === "extra" ? "#FFF4EE" : "#E9F5F2", color: it.tipo === "extra" ? NUTRI_LARANJA_TXT : "#0F766E" } }, it.tipo === "extra" ? "extra" : "automático"))))));
+          h("span", { style: { fontSize: 10, fontWeight: 800, borderRadius: 10, padding: "2px 7px", background: it.tipo === "extra" ? "#FFF4EE" : "#E9F5F2", color: it.tipo === "extra" ? NUTRI_LARANJA_TXT : "#0F766E" } }, it.tipo === "extra" ? "extra" : "automático"))))),
+      selModo && h("div", { style: { fontSize: 11.5, color: "#94a3b8", marginTop: 8 } }, "O treino automático vem do check-in e é excluído pela aba Check-in."),
+      selModo && h(NutriSelBarra, { n: nSel, apagando, onExcluir: excluir }));
   };
   const NutriPainel = ({ st, assessments }) => {
     const [carregando, setCarregando] = useState(true);
@@ -1235,6 +1279,15 @@
     const [cardapios, setCardapios] = useState(null);
     const [cardAberto, setCardAberto] = useState(null);
     const [diaAberto, setDiaAberto] = useState(null);
+    const [selUlt, setSelUlt] = useState(null);
+    const [apagandoUlt, setApagandoUlt] = useState(false);
+    const apagarRegistros = async (refIds, atIds) => {
+      const okR = refIds.length ? await nutriApagarVarios("refeicoes_registro", refIds) : [];
+      const okA = atIds.length ? await nutriApagarVarios("gasto_atividades", atIds) : [];
+      if (okR.length) setRefeicoes((p) => p.filter((r) => okR.indexOf(r.id) < 0));
+      if (okA.length) setAtSemana((p) => p.filter((a) => okA.indexOf(a.id) < 0));
+      return refIds.length + atIds.length - okR.length - okA.length;
+    };
     const hoje = nutriHoje();
     const inicio = nutriDiaMais(hoje, -6);
     useEffect(() => {
@@ -1333,7 +1386,7 @@
     const bateuMeta = metaSel ? completos.filter((d) => porDia[d][sel] >= metaSel).length : 0;
     const ultimos = refeicoes.slice().sort((a, b) => ((b.date || "") + (b.hora || "")).localeCompare((a.date || "") + (a.hora || ""))).slice(0, 6);
     if (diaAberto) {
-      return /* @__PURE__ */ React.createElement(NutriDiaDetalhe, { dia: diaAberto, dias, hoje, refeicoes, metas: m, e: energiaDia(ePlano, eBase, (eExSemana[diaAberto] || { kcal: 0 }).kcal), ex: eExSemana[diaAberto], onVoltar: () => setDiaAberto(null), onTrocar: setDiaAberto });
+      return /* @__PURE__ */ React.createElement(NutriDiaDetalhe, { dia: diaAberto, dias, hoje, refeicoes, metas: m, e: energiaDia(ePlano, eBase, (eExSemana[diaAberto] || { kcal: 0 }).kcal), ex: eExSemana[diaAberto], onVoltar: () => setDiaAberto(null), onTrocar: setDiaAberto, onApagar: apagarRegistros });
     }
     const quem = m.atualizadoPor ? "Metas atualizadas " + (m.atualizadoPor === "aluno" ? "pelo aluno" : "por você") + " em " + nutriDataCurta(m.atualizadoEm) : "Metas ainda não definidas";
     return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#94a3b8" } }, "Últimos 7 dias · ", comRegistro.length, " de 7 com registro"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: m.atualizadoPor === "aluno" ? NUTRI_LARANJA_TXT : "#94a3b8", marginTop: 2 } }, quem)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setPlanoAberto(true), style: { height: 36, padding: "0 14px", borderRadius: 10, border: "none", background: NUTRI_LARANJA, color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, "Plano energético"), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setEditando(true), style: { height: 36, padding: "0 14px", borderRadius: 10, border: "1.5px solid " + NUTRI_LARANJA, background: "transparent", color: NUTRI_LARANJA_TXT, fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, "Ajustar metas"))), ePlano && /* @__PURE__ */ React.createElement(EnergiaSemana, { plano: ePlano, onDia: setDiaAberto, dias: dias.map((d) => {
@@ -1351,11 +1404,20 @@
       const cor = !porDia[d].n ? "#e2e8f0" : ehHoje ? "#fdba74" : bateu ? NUTRI_LARANJA_TXT : NUTRI_LARANJA;
       const h = porDia[d].n ? Math.max(4, Math.round(v / maxSerie * alturaGraf)) : 4;
       return /* @__PURE__ */ React.createElement("div", { key: d, onClick: () => setDiaAberto(d), style: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 3, height: "100%", cursor: "pointer" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, color: "#64748b" } }, porDia[d].n ? Math.round(v) : "·"), /* @__PURE__ */ React.createElement("div", { style: { width: "100%", height: h, background: cor, borderRadius: "6px 6px 0 0" } }));
-    })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, marginTop: 6 } }, dias.map((d) => /* @__PURE__ */ React.createElement("span", { key: d, style: { flex: 1, textAlign: "center", fontSize: 11, color: "#64748b" } }, nutriDiaSemana(d)))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 8 } }, "Hoje aparece mais claro porque o dia ainda não terminou. Toque num dia para ver o resumo completo.")), /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 15, marginBottom: 8 } }, "Últimos registros"), ultimos.length === 0 ? /* @__PURE__ */ React.createElement(NutriCard, { style: { textAlign: "center", padding: 24, color: "#94a3b8", fontSize: 13 } }, "Nenhuma refeição registrada nos últimos 7 dias.") : ultimos.map((r) => {
+    })), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, marginTop: 6 } }, dias.map((d) => /* @__PURE__ */ React.createElement("span", { key: d, style: { flex: 1, textAlign: "center", fontSize: 11, color: "#64748b" } }, nutriDiaSemana(d)))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 8 } }, "Hoje aparece mais claro porque o dia ainda não terminou. Toque num dia para ver o resumo completo.")), React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 } }, React.createElement("div", { style: { fontWeight: 800, fontSize: 15 } }, "Últimos registros"), ultimos.length > 0 && React.createElement("button", { type: "button", onClick: () => setSelUlt(selUlt ? null : {}), style: { height: 32, padding: "0 12px", borderRadius: 16, border: "1.5px solid " + (selUlt ? "#fecaca" : "#e2e8f0"), background: "#fff", color: selUlt ? "#dc2626" : NUTRI_ESCURO, fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, selUlt ? "Cancelar" : "Selecionar")), ultimos.length === 0 ? /* @__PURE__ */ React.createElement(NutriCard, { style: { textAlign: "center", padding: 24, color: "#94a3b8", fontSize: 13 } }, "Nenhuma refeição registrada nos últimos 7 dias.") : ultimos.map((r) => {
       const t = r.totais || {};
-      const aberto = aberta === r.id;
-      return /* @__PURE__ */ React.createElement(NutriCard, { key: r.id, onClick: () => setAberta(aberto ? null : r.id), style: { padding: "12px 14px", marginBottom: 8 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, fontSize: 14 } }, (r.date === hoje ? "Hoje" : nutriDiaSemana(r.date) + " " + nutriDataCurta(r.date)) + " · " + nutriTipoNome(r.tipo)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b" } }, "P " + nutriFmt(t.prot) + " · C " + nutriFmt(t.carb) + " · G " + nutriFmt(t.gord) + " · F " + nutriFmt(t.fibra) + " g · " + (r.origem === "foto" ? "por foto" : r.origem === "texto" ? "por descrição" : r.origem === "cardapio" ? "do cardápio" : "manual"))), /* @__PURE__ */ React.createElement("span", { style: { fontWeight: 700, fontSize: 14, whiteSpace: "nowrap" } }, nutriFmt(t.kcal), " kcal")), aberto && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 10, borderTop: "1px solid #f1f5f9", paddingTop: 8 } }, (r.itens || []).map((i, idx) => /* @__PURE__ */ React.createElement("div", { key: idx, style: { display: "flex", justifyContent: "space-between", fontSize: 12, padding: "4px 0", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#334155" } }, i.nome, nutriNum(i.gramas) ? " (" + nutriFmt(i.gramas) + " g)" : ""), /* @__PURE__ */ React.createElement("span", { style: { color: "#64748b", whiteSpace: "nowrap" } }, nutriFmt(i.kcal), " kcal · P ", nutriFmt(i.prot))))));
-    }), /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 15, margin: "16px 0 8px" } }, "Cardápios do aluno"), cardapios === null ? /* @__PURE__ */ React.createElement(NutriCard, { style: { padding: 12, color: "#94a3b8", fontSize: 13 } }, "Não consegui carregar os cardápios. Confira se o SQL dos cardápios foi rodado.") : cardapios.length === 0 ? /* @__PURE__ */ React.createElement(NutriCard, { style: { textAlign: "center", padding: 20, color: "#94a3b8", fontSize: 13 } }, "O aluno ainda não montou nenhum cardápio.") : cardapios.slice().sort((a, b) => (b.favorito ? 1 : 0) - (a.favorito ? 1 : 0)).map((c) => {
+      const aberto = !selUlt && aberta === r.id;
+      const marcado = !!(selUlt && selUlt[r.id]);
+      return /* @__PURE__ */ React.createElement(NutriCard, { key: r.id, onClick: () => selUlt ? setSelUlt((p) => ({ ...p, [r.id]: !p[r.id] })) : setAberta(aberto ? null : r.id), style: { padding: "12px 14px", marginBottom: 8, border: "1.5px solid " + (marcado ? "#fecaca" : "#e2e8f0"), background: marcado ? "#fef2f2" : "#fff" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 } }, selUlt && React.createElement(NutriCheck, { on: marcado }), /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0, flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, fontSize: 14 } }, (r.date === hoje ? "Hoje" : nutriDiaSemana(r.date) + " " + nutriDataCurta(r.date)) + " · " + nutriTipoNome(r.tipo)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b" } }, "P " + nutriFmt(t.prot) + " · C " + nutriFmt(t.carb) + " · G " + nutriFmt(t.gord) + " · F " + nutriFmt(t.fibra) + " g · " + (r.origem === "foto" ? "por foto" : r.origem === "texto" ? "por descrição" : r.origem === "cardapio" ? "do cardápio" : "manual"))), /* @__PURE__ */ React.createElement("span", { style: { fontWeight: 700, fontSize: 14, whiteSpace: "nowrap" } }, nutriFmt(t.kcal), " kcal")), aberto && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 10, borderTop: "1px solid #f1f5f9", paddingTop: 8 } }, (r.itens || []).map((i, idx) => /* @__PURE__ */ React.createElement("div", { key: idx, style: { display: "flex", justifyContent: "space-between", fontSize: 12, padding: "4px 0", gap: 8 } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#334155" } }, i.nome, nutriNum(i.gramas) ? " (" + nutriFmt(i.gramas) + " g)" : ""), /* @__PURE__ */ React.createElement("span", { style: { color: "#64748b", whiteSpace: "nowrap" } }, nutriFmt(i.kcal), " kcal · P ", nutriFmt(i.prot))))));
+    }), selUlt && React.createElement(NutriSelBarra, { n: Object.keys(selUlt).filter((k) => selUlt[k]).length, apagando: apagandoUlt, onExcluir: async () => {
+      const ids = Object.keys(selUlt).filter((k) => selUlt[k]);
+      if (!ids.length || !window.confirm("Excluir " + ids.length + (ids.length === 1 ? " registro" : " registros") + "? Não dá para desfazer.")) return;
+      setApagandoUlt(true);
+      const falhas = await apagarRegistros(ids, []);
+      setApagandoUlt(false);
+      setSelUlt(null);
+      if (falhas) alert(falhas + (falhas === 1 ? " registro não foi excluído." : " registros não foram excluídos.") + " Confira a conexão ou a permissão no Supabase.");
+    } }), /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 15, margin: "16px 0 8px" } }, "Cardápios do aluno"), cardapios === null ? /* @__PURE__ */ React.createElement(NutriCard, { style: { padding: 12, color: "#94a3b8", fontSize: 13 } }, "Não consegui carregar os cardápios. Confira se o SQL dos cardápios foi rodado.") : cardapios.length === 0 ? /* @__PURE__ */ React.createElement(NutriCard, { style: { textAlign: "center", padding: 20, color: "#94a3b8", fontSize: 13 } }, "O aluno ainda não montou nenhum cardápio.") : cardapios.slice().sort((a, b) => (b.favorito ? 1 : 0) - (a.favorito ? 1 : 0)).map((c) => {
       const aberto = cardAberto === c.id;
       return /* @__PURE__ */ React.createElement(NutriCard, { key: c.id, style: { padding: "12px 14px", marginBottom: 8 } }, /* @__PURE__ */ React.createElement("div", { onClick: () => setCardAberto(aberto ? null : c.id), style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, cursor: "pointer" } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, fontSize: 14 } }, (c.favorito ? "♥ " : "") + cardapioTitulo(c)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b" } }, "gerado em " + nutriDataCurta(c.criadoEm) + " · " + (c.alvos || []).length + " refeição(ões) · " + nutriFmt(c.meta && c.meta.kcal) + " kcal/dia")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16, color: "#94a3b8" } }, aberto ? "▴" : "▾")), aberto && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 10, borderTop: "1px solid #f1f5f9", paddingTop: 10 } }, /* @__PURE__ */ React.createElement(CardapioVer, { c })));
     }));
