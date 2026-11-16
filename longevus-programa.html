@@ -1654,11 +1654,30 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
     }
     return buildPrescricao(null,[key],bibCustom,variante);
   };
+  // Treinos guardados fora da semana (desativados) — voltam com os exercícios intactos quando reativados
+  const inativaProg=prog.prescricaoInativa||{};
+  const treinosGerenciaveis=[...new Set([...seqOriginalUnicos,...Object.values(inativaProg).flatMap(o=>Object.keys(o||{}))])];
+  const treinosForaDaSemana=treinosGerenciaveis.filter(t=>!seqUnicos.includes(t));
   const trocarTreinoDia=(i,key)=>{
     setSequencia(s=>{const n=[...(s||seqAtual)];n[i]=key;return n;});
+    garantirTreino(key);
+  };
+  const removerDia=i=>{
+    if(seqAtual.length<=1)return;
+    setSequencia(s=>{const n=[...(s||seqAtual)];n.splice(i,1);return n;});
+    setTreinoIdx(0);
+  };
+  const adicionarDia=()=>{
+    if(seqAtual.length>=7)return;
+    const key=treinosForaDaSemana[0]||seqUnicos[0];
+    setSequencia(s=>[...(s||seqAtual),key]);
+    garantirTreino(key);
+  };
+  const garantirTreino=(key)=>{
     const faltando=blocosAtivos.some(b=>!ehBlocoAlternado(b)&&!(prescricao[b.key]||{})[key]);
     if(!faltando)return;
-    const gerado=gerarTreinoNovo(key)||{};
+    const temInativa=blocosAtivos.some(b=>(inativaProg[b.key]||{})[key]);
+    const gerado=temInativa?inativaProg:(gerarTreinoNovo(key)||{});
     setPrescricao(p=>{
       const novo={...p};
       blocosAtivos.forEach(b=>{
@@ -1682,7 +1701,24 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
     const conjuntoMudou=seqUnicos.slice().sort().join()!==seqOriginalUnicos.slice().sort().join();
     const divisaoNova={...prog.divisao,sequencia:[...seqAtual],...(conjuntoMudou?{modelo:"personalizada",label:"Personalizada ("+seqAtual.length+"×)",desc:seqAtual.map(nomeT).join(", ")}:{})};
     const blocosConfigNovo=prog.blocosConfig?prog.blocosConfig.map(b=>(b.treinos&&!ehBlocoAlternado(b))?{...b,treinos:seqUnicos}:b):prog.blocosConfig;
-    const editedProg={...prog,prescricao,divisao:divisaoNova,nomesTreinos:Object.keys(nomesLimpos).length?nomesLimpos:null,...(prog.blocosConfig?{blocosConfig:blocosConfigNovo}:{})};
+    // Treino que saiu da semana vai pra prescricaoInativa (o aluno não vê); o que voltou sai de lá
+    const inativaNova=JSON.parse(JSON.stringify(inativaProg));
+    const prescFinal={};
+    Object.keys(prescricao).forEach(bKey=>{
+      const bl=blocosAtivos.find(b=>b.key===bKey);
+      const sess={...(prescricao[bKey]||{})};
+      if(!bl||!ehBlocoAlternado(bl)){
+        Object.keys(sess).forEach(t=>{
+          if(treinosGerenciaveis.includes(t)&&!seqUnicos.includes(t)){inativaNova[bKey]={...(inativaNova[bKey]||{}),[t]:sess[t]};delete sess[t];}
+        });
+      }
+      prescFinal[bKey]=sess;
+    });
+    Object.keys(inativaNova).forEach(bKey=>{
+      seqUnicos.forEach(t=>{if(inativaNova[bKey]&&inativaNova[bKey][t])delete inativaNova[bKey][t];});
+      if(!Object.keys(inativaNova[bKey]||{}).length)delete inativaNova[bKey];
+    });
+    const editedProg={...prog,prescricao:prescFinal,prescricaoInativa:Object.keys(inativaNova).length?inativaNova:null,freq:seqAtual.length,divisao:divisaoNova,nomesTreinos:Object.keys(nomesLimpos).length?nomesLimpos:null,...(prog.blocosConfig?{blocosConfig:blocosConfigNovo}:{})};
     const u=fresh.map(p=>p.id===prog.id?editedProg:p);setPrograms(u);LS.set("longevus_programs",u);ProgDB.save(editedProg);setEditMode(false);
   };
   const cancelEdit=()=>{setPrescricao(JSON.parse(JSON.stringify(prog.prescricao)));setSequencia([...(prog.divisao?.sequencia||["A"])]);setNomes({...(prog.nomesTreinos||{})});setTreinoIdx(0);setEditMode(false);};
@@ -1826,9 +1862,12 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
                 </select>
                 <button onClick={()=>moverDia(i,-1)} disabled={i===0} style={{width:34,height:34,border:"1.5px solid #e2e8f0",borderRadius:8,background:"#fff",cursor:i===0?"default":"pointer",color:i===0?"#cbd5e1":"#475569",fontSize:14,fontWeight:700}}>▲</button>
                 <button onClick={()=>moverDia(i,1)} disabled={i===seqAtual.length-1} style={{width:34,height:34,border:"1.5px solid #e2e8f0",borderRadius:8,background:"#fff",cursor:i===seqAtual.length-1?"default":"pointer",color:i===seqAtual.length-1?"#cbd5e1":"#475569",fontSize:14,fontWeight:700}}>▼</button>
+                <button onClick={()=>removerDia(i)} disabled={seqAtual.length<=1} title="Tirar este dia da semana" style={{width:34,height:34,border:"1.5px solid #fecaca",borderRadius:8,background:"#fff",cursor:seqAtual.length<=1?"default":"pointer",color:seqAtual.length<=1?"#fecaca":"#dc2626",fontSize:13,fontWeight:700}}>✕</button>
               </div>
             ))}
-            <div style={{fontSize:11,color:"#94a3b8",marginTop:4,lineHeight:1.5}}>Trocar um dia por um treino novo gera os exercícios dele em todos os blocos. As mudanças só valem depois de tocar em Salvar.</div>
+            {seqAtual.length<7&&<button onClick={adicionarDia} style={{width:"100%",border:"1.5px dashed #cbd5e1",background:"transparent",borderRadius:8,padding:"8px",fontSize:12,color:"#475569",cursor:"pointer",fontWeight:700,marginTop:2}}>+ Adicionar dia{treinosForaDaSemana.length?" ("+nomeT(treinosForaDaSemana[0])+")":""}</button>}
+            {treinosForaDaSemana.length>0&&<div style={{fontSize:11,color:"#b45309",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:7,padding:"6px 9px",marginTop:8,lineHeight:1.5}}>Fora da semana: {treinosForaDaSemana.map(nomeT).join(", ")}. Os exercícios ficam guardados e voltam iguais se você reativar.</div>}
+            <div style={{fontSize:11,color:"#94a3b8",marginTop:4,lineHeight:1.5}}>Trocar um dia por um treino novo gera os exercícios dele em todos os blocos. Tirar um dia guarda o treino sem apagar nada. As mudanças só valem depois de tocar em Salvar.</div>
           </div>
         )}
         {blocoAtivo?.cicloIdx===0&&ehBlocoAlternado(blocoAtivo)&&<div style={{fontSize:11,color:"#0891b2",marginTop:8}}>ℹ️ Ciclo 1 usa {blocoAtivo.treinos.includes("EMP")?"Full Body Empurrar/Puxar Alternado":"A/B/C alternado por segmento"} (padrão iniciante). A divisão acima entra a partir do Ciclo 2.</div>}
@@ -2309,6 +2348,357 @@ const NovoPeriodizacaoConsultoria=({students,programs,setPrograms,bibCustom,nav,
   );
 };
 
+// ─── MODELOS FULL BODY 50+ (3 programas · 24 semanas · 3 blocos de 8) ────────
+// Cada exercício-base é procurado na biblioteca real pelo nome (termos separados por espaço,
+// alternativas por "|", "-termo" exclui, "_" junta palavras). O professor confere e troca na tela de instalação.
+const FB50_BASES={
+  "Leg press":"leg_press -unilateral|leg_press",
+  "Supino máquina":"supino maquina -inclinad -declinad|supino articulado -inclinad|chest_press|supino sentado",
+  "Remada sentada":"remada sentad -unilateral|remada baixa -unilateral|remada maquina",
+  "Cadeira flexora":"cadeira flexora|flexora sentad|flexora -mesa -em_pe",
+  "Mesa flexora":"mesa flexora|flexora deitad|flexora -cadeira",
+  "Flexora em pé":"flexora em_pe|flexora unilateral|flexora",
+  "Desenvolvimento com halteres":"desenvolvimento halter|desenvolvimento -maquina -articulado",
+  "Desenvolvimento landmine":"landmine|desenvolvimento unilateral",
+  "Desenvolvimento na máquina":"desenvolvimento maquina|desenvolvimento articulado|shoulder_press|desenvolvimento",
+  "Panturrilha em pé":"panturrilha em_pe|panturrilha -sentad|gemeos",
+  "Panturrilha sentada":"panturrilha sentad|gemeos sentad|panturrilha",
+  "Panturrilha no leg press":"panturrilha leg_press|leg_press panturrilha|panturrilha",
+  "Panturrilha no Smith":"panturrilha smith|panturrilha em_pe|panturrilha",
+  "Tríceps na polia":"triceps polia -corda -unilateral|triceps pulley|triceps polia|triceps cabo",
+  "Tríceps corda":"triceps corda|triceps polia",
+  "Tríceps unilateral na polia":"triceps unilateral|triceps polia",
+  "Tríceps barra V":"triceps barra_v|triceps polia",
+  "Tríceps francês":"triceps frances|triceps testa|triceps overhead|triceps acima",
+  "Dead bug":"dead_bug|inseto morto",
+  "Bird dog":"bird_dog|perdigueiro|quatro apoios",
+  "Pallof press":"pallof|antirrotacao",
+  "Prancha":"prancha inclinad|prancha elevad|prancha -lateral|prancha",
+  "Agachamento até o banco":"agachamento banco|agachamento caixa|box_squat|sentar e_levantar",
+  "Agachamento goblet":"goblet|agachamento halter",
+  "Agachamento no Smith":"agachamento smith|smith agachamento",
+  "Agachamento lateral":"agachamento lateral|afundo lateral|lateral lunge",
+  "Sentar e levantar":"sentar e_levantar|levantar da_cadeira|agachamento banco",
+  "Puxada frontal":"puxada frontal -neutr -supinad -triangulo -unilateral|puxada alta|puxada|pulldown",
+  "Puxada neutra":"puxada neutr|puxada triangulo|puxada frontal",
+  "Puxada unilateral":"puxada unilateral|puxada frontal",
+  "Puxada supinada":"puxada supinad|puxada frontal",
+  "Supino inclinado com halteres":"supino inclinado halter|supino inclinado -maquina -smith -articulado",
+  "Supino inclinado na máquina":"supino inclinado maquina|supino inclinado articulado|supino inclinado",
+  "Supino com halteres":"supino reto halter|supino halter -inclinad -declinad",
+  "Supino no Smith":"supino smith|smith supino|supino reto",
+  "Flexão inclinada":"flexao inclinad|flexao de_braco inclinad|flexao parede|flexao",
+  "Rosca direta":"rosca direta|rosca biceps|rosca -martelo",
+  "Rosca alternada":"rosca alternad -martelo|rosca -martelo",
+  "Rosca na polia":"rosca polia|rosca cabo|rosca barra polia",
+  "Rosca inclinada":"rosca inclinad|rosca banco|rosca alternad",
+  "Rosca martelo":"rosca martelo -corda -cruzad|rosca martelo|martelo",
+  "Rosca martelo na corda":"rosca martelo corda|rosca corda|rosca martelo",
+  "Rosca martelo cruzada":"martelo cruzad|rosca cruzad|rosca martelo",
+  "Elevação pélvica":"elevacao pelvica|hip_thrust|ponte gluteo|ponte",
+  "Terra romeno":"terra romeno|stiff|levantamento terra",
+  "Terra com kettlebell":"terra kettlebell|kettlebell terra|terra sumo|levantamento terra",
+  "Cadeira abdutora":"cadeira abdutora|abducao maquina|abdutora",
+  "Abdução na polia":"abducao polia|abducao cabo|abducao em_pe|abducao -cadeira -maquina",
+  "Abdução em pé":"abducao em_pe|abducao quadril -cadeira -maquina|abducao -cadeira -maquina",
+  "Caminhada lateral com mini band":"caminhada lateral|monster_walk|mini_band|elastico lateral",
+  "Cadeira extensora":"cadeira extensora|extensora",
+  "Remada unilateral com halter":"remada unilateral halter|serrote|remada unilateral",
+  "Remada unilateral na polia":"remada unilateral polia|remada unilateral cabo|remada unilateral",
+  "Remada articulada":"remada articulad|remada maquina|remada sentad",
+  "Remada cavalinho":"cavalinho|remada apoiad|remada t_bar",
+  "Remada baixa na polia":"remada baixa -unilateral|remada sentad polia|remada sentad",
+  "Step-up":"step_up|subida no_banco|subida e_descida|subida degrau|degrau",
+  "Step lateral":"step lateral|subida lateral|passo lateral|passos laterais|deslocamento lateral",
+  "Elevação lateral com halteres":"elevacao lateral halter|elevacao lateral -polia -cabo|elevacao lateral",
+  "Elevação lateral na polia":"elevacao lateral polia|elevacao lateral cabo|elevacao lateral",
+  "Extensão de quadril na polia":"extensao quadril polia|extensao de_quadril polia|coice polia|gluteo polia|extensao de_quadril",
+  "Extensão de quadril em pé":"extensao de_quadril em_pe|extensao de_quadril|extensao de_perna para_tras|coice",
+  "Farmer walk":"farmer|fazendeiro|caminhada com_carga|caminhada com_halter",
+  "Suitcase carry":"suitcase|farmer unilateral|caminhada unilateral|farmer|fazendeiro",
+  "Equilíbrio tandem":"tandem -caminhada|semi tandem|pes em_linha|tandem",
+  "Caminhada em linha":"caminhada tandem|caminhada em_linha|tandem",
+  "Marcha estacionária":"marcha estacionaria|marcha no_lugar|marcha",
+};
+// slot = [categoria, papel, [base, obs] do bloco 1, bloco 2, bloco 3]
+// categoria: f força (séries/reps) · t tempo (core/equilíbrio) · c carregamento (metros) · l caminhada em linha
+// papel: Â âncora (fixo, reteste) · S secundário · A acessório. Âncora com 1 entrada repete nos 3 blocos.
+// ordem3 = ordem dos exercícios no Bloco 3 (pra deixar o par do bi-set junto) · par3 = posições do bi-set
+const FB50_PROGRAMAS=[
+  {id:"fb50_p1",nome:"Full Body 50+ · Programa 1",treinos:{
+    FBA:{nome:"Treino A · Força global",enf:"força global",par3:[5,6],slots:[
+      ["f","Â",["Leg press"]],
+      ["f","Â",["Supino máquina"]],
+      ["f","Â",["Remada sentada"]],
+      ["f","A",["Cadeira flexora"],["Cadeira flexora","Uma perna por vez"],["Cadeira flexora","Descida lenta em 3s"]],
+      ["f","S",["Desenvolvimento com halteres"],["Desenvolvimento landmine"],["Desenvolvimento com halteres","Em pé, alternando os braços"]],
+      ["f","A",["Panturrilha em pé"],["Panturrilha em pé","Uma perna, com apoio das mãos"],["Panturrilha no leg press"]],
+      ["f","A",["Tríceps na polia"],["Tríceps corda"],["Tríceps unilateral na polia","Um braço por vez"]],
+      ["t","A",["Dead bug"],["Dead bug","Com carga leve (halter ou caneleira)"],["Bird dog","Pausa de 3s na extensão"]],
+    ]},
+    FBB:{nome:"Treino B · Cadeia posterior e estabilidade",enf:"cadeia posterior e estabilidade",ordem3:[0,1,2,3,4,6,5,7],par3:[4,5],slots:[
+      ["f","S",["Agachamento até o banco"],["Agachamento goblet","Até o banco"],["Agachamento goblet","Livre, sem banco"]],
+      ["f","Â",["Puxada frontal"]],
+      ["f","S",["Supino inclinado com halteres"],["Supino inclinado na máquina"],["Flexão inclinada","Mãos na barra do Smith, altura confortável"]],
+      ["f","A",["Mesa flexora"],["Flexora em pé","Uma perna por vez"],["Mesa flexora","Pausa de 2s na contração"]],
+      ["f","A",["Rosca direta"],["Rosca alternada"],["Rosca na polia"]],
+      ["f","S",["Elevação pélvica"],["Elevação pélvica","Uma perna, com apoio"],["Terra romeno","Com halteres, amplitude confortável"]],
+      ["f","A",["Cadeira abdutora"],["Abdução na polia","Em pé, com apoio"],["Caminhada lateral com mini band","Passos para cada lado"]],
+      ["t","A",["Pallof press"],["Pallof press","Semiajoelhado"],["Pallof press","Com passo lateral"]],
+    ]},
+    FBC:{nome:"Treino C · Funcionalidade e autonomia",enf:"funcionalidade e autonomia",ordem3:[0,1,2,3,5,4,6,7],par3:[3,4],slots:[
+      ["f","S",["Step-up","Degrau baixo, mão em apoio"],["Step-up","Degrau médio, sem apoio"],["Step-up","Com halteres leves"]],
+      ["f","S",["Remada unilateral com halter"],["Remada unilateral na polia","Em pé"],["Remada unilateral com halter","Em pé, base escalonada"]],
+      ["f","Â",["Supino máquina"]],
+      ["f","A",["Cadeira extensora"],["Cadeira extensora","Uma perna por vez"],["Cadeira extensora","Pausa de 2s no topo"]],
+      ["f","S",["Desenvolvimento na máquina"],["Desenvolvimento na máquina","Um braço por vez"],["Desenvolvimento com halteres","Sentado"]],
+      ["f","A",["Rosca martelo"],["Rosca martelo na corda"],["Rosca martelo","Em pé, alternada"]],
+      ["c","S",["Farmer walk"],["Farmer walk","Mudar de direção a cada 5m"],["Suitcase carry","Carga em uma mão, troca a cada percurso"]],
+      ["t","A",["Equilíbrio tandem","Assistido, apoio próximo"],["Equilíbrio tandem","Sem apoio, alguém por perto"],["Equilíbrio tandem","Com tarefa cognitiva (contar, nomear palavras)"]],
+    ]},
+  }},
+  {id:"fb50_p2",nome:"Full Body 50+ · Programa 2",treinos:{
+    FBA:{nome:"Treino A · Inferiores e empurrar",enf:"força de membros inferiores e empurrar",par3:[5,6],slots:[
+      ["f","Â",["Agachamento no Smith"]],
+      ["f","Â",["Puxada neutra","Pegada neutra"]],
+      ["f","S",["Supino com halteres"],["Supino no Smith"],["Supino com halteres","Alternando os braços"]],
+      ["f","A",["Cadeira abdutora"],["Abdução na polia","Em pé, com apoio"],["Caminhada lateral com mini band","Passos para cada lado"]],
+      ["f","Â",["Remada baixa na polia"]],
+      ["f","A",["Cadeira extensora"],["Cadeira extensora","Uma perna por vez"],["Cadeira extensora","Pausa de 2s no topo"]],
+      ["f","A",["Tríceps corda"],["Tríceps barra V"],["Tríceps francês","Sentado, um braço por vez, carga leve"]],
+      ["t","A",["Prancha","Elevada, mãos no banco alto"],["Prancha","Mãos no banco baixo"],["Prancha","Elevada, toque alternado no ombro"]],
+    ]},
+    FBB:{nome:"Treino B · Posterior e estabilidade",enf:"cadeia posterior e estabilidade",par3:[4,5],slots:[
+      ["f","S",["Elevação pélvica"],["Elevação pélvica","Pausa de 2s no topo"],["Terra com kettlebell","Kettlebell sobre um step"]],
+      ["f","Â",["Supino máquina"]],
+      ["f","A",["Mesa flexora"],["Mesa flexora","Uma perna por vez"],["Mesa flexora","Descida lenta em 3s"]],
+      ["f","S",["Remada articulada"],["Remada cavalinho","Com apoio de peito"],["Remada unilateral com halter"]],
+      ["f","A",["Panturrilha em pé","Com apoio"],["Panturrilha em pé","Uma perna, com apoio"],["Panturrilha no Smith"]],
+      ["f","A",["Rosca direta","Com halteres"],["Rosca na polia"],["Rosca inclinada"]],
+      ["f","A",["Abdução em pé","Com apoio das mãos"],["Abdução em pé","Com caneleira leve"],["Abdução em pé","Com elástico, sem apoio"]],
+      ["t","A",["Bird dog"],["Bird dog","Pausa de 3s"],["Bird dog","Com caneleira leve"]],
+    ]},
+    FBC:{nome:"Treino C · Funcionalidade e coordenação",enf:"funcionalidade e coordenação",ordem3:[0,1,2,6,3,4,5,7],par3:[2,3],slots:[
+      ["f","Â",["Sentar e levantar","Peso corporal"],["Sentar e levantar","Halter no peito"],["Sentar e levantar","Banco mais baixo, halter no peito"]],
+      ["f","S",["Desenvolvimento na máquina"],["Desenvolvimento com halteres","Sentado"],["Desenvolvimento landmine"]],
+      ["f","S",["Puxada frontal","Polia alta"],["Puxada unilateral","Um braço por vez"],["Puxada supinada","Pegada supinada"]],
+      ["f","S",["Step lateral","Sobre marcação no solo, para cada lado"],["Step lateral","Sobre step baixo, para cada lado"],["Step lateral","Com mini band acima dos joelhos"]],
+      ["f","S",["Supino inclinado na máquina"],["Supino inclinado com halteres"],["Flexão inclinada","Mãos na barra do Smith"]],
+      ["c","S",["Farmer walk"],["Farmer walk","Mudar de direção a cada 5m"],["Farmer walk","Contornando cones"]],
+      ["f","A",["Extensão de quadril na polia"],["Extensão de quadril em pé","Caneleira leve"],["Extensão de quadril na polia","Pausa de 2s atrás"]],
+      ["t","A",["Marcha estacionária","Com estímulo cognitivo (contar, responder)"],["Marcha estacionária","Cores e números: tocar o lado indicado"],["Marcha estacionária","Dupla tarefa, mudando de direção ao comando"]],
+    ]},
+  }},
+  {id:"fb50_p3",nome:"Full Body 50+ · Programa 3",treinos:{
+    FBA:{nome:"Treino A · Força global e controle",enf:"força global e controle",ordem3:[0,1,2,3,4,6,5,7],par3:[4,5],slots:[
+      ["f","Â",["Leg press","Uma perna por vez, alternando"]],
+      ["f","Â",["Remada sentada","Pegada neutra"]],
+      ["f","S",["Supino inclinado na máquina"],["Supino inclinado com halteres"],["Supino inclinado com halteres","Alternando os braços"]],
+      ["f","A",["Cadeira flexora"],["Cadeira flexora","Uma perna por vez"],["Cadeira flexora","Descida lenta em 3s"]],
+      ["f","A",["Elevação lateral com halteres"],["Elevação lateral na polia"],["Elevação lateral com halteres","Sentado, pausa de 1s no topo"]],
+      ["f","A",["Panturrilha sentada"],["Panturrilha em pé","Com apoio"],["Panturrilha em pé","Uma perna, com apoio"]],
+      ["f","A",["Rosca na polia"],["Rosca alternada"],["Rosca martelo cruzada"]],
+      ["t","A",["Pallof press"],["Pallof press","Semiajoelhado"],["Pallof press","Com passo lateral"]],
+    ]},
+    FBB:{nome:"Treino B · Força e cadeia posterior",enf:"força e cadeia posterior",ordem3:[0,1,2,3,4,6,5,7],par3:[4,5],slots:[
+      ["f","S",["Agachamento goblet","Halter no peito, até o banco"],["Agachamento goblet","Banco mais baixo"],["Agachamento goblet","Livre, pausa de 2s embaixo"]],
+      ["f","Â",["Puxada frontal","Pegada aberta confortável"]],
+      ["f","S",["Elevação pélvica"],["Elevação pélvica","Uma perna, com apoio"],["Terra romeno","Com halteres, amplitude confortável"]],
+      ["f","Â",["Supino máquina"]],
+      ["f","A",["Cadeira extensora"],["Cadeira extensora","Uma perna por vez"],["Cadeira extensora","Pausa de 2s no topo"]],
+      ["f","S",["Remada unilateral com halter"],["Remada unilateral na polia","Em pé"],["Remada unilateral com halter","Em pé, base escalonada"]],
+      ["f","A",["Tríceps na polia"],["Tríceps corda"],["Tríceps unilateral na polia","Um braço por vez"]],
+      ["t","A",["Dead bug"],["Dead bug","Com carga leve"],["Bird dog","Pausa de 3s na extensão"]],
+    ]},
+    FBC:{nome:"Treino C · Autonomia e equilíbrio",enf:"autonomia e equilíbrio",ordem3:[0,1,2,5,3,4,6,7],par3:[2,3],slots:[
+      ["f","S",["Step-up","Frontal, degrau baixo, com apoio"],["Step-up","Degrau médio, sem apoio"],["Step-up","Com halteres leves"]],
+      ["f","S",["Desenvolvimento com halteres","Sentado"],["Desenvolvimento landmine"],["Desenvolvimento com halteres","Em pé, alternando os braços"]],
+      ["f","A",["Mesa flexora"],["Flexora em pé","Uma perna por vez"],["Mesa flexora","Pausa de 2s na contração"]],
+      ["f","S",["Remada baixa na polia"],["Remada baixa na polia","Um braço por vez"],["Remada baixa na polia","Pausa de 2s na contração"]],
+      ["f","S",["Agachamento lateral","Com apoio das mãos"],["Agachamento lateral","Sem apoio"],["Agachamento lateral","Halter no peito"]],
+      ["f","A",["Rosca martelo"],["Rosca martelo na corda"],["Rosca martelo","Em pé, alternada"]],
+      ["l","A",["Caminhada em linha","Com apoio próximo"],["Caminhada em linha","Sem apoio, alguém por perto"],["Caminhada em linha","Com giro de cabeça ou tarefa cognitiva"]],
+      ["c","S",["Suitcase carry"],["Suitcase carry","Mudar de direção a cada 5m"],["Suitcase carry","Passando por obstáculo baixo"]],
+    ]},
+  }},
+];
+// Fases de cada bloco de 8 semanas · força: [séries, reps, RIR (já com +1 da faixa 50+), descanso em s]
+const FB50_FASES_NOMES=["Adaptação","Acúmulo","Intensificação","Deload","Reteste"];
+const FB50_SEMANAS=[[1,2],[3,4],[5,6],[7,7],[8,8]];
+const FB50_FORCA=[
+  [[2,"15","4",60],[3,"12","3-4",75],[3,"10","3",90],[2,"12","4",60],[3,"10","3",90]],
+  [[3,"12","3",60],[3,"10–12","3",75],[3,"8–10","2-3",90],[2,"10","4",60],[3,"8","2-3",90]],
+  [[3,"10–12","3",60],[4,"10","2-3",75],[4,"8","2",90],[2,"10","4",60],[3,"8","2",90]],
+];
+const fb50Presc=(cat,c,f)=>{
+  const [s,r,,d]=FB50_FORCA[c][f];
+  if(cat==="f")return{s:String(s),r,d:d+"s"};
+  const ser=(f===3||c===0)?"2":"3";
+  if(cat==="t")return{s:ser,r:["20–30s","30s","40s"][c],d:"30s"};
+  if(cat==="c")return{s:ser,r:["20m","20m","30m"][c],d:"60s"};
+  return{s:ser,r:["3m","5m","5m"][c],d:"30s"};
+};
+const fb50BlocosConfig=()=>{
+  const out=[];
+  for(let c=0;c<3;c++){
+    FB50_FASES_NOMES.forEach((nome,f)=>{
+      const [s,r,rir,d]=FB50_FORCA[c][f];
+      const [w1,w2]=FB50_SEMANAS[f];
+      out.push({key:"b"+(out.length+1),label:"Bloco "+(c+1)+" · "+nome,semanas:(w1===w2?String(w1+c*8):(w1+c*8)+"–"+(w2+c*8)),semanasCount:w2-w1+1,
+        cor:CORES_CICLO_CONSULTORIA[c],desc:s+"×"+r+" · RIR "+rir+(f===4?" · reteste dos âncoras":"")+(c===2&&(f===1||f===2)?" · bi-set leve":""),
+        cicloIdx:c,faseIdx:f,series:s,reps:r,rir,descanso_segundos:d,treinos:["FBA","FBB","FBC"]});
+    });
+  }
+  return out;
+};
+const fb50Montar=(prog,resolver,bib)=>{
+  const blocosConfig=fb50BlocosConfig();
+  const prescricao={};
+  blocosConfig.forEach(bl=>{
+    const c=bl.cicloIdx,f=bl.faseIdx,bRef=["b1","b2","b3"][c];
+    prescricao[bl.key]={};
+    Object.keys(prog.treinos).forEach(tk=>{
+      const T=prog.treinos[tk];
+      const cogId=suggestCognitivo(bRef,null);
+      const cogEx=COGNITIVOS.find(x=>x.id===cogId);
+      const inicial=[
+        {exId:"cognitivo",cogId,series:"1",reps:cogEx?.duracao||"5 min",descanso:"—",obs:"Exercício cognitivo, abre o Hub para executar",isCognitivo:true},
+        ...MOBIL_TREINO.A.map(idO=>{const id=pickComMidia(idO,bib);const p=getPresc(id,bRef,bib);return{exId:id,series:p.s,reps:p.r,descanso:p.d,obs:""};}),
+      ];
+      const ordem=(c===2&&T.ordem3)?T.ordem3:T.slots.map((_,i)=>i);
+      const principal=ordem.map(si=>{
+        const sl=T.slots[si];
+        const cat=sl[0],papel=sl[1];
+        const ent=sl[2+c]||sl[2];
+        const p=fb50Presc(cat,c,f);
+        const obs=[ent[1]||"",(papel==="Â"&&f===4)?"Reteste: registre a carga":""].filter(Boolean).join(". ");
+        const it={exId:resolver(ent[0])||"",series:p.s,reps:p.r,descanso:p.d,obs};
+        if(papel==="Â")it.benchmark=true;
+        return it;
+      });
+      if(c===2&&(f===1||f===2)&&T.par3){
+        const gid="g"+tk.toLowerCase()+bl.key;
+        T.par3.forEach(pos=>{const it=principal[pos];if(it){it.metodo="B7";it.grupoId=gid;it.reps="7";it.series=principal[T.par3[0]].series;}});
+      }
+      const respId=pickComMidia("ex28",bib);
+      const respP=getPresc(respId,bRef,bib);
+      const final=[
+        ...ALONG_TREINO.A.map(idO=>{const id=pickComMidia(idO,bib);const p=getPresc(id,bRef,bib);return{exId:id,series:p.s,reps:p.r,descanso:p.d,obs:""};}),
+        {exId:respId,series:respP.s,reps:respP.r,descanso:respP.d,obs:"Encerrar a sessão com respiração consciente"},
+      ];
+      prescricao[bl.key][tk]={inicial,principal,final};
+    });
+  });
+  const nomesTreinos={},enfases={};
+  Object.keys(prog.treinos).forEach(tk=>{nomesTreinos[tk]=prog.treinos[tk].nome;enfases[tk]=prog.treinos[tk].enf;});
+  return{
+    titulo:prog.nome,freq:3,
+    divisao:{modelo:"academia_fb_abc",label:"Full Body A/B/C (3×)",desc:"Três Full Body com exercícios diferentes",sequencia:["FBA","FBB","FBC"]},
+    nomesTreinos,enfases,
+    obs:"Iniciante 50+. 24 semanas em 3 blocos de 8 (Adaptação, Acúmulo, Intensificação, Deload, Reteste). RIR já inclui +1 da faixa 50+. Bi-set leve só no Bloco 3, semanas 19 a 22.",
+    prescricao,blocosConfig,origem:"modelo_fb50",local:"academia",patologiaId:null,
+  };
+};
+const fb50Norm=s=>" "+(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim()+" ";
+const fb50Match=(q,bib)=>{
+  for(const alt of q.split("|")){
+    const termos=alt.trim().split(/\s+/).filter(Boolean);
+    const inc=termos.filter(t=>t[0]!=="-").map(t=>" "+t.replace(/_/g," "));
+    const exc=termos.filter(t=>t[0]==="-").map(t=>" "+t.slice(1).replace(/_/g," "));
+    const cands=bib.filter(e=>{const n=fb50Norm(e.nome);return inc.every(t=>n.includes(t))&&exc.every(t=>!n.includes(t));});
+    if(cands.length){
+      cands.sort((a,b)=>((b.grupo==="Academia"?1:0)-(a.grupo==="Academia"?1:0))||(((b.foto||b.video)?1:0)-((a.foto||a.video)?1:0))||((a.nome||"").length-(b.nome||"").length));
+      return cands[0];
+    }
+  }
+  return null;
+};
+
+const InstalarModelosFB50=({bibCustom,modelos,setModelos,nav})=>{
+  const [manual,setManual]=useState(()=>LS.get("longevus_fb50_map",{}));
+  const [picker,setPicker]=useState(null);
+  const [busca,setBusca]=useState("");
+  const [soPend,setSoPend]=useState(false);
+  const [instalando,setInstalando]=useState(false);
+  const [msg,setMsg]=useState("");
+  const allEx=React.useMemo(()=>[...bibCustom,...EXERCISES.filter(b=>!bibCustom.find(e=>e.id===b.id))],[bibCustom]);
+  const bases=Object.keys(FB50_BASES);
+  const auto=React.useMemo(()=>{const a={};bases.forEach(b=>{const m=fb50Match(FB50_BASES[b],allEx);a[b]=m?m.id:"";});return a;},[allEx]);
+  const exDe=id=>id?allEx.find(e=>e.id===id):null;
+  const resolvido=b=>(manual[b]&&exDe(manual[b]))?manual[b]:(auto[b]||"");
+  const pendentes=bases.filter(b=>!exDe(resolvido(b)));
+  const lista=soPend?pendentes:bases;
+  const jaInstalados=FB50_PROGRAMAS.filter(p=>modelos.find(m=>m.id===p.id)).length;
+  const escolher=(b,id)=>{const n={...manual,[b]:id};setManual(n);LS.set("longevus_fb50_map",n);setPicker(null);setBusca("");};
+  const voltarAuto=b=>{const n={...manual};delete n[b];setManual(n);LS.set("longevus_fb50_map",n);setPicker(null);setBusca("");};
+  const instalar=async()=>{
+    setInstalando(true);setMsg("");
+    let ok=0;
+    for(const p of FB50_PROGRAMAS){
+      const data=fb50Montar(p,resolvido,allEx);
+      const existente=modelos.find(m=>m.id===p.id);
+      const r=await ModeloDB.save({id:p.id,nome:p.nome,categoria:null,origemProgramaId:null,vezesUsada:existente?.vezes_usada||0,data});
+      if(r)ok++;
+    }
+    const remote=await ModeloDB.load();
+    if(remote)setModelos(remote);
+    setInstalando(false);
+    setMsg(ok===FB50_PROGRAMAS.length?"✅ Os 3 modelos estão na sua biblioteca.":"⚠️ "+ok+" de "+FB50_PROGRAMAS.length+" salvos. Tente de novo.");
+  };
+  const qBusca=fb50Norm(busca).trim();
+  const resultados=picker?allEx.filter(e=>!qBusca||fb50Norm(e.nome).includes(qBusca)).slice(0,60):[];
+  return(
+    <div>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+        <button onClick={()=>nav("modelos")} style={{border:"none",background:"#f1f5f9",borderRadius:10,padding:"8px 12px",cursor:"pointer",fontSize:14,color:"#64748b",fontWeight:700}}>‹</button>
+        <div style={{fontWeight:800,fontSize:18}}>Modelos Full Body 50+</div>
+      </div>
+      <Card>
+        <div style={{fontSize:13,color:"#334155",lineHeight:1.55,marginBottom:10}}>3 programas Full Body A/B/C de 24 semanas para iniciantes 50+. Cada um tem 3 blocos de 8 semanas com Adaptação, Acúmulo, Intensificação, Deload e Reteste.</div>
+        <div style={{fontSize:12,color:"#64748b",lineHeight:1.55}}>Antes de instalar, confira abaixo qual exercício da sua biblioteca foi escolhido para cada um. Variações (unilateral, pausa, com apoio) entram como observação no treino.</div>
+        {jaInstalados>0&&<div style={{fontSize:11,color:"#1d4ed8",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:7,padding:"6px 9px",marginTop:10,lineHeight:1.5}}>{jaInstalados} já instalado(s). Instalar de novo atualiza os modelos, sem mexer nos programas que você já enviou para alunos.</div>}
+      </Card>
+      <div style={{display:"flex",gap:8,marginBottom:10}}>
+        <div style={{flex:1,background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"8px",textAlign:"center"}}><div style={{fontSize:16,fontWeight:800,color:"#16a34a"}}>{bases.length-pendentes.length}</div><div style={{fontSize:10,color:"#64748b"}}>encontrados</div></div>
+        <div style={{flex:1,background:pendentes.length?"#fef2f2":"#f8fafc",border:"1.5px solid "+(pendentes.length?"#fecaca":"#e2e8f0"),borderRadius:10,padding:"8px",textAlign:"center"}}><div style={{fontSize:16,fontWeight:800,color:pendentes.length?"#dc2626":"#94a3b8"}}>{pendentes.length}</div><div style={{fontSize:10,color:"#64748b"}}>pendentes</div></div>
+      </div>
+      <div style={{display:"flex",gap:6,marginBottom:10}}>
+        <button onClick={()=>setSoPend(false)} style={{flex:1,border:"1.5px solid "+(!soPend?"#FF5603":"#e2e8f0"),background:!soPend?"#fff4ee":"#fff",color:!soPend?"#FF5603":"#64748b",borderRadius:8,padding:"7px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Todos ({bases.length})</button>
+        <button onClick={()=>setSoPend(true)} style={{flex:1,border:"1.5px solid "+(soPend?"#FF5603":"#e2e8f0"),background:soPend?"#fff4ee":"#fff",color:soPend?"#FF5603":"#64748b",borderRadius:8,padding:"7px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Só pendentes ({pendentes.length})</button>
+      </div>
+      {lista.map(b=>{const ex=exDe(resolvido(b));return(
+        <div key={b} style={{display:"flex",alignItems:"center",gap:10,border:"1.5px solid "+(ex?"#e2e8f0":"#fecaca"),background:ex?"#fff":"#fef2f2",borderRadius:10,padding:"9px 11px",marginBottom:6}}>
+          {ex?<ExThumb ex={ex} w={48} h={36} iconSize={16}/>:<div style={{width:48,height:36,borderRadius:8,background:"#fee2e2",display:"flex",alignItems:"center",justifyContent:"center",color:"#dc2626",fontWeight:800,flexShrink:0}}>?</div>}
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#0f172a"}}>{b}</div>
+            <div style={{fontSize:11,color:ex?"#64748b":"#dc2626",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ex?ex.nome:"Não encontrado na biblioteca"}{manual[b]&&ex?" · escolhido por você":""}</div>
+          </div>
+          <Btn sm variant="ghost" onClick={()=>{setPicker(b);setBusca("");}}>{ex?"Trocar":"Escolher"}</Btn>
+        </div>
+      );})}
+      {pendentes.length>0&&<div style={{fontSize:11,color:"#b45309",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"8px 10px",margin:"10px 0",lineHeight:1.5}}>Se instalar com pendentes, esses itens aparecem como "exercício não encontrado" e precisam ser trocados no programa do aluno.</div>}
+      <div style={{marginTop:12}}><Btn full disabled={instalando} onClick={instalar}>{instalando?"Instalando...":(jaInstalados?"🔄 Atualizar os 3 modelos":"⭐ Instalar os 3 modelos")}</Btn></div>
+      {msg&&<div style={{fontSize:13,fontWeight:700,textAlign:"center",marginTop:10,color:msg.startsWith("✅")?"#16a34a":"#dc2626"}}>{msg}</div>}
+      {msg.startsWith("✅")&&<div style={{marginTop:8}}><Btn full variant="secondary" onClick={()=>nav("modelos")}>Ver modelos</Btn></div>}
+      {picker&&(
+        <Modal title={picker} onClose={()=>{setPicker(null);setBusca("");}}>
+          <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar na biblioteca..." style={{width:"100%",padding:"10px 14px",borderRadius:10,border:"1.5px solid #e2e8f0",background:"#f8fafc",fontSize:14,fontFamily:"inherit",marginBottom:8,boxSizing:"border-box"}}/>
+          {manual[picker]&&<button onClick={()=>voltarAuto(picker)} style={{border:"none",background:"none",color:"#FF5603",fontSize:12,fontWeight:700,cursor:"pointer",padding:"0 0 8px"}}>Voltar para a escolha automática</button>}
+          <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:"55vh",overflowY:"auto"}}>
+            {resultados.map(e=>(
+              <div key={e.id} onClick={()=>escolher(picker,e.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",border:"1.5px solid "+(resolvido(picker)===e.id?"#FF5603":"#e2e8f0"),borderRadius:10,cursor:"pointer",background:resolvido(picker)===e.id?"#fff4ee":"#fff"}}>
+                <ExThumb ex={e} w={56} h={42} iconSize={18}/>
+                <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:700}}>{e.nome}</div><div style={{fontSize:11,color:"#94a3b8"}}>{e.grupo||e.cat||"—"}</div></div>
+              </div>
+            ))}
+            {resultados.length===0&&<div style={{fontSize:12,color:"#94a3b8",textAlign:"center",padding:12}}>Nenhum exercício encontrado.</div>}
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+};
+
 // ─── LISTA ────────────────────────────────────────────────────────────────────
 const Lista=({programs,students,nav})=>{
   const [search,setSearch]=useState("");
@@ -2364,7 +2754,8 @@ const ListaModelos=({modelos,loading,nav}) => {
         <button onClick={()=>nav("lista")} style={{border:"none",background:"#f1f5f9",borderRadius:10,padding:"8px 12px",cursor:"pointer",fontSize:14,color:"#64748b",fontWeight:700}}>‹</button>
         <div style={{fontWeight:800,fontSize:20}}>⭐ Modelos de Periodização</div>
       </div>
-      <div style={{fontSize:12,color:"#94a3b8",marginBottom:14,lineHeight:1.5}}>Periodizações completas que você salvou pra reaproveitar com futuros alunos — envie exatamente como está ou edite antes.</div>
+      <div style={{fontSize:12,color:"#94a3b8",marginBottom:10,lineHeight:1.5}}>Periodizações completas que você salvou pra reaproveitar com futuros alunos — envie exatamente como está ou edite antes.</div>
+      <div style={{marginBottom:14}}><Btn sm variant="ghost" onClick={()=>nav("instalarFB50")}>➕ Modelos Full Body 50+ (3 programas)</Btn></div>
       <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar modelo..." style={{width:"100%",padding:"10px 14px",borderRadius:10,border:"1.5px solid #e2e8f0",background:"#fff",fontSize:14,fontFamily:"inherit",marginBottom:14}}/>
       {loading?(
         <Card style={{textAlign:"center",padding:40}}><div style={{color:"#94a3b8"}}>Carregando modelos...</div></Card>
@@ -2406,11 +2797,21 @@ const VerModelo=({modeloId,modelos,setModelos,bibCustom,students,programs,setPro
   const [buscaAluno,setBuscaAluno]=useState("");
   const [aplicando,setAplicando]=useState(false);
   const [enviarOculto,setEnviarOculto]=useState(false);
+  const [selTreinos,setSelTreinos]=useState([]);
+  const [freqSel,setFreqSel]=useState(3);
   if(!modelo)return null;
   const d=modelo.data||{};
   const prescricao=d.prescricao||{};
   const treinosUnicos=[...new Set(d.divisao?.sequencia||["A"])];
-  const blocoAtivo=BLOCOS[blocoIdx];
+  const blocosM=blocosPara(d);
+  const blocoAtivo=blocosM[blocoIdx]||blocosM[0];
+  // ─── Seletor de treinos (usar só A, A+C, etc.) ───
+  const selAtivos=selTreinos.length?selTreinos:treinosUnicos;
+  const seqPreview=Array.from({length:freqSel||selAtivos.length},(_,i)=>selAtivos[i%selAtivos.length]);
+  const treinosForaSel=treinosUnicos.filter(t=>!selAtivos.includes(t));
+  const ordemSel=[...selAtivos,...treinosForaSel];
+  const toggleTreino=t=>setSelTreinos(s=>{const base=s.length?s:treinosUnicos;if(base.includes(t))return base.length>1?base.filter(x=>x!==t):base;return [...base,t];});
+  const moverSel=(t,dir)=>setSelTreinos(s=>{const n=[...(s.length?s:treinosUnicos)];const i=n.indexOf(t),j=i+dir;if(i<0||j<0||j>=n.length)return n;[n[i],n[j]]=[n[j],n[i]];return n;});
   const treinoAtivo=treinosUnicos[treinoIdx];
   const totalEx=Object.values(prescricao).reduce((a,b)=>a+Object.values(b||{}).reduce((c,s)=>c+Object.values(s||{}).reduce((e,arr)=>e+(arr?.length||0),0),0),0);
   const excluirModelo=async()=>{
@@ -2419,16 +2820,34 @@ const VerModelo=({modeloId,modelos,setModelos,bibCustom,students,programs,setPro
     setModelos(prev=>prev.filter(m=>m.id!==modelo.id));
     nav("modelos");
   };
-  const abrirUsarModal=()=>{setAlunoSel("");setBuscaAluno("");setEnviarOculto(false);setUsarModal(true);};
+  const abrirUsarModal=()=>{setAlunoSel("");setBuscaAluno("");setEnviarOculto(false);setSelTreinos([...treinosUnicos]);setFreqSel(d.freq||treinosUnicos.length);setUsarModal(true);};
   const alunosFiltrados=(students||[]).filter(s=>(s.name||"").toLowerCase().includes(buscaAluno.toLowerCase()));
   const aplicarAoAluno=async(editarAntes)=>{
     if(!alunoSel)return;
     setAplicando(true);
     const programasDoAluno=(programs||[]).filter(p=>p.studentId===alunoSel);
     const cicloAtual=programasDoAluno.length+1;
+    // Monta a semana a partir dos treinos marcados; os desmarcados ficam guardados em prescricaoInativa
+    const seq=seqPreview;
+    const igual=seq.join()===(d.divisao?.sequencia||[]).join();
+    const divisaoNova=igual?d.divisao:{...(d.divisao||{}),modelo:"personalizada",label:"Personalizada ("+seq.length+"×)",desc:seq.map(t=>nomeTreinoDe(d.nomesTreinos,t)).join(", "),sequencia:seq};
+    const prescAtiva={},prescInativa={};
+    Object.keys(prescricao).forEach(bKey=>{
+      const bl=blocosM.find(b=>b.key===bKey);
+      const sess=prescricao[bKey]||{};
+      if(bl&&ehBlocoAlternado(bl)){prescAtiva[bKey]=JSON.parse(JSON.stringify(sess));return;}
+      Object.keys(sess).forEach(t=>{
+        const alvo=(!treinosUnicos.includes(t)||selAtivos.includes(t))?prescAtiva:prescInativa;
+        alvo[bKey]={...(alvo[bKey]||{}),[t]:JSON.parse(JSON.stringify(sess[t]))};
+      });
+    });
+    const blocosConfigNovo=d.blocosConfig?d.blocosConfig.map(b=>(b.treinos&&!ehBlocoAlternado(b))?{...b,treinos:[...new Set(seq)]}:b):null;
     const novoProg={
-      id:uid(),studentId:alunoSel,titulo:d.titulo||modelo.nome,semanas:24,freq:d.freq,divisao:d.divisao,nomesTreinos:d.nomesTreinos||null,
-      obs:d.obs||"",prescricao:JSON.parse(JSON.stringify(prescricao)),
+      id:uid(),studentId:alunoSel,titulo:d.titulo||modelo.nome,semanas:24,freq:seq.length,divisao:divisaoNova,nomesTreinos:d.nomesTreinos||null,
+      obs:d.obs||"",prescricao:prescAtiva,
+      ...(Object.keys(prescInativa).length?{prescricaoInativa:prescInativa}:{}),
+      ...(blocosConfigNovo?{blocosConfig:blocosConfigNovo}:{}),
+      ...(d.local?{local:d.local}:{}),
       criadoEm:new Date().toISOString().slice(0,10),assessmentRef:null,
       origem:d.origem||"manual",patologiaId:d.patologiaId||null,ciclo:cicloAtual,variante:1,
       origemModeloId:modelo.id,ocultoAluno:enviarOculto===true
@@ -2447,7 +2866,7 @@ const VerModelo=({modeloId,modelos,setModelos,bibCustom,students,programs,setPro
         <div style={{flex:1}}><div style={{fontWeight:800,fontSize:17}}>⭐ {modelo.nome}</div><div style={{fontSize:12,color:"#94a3b8"}}>Modelo salvo em {fmt((modelo.created_at||"").slice(0,10))}</div></div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:7,marginBottom:12}}>
-        {[["24","sem."],["4","blocos"],[String(d.freq||"—")+"×","sem."],[String(totalEx),"exerc."]].map(([v,l])=>(<div key={l} style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"9px 5px",textAlign:"center"}}><div style={{fontSize:16,fontWeight:800,color:"#FF5603"}}>{v}</div><div style={{fontSize:10,color:"#94a3b8",marginTop:1}}>{l}</div></div>))}
+        {[["24","sem."],[String(blocosM.length),"blocos"],[String(d.freq||"—")+"×","sem."],[String(totalEx),"exerc."]].map(([v,l])=>(<div key={l} style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"9px 5px",textAlign:"center"}}><div style={{fontSize:16,fontWeight:800,color:"#FF5603"}}>{v}</div><div style={{fontSize:10,color:"#94a3b8",marginTop:1}}>{l}</div></div>))}
       </div>
       <Card style={{marginBottom:10,padding:"10px 14px"}}>
         <div style={{fontSize:11,fontWeight:700,color:"#64748b",marginBottom:6,textTransform:"uppercase"}}>Semana tipo · {d.divisao?.label}</div>
@@ -2456,14 +2875,14 @@ const VerModelo=({modeloId,modelos,setModelos,bibCustom,students,programs,setPro
         </div>
       </Card>
       {d.obs&&<Card style={{marginBottom:10,background:"#f8fafc",padding:"9px 13px"}}><div style={{fontSize:12,color:"#64748b",fontStyle:"italic"}}>📝 {d.obs}</div></Card>}
-      <div style={{display:"flex",gap:0,marginBottom:8,background:"#f1f5f9",borderRadius:10,padding:3}}>
-        {BLOCOS.map((b,i)=>(<button key={b.key} onClick={()=>{setBlocoIdx(i);setTreinoIdx(0);}} style={{flex:1,border:"none",borderRadius:8,padding:"6px 3px",fontSize:10,fontWeight:700,cursor:"pointer",background:blocoIdx===i?b.cor.bg:"transparent",color:blocoIdx===i?b.cor.texto:"#94a3b8",lineHeight:1.3}}><div>B{i+1}</div><div style={{fontSize:8,marginTop:1}}>{b.semanas}</div></button>))}
+      <div style={{display:"flex",gap:4,marginBottom:8,background:"#f1f5f9",borderRadius:10,padding:3,overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
+        {blocosM.map((b,i)=>(<button key={b.key} onClick={()=>{setBlocoIdx(i);setTreinoIdx(0);}} style={{flex:blocosM.length>4?"0 0 auto":1,minWidth:44,border:"none",borderRadius:8,padding:"6px 6px",fontSize:10,fontWeight:700,cursor:"pointer",background:blocoIdx===i?b.cor.bg:"transparent",color:blocoIdx===i?b.cor.texto:"#94a3b8",lineHeight:1.3}}><div>B{i+1}</div><div style={{fontSize:8,marginTop:1,whiteSpace:"nowrap"}}>{b.semanas}</div></button>))}
       </div>
       <div style={{background:blocoAtivo.cor.bg,border:`1.5px solid ${blocoAtivo.cor.border}`,borderRadius:9,padding:"7px 12px",marginBottom:8}}>
         <div style={{fontWeight:700,fontSize:12,color:blocoAtivo.cor.texto}}>{blocoAtivo.label} · sem. {blocoAtivo.semanas} · {blocoAtivo.desc}</div>
       </div>
       <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
-        {treinosUnicos.map((t,i)=>{const td=TREINO_DEFS[t];return(<button key={t} onClick={()=>setTreinoIdx(i)} style={{flex:1,minWidth:60,border:`1.5px solid ${treinoIdx===i?td.cor:td.border}`,borderRadius:9,padding:"7px 6px",fontSize:11,fontWeight:700,cursor:"pointer",background:treinoIdx===i?td.bg:"#fff",color:treinoIdx===i?td.cor:"#64748b",textAlign:"center"}}>{nomeTreinoDe(d.nomesTreinos,t)}</button>);})}
+        {treinosUnicos.map((t,i)=>{const td=TREINO_DEFS[t];return(<button key={t} onClick={()=>setTreinoIdx(i)} style={{flex:1,minWidth:60,border:`1.5px solid ${treinoIdx===i?td.cor:td.border}`,borderRadius:9,padding:"7px 6px",fontSize:11,fontWeight:700,cursor:"pointer",background:treinoIdx===i?td.bg:"#fff",color:treinoIdx===i?td.cor:"#64748b",textAlign:"center",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{nomeTreinoDe(d.nomesTreinos,t)}</button>);})}
       </div>
       <TreinoMomentos
         key={blocoAtivo.key+"-"+treinoAtivo}
@@ -2499,6 +2918,28 @@ const VerModelo=({modeloId,modelos,setModelos,bibCustom,students,programs,setPro
             ):(
               <>
                 <div style={{fontSize:12,color:"#64748b",marginBottom:14,lineHeight:1.5}}>Enviar "<b>{modelo.nome}</b>" para <b>{students.find(s=>s.id===alunoSel)?.name}</b>?</div>
+                {treinosUnicos.length>1&&(
+                  <div style={{marginBottom:14}}>
+                    <div style={{fontSize:12,fontWeight:700,color:"#475569",marginBottom:6}}>Quais treinos usar?</div>
+                    {ordemSel.map(t=>{const on=selAtivos.includes(t);const pos=selAtivos.indexOf(t);return(
+                      <div key={t} style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+                        <button type="button" onClick={()=>toggleTreino(t)} style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:10,border:"1.5px solid "+(on?"#FF5603":"#e2e8f0"),background:on?"#fff4ee":"#fff",borderRadius:9,padding:"9px 11px",cursor:"pointer",textAlign:"left",fontFamily:"inherit"}}>
+                          <span style={{width:20,height:20,borderRadius:6,border:"2px solid "+(on?"#FF5603":"#cbd5e1"),background:on?"#FF5603":"#fff",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:900,flexShrink:0}}>{on?"✓":""}</span>
+                          <span style={{fontSize:13,fontWeight:700,color:on?"#c2410c":"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{nomeTreinoDe(d.nomesTreinos,t)}</span>
+                        </button>
+                        {on&&selAtivos.length>1&&<button type="button" onClick={()=>moverSel(t,-1)} disabled={pos===0} style={{width:32,height:36,border:"1.5px solid #e2e8f0",borderRadius:8,background:"#fff",color:pos===0?"#cbd5e1":"#475569",fontWeight:700,cursor:pos===0?"default":"pointer"}}>▲</button>}
+                        {on&&selAtivos.length>1&&<button type="button" onClick={()=>moverSel(t,1)} disabled={pos===selAtivos.length-1} style={{width:32,height:36,border:"1.5px solid #e2e8f0",borderRadius:8,background:"#fff",color:pos===selAtivos.length-1?"#cbd5e1":"#475569",fontWeight:700,cursor:pos===selAtivos.length-1?"default":"pointer"}}>▼</button>}
+                      </div>
+                    );})}
+                    <div style={{fontSize:12,fontWeight:700,color:"#475569",margin:"10px 0 6px"}}>Vezes por semana</div>
+                    <div style={{display:"flex",gap:6}}>
+                      {[1,2,3,4,5].map(v=>(<button key={v} type="button" onClick={()=>setFreqSel(v)} style={{flex:1,padding:"8px 0",borderRadius:8,border:"1.5px solid "+(freqSel===v?"#FF5603":"#e2e8f0"),background:freqSel===v?"#fff4ee":"#fff",color:freqSel===v?"#FF5603":"#64748b",fontWeight:800,fontSize:13,cursor:"pointer"}}>{v}×</button>))}
+                    </div>
+                    <div style={{fontSize:11,color:"#64748b",marginTop:8}}>Semana: {seqPreview.map(t=>TREINO_DEFS[t]?.label||t).join(" · ")}</div>
+                    {treinosForaSel.map(t=>(<div key={t} style={{fontSize:11,color:"#b45309",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:7,padding:"6px 9px",marginTop:6,lineHeight:1.5}}>Sem o {nomeTreinoDe(d.nomesTreinos,t)}: {d.enfases&&d.enfases[t]?"fica de fora a ênfase em "+d.enfases[t]+".":"os exercícios dele ficam de fora."}</div>))}
+                    {treinosForaSel.length>0&&<div style={{fontSize:10,color:"#94a3b8",marginTop:6,lineHeight:1.5}}>Os treinos desmarcados ficam guardados no programa do aluno. Dá pra reativar depois em Editar, na Ordem da semana.</div>}
+                  </div>
+                )}
                 <button type="button" onClick={()=>setEnviarOculto(v=>!v)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,border:"1.5px solid "+(enviarOculto?"#fed7aa":"#e2e8f0"),background:enviarOculto?"#fff7ed":"#fff",borderRadius:10,padding:"10px 12px",marginBottom:12,cursor:"pointer",textAlign:"left",fontFamily:"inherit"}}><span style={{width:20,height:20,borderRadius:6,border:"2px solid "+(enviarOculto?"#ea580c":"#cbd5e1"),background:enviarOculto?"#ea580c":"#fff",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:900,flexShrink:0}}>{enviarOculto?"✓":""}</span><span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:13,fontWeight:700,color:"#1e293b"}}>Visível só para mim</span><span style={{display:"block",fontSize:11,color:"#64748b",marginTop:1}}>O aluno não vê este treino até você liberar na ficha dele</span></span></button>
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   <Btn full disabled={aplicando} onClick={()=>aplicarAoAluno(false)}>{aplicando?"Enviando...":"✅ Enviar como está"}</Btn>
@@ -2743,6 +3184,7 @@ function AppInner(){
         <div style={{padding:"20px 16px",maxWidth:640,margin:"0 auto",paddingBottom:90}}>
           {page==="lista"&&<Lista programs={programs} students={students} nav={nav}/>}
           {page==="modelos"&&<ListaModelos modelos={modelos} loading={modelosLoading} nav={nav}/>}
+          {page==="instalarFB50"&&<InstalarModelosFB50 bibCustom={bibCustom} modelos={modelos} setModelos={setModelos} nav={nav}/>}
           {page==="modeloVer"&&<VerModelo modeloId={pageProps.id} modelos={modelos} setModelos={setModelos} bibCustom={bibCustom} students={students} programs={programs} setPrograms={setPrograms} nav={nav}/>}
           {page==="novo"&&<NovoProgramaWizard students={students} assessments={assessments} programs={programs} setPrograms={setPrograms} bibCustom={bibCustom} nav={nav} prefillStudentId={pageProps.studentId}/>}
           {page==="novoConsultoria"&&<NovoPeriodizacaoConsultoria students={students} programs={programs} setPrograms={setPrograms} bibCustom={bibCustom} nav={nav} prefillStudentId={pageProps.studentId}/>}
