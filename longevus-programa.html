@@ -2417,6 +2417,16 @@ const FB50_BASES={
   "Elevação pélvica":"elevacao pelvica|hip_thrust|ponte gluteo|ponte",
   "Terra romeno":"terra romeno|stiff|levantamento terra",
   "Terra com kettlebell":"terra kettlebell|kettlebell terra|terra sumo|levantamento terra",
+  "Crucifixo na máquina":"crucifixo maquina|peck_deck|voador|crucifixo -halter -polia -cabo",
+  "Crucifixo na polia":"crucifixo polia|crossover|cross_over|crucifixo cabo",
+  "Face pull":"face_pull|puxada para_o_rosto|face",
+  "Crucifixo inverso na máquina":"crucifixo inverso maquina|voador inverso|peck_deck inverso|crucifixo invertido maquina|crucifixo inverso -halter -polia -cabo",
+  "Crucifixo inverso com halteres":"crucifixo inverso halter|crucifixo invertido halter|crucifixo inverso -maquina -polia -cabo",
+  "Crucifixo inverso na polia":"crucifixo inverso polia|crucifixo inverso cabo|crucifixo invertido polia|crucifixo inverso",
+  "Pullover na polia":"pullover polia|pull_over polia|pullover cabo|pulldown braco|pullover",
+  "Pullover com halter":"pullover halter|pull_over halter|pullover -polia -cabo|pull_over",
+  "Rosca Scott":"rosca scott|scott",
+  "Tríceps testa":"triceps testa|testa halter|triceps frances",
   "Cadeira abdutora":"cadeira abdutora|abducao maquina|abdutora",
   "Abdução na polia":"abducao polia|abducao cabo|abducao em_pe|abducao -cadeira -maquina",
   "Abdução em pé":"abducao em_pe|abducao quadril -cadeira -maquina|abducao -cadeira -maquina",
@@ -2443,6 +2453,9 @@ const FB50_BASES={
 // categoria: f força (séries/reps) · t tempo (core/equilíbrio) · c carregamento (metros) · l caminhada em linha
 // papel: Â âncora (fixo, reteste) · S secundário · A acessório. Âncora com 1 entrada repete nos 3 blocos.
 // ordem3 = ordem dos exercícios no Bloco 3 (pra deixar o par do bi-set junto) · par3 = posições do bi-set
+const FB50_DIV_FB={modelo:"academia_fb_abc",label:"Full Body A/B/C (3×)",desc:"Três Full Body com exercícios diferentes",sequencia:["FBA","FBB","FBC"]};
+const FB50_DIV_AB={modelo:"academia_sup_inf",label:"Superior / Inferior (2×)",desc:"Superiores e inferiores alternados",sequencia:["SUP","INF"]};
+const FB50_DIV_PPL={modelo:"academia_ppl",label:"Puxa / Empurra / Inferiores (3×)",desc:"Puxa, empurra e inferiores",sequencia:["PULL","PUSH","LEGS"]};
 const FB50_PROGRAMAS=[
   {id:"fb50_p1",nome:"Full Body 50+ · Programa 1",treinos:{
     FBA:{nome:"Treino A · Força global",enf:"força global",par3:[5,6],slots:[
@@ -2540,6 +2553,168 @@ const FB50_PROGRAMAS=[
       ["c","S",["Suitcase carry"],["Suitcase carry","Mudar de direção a cada 5m"],["Suitcase carry","Passando por obstáculo baixo"]],
     ]},
   }},
+  {id:"ab50_p1",nome:"Superior / Inferior 50+ · Programa 1",freq:2,divisao:FB50_DIV_AB,treinos:{
+    SUP:{nome:"Treino A · Membros superiores",enf:"membros superiores",par3:[5,6],slots:[
+      ["f","Â",["Supino máquina"]],
+      ["f","Â",["Remada sentada"]],
+      ["f","S",["Desenvolvimento com halteres"],["Desenvolvimento landmine"],["Desenvolvimento com halteres","Em pé, alternando os braços"]],
+      ["f","Â",["Puxada frontal"]],
+      ["f","A",["Elevação lateral com halteres"],["Elevação lateral na polia"],["Elevação lateral com halteres","Sentado, pausa de 1s no topo"]],
+      ["f","A",["Rosca direta","Com halteres"],["Rosca na polia"],["Rosca inclinada"]],
+      ["f","A",["Tríceps na polia"],["Tríceps corda"],["Tríceps unilateral na polia","Um braço por vez"]],
+      ["t","A",["Pallof press"],["Pallof press","Semiajoelhado"],["Pallof press","Com passo lateral"]],
+    ]},
+    INF:{nome:"Treino B · Membros inferiores",enf:"membros inferiores",par3:[1,2],slots:[
+      ["f","Â",["Leg press"]],
+      ["f","A",["Mesa flexora"],["Flexora em pé","Uma perna por vez"],["Mesa flexora","Pausa de 2s na contração"]],
+      ["f","A",["Cadeira extensora"],["Cadeira extensora","Uma perna por vez"],["Cadeira extensora","Pausa de 2s no topo"]],
+      ["f","S",["Elevação pélvica"],["Elevação pélvica","Uma perna, com apoio"],["Terra romeno","Com halteres, amplitude confortável"]],
+      ["f","A",["Cadeira abdutora"],["Abdução na polia","Em pé, com apoio"],["Caminhada lateral com mini band","Passos para cada lado"]],
+      ["f","A",["Panturrilha sentada"],["Panturrilha em pé","Com apoio"],["Panturrilha em pé","Uma perna, com apoio"]],
+      ["f","S",["Agachamento até o banco"],["Agachamento goblet","Até o banco"],["Agachamento goblet","Livre, sem banco"]],
+      ["t","A",["Equilíbrio tandem","Assistido, apoio próximo"],["Equilíbrio tandem","Sem apoio, alguém por perto"],["Equilíbrio tandem","Com tarefa cognitiva (contar, nomear palavras)"]],
+    ]},
+  }},
+  {id:"ab50_p2",nome:"Superior / Inferior 50+ · Programa 2",freq:2,divisao:FB50_DIV_AB,treinos:{
+    SUP:{nome:"Treino A · Membros superiores",enf:"membros superiores",par3:[5,6],slots:[
+      ["f","Â",["Puxada neutra","Pegada neutra"]],
+      ["f","S",["Supino inclinado com halteres"],["Supino inclinado na máquina"],["Flexão inclinada","Mãos na barra do Smith"]],
+      ["f","Â",["Remada articulada"]],
+      ["f","Â",["Desenvolvimento na máquina"]],
+      ["f","A",["Crucifixo na máquina"],["Crucifixo na polia","Em pé"],["Crucifixo na máquina","Pausa de 2s na contração"]],
+      ["f","A",["Rosca martelo"],["Rosca martelo na corda"],["Rosca martelo","Em pé, alternada"]],
+      ["f","A",["Tríceps corda"],["Tríceps barra V"],["Tríceps francês","Sentado, um braço por vez, carga leve"]],
+      ["t","A",["Dead bug"],["Dead bug","Com carga leve"],["Bird dog","Pausa de 3s na extensão"]],
+    ]},
+    INF:{nome:"Treino B · Membros inferiores",enf:"membros inferiores",par3:[3,4],slots:[
+      ["f","Â",["Agachamento no Smith"]],
+      ["f","A",["Cadeira flexora"],["Cadeira flexora","Uma perna por vez"],["Cadeira flexora","Descida lenta em 3s"]],
+      ["f","Â",["Leg press","Uma perna por vez, alternando"]],
+      ["f","A",["Cadeira abdutora"],["Abdução na polia","Em pé, com apoio"],["Caminhada lateral com mini band","Passos para cada lado"]],
+      ["f","A",["Cadeira extensora"],["Cadeira extensora","Uma perna por vez"],["Cadeira extensora","Pausa de 2s no topo"]],
+      ["f","A",["Panturrilha em pé","Com apoio"],["Panturrilha em pé","Uma perna, com apoio"],["Panturrilha no Smith"]],
+      ["f","S",["Elevação pélvica"],["Elevação pélvica","Pausa de 2s no topo"],["Terra com kettlebell","Kettlebell sobre um step"]],
+      ["f","S",["Step-up","Degrau baixo, mão em apoio"],["Step-up","Degrau médio, sem apoio"],["Step-up","Com halteres leves"]],
+    ]},
+  }},
+  {id:"ab50_p3",nome:"Superior / Inferior 50+ · Programa 3",freq:2,divisao:FB50_DIV_AB,treinos:{
+    SUP:{nome:"Treino A · Membros superiores",enf:"membros superiores",par3:[5,6],slots:[
+      ["f","S",["Remada unilateral com halter"],["Remada unilateral na polia","Em pé"],["Remada unilateral com halter","Em pé, base escalonada"]],
+      ["f","Â",["Supino máquina"]],
+      ["f","Â",["Puxada frontal","Polia alta"]],
+      ["f","A",["Elevação lateral com halteres"],["Elevação lateral na polia"],["Elevação lateral com halteres","Sentado, pausa de 1s no topo"]],
+      ["f","S",["Supino inclinado na máquina"],["Supino inclinado com halteres"],["Supino inclinado com halteres","Alternando os braços"]],
+      ["f","A",["Rosca na polia"],["Rosca alternada"],["Rosca martelo cruzada"]],
+      ["f","A",["Tríceps na polia"],["Tríceps corda"],["Tríceps unilateral na polia","Um braço por vez"]],
+      ["c","S",["Farmer walk"],["Farmer walk","Mudar de direção a cada 5m"],["Suitcase carry","Carga em uma mão, troca a cada percurso"]],
+    ]},
+    INF:{nome:"Treino B · Membros inferiores",enf:"membros inferiores",par3:[5,6],slots:[
+      ["f","Â",["Agachamento goblet","Halter no peito, até o banco"],["Agachamento goblet","Banco mais baixo"],["Agachamento goblet","Livre, pausa de 2s embaixo"]],
+      ["f","A",["Mesa flexora"],["Flexora em pé","Uma perna por vez"],["Mesa flexora","Pausa de 2s na contração"]],
+      ["f","S",["Step-up","Frontal, degrau baixo, com apoio"],["Step-up","Degrau médio, sem apoio"],["Step-up","Com halteres leves"]],
+      ["f","Â",["Cadeira extensora"]],
+      ["f","S",["Elevação pélvica"],["Elevação pélvica","Pausa de 2s no topo"],["Elevação pélvica","Uma perna, com apoio"]],
+      ["f","A",["Abdução em pé","Com apoio das mãos"],["Abdução em pé","Com caneleira leve"],["Abdução em pé","Com elástico, sem apoio"]],
+      ["f","A",["Panturrilha em pé"],["Panturrilha em pé","Uma perna, com apoio"],["Panturrilha no Smith"]],
+      ["l","A",["Caminhada em linha","Com apoio próximo"],["Caminhada em linha","Sem apoio, alguém por perto"],["Caminhada em linha","Com giro de cabeça ou tarefa cognitiva"]],
+    ]},
+  }},
+  {id:"ppl50_p1",nome:"Puxa / Empurra / Inferiores 50+ · Programa 1",freq:3,divisao:FB50_DIV_PPL,treinos:{
+    PULL:{nome:"Treino A · Puxa (costas e bíceps)",enf:"puxar (costas e bíceps)",par3:[4,5],slots:[
+      ["f","Â",["Puxada frontal"]],
+      ["f","Â",["Remada sentada"]],
+      ["f","S",["Remada unilateral com halter"],["Remada unilateral na polia","Em pé"],["Remada unilateral com halter","Em pé, base escalonada"]],
+      ["f","A",["Face pull"],["Face pull","Pausa de 2s na contração"],["Face pull","Semiajoelhado"]],
+      ["f","A",["Crucifixo inverso na máquina"],["Crucifixo inverso com halteres","Inclinado no banco, com apoio do peito"],["Crucifixo inverso na máquina","Pausa de 2s na contração"]],
+      ["f","A",["Rosca direta","Com halteres"],["Rosca na polia"],["Rosca inclinada"]],
+      ["f","A",["Rosca martelo"],["Rosca martelo na corda"],["Rosca martelo","Em pé, alternada"]],
+      ["t","A",["Pallof press"],["Pallof press","Semiajoelhado"],["Pallof press","Com passo lateral"]],
+    ]},
+    PUSH:{nome:"Treino B · Empurra (peitoral, ombros e tríceps)",enf:"empurrar (peitoral, ombros e tríceps)",par3:[3,4],slots:[
+      ["f","Â",["Supino máquina"]],
+      ["f","S",["Desenvolvimento com halteres"],["Desenvolvimento landmine"],["Desenvolvimento com halteres","Em pé, alternando os braços"]],
+      ["f","S",["Supino inclinado com halteres"],["Supino inclinado na máquina"],["Flexão inclinada","Mãos na barra do Smith"]],
+      ["f","A",["Elevação lateral com halteres"],["Elevação lateral na polia"],["Elevação lateral com halteres","Sentado, pausa de 1s no topo"]],
+      ["f","A",["Crucifixo na máquina"],["Crucifixo na polia","Em pé"],["Crucifixo na máquina","Pausa de 2s na contração"]],
+      ["f","A",["Tríceps corda"],["Tríceps barra V"],["Tríceps unilateral na polia","Um braço por vez"]],
+      ["f","A",["Tríceps testa","Com halteres"],["Tríceps francês","Sentado, um braço por vez, carga leve"],["Tríceps testa","Com halteres, pausa de 1s embaixo"]],
+      ["t","A",["Dead bug"],["Dead bug","Com carga leve"],["Bird dog","Pausa de 3s na extensão"]],
+    ]},
+    LEGS:{nome:"Treino C · Inferiores",enf:"membros inferiores",ordem3:[0,1,5,2,3,4,6,7],par3:[1,2],slots:[
+      ["f","Â",["Leg press"]],
+      ["f","A",["Mesa flexora"],["Flexora em pé","Uma perna por vez"],["Mesa flexora","Pausa de 2s na contração"]],
+      ["f","A",["Cadeira extensora"],["Cadeira extensora","Uma perna por vez"],["Cadeira extensora","Pausa de 2s no topo"]],
+      ["f","S",["Elevação pélvica"],["Elevação pélvica","Uma perna, com apoio"],["Terra romeno","Com halteres, amplitude confortável"]],
+      ["f","A",["Cadeira abdutora"],["Abdução na polia","Em pé, com apoio"],["Caminhada lateral com mini band","Passos para cada lado"]],
+      ["f","A",["Panturrilha sentada"],["Panturrilha em pé","Com apoio"],["Panturrilha em pé","Livre, sem máquina"]],
+      ["f","S",["Agachamento até o banco"],["Agachamento goblet","Até o banco"],["Agachamento goblet","Livre, sem banco"]],
+      ["t","A",["Equilíbrio tandem","Assistido, apoio próximo"],["Equilíbrio tandem","Sem apoio, alguém por perto"],["Equilíbrio tandem","Com tarefa cognitiva (contar, nomear palavras)"]],
+    ]},
+  }},
+  {id:"ppl50_p2",nome:"Puxa / Empurra / Inferiores 50+ · Programa 2",freq:3,divisao:FB50_DIV_PPL,treinos:{
+    PULL:{nome:"Treino A · Puxa (costas e bíceps)",enf:"puxar (costas e bíceps)",par3:[3,4],slots:[
+      ["f","Â",["Puxada neutra","Pegada neutra"]],
+      ["f","Â",["Remada articulada"]],
+      ["f","S",["Remada baixa na polia","Pegada aberta"],["Remada baixa na polia","Um braço por vez"],["Remada baixa na polia","Pegada aberta, pausa de 2s"]],
+      ["f","A",["Pullover na polia"],["Pullover na polia","Pausa de 2s embaixo"],["Pullover na polia","Ajoelhado"]],
+      ["f","A",["Crucifixo inverso com halteres"],["Crucifixo inverso na polia"],["Crucifixo inverso com halteres","Sentado, pausa de 2s"]],
+      ["f","A",["Rosca Scott","Na máquina"],["Rosca Scott","Um braço por vez"],["Rosca Scott","Pausa de 2s embaixo"]],
+      ["f","A",["Rosca na polia"],["Rosca alternada"],["Rosca martelo cruzada"]],
+      ["c","S",["Farmer walk"],["Farmer walk","Mudar de direção a cada 5m"],["Suitcase carry","Carga em uma mão, troca a cada percurso"]],
+    ]},
+    PUSH:{nome:"Treino B · Empurra (peitoral, ombros e tríceps)",enf:"empurrar (peitoral, ombros e tríceps)",par3:[3,4],slots:[
+      ["f","Â",["Supino inclinado na máquina"]],
+      ["f","Â",["Desenvolvimento na máquina"]],
+      ["f","S",["Supino com halteres"],["Supino no Smith"],["Supino com halteres","Alternando os braços"]],
+      ["f","A",["Elevação lateral na polia"],["Elevação lateral com halteres"],["Elevação lateral com halteres","Sentado, pausa de 1s no topo"]],
+      ["f","A",["Crucifixo na polia"],["Crucifixo na máquina"],["Crucifixo na polia","Pausa de 2s na contração"]],
+      ["f","A",["Tríceps na polia"],["Tríceps corda"],["Tríceps barra V"]],
+      ["f","A",["Tríceps unilateral na polia","Um braço por vez"],["Tríceps francês","Sentado, um braço por vez, carga leve"],["Tríceps unilateral na polia","Pausa de 1s embaixo"]],
+      ["t","A",["Prancha","Elevada, mãos no banco alto"],["Prancha","Mãos no banco baixo"],["Prancha","Elevada, toque alternado no ombro"]],
+    ]},
+    LEGS:{nome:"Treino C · Inferiores",enf:"membros inferiores",par3:[4,5],slots:[
+      ["f","Â",["Agachamento no Smith"]],
+      ["f","A",["Cadeira flexora"],["Cadeira flexora","Uma perna por vez"],["Cadeira flexora","Descida lenta em 3s"]],
+      ["f","Â",["Leg press","Uma perna por vez, alternando"]],
+      ["f","A",["Cadeira abdutora"],["Abdução na polia","Em pé, com apoio"],["Caminhada lateral com mini band","Passos para cada lado"]],
+      ["f","A",["Cadeira extensora"],["Cadeira extensora","Uma perna por vez"],["Cadeira extensora","Pausa de 2s no topo"]],
+      ["f","A",["Panturrilha em pé","Com apoio"],["Panturrilha em pé","Uma perna, com apoio"],["Panturrilha em pé","Livre, sem máquina"]],
+      ["f","S",["Elevação pélvica"],["Elevação pélvica","Pausa de 2s no topo"],["Terra com kettlebell","Kettlebell sobre um step"]],
+      ["f","S",["Step-up","Degrau baixo, mão em apoio"],["Step-up","Degrau médio, sem apoio"],["Step-up","Com halteres leves"]],
+    ]},
+  }},
+  {id:"ppl50_p3",nome:"Puxa / Empurra / Inferiores 50+ · Programa 3",freq:3,divisao:FB50_DIV_PPL,treinos:{
+    PULL:{nome:"Treino A · Puxa (costas e bíceps)",enf:"puxar (costas e bíceps)",ordem3:[0,1,3,2,4,5,6,7],par3:[1,2],slots:[
+      ["f","S",["Remada unilateral com halter"],["Remada unilateral na polia","Em pé"],["Remada unilateral com halter","Em pé, base escalonada"]],
+      ["f","Â",["Puxada frontal","Polia alta"]],
+      ["f","Â",["Remada baixa na polia","Pegada neutra"]],
+      ["f","A",["Face pull"],["Face pull","Pausa de 2s na contração"],["Face pull","Semiajoelhado"]],
+      ["f","A",["Pullover com halter"],["Pullover na polia"],["Pullover com halter","Pausa de 2s embaixo"]],
+      ["f","A",["Rosca martelo"],["Rosca martelo na corda"],["Rosca martelo","Em pé, alternada"]],
+      ["f","A",["Rosca alternada"],["Rosca na polia"],["Rosca inclinada"]],
+      ["t","A",["Bird dog"],["Bird dog","Pausa de 3s"],["Bird dog","Com caneleira leve"]],
+    ]},
+    PUSH:{nome:"Treino B · Empurra (peitoral, ombros e tríceps)",enf:"empurrar (peitoral, ombros e tríceps)",par3:[3,4],slots:[
+      ["f","Â",["Supino máquina"]],
+      ["f","S",["Supino inclinado na máquina"],["Supino inclinado com halteres"],["Supino inclinado com halteres","Alternando os braços"]],
+      ["f","S",["Desenvolvimento com halteres","Sentado"],["Desenvolvimento landmine"],["Desenvolvimento com halteres","Em pé, alternando os braços"]],
+      ["f","A",["Elevação lateral com halteres"],["Elevação lateral na polia"],["Elevação lateral com halteres","Sentado, pausa de 1s no topo"]],
+      ["f","A",["Crucifixo na máquina"],["Crucifixo na polia","Em pé"],["Crucifixo na máquina","Pausa de 2s na contração"]],
+      ["f","A",["Tríceps corda"],["Tríceps barra V"],["Tríceps francês","Sentado, um braço por vez, carga leve"]],
+      ["f","A",["Tríceps unilateral na polia","Um braço por vez"],["Tríceps testa","Com halteres"],["Tríceps unilateral na polia","Pausa de 1s embaixo"]],
+      ["t","A",["Pallof press"],["Pallof press","Semiajoelhado"],["Pallof press","Com passo lateral"]],
+    ]},
+    LEGS:{nome:"Treino C · Inferiores",enf:"membros inferiores",par3:[5,6],slots:[
+      ["f","Â",["Agachamento goblet","Halter no peito, até o banco"],["Agachamento goblet","Banco mais baixo"],["Agachamento goblet","Livre, pausa de 2s embaixo"]],
+      ["f","A",["Mesa flexora"],["Flexora em pé","Uma perna por vez"],["Mesa flexora","Pausa de 2s na contração"]],
+      ["f","S",["Step-up","Frontal, degrau baixo, com apoio"],["Step-up","Degrau médio, sem apoio"],["Step-up","Com halteres leves"]],
+      ["f","Â",["Cadeira extensora"]],
+      ["f","S",["Elevação pélvica"],["Elevação pélvica","Pausa de 2s no topo"],["Elevação pélvica","Uma perna, com apoio"]],
+      ["f","A",["Abdução em pé","Com apoio das mãos"],["Abdução em pé","Com caneleira leve"],["Abdução em pé","Com elástico, sem apoio"]],
+      ["f","A",["Panturrilha em pé"],["Panturrilha em pé","Uma perna, com apoio"],["Panturrilha em pé","Livre, sem máquina"]],
+      ["l","A",["Caminhada em linha","Com apoio próximo"],["Caminhada em linha","Sem apoio, alguém por perto"],["Caminhada em linha","Com giro de cabeça ou tarefa cognitiva"]],
+    ]},
+  }},
 ];
 // Fases de cada bloco de 8 semanas · força: [séries, reps, RIR (já com +1 da faixa 50+), descanso em s]
 const FB50_FASES_NOMES=["Adaptação","Acúmulo","Intensificação","Deload","Reteste"];
@@ -2557,7 +2732,7 @@ const fb50Presc=(cat,c,f)=>{
   if(cat==="c")return{s:ser,r:["20m","20m","30m"][c],d:"60s"};
   return{s:ser,r:["3m","5m","5m"][c],d:"30s"};
 };
-const fb50BlocosConfig=()=>{
+const fb50BlocosConfig=(treinoKeys)=>{
   const out=[];
   for(let c=0;c<3;c++){
     FB50_FASES_NOMES.forEach((nome,f)=>{
@@ -2565,13 +2740,13 @@ const fb50BlocosConfig=()=>{
       const [w1,w2]=FB50_SEMANAS[f];
       out.push({key:"b"+(out.length+1),label:"Bloco "+(c+1)+" · "+nome,semanas:(w1===w2?String(w1+c*8):(w1+c*8)+"–"+(w2+c*8)),semanasCount:w2-w1+1,
         cor:CORES_CICLO_CONSULTORIA[c],desc:s+"×"+r+" · RIR "+rir+(f===4?" · reteste dos âncoras":"")+(c===2&&(f===1||f===2)?" · bi-set leve":""),
-        cicloIdx:c,faseIdx:f,series:s,reps:r,rir,descanso_segundos:d,treinos:["FBA","FBB","FBC"]});
+        cicloIdx:c,faseIdx:f,series:s,reps:r,rir,descanso_segundos:d,treinos:[...treinoKeys]});
     });
   }
   return out;
 };
 const fb50Montar=(prog,resolver,bib)=>{
-  const blocosConfig=fb50BlocosConfig();
+  const blocosConfig=fb50BlocosConfig(Object.keys(prog.treinos));
   const prescricao={};
   blocosConfig.forEach(bl=>{
     const c=bl.cicloIdx,f=bl.faseIdx,bRef=["b1","b2","b3"][c];
@@ -2611,10 +2786,10 @@ const fb50Montar=(prog,resolver,bib)=>{
   const nomesTreinos={},enfases={};
   Object.keys(prog.treinos).forEach(tk=>{nomesTreinos[tk]=prog.treinos[tk].nome;enfases[tk]=prog.treinos[tk].enf;});
   return{
-    titulo:prog.nome,freq:3,
-    divisao:{modelo:"academia_fb_abc",label:"Full Body A/B/C (3×)",desc:"Três Full Body com exercícios diferentes",sequencia:["FBA","FBB","FBC"]},
+    titulo:prog.nome,freq:prog.freq||3,
+    divisao:prog.divisao||FB50_DIV_FB,
     nomesTreinos,enfases,
-    obs:"Iniciante 50+. 24 semanas em 3 blocos de 8 (Adaptação, Acúmulo, Intensificação, Deload, Reteste). RIR já inclui +1 da faixa 50+. Bi-set leve só no Bloco 3, semanas 19 a 22.",
+    obs:(prog.divisao===FB50_DIV_AB?"Superior / Inferior. ":prog.divisao===FB50_DIV_PPL?"Puxa / Empurra / Inferiores. ":"Full Body. ")+"Iniciante 50+. 24 semanas em 3 blocos de 8 (Adaptação, Acúmulo, Intensificação, Deload, Reteste). RIR já inclui +1 da faixa 50+. Bi-set leve só no Bloco 3, semanas 19 a 22.",
     prescricao,blocosConfig,origem:"modelo_fb50",local:"academia",patologiaId:null,
   };
 };
@@ -2662,7 +2837,7 @@ const InstalarModelosFB50=({bibCustom,modelos,setModelos,nav})=>{
     const remote=await ModeloDB.load();
     if(remote)setModelos(remote);
     setInstalando(false);
-    setMsg(ok===FB50_PROGRAMAS.length?"✅ Os 3 modelos estão na sua biblioteca.":"⚠️ "+ok+" de "+FB50_PROGRAMAS.length+" salvos. Tente de novo.");
+    setMsg(ok===FB50_PROGRAMAS.length?"✅ Os "+ok+" modelos estão na sua biblioteca.":"⚠️ "+ok+" de "+FB50_PROGRAMAS.length+" salvos. Tente de novo.");
   };
   const qBusca=fb50Norm(busca).trim();
   const resultados=picker?allEx.filter(e=>!qBusca||fb50Norm(e.nome).includes(qBusca)).slice(0,60):[];
@@ -2670,10 +2845,10 @@ const InstalarModelosFB50=({bibCustom,modelos,setModelos,nav})=>{
     <div>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
         <button onClick={()=>nav("modelos")} style={{border:"none",background:"#f1f5f9",borderRadius:10,padding:"8px 12px",cursor:"pointer",fontSize:14,color:"#64748b",fontWeight:700}}>‹</button>
-        <div style={{fontWeight:800,fontSize:18}}>Modelos Full Body 50+</div>
+        <div style={{fontWeight:800,fontSize:18}}>Modelos 50+</div>
       </div>
       <Card>
-        <div style={{fontSize:13,color:"#334155",lineHeight:1.55,marginBottom:10}}>3 programas Full Body A/B/C de 24 semanas para iniciantes 50+. Cada um tem 3 blocos de 8 semanas com Adaptação, Acúmulo, Intensificação, Deload e Reteste.</div>
+        <div style={{fontSize:13,color:"#334155",lineHeight:1.55,marginBottom:10}}>9 programas de 24 semanas para iniciantes 50+: 3 Full Body A/B/C, 3 Superior / Inferior e 3 Puxa / Empurra / Inferiores. Cada um tem 3 blocos de 8 semanas com Adaptação, Acúmulo, Intensificação, Deload e Reteste.</div>
         <div style={{fontSize:12,color:"#64748b",lineHeight:1.55}}>Antes de instalar, confira abaixo qual exercício da sua biblioteca foi escolhido para cada um. Variações (unilateral, pausa, com apoio) entram como observação no treino.</div>
         {jaInstalados>0&&<div style={{fontSize:11,color:"#1d4ed8",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:7,padding:"6px 9px",marginTop:10,lineHeight:1.5}}>{jaInstalados} já instalado(s). Instalar de novo atualiza os modelos, sem mexer nos programas que você já enviou para alunos.</div>}
       </Card>
@@ -2696,7 +2871,7 @@ const InstalarModelosFB50=({bibCustom,modelos,setModelos,nav})=>{
         </div>
       );})}
       {pendentes.length>0&&<div style={{fontSize:11,color:"#b45309",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"8px 10px",margin:"10px 0",lineHeight:1.5}}>Se instalar com pendentes, esses itens aparecem como "exercício não encontrado" e precisam ser trocados no programa do aluno.</div>}
-      <div style={{marginTop:12}}><Btn full disabled={instalando} onClick={instalar}>{instalando?"Instalando...":(jaInstalados?"🔄 Atualizar os 3 modelos":"⭐ Instalar os 3 modelos")}</Btn></div>
+      <div style={{marginTop:12}}><Btn full disabled={instalando} onClick={instalar}>{instalando?"Instalando...":(jaInstalados?"🔄 Atualizar os "+FB50_PROGRAMAS.length+" modelos":"⭐ Instalar os "+FB50_PROGRAMAS.length+" modelos")}</Btn></div>
       {msg&&<div style={{fontSize:13,fontWeight:700,textAlign:"center",marginTop:10,color:msg.startsWith("✅")?"#16a34a":"#dc2626"}}>{msg}</div>}
       {msg.startsWith("✅")&&<div style={{marginTop:8}}><Btn full variant="secondary" onClick={()=>nav("modelos")}>Ver modelos</Btn></div>}
       {picker&&(
@@ -2774,7 +2949,7 @@ const ListaModelos=({modelos,loading,nav}) => {
         <div style={{fontWeight:800,fontSize:20}}>⭐ Modelos de Periodização</div>
       </div>
       <div style={{fontSize:12,color:"#94a3b8",marginBottom:10,lineHeight:1.5}}>Periodizações completas que você salvou pra reaproveitar com futuros alunos — envie exatamente como está ou edite antes.</div>
-      <div style={{marginBottom:14}}><Btn sm variant="ghost" onClick={()=>nav("instalarFB50")}>➕ Modelos Full Body 50+ (3 programas)</Btn></div>
+      <div style={{marginBottom:14}}><Btn sm variant="ghost" onClick={()=>nav("instalarFB50")}>➕ Modelos 50+ (Full Body, Superior / Inferior e Puxa / Empurra)</Btn></div>
       <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar modelo..." style={{width:"100%",padding:"10px 14px",borderRadius:10,border:"1.5px solid #e2e8f0",background:"#fff",fontSize:14,fontFamily:"inherit",marginBottom:14}}/>
       {loading?(
         <Card style={{textAlign:"center",padding:40}}><div style={{color:"#94a3b8"}}>Carregando modelos...</div></Card>
