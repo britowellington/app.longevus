@@ -27,6 +27,7 @@ var __LOGO_WB__ = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAFuCAYAAAC
 <script type="text/babel" data-presets="react" src="longevus-condominios.js"></script>
 <script src="longevus-alimentacao.js?v=14"></script>
 <script src="longevus-antropometria.js?v=3"></script>
+<script src="longevus-vitrine.js?v=1"></script>
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useCallback, useRef } = React;
 // ── Supabase ─────────────────────────────────────────────────────────────────
@@ -9886,6 +9887,7 @@ const menuItems=[
 {id:"documents",label:"Documentos"},
 ]},
 {id:"financeiro",label:"Financeiro",icon:"money"},
+{id:"vitrine",label:"Vitrine e parceiros",icon:"star"},
 {id:"contrato",label:"Contrato",icon:"clip"},
 {group:"Conta",icon:"user",items:[
 {id:"vincular",label:"Vincular Alunos"},
@@ -9896,7 +9898,7 @@ const ALL_MENU_IDS = menuItems.flatMap(m=>m.group?m.items.map(it=>it.id):[m.id])
 const [menuOpen, setMenuOpen] = useState(false);
 const [openGroup, setOpenGroup] = useState(null);
 const [showSubscribe, setShowSubscribe] = useState(false);
-const activePage=page==="studentDetail"?"students":(["dashboard","students","assessments","daily","reports","documents","program","cognitivehub","profile","questionarios","vincular","extraatividades","financeiro","agenda","leads","condominios","contrato"].includes(page)?page:null);
+const activePage=page==="studentDetail"?"students":(["dashboard","students","assessments","daily","reports","documents","program","cognitivehub","profile","questionarios","vincular","extraatividades","financeiro","agenda","leads","condominios","contrato","vitrine"].includes(page)?page:null);
 if (authLoading) {
 return <div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14 }}>Carregando...</div>;
 }
@@ -10033,7 +10035,7 @@ return (
 }{page==="leads"&&<Leads leads={leads} setLeads={setLeads} students={students} setStudents={setStudents} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} nav={nav}/>
 }{page==="condominios"&&(window.ProjetoCondominios?<window.ProjetoCondominios.Page session={session} condos={condos} setCondos={setCondos} condoLeads={condoLeads} setCondoLeads={setCondoLeads} students={students} setStudents={setStudents} nav={nav} pageProps={pageProps} deps={{Card,Btn,Inp,Modal,Badge,I,O,DB,uid,fmt,fmtR,SUPA_URL}}/>:<Card><div style={{fontSize:13,color:"#64748b"}}>O módulo Projeto Condomínios ainda não carregou. Confirme que o arquivo longevus-condominios.js está no mesmo endereço do app e recarregue.</div></Card>)
 }{page==="contrato"&&<Contrato students={students} setStudents={setStudents} contratoModelos={contratoModelos} setContratoModelos={setContratoModelos} contratoAssinaturas={contratoAssinaturas} nav={nav}/>
-}{page==="profile"&&<Profile session={session} onLogoChange={setLogoUrl}/>}
+}{page==="profile"&&<Profile session={session} onLogoChange={setLogoUrl}/>}{page==="vitrine"&&(window.LongevusVitrine?<window.LongevusVitrine.Painel profNome="Wellington Brito"/>:<Card style={{ textAlign:"center",padding:32,color:"#94a3b8" }}>Carregando a vitrine...</Card>)}
 </div>
 </div>
 <div className="no-print" style={{ position:"fixed",bottom:0,left:0,right:0,background:"#fff",borderTop:"1.5px solid #e2e8f0",display:"flex",zIndex:100,paddingBottom:"env(safe-area-inset-bottom)" }}>

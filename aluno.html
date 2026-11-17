@@ -19,7 +19,8 @@
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="longevus-aluno-extras.js?v=21"></script>
+<script src="longevus-aluno-extras.js?v=22"></script>
+<script src="longevus-vitrine.js?v=1"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -878,7 +879,7 @@ const ProgressoAtividades = ({concluidas, total}) => {
   );
 };
 
-const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, atividadesSemData, concluidasMap, ultimaConclusaoMap, onToggleAtividade, onIrTreino, bibCustom, onSalvarExercicios, getSessaoAtividade, onLogout, onIr, studentId, studentData, semTreino, l360, onAtividadeExtra}) => {
+const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, atividadesSemData, concluidasMap, ultimaConclusaoMap, onToggleAtividade, onIrTreino, bibCustom, onSalvarExercicios, getSessaoAtividade, onLogout, onIr, studentId, studentData, semTreino, l360, onAtividadeExtra, ownerId, profPix}) => {
   const hoje = new Date();
   const diaLabel = DIAS_SEMANA_LONGO[hoje.getDay()]+", "+hoje.getDate()+" de "+MESES_NOME[hoje.getMonth()];
   const totalHoje = atividadesHoje.length;
@@ -928,7 +929,7 @@ const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, atividadesSemDa
   );
   return (
     <div style={{height:"calc(100dvh - 66px - env(safe-area-inset-bottom))",display:"flex",flexDirection:"column",overflowY:"auto"}}>
-      <XX.InicioTopo firstName={firstName} treinoHojeLabel={treinoHojeLabel} semTreino={semTreino} onIrTreino={onIrTreino} onLogout={onLogout} onIr={onIr} studentId={studentId} studentData={studentData} l360={l360}/>
+      <XX.InicioTopo firstName={firstName} treinoHojeLabel={treinoHojeLabel} semTreino={semTreino} onIrTreino={onIrTreino} onLogout={onLogout} onIr={onIr} studentId={studentId} studentData={studentData} l360={l360} ownerId={ownerId} profNome={profPix && (profPix.nome || profPix.pix_merchant_name)} profWhats={profPix && profPix.whatsapp}/>
       <div style={{flexShrink:0,padding:"12px 18px 4px"}}>
         {totalHoje>0 && (
           <div style={{marginBottom:6}}>
@@ -1889,6 +1890,8 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
           semTreino={!prog}
           l360={acesso360}
           onAtividadeExtra={irAtividadeExtra}
+          ownerId={ownerId}
+          profPix={profPix}
           bibCustom={bibCustom}
           onSalvarExercicios={salvarSessaoAtividade}
           getSessaoAtividade={getSessaoAtividade}
