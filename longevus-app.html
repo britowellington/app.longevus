@@ -27,7 +27,7 @@ var __LOGO_WB__ = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAFuCAYAAAC
 <script type="text/babel" data-presets="react" src="longevus-condominios.js"></script>
 <script src="longevus-alimentacao.js?v=14"></script>
 <script src="longevus-antropometria.js?v=3"></script>
-<script src="longevus-vitrine.js?v=6"></script>
+<script src="longevus-vitrine.js?v=7"></script>
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useCallback, useRef } = React;
 // ── Supabase ─────────────────────────────────────────────────────────────────
@@ -922,6 +922,65 @@ return (
 </div>
 );
 };
+const MENTE_JOGOS = {genio:"Gênio das Cores",pares:"Memória de Pares",sequencia:"Sequência Numérica",baloes:"Estourar Balões",caca:"Caça-Palavras",padroes:"Copiar Padrões",listar:"Listar Palavras",completar:"Completar Letra"};
+const MenteAtivaFicha = ({ st, setStudents }) => {
+const [res,setRes]=useState(null);
+const [aberto,setAberto]=useState(false);
+useEffect(()=>{
+let vivo=true;
+(async()=>{
+try {
+const headers = await DB.authHeaders();
+const r = await fetch(SUPA_URL+"/rest/v1/mente_resultados?select=id,jogo,pontos,data,created_at&student_id=eq."+encodeURIComponent(st.id)+"&order=created_at.desc&limit=200", { headers });
+const rows = r.ok ? await r.json() : [];
+if(vivo) setRes(rows||[]);
+} catch(e) { if(vivo) setRes([]); }
+})();
+return ()=>{ vivo=false; };
+},[st.id]);
+const l = st.mente || {};
+const status = l.status || "bloqueado";
+const hoje = todayStr();
+const vencido = status==="pago" && (!l.vencimento || l.vencimento<hoje);
+const mais30 = (base) => { const d=new Date(((base && base>hoje)?base:hoje)+"T12:00:00"); d.setDate(d.getDate()+30); return toISODateLocal(d); };
+const setM = (novo) => setStudents(p=>p.map(x=>x.id===st.id?{...x,mente:{...(x.mente||{}),...novo,atualizadoEm:new Date().toISOString()}}:x));
+const escolher = (k) => { if(k===status) return; if(k==="pago") setM({ status:"pago", vencimento:mais30(hoje) }); else setM({ status:k }); };
+const sub = status==="bonus" ? "Liberado de bônus." : status==="pago" ? (vencido ? "Venceu em "+fmt(l.vencimento)+". O cadeado voltou." : "Pago · acesso até "+fmt(l.vencimento)+".") : "O aluno vê o cadeado, 1 jogo grátis e o Pix.";
+const d30 = new Date(Date.now()-30*86400000).toISOString();
+const ult30 = (res||[]).filter(r=>r.created_at>=d30);
+const diasAtivos = new Set(ult30.map(r=>String(r.created_at).slice(0,10))).size;
+const ultima = (res||[])[0];
+return (
+<Card style={{ padding:"12px 14px",marginBottom:16 }}>
+<div style={{ display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,marginBottom:8 }}>
+<div style={{ fontSize:12,fontWeight:700,color:"#334155" }}>Mente Ativa</div>
+<div style={{ fontSize:11,color:vencido?"#dc2626":"#64748b",textAlign:"right" }}>{sub}</div>
+</div>
+<div style={{ display:"flex",gap:6 }}>
+{[["bloqueado","Bloqueado"],["bonus","Bônus"],["pago","Pago"]].map(([k,lb])=>(
+<button key={k} onClick={()=>escolher(k)} style={{ flex:1,padding:"8px 4px",borderRadius:9,border:"1.5px solid "+(status===k?"#FF5603":"#e2e8f0"),background:status===k?"#fff4ee":"#fff",color:status===k?"#c2410c":"#64748b",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>{lb}</button>
+))}
+</div>
+{status==="pago" && <button onClick={()=>{ if(window.confirm("Renovar a Mente Ativa por mais 30 dias?")) setM({ status:"pago", vencimento:mais30(l.vencimento) }); }} style={{ width:"100%",marginTop:8,padding:"8px",borderRadius:9,border:"1.5px dashed #fed7aa",background:"#fff",color:"#c2410c",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>Renovar +30 dias</button>}
+<div style={{ marginTop:10,paddingTop:10,borderTop:"1px solid #f1f5f9" }}>
+{res===null ? <div style={{ fontSize:12,color:"#94a3b8" }}>Carregando resultados...</div>
+: res.length===0 ? <div style={{ fontSize:12,color:"#94a3b8" }}>Nenhum jogo feito ainda.</div>
+: <div>
+<div onClick={()=>setAberto(!aberto)} style={{ display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer" }}>
+<div style={{ fontSize:12,color:"#334155" }}><b>{ult30.length}</b> {ult30.length===1?"jogo":"jogos"} em <b>{diasAtivos}</b> {diasAtivos===1?"dia":"dias"} (30 dias){ultima?" · último em "+fmt(String(ultima.created_at).slice(0,10)):""}</div>
+<div style={{ fontSize:12,fontWeight:700,color:"#c2410c" }}>{aberto?"Fechar":"Ver"}</div>
+</div>
+{aberto && <div style={{ marginTop:8 }}>{res.slice(0,15).map(r=>(
+<div key={r.id} style={{ display:"flex",justifyContent:"space-between",gap:8,padding:"7px 0",borderBottom:"1px solid #f8fafc",fontSize:12 }}>
+<div><div style={{ fontWeight:700,color:"#0f172a" }}>{MENTE_JOGOS[r.jogo]||r.jogo}</div><div style={{ color:"#94a3b8" }}>{fmt(String(r.created_at).slice(0,10))}{r.data&&r.data.extra?" · "+r.data.extra:""}</div></div>
+<div style={{ fontWeight:800,color:"#FF5603",whiteSpace:"nowrap" }}>{(r.data&&r.data.rotulo)||r.pontos}</div>
+</div>
+))}</div>}
+</div>}
+</div>
+</Card>
+);
+};
 const Avisos360 = ({ students, setStudents, setLeads, nav }) => {
 const [avisos,setAvisos]=useState([]);
 useEffect(()=>{
@@ -958,12 +1017,13 @@ for (const id of ids) await fetch(SUPA_URL+"/rest/v1/l360_avisos?id=eq."+encodeU
 const liberar = (a) => {
 const sid = a.student_id;
 const hoje = todayStr();
+const k = a.servico==="Mente Ativa" ? "mente" : "l360";
 setStudents(p=>p.map(x=>{
 if(String(x.id)!==String(sid)) return x;
-const l = x.l360 || {};
+const l = x[k] || {};
 const base = (l.status==="pago" && l.vencimento && l.vencimento>hoje) ? l.vencimento : hoje;
 const d = new Date(base+"T12:00:00"); d.setDate(d.getDate()+30);
-return { ...x, l360:{ ...l, status:"pago", vencimento:toISODateLocal(d), atualizadoEm:new Date().toISOString() } };
+return { ...x, [k]:{ ...l, status:"pago", vencimento:toISODateLocal(d), atualizadoEm:new Date().toISOString() } };
 }));
 marcar(a);
 };
@@ -974,10 +1034,10 @@ return (
 <div style={{ marginBottom:22 }}>
 <div style={{ fontSize:12,fontWeight:700,color:"#64748b",marginBottom:8 }}>Pagamentos avisados pelo app</div>
 <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-{lista.map(({a,st})=>{ const servico=a.servico; const pr=a.presente&&a.presente.nome?a.presente:null; const prWa=pr&&waNum(pr.whatsapp); return (
+{lista.map(({a,st})=>{ const ehMente=a.servico==="Mente Ativa"; const servico=ehMente?null:a.servico; const pr=a.presente&&a.presente.nome?a.presente:null; const prWa=pr&&waNum(pr.whatsapp); return (
 <Card key={a.id} style={{ padding:"10px 14px",background:"#fff7ed",border:"1.5px solid #fed7aa" }}>
 {pr && <div style={{ display:"inline-block",fontSize:10.5,fontWeight:800,letterSpacing:"0.06em",color:"#C2410C",background:"#ffedd5",borderRadius:10,padding:"3px 8px",marginBottom:5 }}>🎁 PRESENTE</div>}
-<div onClick={()=>nav("studentDetail",{id:st.id})} style={{ fontSize:13,fontWeight:700,color:"#9a3412",cursor:"pointer" }}>{servico ? st.name+" avisou que pagou: "+servico : st.name+" avisou que pagou o 360"}</div>
+<div onClick={()=>nav("studentDetail",{id:st.id})} style={{ fontSize:13,fontWeight:700,color:"#9a3412",cursor:"pointer" }}>{servico ? st.name+" avisou que pagou: "+servico : st.name+" avisou que pagou "+(ehMente?"a Mente Ativa":"o 360")}</div>
 <div style={{ fontSize:11,color:"#64748b",marginTop:2 }}>{"Em "+new Date(a.created_at).toLocaleDateString("pt-BR")+" às "+new Date(a.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})+". "+(servico?"Confira no banco e combine a data com o aluno.":"Confira no banco antes de liberar.")}</div>
 {pr && <div style={{ marginTop:8,background:"#fff",border:"1px solid #fed7aa",borderRadius:9,padding:"8px 10px",fontSize:12.5,color:"#334155",lineHeight:1.5 }}>
 <div>Para <b>{pr.nome}</b>{pr.whatsapp?" · "+pr.whatsapp:""}</div>
@@ -1056,7 +1116,7 @@ return (
 </div>
 </div>}
 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:22 }}>
-{[{label:"Alunos",sub:"Gerenciar",icon:"users",color:O,page:"students"},{label:"Avaliações",sub:"Longevus completo",icon:"clip",color:"#6366f1",page:"assessments"},{label:"Hub Cognitivo",sub:"Jogos e testes",icon:"act",color:"#8b5cf6",page:"cognitivehub"},{label:"Biblioteca",sub:"696 exercícios",icon:"bar",color:"#0ea5e9",page:"extbiblioteca"},{label:"Monitoramento",sub:"PA, FC, SpO₂",icon:"act",color:"#16a34a",page:"daily"},{label:"Relatórios",sub:"Evolução",icon:"bar",color:"#d97706",page:"reports"}].map(m=>(
+{[{label:"Alunos",sub:"Gerenciar",icon:"users",color:O,page:"students"},{label:"Avaliações",sub:"Longevus completo",icon:"clip",color:"#6366f1",page:"assessments"},{label:"Mente Ativa",sub:"Jogos cognitivos",icon:"act",color:"#8b5cf6",page:"cognitivehub"},{label:"Biblioteca",sub:"696 exercícios",icon:"bar",color:"#0ea5e9",page:"extbiblioteca"},{label:"Monitoramento",sub:"PA, FC, SpO₂",icon:"act",color:"#16a34a",page:"daily"},{label:"Relatórios",sub:"Evolução",icon:"bar",color:"#d97706",page:"reports"}].map(m=>(
 <Card key={m.page} onClick={()=>{ if(m.page==="cognitivehub"){window.open("longevus-hub.html","_self");return;} if(m.page==="extbiblioteca"){window.open("longevus-biblioteca.html","_self");return;} nav(m.page); }} style={{ display:"flex",alignItems:"center",gap:12,padding:"14px" }}>
 <div style={{ width:40,height:40,borderRadius:11,background:m.color+"18",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}><I n={m.icon} c={m.color} s={19}/></div>
 <div><div style={{ fontWeight:700,fontSize:14,color:"#0f172a" }}>{m.label}</div><div style={{ fontSize:12,color:"#94a3b8" }}>{m.sub}</div></div>
@@ -2462,6 +2522,7 @@ return (
     </Card>
   );
 })()}
+<MenteAtivaFicha st={st} setStudents={setStudents}/>
 {baixaAberta && <PagamentoModal student={st} pagamentos={pagamentos} setPagamentos={setPagamentos} setStudents={setStudents} onClose={()=>setBaixaAberta(false)}/>}
 <div style={{ display:"flex",gap:6,marginBottom:16,overflowX:"auto" }}>
 {TABS.map(t=>(
@@ -9887,7 +9948,7 @@ const menuItems=[
 {id:"reports",label:"Relatórios"},
 ]},
 {group:"Treino e Conteúdo",icon:"zap",items:[
-{id:"cognitivehub",label:"Hub Cognitivo"},
+{id:"cognitivehub",label:"Mente Ativa"},
 {id:"extprograma",label:"Gerador de Programa"},
 {id:"extbiblioteca",label:"Biblioteca"},
 {id:"extcircuito",label:"Aulas em Circuito"},

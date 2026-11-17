@@ -3,14 +3,15 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<title>Longevus — Plataforma Neurofuncional</title>
+<title>Mente Ativa · Longevus</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  body { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background: #F0F4F8; }
+  body { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background: #F4F5F7; color: #0F172A; }
   #root { max-width: 480px; margin: 0 auto; min-height: 100vh; }
   button { font-family: inherit; }
   input, textarea, select { font-family: inherit; }
@@ -126,7 +127,7 @@ return (
 
 
 
-const C={bg:"#F0F4F8",surface:"#FFFFFF",border:"#DDE3EC",text:"#1A2340",muted:"#6B7A99",orange:"#FF5603",green:"#10B981",red:"#EF4444",blue:"#3B82F6",yellow:"#F59E0B"};
+const C={bg:"#F4F5F7",surface:"#FFFFFF",border:"#E2E8F0",text:"#0F172A",muted:"#64748B",orange:"#FF5603",green:"#10B981",red:"#EF4444",blue:"#3B82F6",yellow:"#F59E0B",purple:"#8B5CF6"};
 const O=C.orange;
 const sh=a=>{const r=[...a];for(let i=r.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[r[i],r[j]]=[r[j],r[i]];}return r;};
 const fm=ms=>{const s=Math.floor(ms/1000);return s<60?`${s}s`:`${Math.floor(s/60)}m${s%60}s`;};
@@ -144,15 +145,15 @@ function Hdr({title,onBack,right,rc}){
 // HUB HOME
 // ═══════════════════════════════════════════════════════════
 const HUB_MODULES=[
-  {id:"cartas",    label:"Cartas Neurofuncionais", color:"#FF5603", desc:"30 cartas · 4 categorias · 3 niveis", group:"cartas"},
-  {id:"sequencia", label:"Sequencia Numerica",     color:"#10B981", desc:"Atencao visual e velocidade",         group:"jogos"},
-  {id:"genio",     label:"Genio das Cores",         color:"#EC4899", desc:"Memoria sequencial de cores",         group:"jogos"},
-  {id:"pares",     label:"Memoria de Pares",        color:"#8B5CF6", desc:"Memoria episodica",                   group:"jogos"},
-  {id:"padroes",   label:"Copiar Padroes",          color:"#F59E0B", desc:"Praxia visuoespacial",                group:"jogos"},
-  {id:"baloes",    label:"Estourar Baloes",         color:"#FF5603", desc:"Numeros, letras, contas e reflexo",   group:"jogos"},
-  {id:"caca",      label:"Caca-Palavras",           color:"#10B981", desc:"Atencao visual · 4 temas",            group:"atividades"},
-  {id:"listar",    label:"Listar Palavras",         color:"#3B82F6", desc:"Fluencia verbal semantica",           group:"atividades"},
-  {id:"completar", label:"Completar Letra",         color:"#8B5CF6", desc:"Recuperacao lexical",                 group:"atividades"},
+  {id:"cartas",    label:"Cartas Neurofuncionais", color:"#FF5603", desc:"30 cartas · 4 categorias · 3 níveis", group:"cartas"},
+  {id:"sequencia", label:"Sequência Numérica",     color:"#10B981", desc:"Atenção visual e velocidade",         group:"jogos"},
+  {id:"genio",     label:"Gênio das Cores",         color:"#EC4899", desc:"Memória sequencial de cores",         group:"jogos"},
+  {id:"pares",     label:"Memória de Pares",        color:"#8B5CF6", desc:"Memória episódica",                   group:"jogos"},
+  {id:"padroes",   label:"Copiar Padrões",          color:"#F59E0B", desc:"Raciocínio visual",                group:"jogos"},
+  {id:"baloes",    label:"Estourar Balões",         color:"#FF5603", desc:"Números, letras, contas e reflexo",   group:"jogos"},
+  {id:"caca",      label:"Caça-Palavras",           color:"#10B981", desc:"Atenção visual · 8 temas",            group:"atividades"},
+  {id:"listar",    label:"Listar Palavras",         color:"#3B82F6", desc:"Fluência verbal",           group:"atividades"},
+  {id:"completar", label:"Completar Letra",         color:"#8B5CF6", desc:"Lembrar palavras",                 group:"atividades"},
 ];
 function HubHome({onOpen}){
   const groups=[
@@ -166,8 +167,8 @@ function HubHome({onOpen}){
         <a href="longevus-app.html" style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,color:"#64748b",textDecoration:"none",background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:"5px 10px",fontWeight:600}}>&#8592; App Principal</a>
       </div>
       <img src={LONGEVUS_LOGO} alt="Longevus" style={{width:90,height:90,objectFit:"contain",marginBottom:12}}/>
-      <div style={{fontWeight:800,fontSize:18,color:"#0f172a",letterSpacing:-0.5}}>Hub Cognitivo</div>
-      <div style={{fontSize:12,color:"#94a3b8",marginTop:2}}>Longevus Programa Neurofuncional</div>
+      <div style={{fontWeight:800,fontSize:18,color:"#0f172a",letterSpacing:-0.5}}>Mente Ativa</div>
+      <div style={{fontSize:12,color:"#94a3b8",marginTop:2}}>Jogos cognitivos e cartas neurofuncionais</div>
     </div>
     <div style={{padding:"16px",flex:1,overflowY:"auto"}}>
       {groups.map(g=>{
@@ -505,7 +506,7 @@ function SeqHome({ onStart }) {
   return (
     <div style={s.wrap}>
       <div style={s.header}>
-        <div style={s.logo}>Longevus <span style={s.logoSpan}>✦</span></div>
+        <div style={s.logo}>Mente Ativa</div>
         <div style={{ fontSize: 12, color: "#ffffff80", fontWeight: 600 }}>Jogos Cognitivos</div>
       </div>
       <div style={s.body}>
@@ -773,7 +774,7 @@ function SeqResult({ result, onReplay, onHome }) {
 }
 
 // ── APP PRINCIPAL ────────────────────────────────────────
-function ModuleSequencia({onBack}) {
+function ModuleSequencia({onBack, onResult}) {
   const [screen, setScreen] = useState("home"); // home | game | result
   const [level, setLevel] = useState(null);
   const [result, setResult] = useState(null);
@@ -784,6 +785,11 @@ function ModuleSequencia({onBack}) {
   }
 
   function handleFinish(res) {
+    if (onResult) {
+      const pts = Math.max(0, 100 - res.errors * 5 - Math.floor(res.time / 1000));
+      onResult({ jogo:"sequencia", pontos:pts, rotulo:pts+" pontos", extra:SEQ_LEVELS[res.level].label+" · "+res.errors+(res.errors===1?" erro":" erros"), tempo:res.time });
+      return;
+    }
     setResult(res);
     setScreen("result");
   }
@@ -847,8 +853,8 @@ function GenHome({ onStart, bestLevel }) {
   return (
     <div style={s.wrap}>
       <div style={s.header}>
-        <div style={s.logo}>Longevus <span style={{color:C.orange}}>✦</span></div>
-        <div style={{fontSize:12, color:"#ffffff80", fontWeight:600}}>Jogos Cognitivos</div>
+        <div style={s.logo}>Mente Ativa</div>
+        <div style={{fontSize:12, color:"#ffffff80", fontWeight:600}}>Memória</div>
       </div>
       <div style={s.body}>
         <div style={s.heroBox}>
@@ -1167,12 +1173,13 @@ function GenResult({ result, onReplay, onHome }) {
 }
 
 // ── APP PRINCIPAL ─────────────────────────────────────────
-function ModuleGenio({onBack}) {
+function ModuleGenio({onBack, onResult}) {
   const [screen, setScreen] = useState("home");
   const [result, setResult] = useState(null);
   const [bestLevel, setBestLevel] = useState(0);
 
   function handleFinish(res) {
+    if (onResult) { onResult({ jogo:"genio", pontos:res.level, rotulo:"nível "+res.level, extra:(res.level-1===1?"1 nível completo":Math.max(0,res.level-1)+" níveis completos"), tempo:res.time }); return; }
     if (res.level > bestLevel) setBestLevel(res.level);
     setResult(res);
     setScreen("result");
@@ -1255,7 +1262,7 @@ function ParHome({ onStart }) {
   return (
     <div style={s.wrap}>
       <div style={s.header}>
-        <div style={s.logo}>Longevus <span style={{color:C.orange}}>✦</span></div>
+        <div style={s.logo}>Mente Ativa</div>
         <div style={{fontSize:12,color:"#ffffff80",fontWeight:600}}>Jogos Cognitivos</div>
       </div>
       <div style={s.body}>
@@ -1528,7 +1535,7 @@ function ParResult({ result, onReplay, onHome }) {
 }
 
 // ── APP ───────────────────────────────────────────────────
-function ModulePares({onBack}) {
+function ModulePares({onBack, onResult}) {
   const [screen, setScreen] = useState("home");
   const [config, setConfig] = useState({ diff:"medio", theme:"frutas" });
   const [result, setResult] = useState(null);
@@ -1538,6 +1545,11 @@ function ModulePares({onBack}) {
     setScreen("game");
   }
   function handleFinish(res) {
+    if (onResult) {
+      const ef = Math.max(0, Math.round(100 - ((res.moves - res.pairs) / res.pairs) * 20));
+      onResult({ jogo:"pares", pontos:ef, rotulo:ef+"% de eficiência", extra:PAR_DIFFS[res.diff].label+" · "+res.moves+" movimentos", tempo:res.time });
+      return;
+    }
     setResult(res);
     setScreen("result");
   }
@@ -1612,7 +1624,7 @@ function PadHome({ onStart, bestScore }) {
   return (
     <div style={s.wrap}>
       <div style={s.header}>
-        <div style={s.logo}>Longevus <span style={{color:C.orange}}>✦</span></div>
+        <div style={s.logo}>Mente Ativa</div>
         <div style={{fontSize:12,color:"#ffffff80",fontWeight:600}}>Jogos Cognitivos</div>
       </div>
       <div style={s.body}>
@@ -1944,14 +1956,14 @@ function PadResult({ result, onReplay, onHome }) {
 }
 
 // ── APP ───────────────────────────────────────────────────
-function ModulePadroes({onBack}) {
+function ModulePadroes({onBack, onResult}) {
   const [screen, setScreen] = useState("home");
   const [diff, setDiff] = useState("facil");
   const [result, setResult] = useState(null);
 
   if (screen==="game") return (
     <PadGame key={diff+Date.now()} diff={diff}
-      onFinish={r=>{setResult(r);setScreen("result");}}
+      onFinish={r=>{ if(onResult){ const pct=Math.round((r.score/r.total)*100); onResult({ jogo:"padroes", pontos:pct, rotulo:pct+"% de acerto", extra:PAD_DIFFS[r.diff].label+" · "+r.score+" de "+r.total, tempo:r.time }); return; } setResult(r);setScreen("result");}}
       onBack={()=>setScreen("home")}/>
   );
   if (screen==="result") return (
@@ -2050,7 +2062,7 @@ function CwHome({ onStart }) {
   return (
     <div style={s.wrap}>
       <div style={s.header}>
-        <div style={s.logo}>Longevus <span style={{color:C.orange}}>✦</span></div>
+        <div style={s.logo}>Mente Ativa</div>
         <div style={{fontSize:12,color:"#ffffff80",fontWeight:600}}>Atividades Cognitivas</div>
       </div>
       <div style={s.body}>
@@ -2346,14 +2358,14 @@ function CwResult({ result, onReplay, onHome }) {
 }
 
 // ── APP ───────────────────────────────────────────────────
-function ModuleCaca({onBack}) {
+function ModuleCaca({onBack, onResult}) {
   const [screen, setScreen] = useState("home");
   const [config, setConfig] = useState({theme:"frutas",size:"medio"});
   const [result, setResult] = useState(null);
 
   if (screen==="game") return (
     <CwGame key={JSON.stringify(config)+Date.now()} theme={config.theme} size={config.size}
-      onFinish={r=>{setResult(r);setScreen("result");}} onBack={()=>setScreen("home")}/>
+      onFinish={r=>{ if(onResult){ const pct=Math.round((r.words/CW_SIZES[r.size].wordCount)*100); onResult({ jogo:"caca", pontos:pct, rotulo:r.words+" palavras", extra:CW_THEMES[r.theme].label.replace(/^\S+\s/,"")+" · "+CW_SIZES[r.size].label, tempo:r.time }); return; } setResult(r);setScreen("result");}} onBack={()=>setScreen("home")}/>
   );
   if (screen==="result") return (
     <CwResult result={result} onReplay={()=>setScreen("game")} onHome={()=>setScreen("home")}/>
@@ -2404,7 +2416,7 @@ function LwHome({ onStart }) {
   return (
     <div style={s.wrap}>
       <div style={s.header}>
-        <div style={s.logo}>Longevus <span style={{color:C.orange}}>✦</span></div>
+        <div style={s.logo}>Mente Ativa</div>
         <div style={{fontSize:12,color:"#ffffff80",fontWeight:600}}>Atividades Cognitivas</div>
       </div>
       <div style={s.body}>
@@ -2622,14 +2634,14 @@ function LwResult({ result, onReplay, onHome }) {
 }
 
 // ── APP ───────────────────────────────────────────────────
-function ModuleListar({onBack}) {
+function ModuleListar({onBack, onResult}) {
   const [screen, setScreen] = useState("home");
   const [activity, setActivity] = useState(null);
   const [result, setResult] = useState(null);
 
   if (screen==="activity") return (
     <LwActivity key={activity.id+Date.now()} activity={activity}
-      onFinish={r=>{setResult(r);setScreen("result");}} onBack={()=>setScreen("home")}/>
+      onFinish={r=>{ if(onResult){ const n=r.words.length; onResult({ jogo:"listar", pontos:n, rotulo:n+(n===1?" palavra":" palavras"), extra:r.activity.label.replace(/^\S+\s/,""), tempo:r.time }); return; } setResult(r);setScreen("result");}} onBack={()=>setScreen("home")}/>
   );
   if (screen==="result") return (
     <LwResult result={result} onReplay={()=>setScreen("activity")} onHome={()=>setScreen("home")}/>
@@ -2718,7 +2730,7 @@ function ClHome({ onStart }) {
   return (
     <div style={s.wrap}>
       <div style={s.header}>
-        <div style={s.logo}>Longevus <span style={{color:C.orange}}>✦</span></div>
+        <div style={s.logo}>Mente Ativa</div>
         <div style={{fontSize:12,color:"#ffffff80",fontWeight:600}}>Atividades Cognitivas</div>
       </div>
       <div style={s.body}>
@@ -3031,13 +3043,16 @@ function ClResult({ result, onReplay, onHome }) {
 }
 
 // ── APP ───────────────────────────────────────────────────
-function ModuleCompletar({onBack}) {
+function ModuleCompletar({onBack, onResult}) {
   const [screen, setScreen] = useState("home");
   const [activity, setActivity] = useState(null);
   const [result, setResult] = useState(null);
 
   function handleStart(a) { setActivity(a); setScreen("activity"); }
-  function handleFinish(r) { setResult(r); setScreen("result"); }
+  function handleFinish(r) {
+    if (onResult) { const pct=Math.round((r.correct/r.total)*100); onResult({ jogo:"completar", pontos:pct, rotulo:pct+"% de acerto", extra:r.activity.label, tempo:r.time }); return; }
+    setResult(r); setScreen("result");
+  }
 
   if (screen==="activity" && activity) {
     return activity.isChoice
@@ -3300,18 +3315,18 @@ function ModuleBiblioteca({onBack}){
 // ═══════════════════════════════════════════════════════════════════════════
 
 const BALLOON_MODES = [
-  { id:"numeros",  label:"Numeros",   desc:"Estoure na ordem: 1, 2, 3...",              color:"#6366f1" },
+  { id:"numeros",  label:"Números",   desc:"Estoure na ordem: 1, 2, 3...",              color:"#6366f1" },
   { id:"letras",   label:"Letras",    desc:"Estoure na ordem: A, B, C...",              color:"#10B981" },
-  { id:"palavras", label:"Palavras",  desc:"Estoure so os da categoria certa!",         color:"#F59E0B" },
-  { id:"contas",   label:"Contas",    desc:"Estoure o balao com a resposta certa!",     color:"#EC4899" },
-  { id:"reflexo",  label:"Reflexo",   desc:"Estoure o maximo antes de chegar ao topo!", color:"#FF5603" },
+  { id:"palavras", label:"Palavras",  desc:"Estoure só os da categoria certa!",         color:"#F59E0B" },
+  { id:"contas",   label:"Contas",    desc:"Estoure o balão com a resposta certa!",     color:"#EC4899" },
+  { id:"reflexo",  label:"Reflexo",   desc:"Estoure o máximo antes de chegar ao topo!", color:"#FF5603" },
 ];
 
 const WORD_CATS = {
   frutas:    { label:"Frutas",     words:["MANGA","UVAS","PERA","KIWI","FIGO","CAJU","COCO","MACA","JACA","LIMAO","ABACAXI","MELANCIA"] },
   animais:   { label:"Animais",    words:["GATO","LOBO","URSO","PATO","RATO","BODE","VACA","ORCA","LULA","ANTA","PEIXE","LEAO"] },
   cores:     { label:"Cores",      words:["AZUL","ROSA","CINZA","VERDE","PRETO","BRANCO","ROXO","BEGE","CREME","LIMA","DOURADO","PRATA"] },
-  profissoes:{ label:"Profissoes", words:["CHEF","ATOR","JUIZ","GUIA","PADRE","PILOTO","MEDICO","FISCAL","GERENTE","POLICIAL","BOMBEIRO","PROFESSOR"] },
+  profissoes:{ label:"Profissões", words:["CHEF","ATOR","JUIZ","GUIA","PADRE","PILOTO","MEDICO","FISCAL","GERENTE","POLICIAL","BOMBEIRO","PROFESSOR"] },
 };
 const DISTRACT_WORDS = ["MESA","PORTA","RUA","CHUVA","PEDRA","ARVORE","LIVRO","CARRO","SAPATO","NUVEM","CALOR","VENTO","CHAVE","PAPEL","LAMPADA"];
 
@@ -3364,11 +3379,11 @@ function genBalloons(mode, level, answer) {
     while(wrongs.size<count-1){const w=res+Math.floor(Math.random()*8)-4;if(w!==res&&w>0)wrongs.add(w);}
     const all = [res,...[...wrongs]].sort(()=>Math.random()-0.5);
     all.forEach((n,i) => balloons.push({ id:i, label:String(n), value:n, correct:n===res, x:shuffledX[i], startY:startY(i), speed:0.10+level*0.025+Math.random()*0.04, color:n===res?"#10B981":colors[i%colors.length], size:56 }));
-    return {balloons, meta:{question:a+" "+op+" "+b+" = ?", answer:res, instruction:"Estoure o balao com a resposta certa!"}};
+    return {balloons, meta:{question:a+" "+op+" "+b+" = ?", answer:res, instruction:"Estoure o balão com a resposta certa!"}};
 
   } else {
     for(let i=0;i<count;i++) balloons.push({ id:i, label:"*", value:i, correct:true, x:shuffledX[i], startY:startY(i), speed:0.12+level*0.035+Math.random()*0.05, color:colors[i%colors.length], size:58 });
-    return {balloons, meta:{instruction:"Estoure todos os baloes antes que escapem!"}};
+    return {balloons, meta:{instruction:"Estoure todos os balões antes que escapem!"}};
   }
 }
 
@@ -3377,12 +3392,12 @@ function BalloonHome({onStart, onBack}) {
     <div style={{background:C.bg,minHeight:"100vh",maxWidth:480,margin:"0 auto",display:"flex",flexDirection:"column"}}>
       <div style={{background:C.text,padding:"14px 18px",display:"flex",alignItems:"center",gap:10}}>
         {onBack&&<button onClick={onBack} style={{background:"rgba(255,255,255,0.15)",border:"none",borderRadius:9,padding:"6px 12px",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer"}}><IcoBack/> Hub</button>}
-        <div style={{fontWeight:800,fontSize:17,color:"#fff",flex:1}}>Estourar Baloes</div>
+        <div style={{fontWeight:800,fontSize:17,color:"#fff",flex:1}}>Estourar Balões</div>
       </div>
       <div style={{padding:"20px 16px",flex:1}}>
         <div style={{background:C.surface,borderRadius:18,padding:"22px",marginBottom:20,textAlign:"center",border:"1px solid "+C.border}}>
-          <div style={{fontWeight:800,fontSize:18,color:C.text,marginBottom:6}}>Estourar Baloes</div>
-          <div style={{fontSize:13,color:C.muted,lineHeight:1.6}}>Toque nos baloes certos antes que cheguem ao topo! Cada fase fica mais rapido.</div>
+          <div style={{fontWeight:800,fontSize:18,color:C.text,marginBottom:6}}>Estourar Balões</div>
+          <div style={{fontSize:13,color:C.muted,lineHeight:1.6}}>Toque nos balões certos antes que cheguem ao topo! Cada fase fica mais rápida.</div>
         </div>
         <div style={{fontWeight:700,fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:12}}>Escolha o modo</div>
         {BALLOON_MODES.map(m=>(
@@ -3402,7 +3417,7 @@ function BalloonHome({onStart, onBack}) {
   );
 }
 
-function BalloonGame({mode, onBack}) {
+function BalloonGame({mode, onBack, onResult}) {
   const [balloons, setBalloons] = useState([]);
   const [meta, setMeta] = useState({});
   const [level, setLevel] = useState(1);
@@ -3504,6 +3519,15 @@ function BalloonGame({mode, onBack}) {
     }
   }
 
+  const enviadoRef = useRef(false);
+  const inicioRef = useRef(Date.now());
+  useEffect(()=>{
+    if(gameOver && onResult && !enviadoRef.current){
+      enviadoRef.current = true;
+      onResult({ jogo:"baloes", pontos:scoreRef.current, rotulo:scoreRef.current+" pontos", extra:modeInfo.label+" · fase "+levelRef.current, tempo:Date.now()-inicioRef.current });
+    }
+  },[gameOver]);
+  if(gameOver && onResult) return null;
   if(gameOver) {
     const totalScore = scoreRef.current;
     return (
@@ -3535,7 +3559,7 @@ function BalloonGame({mode, onBack}) {
 
   return (
     <div style={{background:"#0f172a",minHeight:"100vh",maxWidth:480,margin:"0 auto",position:"relative",overflow:"hidden",userSelect:"none",touchAction:"none"}}>
-      <div style={{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(15,23,42,0.95)",padding:"10px 16px",display:"flex",alignItems:"center",gap:10,zIndex:20}}>
+      <div style={{position:"fixed",top:40,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(15,23,42,0.95)",padding:"10px 16px",display:"flex",alignItems:"center",gap:10,zIndex:20}}>
         <button onClick={()=>{cancelAnimationFrame(animRef.current);onBack();}} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"5px 10px",color:"#fff",fontSize:12,cursor:"pointer"}}><IcoBack/></button>
         <div style={{flex:1}}>
           <div style={{fontWeight:800,fontSize:14,color:"#fff"}}>{modeInfo.label}</div>
@@ -3568,10 +3592,10 @@ function BalloonGame({mode, onBack}) {
   );
 }
 
-function ModuleBalloon({onBack}) {
+function ModuleBalloon({onBack, onResult}) {
   const [screen, setScreen] = useState("home");
   const [mode, setMode] = useState(null);
-  if(screen==="game") return <BalloonGame mode={mode} onBack={()=>setScreen("home")}/>;
+  if(screen==="game") return <BalloonGame mode={mode} onBack={()=>setScreen("home")} onResult={onResult}/>;
   return <BalloonHome onStart={m=>{setMode(m);setScreen("game");}} onBack={onBack}/>;
 }
 
@@ -3595,7 +3619,7 @@ const MENU_ITEMS=[
     {label:"Relatórios",url:"longevus-app.html"},
   ]},
   {group:"Treino e Conteúdo",icon:"zap",items:[
-    {label:"Hub Cognitivo",url:"longevus-hub.html"},
+    {label:"Mente Ativa",url:"longevus-hub.html"},
     {label:"Gerador de Programa",url:"longevus-programa.html"},
     {label:"Biblioteca",url:"longevus-biblioteca.html"},
     {label:"Documentos",url:"longevus-app.html"},
@@ -3728,7 +3752,8 @@ function AppInner(){
     if(mod==="baloes")     return <ModuleBalloon    onBack={back}/>;
     return <HubHome onOpen={setMod}/>;
   })();
-  return <><div style={{paddingBottom:80}}>{content}</div><NavBar active="hub"/></>;
+  const barra = mod ? <div style={{background:"#0F172A",height:40,boxSizing:"border-box",padding:"0 16px",display:"flex",alignItems:"center",position:"sticky",top:0,zIndex:30}}><button type="button" onClick={back} style={{background:"transparent",border:"none",padding:0,fontSize:13,fontWeight:700,color:"#CBD5E1",cursor:"pointer"}}>‹ Mente Ativa</button></div> : null;
+  return <><div style={{paddingBottom:80}}>{barra}{content}</div><NavBar active="hub"/></>;
 }
 
 
@@ -3752,11 +3777,279 @@ Falar no WhatsApp
 </div>
 );
 };
+
+// ═══════════════════════════════════════════════════════════
+// MENTE ATIVA — versão do aluno (produto com cadeado e Pix)
+// ═══════════════════════════════════════════════════════════
+const MA = { escuro:"#0F172A", escuro2:"#18233A", laranja:"#FF5603", laranjaTxt:"#C2410C", cinza:"#64748B", cinzaClaro:"#94A3B8", borda:"#E2E8F0", fundo:"#F4F5F7", verde:"#16A34A" };
+const MA_JOGOS = [
+  { id:"genio",     nome:"Gênio das Cores",    desc:"Sequência de cores",  grupo:"memoria",   tempo:"3 min" },
+  { id:"pares",     nome:"Memória de Pares",   desc:"Encontre os iguais",  grupo:"memoria",   tempo:"4 min" },
+  { id:"sequencia", nome:"Sequência Numérica", desc:"1, 2, 3... rápido",   grupo:"atencao",   tempo:"2 min" },
+  { id:"baloes",    nome:"Estourar Balões",    desc:"Reflexo e foco",      grupo:"atencao",   tempo:"3 min" },
+  { id:"caca",      nome:"Caça-Palavras",      desc:"Varredura visual",    grupo:"atencao",   tempo:"6 min" },
+  { id:"padroes",   nome:"Copiar Padrões",     desc:"Raciocínio visual",   grupo:"atencao",   tempo:"5 min" },
+  { id:"listar",    nome:"Listar Palavras",    desc:"Fluência verbal",     grupo:"linguagem", tempo:"5 min" },
+  { id:"completar", nome:"Completar Letra",    desc:"Lembrar palavras",    grupo:"linguagem", tempo:"4 min" },
+];
+const MA_GRUPOS = [["memoria","Memória","#FFF4EE","#FF5603"],["atencao","Atenção e velocidade","#E9F5F2","#0F6E56"],["linguagem","Linguagem","#FDF2F8","#BE185D"]];
+const MA_GRATIS = "genio";
+const MA_BENEFICIOS = ["8 jogos de memória, atenção e linguagem","Desafio do dia, sem precisar escolher","Sua evolução em cada jogo","Seu personal acompanha os resultados"];
+const maJogo = (id) => MA_JOGOS.find(j=>j.id===id) || MA_JOGOS[0];
+const maGrupo = (g) => MA_GRUPOS.find(x=>x[0]===g) || MA_GRUPOS[0];
+const maDia = (d) => { const x = d ? new Date(d) : new Date(); return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0"); };
+const maMaisDias = (iso, n) => { const d = new Date(iso+"T12:00:00"); d.setDate(d.getDate()+n); return maDia(d); };
+const maPrimeiro = (n) => String(n||"").trim().split(/\s+/)[0] || "";
+const maTempo = (ms) => { const s = Math.round((ms||0)/1000); return s<60 ? s+"s" : Math.floor(s/60)+"m"+String(s%60).padStart(2,"0"); };
+const maReal = (v) => "R$ "+Number(v||0).toFixed(2).replace(".",",");
+const maWa = (numero, texto) => { let d = String(numero||"").replace(/\D/g,""); if(!d) return null; if(!(d.length>=12 && d.indexOf("55")===0)) d = "55"+d; return "https://wa.me/"+d+(texto?"?text="+encodeURIComponent(texto):""); };
+
+const maPixAscii = (str, max) => { const l = String(str||"").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^A-Za-z0-9 ]/g,"").trim(); return max ? l.slice(0,max) : l; };
+const maCRC = (p) => { let c = 0xFFFF; for(let i=0;i<p.length;i++){ c ^= (p.charCodeAt(i) << 8); for(let j=0;j<8;j++){ c = (c & 0x8000) ? ((c<<1) ^ 0x1021) & 0xFFFF : (c<<1) & 0xFFFF; } } return c.toString(16).toUpperCase().padStart(4,"0"); };
+const maTLV = (id, v) => id + String(v).length.toString().padStart(2,"0") + v;
+const maPix = ({pixKey, merchantName, merchantCity, amount, txid}) => {
+  if(!pixKey) return null;
+  const conta = maTLV("26", maTLV("00","br.gov.bcb.pix")+maTLV("01",pixKey));
+  const sem = maTLV("00","01")+conta+maTLV("52","0000")+maTLV("53","986")+(amount?maTLV("54",Number(amount).toFixed(2)):"")+maTLV("58","BR")+maTLV("59",maPixAscii(merchantName,25)||"LONGEVUS")+maTLV("60",maPixAscii(merchantCity,15)||"BRASIL")+maTLV("62",maTLV("05",maPixAscii(txid,25).replace(/\s/g,"")||"***"))+"6304";
+  return sem + maCRC(sem);
+};
+
+const maApi = {
+  async rpc(nome, body){ try{ const r = await fetch(SUPA_URL+"/rest/v1/rpc/"+nome, { method:"POST", headers: await authHeadersFn(), body: JSON.stringify(body) }); if(!r.ok) return null; return await r.json(); } catch(e){ return null; } },
+  async resultados(studentId){ try{ const r = await fetch(SUPA_URL+"/rest/v1/mente_resultados?select=id,jogo,pontos,data,created_at&student_id=eq."+encodeURIComponent(studentId)+"&order=created_at.desc&limit=400", { headers: await authHeadersFn() }); if(!r.ok) return []; return await r.json(); } catch(e){ return []; } },
+  async salvar(row){ try{ await fetch(SUPA_URL+"/rest/v1/mente_resultados", { method:"POST", headers:{ ...(await authHeadersFn()), Prefer:"return=minimal" }, body: JSON.stringify(row) }); } catch(e){} },
+  async avisar(ownerId, studentId){ try{ await fetch(SUPA_URL+"/rest/v1/l360_avisos", { method:"POST", headers:{ ...(await authHeadersFn()), Prefer:"return=minimal" }, body: JSON.stringify({ id:"av_"+Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4), owner_id:String(ownerId), student_id:String(studentId), servico:"Mente Ativa" }) }); } catch(e){} }
+};
+
+const maStats = (res) => {
+  const hoje = maDia();
+  const dias = {}; const hojeJogos = {};
+  (res||[]).forEach(r=>{ const d = maDia(r.created_at); dias[d] = true; if(d===hoje) hojeJogos[r.jogo] = true; });
+  let streak = 0; let cur = dias[hoje] ? hoje : maMaisDias(hoje,-1);
+  while(dias[cur]){ streak++; cur = maMaisDias(cur,-1); }
+  const dHoje = new Date(hoje+"T12:00:00");
+  const seg = maMaisDias(hoje, -((dHoje.getDay()+6)%7));
+  const ms = (res||[]).filter(r=>maDia(r.created_at)>=seg).reduce((a,r)=>a+(Number(r.data && r.data.tempo)||0),0);
+  return { streak, minSemana: Math.round(ms/60000), total:(res||[]).length, hojeJogos };
+};
+const maDesafio = () => { const n = Math.floor(new Date(maDia()+"T12:00:00").getTime()/86400000); return MA_JOGOS[n % MA_JOGOS.length]; };
+
+const MaTopo = ({ voltar, onVoltar, titulo, sub, children, href }) => (
+  <div style={{background:MA.escuro,color:"#F8FAFC",padding:"14px 16px 16px",borderRadius:"0 0 24px 24px"}}>
+    {href
+      ? <a href={href} style={{fontSize:13,fontWeight:700,color:"#CBD5E1",textDecoration:"none"}}>‹ {voltar}</a>
+      : <button type="button" onClick={onVoltar} style={{background:"transparent",border:"none",padding:0,fontSize:13,fontWeight:700,color:"#CBD5E1",cursor:"pointer"}}>‹ {voltar}</button>}
+    {titulo && <div style={{fontSize:22,fontWeight:800,marginTop:8}}>{titulo}</div>}
+    {sub && <div style={{fontSize:12.5,color:MA.cinzaClaro,marginTop:2,lineHeight:1.45}}>{sub}</div>}
+    {children}
+  </div>
+);
+const MaSecao = ({ children }) => <div style={{margin:"16px 16px 7px",fontSize:11,fontWeight:700,letterSpacing:"0.08em",color:MA.cinza,textTransform:"uppercase"}}>{children}</div>;
+const MaCartaoJogo = ({ j, feito, bloqueado, onClick }) => {
+  const g = maGrupo(j.grupo);
+  return (
+    <button type="button" onClick={bloqueado?undefined:onClick} style={{textAlign:"left",fontFamily:"inherit",cursor:bloqueado?"default":"pointer",background:"#fff",border:"none",borderRadius:14,padding:"11px 12px",boxShadow:"0 1px 2px rgba(15,23,42,0.06)",opacity:bloqueado?0.55:1,position:"relative",color:MA.escuro}}>
+      <span style={{display:"flex",width:32,height:32,borderRadius:10,alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:13,marginBottom:7,background:bloqueado?"#F1F5F9":g[2],color:bloqueado?MA.cinza:g[3]}}>{bloqueado?"🔒":j.nome.charAt(0)}</span>
+      {feito && !bloqueado && <span style={{position:"absolute",top:12,right:12,fontSize:10.5,fontWeight:700,color:MA.verde}}>✓ hoje</span>}
+      <span style={{display:"block",fontSize:13.5,fontWeight:800}}>{j.nome}</span>
+      <span style={{display:"block",fontSize:11,color:MA.cinza,marginTop:1}}>{j.desc}</span>
+    </button>
+  );
+};
+
+const MaPix = ({ cfg, prof, ownerId, studentId, nomeAluno }) => {
+  const qr = useRef(null);
+  const [copiado,setCopiado] = useState(false);
+  const [avisado,setAvisado] = useState(false);
+  const valor = Number(cfg.valor)||0;
+  const payload = prof && prof.pix_key && valor ? maPix({ pixKey:prof.pix_key, merchantName:prof.pix_merchant_name||prof.nome, merchantCity:prof.pix_merchant_city, amount:valor, txid:"MENTEATIVA" }) : null;
+  useEffect(()=>{ if(payload && qr.current && window.QRCode){ qr.current.innerHTML=""; new window.QRCode(qr.current,{ text:payload, width:160, height:160, colorDark:"#0f172a", colorLight:"#ffffff" }); } },[payload]);
+  const copiar = () => { try{ navigator.clipboard.writeText(payload).then(()=>{ setCopiado(true); setTimeout(()=>setCopiado(false),2500); }); }catch(e){} };
+  const pers = maPrimeiro(prof && (prof.nome || prof.pix_merchant_name)) || "personal";
+  const wa = maWa(prof && prof.whatsapp, "Oi, "+pers+"! Acabei de pagar o "+(cfg.nome||"Mente Ativa")+" pelo app. Pode liberar para mim?");
+  const waDuvida = maWa(prof && prof.whatsapp, "Oi, "+pers+"! Quero contratar o "+(cfg.nome||"Mente Ativa")+".");
+  return (
+    <div style={{margin:"16px 16px 0",background:"#fff",borderRadius:16,padding:14,textAlign:"center",boxShadow:"0 1px 2px rgba(15,23,42,0.06)"}}>
+      <div style={{fontSize:12,color:MA.cinza}}>Valor mensal</div>
+      <div style={{fontSize:24,fontWeight:800,marginBottom:10}}>{valor ? maReal(valor) : "A combinar"}</div>
+      {payload ? <div>
+        <div ref={qr} style={{display:"flex",justifyContent:"center",marginBottom:10}}/>
+        <button type="button" onClick={copiar} style={{width:"100%",height:46,borderRadius:23,border:"none",background:copiado?MA.verde:MA.laranja,color:"#fff",fontWeight:800,fontSize:14.5,cursor:"pointer"}}>{copiado?"Código copiado":"Copiar código Pix"}</button>
+        <div style={{fontSize:11.5,color:MA.cinzaClaro,marginTop:8}}>Escaneie no app do banco ou cole o código no Pix copia e cola.</div>
+        {wa && <a href={wa} target="_blank" rel="noopener noreferrer" onClick={()=>{ if(!avisado){ setAvisado(true); maApi.avisar(ownerId, studentId); } }} style={{display:"block",marginTop:12,height:46,lineHeight:"46px",borderRadius:23,background:avisado?"#F0FDF4":MA.verde,color:avisado?"#15803D":"#fff",border:avisado?"1.5px solid #BBF7D0":"none",fontWeight:800,fontSize:14,textDecoration:"none"}}>{avisado?"Aviso enviado ao seu personal":"Avisar que já paguei"}</a>}
+        <div style={{fontSize:11.5,color:MA.cinzaClaro,marginTop:10,lineHeight:1.5}}>Assim que o pagamento for confirmado, todos os jogos são liberados.</div>
+      </div> : (waDuvida ? <a href={waDuvida} target="_blank" rel="noopener noreferrer" style={{display:"block",height:46,lineHeight:"46px",borderRadius:23,background:MA.laranja,color:"#fff",fontWeight:800,fontSize:14,textDecoration:"none"}}>Quero contratar</a> : null)}
+    </div>
+  );
+};
+
+const MaResultado = ({ r, historico, nomeAluno, stats, onDeNovo, onOutro }) => {
+  const j = maJogo(r.jogo);
+  const doJogo = historico.filter(x=>x.jogo===r.jogo);
+  const anteriores = doJogo.slice(1);
+  const recorde = anteriores.reduce((m,x)=>Math.max(m, Number(x.pontos)||0), -1);
+  const bateu = anteriores.length>0 && r.pontos > recorde;
+  const ultimos = doJogo.slice(0,5).reverse();
+  const max = Math.max(1, ...ultimos.map(x=>Number(x.pontos)||0));
+  const hoje = maDia();
+  const titulo = bateu ? "Novo recorde, "+maPrimeiro(nomeAluno)+"!" : "Muito bem, "+maPrimeiro(nomeAluno)+"!";
+  const recordeTxt = anteriores.length===0 ? "Primeira vez neste jogo. Agora é bater a sua marca." : bateu ? "Você superou a sua melhor marca." : "Sua melhor marca: "+((anteriores.find(x=>Number(x.pontos)===recorde)||{}).data||{}).rotulo+".";
+  return (
+    <div style={{background:MA.fundo,minHeight:"100vh",color:MA.escuro}}>
+      <MaTopo voltar="Mente Ativa" onVoltar={onOutro} titulo={j.nome}/>
+      <div style={{padding:"18px 16px 30px"}}>
+        <div style={{background:"#fff",borderRadius:18,padding:18,textAlign:"center",boxShadow:"0 1px 2px rgba(15,23,42,0.06)"}}>
+          <div style={{width:52,height:52,borderRadius:"50%",background:bateu?"#FFEDD5":"#DCFCE7",margin:"0 auto 10px",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>{bateu?"🏆":<IcoCheck size={26} color={MA.verde}/>}</div>
+          <div style={{fontSize:20,fontWeight:800}}>{titulo}</div>
+          <div style={{fontSize:13,color:MA.cinza,marginTop:3,lineHeight:1.45}}>{recordeTxt}</div>
+          <div style={{display:"flex",gap:8,marginTop:14}}>
+            {[[r.rotulo,"resultado"],[r.tempo?maTempo(r.tempo):"—","tempo"],[stats.streak+(stats.streak===1?" dia":" dias"),"seguidos"]].map(([v,l])=>(
+              <div key={l} style={{flex:1,background:"#F8FAFC",borderRadius:12,padding:"9px 6px",fontSize:11,color:MA.cinza}}><b style={{display:"block",fontSize:15,color:MA.escuro}}>{v}</b>{l}</div>
+            ))}
+          </div>
+          {r.extra && <div style={{fontSize:11.5,color:MA.cinzaClaro,marginTop:10}}>{r.extra}</div>}
+        </div>
+        {ultimos.length>1 && <div style={{background:"#fff",borderRadius:18,padding:14,marginTop:12,boxShadow:"0 1px 2px rgba(15,23,42,0.06)"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#334155"}}>Sua evolução</div>
+          <div style={{fontSize:11.5,color:MA.cinza,marginTop:2}}>Últimas {ultimos.length} vezes neste jogo</div>
+          <div style={{display:"flex",alignItems:"flex-end",gap:10,height:90,margin:"12px 6px 22px"}}>
+            {ultimos.map((x,i)=>{ const d = maDia(x.created_at); const ult = i===ultimos.length-1; return (
+              <div key={x.id||i} style={{flex:1,height:Math.max(8,((Number(x.pontos)||0)/max)*100)+"%",background:ult?MA.laranja:"#E2E8F0",borderRadius:"6px 6px 3px 3px",position:"relative"}}>
+                <span style={{position:"absolute",bottom:-18,left:-6,right:-6,textAlign:"center",fontSize:10,color:MA.cinzaClaro}}>{d===hoje?"hoje":d.slice(8,10)+"/"+d.slice(5,7)}</span>
+              </div>); })}
+          </div>
+        </div>}
+        <button type="button" onClick={onDeNovo} style={{width:"100%",marginTop:14,borderRadius:14,padding:14,border:"none",background:MA.laranja,color:"#fff",fontWeight:800,fontSize:14.5,cursor:"pointer"}}>Jogar de novo</button>
+        <button type="button" onClick={onOutro} style={{width:"100%",marginTop:8,borderRadius:14,padding:14,border:"1.5px solid "+MA.borda,background:"#fff",color:"#334155",fontWeight:800,fontSize:14.5,cursor:"pointer"}}>Escolher outro jogo</button>
+        <div style={{fontSize:11.5,color:MA.cinzaClaro,textAlign:"center",marginTop:12}}>Seu personal acompanha seus resultados pelo painel.</div>
+      </div>
+    </div>
+  );
+};
+
+const MA_MODULOS = { genio:ModuleGenio, pares:ModulePares, sequencia:ModuleSequencia, baloes:ModuleBalloon, caca:ModuleCaca, padroes:ModulePadroes, listar:ModuleListar, completar:ModuleCompletar };
+
+function MenteAluno({ aluno }){
+  const [cfg,setCfg] = useState(null);
+  const [prof,setProf] = useState(null);
+  const [res,setRes] = useState(null);
+  const [tela,setTela] = useState("home");
+  const [ultimo,setUltimo] = useState(null);
+  const [rodada,setRodada] = useState(0);
+  const sd = aluno.data || {};
+  useEffect(()=>{
+    (async()=>{
+      const [c,p,r] = await Promise.all([ maApi.rpc("get_mente_config",{ prof_id:aluno.owner_id }), maApi.rpc("get_professional_pix_config",{ prof_id:aluno.owner_id }), maApi.resultados(aluno.id) ]);
+      setCfg(c && typeof c==="object" && !Array.isArray(c) ? c : {});
+      setProf(Array.isArray(p) ? (p[0]||null) : p);
+      setRes(Array.isArray(r) ? r : []);
+    })();
+  },[]);
+  if(!cfg || !res) return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:MA.cinzaClaro,fontSize:14}}>Carregando...</div>;
+  const hoje = maDia();
+  const tol = parseInt(prof && prof.tolerancia_vencimento_dias) || 0;
+  const s = sd.mente || {};
+  const dias = s.vencimento ? Math.round((new Date(s.vencimento+"T12:00:00") - new Date(hoje+"T12:00:00"))/86400000) : null;
+  const liberado = !cfg.ativo || s.status==="bonus" || (s.status==="pago" && dias!==null && dias >= -tol);
+  const nomeProduto = cfg.nome || "Mente Ativa";
+  const stats = maStats(res);
+  const salvar = (r) => {
+    const row = { id:"mr_"+Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4), owner_id:String(aluno.owner_id), student_id:String(aluno.id), jogo:r.jogo, pontos:r.pontos, data:{ rotulo:r.rotulo, extra:r.extra, tempo:r.tempo }, created_at:new Date().toISOString() };
+    setRes(p=>[row].concat(p||[]));
+    setUltimo({ ...r, created_at:row.created_at });
+    setTela("resultado");
+    maApi.salvar({ id:row.id, owner_id:row.owner_id, student_id:row.student_id, jogo:row.jogo, pontos:row.pontos, data:row.data });
+  };
+  const abrir = (id) => { setRodada(n=>n+1); setTela(id); window.scrollTo(0,0); };
+
+  if(tela==="resultado" && ultimo) return <MaResultado r={ultimo} historico={res} nomeAluno={sd.name} stats={maStats(res)} onDeNovo={()=>abrir(ultimo.jogo)} onOutro={()=>{ setTela("home"); window.scrollTo(0,0); }}/>;
+  if(MA_MODULOS[tela]){
+    const M = MA_MODULOS[tela];
+    return (
+      <div>
+        <div style={{background:MA.escuro,height:40,boxSizing:"border-box",padding:"0 16px",display:"flex",alignItems:"center",position:"sticky",top:0,zIndex:30}}>
+          <button type="button" onClick={()=>setTela("home")} style={{background:"transparent",border:"none",padding:0,fontSize:13,fontWeight:700,color:"#CBD5E1",cursor:"pointer"}}>‹ {nomeProduto}</button>
+        </div>
+        <M key={tela+rodada} onBack={()=>setTela("home")} onResult={salvar}/>
+      </div>
+    );
+  }
+
+  if(!liberado){
+    const venceu = s.status==="pago";
+    const beneficios = Array.isArray(cfg.beneficios) && cfg.beneficios.length ? cfg.beneficios : MA_BENEFICIOS;
+    return (
+      <div style={{background:MA.fundo,minHeight:"100vh",color:MA.escuro,paddingBottom:30}}>
+        <MaTopo voltar="Voltar ao app" href="aluno.html">
+          <div style={{marginTop:14}}><span style={{display:"inline-block",fontSize:10.5,fontWeight:800,color:"#FDBA74",background:"rgba(255,86,3,0.18)",borderRadius:20,padding:"4px 10px"}}>{venceu?"SEU ACESSO VENCEU":"PLANO MENSAL"}</span></div>
+          <div style={{fontSize:22,fontWeight:800,marginTop:8}}>{nomeProduto}</div>
+          <div style={{fontSize:13.5,color:MA.cinzaClaro,lineHeight:1.5,marginTop:6}}>O corpo você treina comigo. A mente, você treina em casa, 10 minutos por dia.</div>
+        </MaTopo>
+        <MaSecao>O que você ganha</MaSecao>
+        <div style={{margin:"0 16px",background:"#fff",borderRadius:16,padding:"4px 14px",boxShadow:"0 1px 2px rgba(15,23,42,0.06)"}}>
+          {beneficios.map((b,i)=><div key={i} style={{padding:"9px 0",fontSize:13.5,borderTop:i?"1px solid #F1F5F9":"none",display:"flex",gap:8}}><span style={{color:MA.laranja,fontWeight:800}}>✓</span>{b}</div>)}
+        </div>
+        <MaSecao>Experimente grátis</MaSecao>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,margin:"0 16px"}}>
+          <MaCartaoJogo j={maJogo(MA_GRATIS)} feito={stats.hojeJogos[MA_GRATIS]} onClick={()=>abrir(MA_GRATIS)}/>
+          <MaCartaoJogo j={{ nome:"Outros 7 jogos", desc:"Com o plano", grupo:"atencao" }} bloqueado/>
+        </div>
+        {res.length>0 && <div style={{margin:"10px 16px 0",fontSize:12,color:MA.cinza,textAlign:"center"}}>Seus resultados ficam guardados. Ao liberar, você continua de onde parou.</div>}
+        <MaPix cfg={cfg} prof={prof} ownerId={aluno.owner_id} studentId={aluno.id} nomeAluno={sd.name}/>
+      </div>
+    );
+  }
+
+  const desafio = maDesafio();
+  return (
+    <div style={{background:MA.fundo,minHeight:"100vh",color:MA.escuro,paddingBottom:30}}>
+      <MaTopo voltar="Voltar ao app" href="aluno.html" titulo={nomeProduto} sub="Memória, atenção e raciocínio, 10 minutos por dia">
+        <div style={{display:"flex",gap:8,marginTop:14}}>
+          {[[stats.streak+(stats.streak===1?" dia":" dias"),"seguidos"],[stats.minSemana+" min","esta semana"],[String(stats.total),stats.total===1?"jogo feito":"jogos feitos"]].map(([v,l])=>(
+            <div key={l} style={{flex:1,background:MA.escuro2,borderRadius:12,padding:"9px 10px",fontSize:11,color:MA.cinzaClaro}}><b style={{display:"block",fontSize:17,color:"#fff"}}>{v}</b>{l}</div>
+          ))}
+        </div>
+      </MaTopo>
+      <button type="button" onClick={()=>abrir(desafio.id)} style={{display:"flex",width:"calc(100% - 32px)",margin:"14px 16px 0",textAlign:"left",fontFamily:"inherit",cursor:"pointer",border:"none",background:"linear-gradient(90deg,#FF5603,#FF7A2E)",borderRadius:16,padding:"12px 12px 12px 14px",color:"#fff",alignItems:"center",gap:12}}>
+        <span style={{flex:1}}>
+          <span style={{display:"block",fontSize:10,fontWeight:800,letterSpacing:"0.12em",opacity:0.9}}>{stats.hojeJogos[desafio.id]?"DESAFIO DE HOJE · FEITO":"DESAFIO DE HOJE"}</span>
+          <span style={{display:"block",fontSize:17,fontWeight:800}}>{desafio.nome}</span>
+          <span style={{display:"block",fontSize:11.5,opacity:0.92}}>{maGrupo(desafio.grupo)[1]+" · cerca de "+desafio.tempo}</span>
+        </span>
+        <span style={{width:40,height:40,borderRadius:"50%",background:"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><IcoPlay size={14} color="#E8581A"/></span>
+      </button>
+      {MA_GRUPOS.map(g=>(
+        <div key={g[0]}>
+          <MaSecao>{g[1]}</MaSecao>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,margin:"0 16px"}}>
+            {MA_JOGOS.filter(j=>j.grupo===g[0]).map(j=><MaCartaoJogo key={j.id} j={j} feito={stats.hojeJogos[j.id]} onClick={()=>abrir(j.id)}/>)}
+          </div>
+        </div>
+      ))}
+      {s.status==="pago" && dias!==null && dias<=5 && <div style={{margin:"16px 16px 0",fontSize:12,color:MA.laranjaTxt,background:"#FFF4EE",borderRadius:12,padding:"9px 12px",textAlign:"center"}}>{dias>0?"Seu acesso vence em "+dias+(dias===1?" dia.":" dias."):dias===0?"Seu acesso vence hoje.":"Seu acesso venceu. Renove para continuar."}</div>}
+    </div>
+  );
+}
+
+function SemCadastro(){
+  return (
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:MA.fundo,padding:20}}>
+      <div style={{background:"#fff",borderRadius:16,padding:26,maxWidth:360,textAlign:"center"}}>
+        <div style={{fontWeight:800,fontSize:18,marginBottom:8}}>Não encontramos seu cadastro</div>
+        <div style={{fontSize:13,color:MA.cinza,lineHeight:1.5,marginBottom:18}}>Entre primeiro pelo app do aluno, com o mesmo e-mail que o seu personal cadastrou.</div>
+        <a href="aluno.html" style={{display:"block",padding:12,borderRadius:10,background:MA.laranja,color:"#fff",fontWeight:700,textDecoration:"none",marginBottom:10}}>Abrir o app do aluno</a>
+        <button onClick={()=>supa.auth.signOut()} style={{border:"none",background:"transparent",color:MA.cinzaClaro,fontSize:13,cursor:"pointer",textDecoration:"underline"}}>Sair</button>
+      </div>
+    </div>
+  );
+}
+
 function App(){
 const [session,setSession]=useState(null);
 const [authLoading,setAuthLoading]=useState(true);
 const [recoveryMode,setRecoveryMode]=useState(false);
 const [billing,setBilling]=useState(null);
+const [aluno,setAluno]=useState(undefined);
 useEffect(()=>{
 supa.auth.getSession().then(({data})=>{ setSession(data?.session||null); setAuthLoading(false); });
 const { data: listener } = supa.auth.onAuthStateChange((event, sess)=>{
@@ -3766,15 +4059,23 @@ if (event==="PASSWORD_RECOVERY") setRecoveryMode(true);
 return ()=>{ listener?.subscription?.unsubscribe(); };
 },[]);
 useEffect(()=>{
-if (!session) { setBilling(null); return; }
+if (!session) { setBilling(null); setAluno(undefined); return; }
 (async()=>{
 try {
 const headers = await authHeadersFn();
 const r = await fetch(SUPA_URL+"/rest/v1/professionals?select=plano,status_assinatura,trial_ends_at&id=eq."+session.user.id, { headers });
-const rows = await r.json();
-const p = rows?.[0]||{};
+const rows = r.ok ? await r.json() : [];
+if (rows && rows.length) {
+const p = rows[0]||{};
+setAluno(null);
 setBilling({ plano:p.plano||"trial", status_assinatura:p.status_assinatura||"ativo", trial_ends_at:p.trial_ends_at });
-} catch(e) { setBilling({ plano:"trial", status_assinatura:"ativo", trial_ends_at:null }); }
+return;
+}
+const ra = await fetch(SUPA_URL+"/rest/v1/students?select=id,owner_id,data&limit=1", { headers });
+const al = ra.ok ? await ra.json() : [];
+setAluno(al && al.length ? al[0] : false);
+setBilling({ aluno:true });
+} catch(e) { setAluno(null); setBilling({ plano:"trial", status_assinatura:"ativo", trial_ends_at:null }); }
 })();
 },[session]);
 if (authLoading) {
@@ -3788,6 +4089,9 @@ return <Login onLogin={()=>{}}/>;
 }
 if (!billing) {
 return <div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14 }}>Carregando...</div>;
+}
+if (billing.aluno) {
+return aluno ? <MenteAluno aluno={aluno}/> : <SemCadastro/>;
 }
 const trialEnd = billing.trial_ends_at ? new Date(billing.trial_ends_at) : null;
 const trialExpired = billing.plano==="trial" && trialEnd && trialEnd.getTime() < Date.now();
