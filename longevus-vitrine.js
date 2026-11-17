@@ -382,6 +382,8 @@
       h("div", { style: { fontSize: 13, color: "#166534", lineHeight: 1.5 } }, "Agora é só combinar o melhor dia."),
       wa ? h("a", { href: wa, target: "_blank", rel: "noopener noreferrer", onClick: onClique, style: { display: "block", marginTop: 14, height: 48, lineHeight: "48px", borderRadius: 24, background: "#16A34A", color: "#fff", fontWeight: 800, fontSize: 15, textDecoration: "none" } }, "Agendar pelo WhatsApp") : null);
   };
+  const MSG_INDIQUE = "Oi, {amigo}! Tudo bem?\n\nEstou treinando com o {personal}, meu personal trainer, e tenho gostado muito dos resultados. Lembrei de você!\n\nPor indicação minha, você ganha {beneficio} para conhecer o trabalho dele, sem compromisso.\n\nPassei seu contato para ele, tá? Ele vai te chamar aqui no WhatsApp para combinar o melhor horário. 😊";
+  const msgIndique = (tpl, v) => String(tpl && tpl.trim() ? tpl : MSG_INDIQUE).replace(/\{(amigo|aluno|personal|beneficio)\}/g, (m, k) => (k === "beneficio" ? (v.beneficio ? "*" + v.beneficio + "*" : "um presente") : (v[k] || "")));
   const ST_INDIC = { enviado: ["Convite enviado", "#F1F5F9", "#64748B"], conversa: ["Em conversa", "#FFEDD5", "#C2410C"], aluno: ["🎁 Prêmio liberado", "#DCFCE7", "#15803D"], descartado: ["Não fechou", "#F1F5F9", "#94A3B8"] };
   const IndiqueTela = ({ item, ctx, ownerId, studentId, onFechar }) => {
     const [lista, setLista] = useState(null);
@@ -407,8 +409,7 @@
       const row = { id: novoId("in"), owner_id: String(ownerId), student_id: String(studentId), nome, whatsapp: fmtWhats(dg), status: "enviado", premio: item.premio || null };
       (async () => { try { await fetch(SUPA_URL + "/rest/v1/indicacoes", { method: "POST", headers: { ...(await api.headers()), Prefer: "return=minimal" }, body: JSON.stringify(row) }); } catch (e) {} })();
       setLista((p) => [{ ...row, created_at: new Date().toISOString() }].concat(p || []));
-      const linkPers = waLink(ctx.personalWhats, "Oi, " + pers + "! Vim por indicação de " + primeiroNome(ctx.aluno) + ".");
-      const msg = "Oi, " + primeiroNome(nome) + "! Tudo bem?\n\nEu treino com o " + (ctx.personal || "Wellington Brito") + ", personal trainer especialista em pessoas de 50+, e lembrei de você." + (benef ? "\n\nPor indicação minha, você ganha: " + benef + "." : "") + (linkPers ? "\n\nÉ só chamar ele aqui: " + linkPers : "");
+      const msg = msgIndique(item.mensagem, { amigo: primeiroNome(nome), aluno: primeiroNome(ctx.aluno), personal: ctx.personal || "Wellington Brito", beneficio: benef });
       const wa = waLink(dg, msg);
       setEnviado(primeiroNome(nome));
       setF({ nome: "", whatsapp: "" });
@@ -516,6 +517,7 @@
     return itens;
   };
 
+  const txtBenef = (b) => (b && typeof b === "object" ? b.nome || "" : b || "");
   const ClubeTela = (p) => {
     const ctx = contexto(p);
     const [copiado, setCopiado] = useState(null);
@@ -527,6 +529,12 @@
       try { navigator.clipboard.writeText(d.cupom).then(() => { setCopiado(d.id); setTimeout(() => setCopiado(null), 2000); }); } catch (e) {}
     };
     const linha = (d) => {
+      if (d.produto === "indique") return h("div", { key: d.id, onClick: () => { setDetalhe(d); api.registrar(p.ownerId, d.id, p.studentId, "abriu"); }, style: { cursor: "pointer", borderRadius: 16, padding: "12px 13px", marginBottom: 8, display: "flex", alignItems: "center", gap: 11, color: "#fff", background: "linear-gradient(120deg,#FF5603,#FF8A3D)", boxShadow: "0 6px 14px rgba(255,86,3,0.25)" } },
+        h("div", { style: { width: 44, height: 44, borderRadius: 12, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 } }, "🎁"),
+        h("div", { style: { flex: 1, minWidth: 0 } },
+          h("div", { style: { fontSize: 14, fontWeight: 800 } }, "Indique um amigo e ganhe prêmios"),
+          h("div", { style: { fontSize: 12, opacity: 0.92, marginTop: 1 } }, "Você ganha " + (txtBenef(d.premio) || "um prêmio"))),
+        h("span", { style: { background: "#fff", color: COR.laranjaTxt, borderRadius: 10, padding: "7px 11px", fontWeight: 800, fontSize: 12.5, whiteSpace: "nowrap" } }, "Indicar"));
       const href = linkDoItem(d, ctx);
       return h("div", { key: d.id, style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 16, padding: "12px 13px", marginBottom: 8 } },
         h("div", { onClick: () => { setDetalhe(d); api.registrar(p.ownerId, d.id, p.studentId, "abriu"); }, style: { display: "flex", alignItems: "center", gap: 11, cursor: "pointer" } },
@@ -536,7 +544,7 @@
             d.profissional ? h("div", { style: { fontSize: 12, fontWeight: 700, color: "#334155" } }, d.profissional + (d.especialidade ? " · " + d.especialidade : "")) : null,
             h("div", { style: { fontSize: 12, color: COR.cinza, lineHeight: 1.4 } }, d.texto || (d.tipo === "parceiro" ? categoria(d.categoria)[1] : "")),
             h("div", { style: { fontSize: 12, fontWeight: 800, color: COR.laranjaTxt, marginTop: 2 } }, "Saiba mais ›")),
-          d.beneficio ? h("span", { style: { fontSize: 12, fontWeight: 800, color: d.tipo === "parceiro" ? COR.verde : COR.laranjaTxt, whiteSpace: "nowrap" } }, d.beneficio) : null),
+          d.beneficio ? h("span", { style: { fontSize: 12, fontWeight: 800, color: d.tipo === "parceiro" ? COR.verde : COR.laranjaTxt, whiteSpace: "nowrap" } }, txtBenef(d.beneficio)) : null),
         h("div", { style: { display: "flex", gap: 8, marginTop: 10 } },
           d.cupom ? h("button", { type: "button", onClick: () => copiar(d), style: { flex: 1, height: 38, borderRadius: 10, border: "1.5px dashed #FDBA74", background: "#FFF7ED", color: COR.laranjaTxt, fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" } }, copiado === d.id ? "Cupom copiado" : "Cupom " + d.cupom) : null,
           ehPix(d) ? h("button", { type: "button", onClick: () => { setDetalhe(d); api.registrar(p.ownerId, d.id, p.studentId, "abriu"); }, style: { flex: 1, height: 38, borderRadius: 10, border: "none", background: COR.laranja, color: "#fff", fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" } }, "Ver e pagar · " + fmtReal(valorPix(d)))
@@ -790,6 +798,7 @@
   const FormIndique = ({ inicial, opcoes, onSalvar, onCancelar, onApagar }) => {
     const [d, setD] = useState(() => ({ id: "vi_indique", produto: "indique", tipo: "proprio", categoria: "outro", titulo: "Indique e ganhe", publico: "todos", ativo: true, premio: opcoes[0] || null, beneficio: comGratis(opcoes.find((o) => /avalia/i.test(o.nome)) || opcoes[2] || opcoes[0] || null), ...(inicial || {}) }));
     const [outro, setOutro] = useState(() => (inicial && inicial.beneficio && inicial.beneficio.tipo === "texto") ? inicial.beneficio.nome : "");
+    const [mensagem, setMensagem] = useState(() => (inicial && inicial.mensagem) || MSG_INDIQUE);
     const [salvando, setSalvando] = useState(false);
     const [erro, setErro] = useState("");
     const chip = (o, sel, onClick) => h("button", { key: o.tipo + o.id, type: "button", onClick, style: { padding: "9px 12px", borderRadius: 11, border: "1.5px solid " + (sel ? COR.laranja : COR.borda), background: sel ? "#FFF4EE" : "#fff", color: sel ? COR.laranjaTxt : "#334155", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", textAlign: "left" } }, (sel ? "● " : "○ ") + o.nome);
@@ -800,7 +809,7 @@
       if (!d.premio) return setErro("Escolha o prêmio de quem indica.");
       if (!benef || !benef.nome) return setErro("Escolha ou escreva o benefício do amigo.");
       setSalvando(true);
-      const ok = await onSalvar({ ...d, beneficio: benef, atualizadoEm: new Date().toISOString() });
+      const ok = await onSalvar({ ...d, beneficio: benef, mensagem: mensagem.trim() || MSG_INDIQUE, atualizadoEm: new Date().toISOString() });
       setSalvando(false);
       if (!ok) setErro("Não consegui salvar. Confira se o SQL da vitrine foi rodado.");
     };
@@ -820,6 +829,14 @@
           opcoes.map((o) => chip(comGratis(o), igual(d.beneficio, o), () => setD({ ...d, beneficio: comGratis(o) }))),
           chip({ tipo: "texto", id: "texto", nome: "Outro (escrever)" }, d.beneficio && d.beneficio.tipo === "texto", () => setD({ ...d, beneficio: { tipo: "texto", id: "texto", nome: outro } }))),
         d.beneficio && d.beneficio.tipo === "texto" ? h("input", { value: outro, onChange: (e) => setOutro(e.target.value), placeholder: "Ex.: Aula experimental grátis", style: { width: "100%", boxSizing: "border-box", marginTop: 8, padding: "10px 12px", borderRadius: 9, border: "1.5px solid " + COR.borda, fontSize: 14, fontFamily: "inherit" } }) : null),
+      h("div", { style: card },
+        h("div", { style: { fontWeight: 800, fontSize: 14, marginBottom: 3 } }, "Mensagem do convite"),
+        h("div", { style: { fontSize: 12, color: COR.cinza, marginBottom: 8, lineHeight: 1.5 } }, "É o texto que o aluno manda para o amigo. Use {amigo}, {aluno}, {personal} e {beneficio}: o app troca pelos nomes certos. O benefício aparece em negrito no WhatsApp."),
+        h("textarea", { rows: 9, value: mensagem, onChange: (e) => setMensagem(e.target.value), style: { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 9, border: "1.5px solid " + COR.borda, fontSize: 13.5, fontFamily: "inherit", lineHeight: 1.5, resize: "vertical" } }),
+        h("button", { type: "button", onClick: () => setMensagem(MSG_INDIQUE), style: { marginTop: 6, background: "transparent", border: "none", padding: 0, color: COR.laranjaTxt || "#C2410C", fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "Voltar ao texto padrão"),
+        h("div", { style: { marginTop: 10, background: "#E9F5F2", borderRadius: 12, padding: 12, fontSize: 13, lineHeight: 1.5, color: "#0F6E56", whiteSpace: "pre-wrap" } },
+          h("div", { style: { fontSize: 11, fontWeight: 800, letterSpacing: "0.06em", marginBottom: 4 } }, "EXEMPLO: COMO O AMIGO RECEBE"),
+          msgIndique(mensagem, { amigo: "Maria", aluno: "Karina", personal: "Wellington Brito", beneficio: d.beneficio ? (d.beneficio.tipo === "texto" ? outro : d.beneficio.nome) : "" }))),
       h("div", { style: { ...card, background: "#FFF7ED", borderColor: "#FDE7D3" } },
         h("div", { style: { fontSize: 11, fontWeight: 700, color: "#9A3412", letterSpacing: "0.06em", marginBottom: 6 } }, "COMO O ALUNO VÊ"),
         h("div", { style: { fontSize: 13.5, color: "#7C2D12", lineHeight: 1.5 } }, "Você ganha: ", h("b", null, (d.premio && d.premio.nome) || "—"), h("br"), "Seu amigo ganha: ", h("b", null, d.beneficio ? (d.beneficio.tipo === "texto" ? (outro || "—") : d.beneficio.nome) : "—"))),
@@ -915,7 +932,7 @@
             h(Icone, { item: d }),
             h("div", { style: { flex: 1, minWidth: 0, cursor: "pointer" }, onClick: () => setEditando(d) },
               h("div", { style: { fontSize: 14, fontWeight: 800 } }, d.titulo),
-              h("div", { style: { fontSize: 12, color: COR.cinza } }, (d.tipo === "parceiro" ? "Parceiro" : "Seu serviço") + (d.beneficio ? " · " + d.beneficio : "") + (d.cupom ? " · " + d.cupom : "") + " · " + (PUBLICOS.find((x) => x[0] === (d.publico || "todos")) || PUBLICOS[0])[1])),
+              h("div", { style: { fontSize: 12, color: COR.cinza } }, (d.tipo === "parceiro" ? "Parceiro" : "Seu serviço") + (d.beneficio ? " · " + txtBenef(d.beneficio) : "") + (d.cupom ? " · " + d.cupom : "") + " · " + (PUBLICOS.find((x) => x[0] === (d.publico || "todos")) || PUBLICOS[0])[1])),
             h("button", { type: "button", onClick: () => alternar(d), "aria-label": on ? "Tirar do app" : "Mostrar no app", style: { width: 44, height: 24, borderRadius: 12, border: "none", background: on ? COR.laranja : "#CBD5E1", position: "relative", cursor: "pointer", flexShrink: 0 } }, h("span", { style: { position: "absolute", top: 3, left: on ? 23 : 3, width: 18, height: 18, borderRadius: 9, background: "#fff", transition: "left 0.2s" } }))),
           h("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 12, color: COR.cinza, marginTop: 8, paddingTop: 8, borderTop: "1px solid #F1F5F9" } },
             h("span", null, vencida ? "Vencida em " + d.validade.split("-").reverse().join("/") : on ? "No app" : "Pausada"),
