@@ -19,8 +19,8 @@
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="longevus-aluno-extras.js?v=22"></script>
-<script src="longevus-vitrine.js?v=4"></script>
+<script src="longevus-aluno-extras.js?v=23"></script>
+<script src="longevus-vitrine.js?v=5"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -930,7 +930,7 @@ const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, atividadesSemDa
   return (
     <div style={{height:"calc(100dvh - 66px - env(safe-area-inset-bottom))",display:"flex",flexDirection:"column",overflowY:"auto"}}>
       <XX.InicioTopo firstName={firstName} treinoHojeLabel={treinoHojeLabel} semTreino={semTreino} onIrTreino={onIrTreino} onLogout={onLogout} onIr={onIr} studentId={studentId} studentData={studentData} l360={l360} ownerId={ownerId} profNome={profPix && (profPix.nome || profPix.pix_merchant_name)} profWhats={profPix && profPix.whatsapp}/>
-      <div style={{flexShrink:0,padding:"12px 18px 4px"}}>
+      <div style={{flexShrink:0,padding:"12px 16px 12px"}}>
         {totalHoje>0 && (
           <div style={{marginBottom:6}}>
             <div style={{fontSize:11.5,fontWeight:700,letterSpacing:"0.08em",color:"#64748B",textTransform:"uppercase",marginBottom:6}}>{"Hoje · "+concluidasHoje+" de "+totalHoje+" feito"+(concluidasHoje===1?"":"s")}</div>
@@ -938,17 +938,17 @@ const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, atividadesSemDa
           </div>
         )}
         <div>
-          <div style={{fontSize:11.5,fontWeight:700,letterSpacing:"0.08em",color:"#64748B",textTransform:"uppercase",marginBottom:6}}>{"Quando você quiser"+(atividadesSemData.length>1?" · deslize para o lado":"")}</div>
+          {atividadesSemData.length>0 && <div style={{fontSize:11.5,fontWeight:700,letterSpacing:"0.08em",color:"#64748B",textTransform:"uppercase",marginBottom:6}}>{"Quando você quiser"+(atividadesSemData.length>1?" · deslize para o lado":"")}</div>}
             {atividadesSemData.length>0 && faixa(atividadesSemData, (atv)=><AtividadeCard atividade={atv} concluida={!!concluidasMap[atv._id]} ultimaConclusao={ultimaConclusaoMap?.[atv._id]} onToggle={onToggleAtividade} bibCustom={bibCustom} onSalvarExercicios={onSalvarExercicios} sessaoSalva={getSessaoAtividade(atv._id)}/>)}
           {onAtividadeExtra && (
-            <div style={{marginTop:atividadesSemData.length>0?8:0,background:"#fff",borderRadius:16,padding:"12px 14px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 1px 2px rgba(15,23,42,0.06)"}}>
-              <div style={{width:38,height:38,borderRadius:11,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon name="activity" size={20} color="#FF5603"/></div>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:14.5,fontWeight:800,color:"#0F172A"}}>Atividade extra</div>
-                <div style={{fontSize:12,color:"#64748B",marginTop:1}}>Registre o que fez fora do treino</div>
-              </div>
-              <button type="button" onClick={onAtividadeExtra} style={{flexShrink:0,background:"#FF5603",color:"#fff",border:"none",borderRadius:12,padding:"9px 14px",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>Registrar</button>
-            </div>
+            <button type="button" onClick={onAtividadeExtra} style={{width:"100%",textAlign:"left",fontFamily:"inherit",cursor:"pointer",border:"none",marginTop:atividadesSemData.length>0?8:0,background:"#fff",borderRadius:14,padding:"9px 12px",display:"flex",alignItems:"center",gap:10,boxShadow:"0 1px 2px rgba(15,23,42,0.06)"}}>
+              <span style={{width:32,height:32,borderRadius:10,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Icon name="activity" size={17} color="#FF5603"/></span>
+              <span style={{flex:1,minWidth:0}}>
+                <span style={{display:"block",fontSize:13.5,fontWeight:800,color:"#0F172A"}}>Atividade extra</span>
+                <span style={{display:"block",fontSize:11.5,color:"#64748B",marginTop:1}}>Caminhada, bike, pilates...</span>
+              </span>
+              <span style={{flexShrink:0,color:"#C2410C",fontWeight:800,fontSize:13}}>Registrar ›</span>
+            </button>
           )}
         </div>
       </div>

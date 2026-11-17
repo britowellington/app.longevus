@@ -394,19 +394,14 @@
   const CartaoOferta = ({ item, ctx, onClique, especial, onAbrir }) => {
     const proprio = item.tipo !== "parceiro";
     const escuro = proprio || especial;
-    const pix = ehPix(item);
-    const href = especial || pix ? null : linkDoItem(item, ctx);
-    const rotulo = item.botao || (pix ? "Quero fazer · " + fmtReal(valorNum(item.valor)) : proprio ? "Quero saber mais" : "Quero o desconto");
-    const btnStyle = { display: "block", textAlign: "center", borderRadius: 12, padding: "9px 10px", fontSize: 13, fontWeight: 800, textDecoration: "none", background: COR.laranja, color: "#fff", border: "none", fontFamily: "inherit", cursor: "pointer", marginTop: "auto" };
-    return h("div", { onClick: especial ? void 0 : onAbrir, style: { cursor: especial ? "default" : "pointer", flex: "0 0 84%", scrollSnapAlign: "start", boxSizing: "border-box", borderRadius: 18, padding: "13px 14px", display: "flex", flexDirection: "column", gap: 6, minHeight: 150, background: escuro ? COR.escuro : "#fff", color: escuro ? "#F8FAFC" : COR.escuro, border: "1.5px solid " + (escuro ? COR.laranja : COR.borda) } },
-      h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 } }, h(Selo, { tipo: item.tipo }), item.beneficio ? h("span", { style: { fontSize: 11, fontWeight: 800, color: escuro ? "#FDBA74" : COR.laranjaTxt, whiteSpace: "nowrap" } }, item.beneficio) : null),
-      h("div", { style: { fontSize: 16, fontWeight: 800, lineHeight: 1.2 } }, item.titulo),
-      item.texto ? h("div", { style: { fontSize: 12, lineHeight: 1.45, color: escuro ? "#CBD5E1" : COR.cinza } }, item.texto) : null,
-      !especial ? h("span", { style: { fontSize: 12, fontWeight: 800, color: escuro ? "#FDBA74" : COR.laranjaTxt } }, "Saiba mais ›") : null,
-      especial ? h("button", { type: "button", onClick: onClique, style: btnStyle }, rotulo)
-        : pix ? h("button", { type: "button", onClick: (e) => { e.stopPropagation(); onAbrir && onAbrir(); }, style: btnStyle }, rotulo)
-        : href ? h("a", { href, target: "_blank", rel: "noopener noreferrer", onClick: (e) => { e.stopPropagation(); onClique && onClique(); }, style: btnStyle }, rotulo)
-        : h("span", { style: { ...btnStyle, background: "#cbd5e1", cursor: "default" } }, "Em breve"));
+    const sub = item.beneficio || item.texto || "";
+    const rotulo = especial ? (item.botao || "Conhecer") : "Saiba mais";
+    return h("div", { onClick: especial ? void 0 : onAbrir, style: { cursor: especial ? "default" : "pointer", flex: "0 0 84%", minWidth: 0, scrollSnapAlign: "start", boxSizing: "border-box", borderRadius: 16, padding: "11px 12px 11px 14px", display: "flex", alignItems: "center", gap: 10, background: escuro ? COR.escuro : "#fff", color: escuro ? "#F8FAFC" : COR.escuro, border: "1.5px solid " + (escuro ? COR.laranja : COR.borda) } },
+      h("div", { style: { flex: 1, minWidth: 0 } },
+        h("div", { style: { fontSize: 10, fontWeight: 800, letterSpacing: "0.04em", color: escuro ? "#FDBA74" : COR.verde, textTransform: "uppercase" } }, especial ? "Plano mensal" : proprio ? "Do seu personal" : "Parceiro"),
+        h("div", { style: { fontSize: 15, fontWeight: 800, lineHeight: 1.2, marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, item.titulo),
+        sub ? h("div", { style: { fontSize: 11.5, color: escuro ? "#CBD5E1" : COR.cinza, marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, sub) : null),
+      h("button", { type: "button", onClick: (e) => { e.stopPropagation(); if (especial) { onClique && onClique(); } else { onAbrir && onAbrir(); } }, style: { flexShrink: 0, border: "none", borderRadius: 10, padding: "8px 11px", fontSize: 12, fontWeight: 800, background: COR.laranja, color: "#fff", fontFamily: "inherit", cursor: "pointer", whiteSpace: "nowrap" } }, rotulo));
   };
 
   const contexto = (p) => {
@@ -478,7 +473,7 @@
     const abrir = (d) => { setDetalhe(d); api.registrar(p.ownerId, d.id, p.studentId, "abriu"); };
     const lista = (itens || []).filter((d) => publicoOk(d, ctx));
     const cards = [];
-    if (ctx.anuncia360) cards.push({ id: "__360", especial: true, tipo: "proprio", titulo: (p.l360.cfg && p.l360.cfg.nome) || "Longevus 360", texto: "Seu treino e sua alimentação conversando todos os dias.", botao: p.l360.vencido ? "Renovar o 360" : "Conhecer o 360" });
+    if (ctx.anuncia360) cards.push({ id: "__360", especial: true, tipo: "proprio", titulo: (p.l360.cfg && p.l360.cfg.nome) || "Longevus 360", texto: "Treino e alimentação conversando todos os dias.", botao: p.l360.vencido ? "Renovar" : "Conhecer" });
     lista.forEach((d) => cards.push(d));
     useEffect(() => {
       lista.forEach((d) => registrarVisto(p.ownerId, p.studentId, d.id));
@@ -493,12 +488,12 @@
       setAtivo(Math.max(0, Math.min(cards.length - 1, Math.round(el.scrollLeft / w))));
     };
     return h("div", { style: { flexShrink: 0 } },
-      h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "0 18px", marginBottom: 7 } },
+      h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "0 16px", marginBottom: 7 } },
         h("span", { style: { fontSize: 11.5, fontWeight: 700, letterSpacing: "0.08em", color: COR.cinza, textTransform: "uppercase" } }, "Para você"),
         h("button", { type: "button", onClick: () => setClube(true), style: { background: "transparent", border: "none", padding: 0, fontSize: 12.5, fontWeight: 800, color: COR.laranjaTxt, cursor: "pointer", fontFamily: "inherit" } }, "Clube Longevus ›")),
-      h("div", { ref: trilho, onScroll: aoRolar, style: { display: "flex", gap: 10, overflowX: "auto", scrollSnapType: "x mandatory", padding: "0 18px", scrollPaddingLeft: 18, scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } },
+      h("div", { ref: trilho, onScroll: aoRolar, style: { display: "flex", gap: 10, overflowX: "auto", scrollSnapType: "x mandatory", padding: "0 16px", scrollPaddingLeft: 16, scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } },
         cards.map((d) => h(CartaoOferta, { key: d.id, item: d, ctx, especial: d.especial, onAbrir: () => abrir(d), onClique: d.especial ? () => { api.registrar(p.ownerId, "__360", p.studentId, "abriu"); p.onIr && p.onIr("alimentacao"); } : () => api.registrar(p.ownerId, d.id, p.studentId, "clique") }))),
-      cards.length > 1 ? h("div", { "aria-hidden": "true", style: { display: "flex", gap: 5, justifyContent: "center", marginTop: 8 } }, cards.map((d, i) => h("span", { key: d.id, style: { width: i === ativo ? 16 : 6, height: 6, borderRadius: 3, background: i === ativo ? COR.laranja : "#CBD5E1", transition: "width 0.2s" } }))) : null,
+      cards.length > 1 ? h("div", { "aria-hidden": "true", style: { display: "flex", gap: 5, justifyContent: "center", marginTop: 7 } }, cards.map((d, i) => h("span", { key: d.id, style: { width: i === ativo ? 16 : 6, height: 6, borderRadius: 3, background: i === ativo ? COR.laranja : "#CBD5E1", transition: "width 0.2s" } }))) : null,
       clube ? h(ClubeTela, { ...p, itens: itens, onFechar: () => setClube(false) }) : null,
       detalhe ? h(Detalhe, { item: detalhe, ctx, ownerId: p.ownerId, studentId: p.studentId, onFechar: () => setDetalhe(null), onClique: () => api.registrar(p.ownerId, detalhe.id, p.studentId, "clique") }) : null);
   };
