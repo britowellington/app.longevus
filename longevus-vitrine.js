@@ -59,10 +59,120 @@
   const valorNum = (v) => { const n = parseFloat(String(v || "").replace(/[^0-9,\.]/g, "").replace(/\.(?=\d{3})/g, "").replace(",", ".")); return isFinite(n) && n > 0 ? n : 0; };
   const ehPix = (d) => d && d.tipo !== "parceiro" && d.cobranca === "pix" && valorNum(d.valor) > 0;
   const fmtReal = (n) => "R$ " + n.toFixed(2).replace(".", ",");
+  const fmtWhats = (v) => {
+    const d = String(v || "").replace(/\D/g, "").slice(0, 11);
+    if (d.length <= 2) return d;
+    if (d.length <= 6) return "(" + d.slice(0, 2) + ") " + d.slice(2);
+    if (d.length <= 10) return "(" + d.slice(0, 2) + ") " + d.slice(2, 6) + "-" + d.slice(6);
+    return "(" + d.slice(0, 2) + ") " + d.slice(2, 7) + "-" + d.slice(7);
+  };
+  const IcPresente = ({ cor, tam }) => h("svg", { width: tam || 16, height: tam || 16, viewBox: "0 0 24 24", fill: "none", stroke: cor || "currentColor", strokeWidth: 2.2, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true" },
+    h("rect", { x: 3, y: 8, width: 18, height: 4, rx: 1 }), h("path", { d: "M12 8v13M19 12v9H5v-9M7.5 8a2.5 2.5 0 1 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 1 1 0 5" }));
+  const msgVale = (item, ctx, pr) => {
+    const quem = primeiroNome(pr.nome);
+    const pers = primeiroNome(ctx.personal) || "Wellington";
+    return quem + ", você ganhou um presente! 🎁\n\n" + (item.titulo || "Um atendimento") + " com o " + pers + ", meu personal trainer." + (pr.mensagem ? "\n\n" + pr.mensagem : "") + "\n\nJá está pago. Ele vai te chamar para agendar.";
+  };
+  const quebrar = (cx, txt, larg) => {
+    const out = [];
+    String(txt || "").split("\n").forEach((par) => {
+      let linha = "";
+      par.split(/\s+/).forEach((p) => {
+        const t = linha ? linha + " " + p : p;
+        if (cx.measureText(t).width > larg && linha) { out.push(linha); linha = p; } else linha = t;
+      });
+      out.push(linha);
+    });
+    return out;
+  };
+  const desenharVale = (item, ctx, pr, alturaFinal) => {
+    const W = 1080, H = alturaFinal || 1600, P = 90, cv = document.createElement("canvas");
+    cv.width = W; cv.height = H;
+    const c = cv.getContext("2d");
+    const g = c.createLinearGradient(0, 0, W, H); g.addColorStop(0, "#1B2538"); g.addColorStop(1, "#0F1623");
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    c.fillStyle = "rgba(255,86,3,0.16)"; c.beginPath(); c.arc(W - 60, 80, 260, 0, Math.PI * 2); c.fill();
+    const F = "-apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+    let y = 150;
+    c.font = "800 34px " + F; const tag = "VALE-PRESENTE"; const tw = c.measureText(tag).width + 56;
+    c.fillStyle = "rgba(255,86,3,0.22)"; c.beginPath(); if (c.roundRect) c.roundRect(P, y - 44, tw, 64, 32); else c.rect(P, y - 44, tw, 64); c.fill();
+    c.fillStyle = "#FDBA74"; c.fillText(tag, P + 28, y);
+    y += 120; c.fillStyle = "#fff"; c.font = "800 80px " + F;
+    quebrar(c, item.titulo || "Presente", W - 2 * P).forEach((l) => { c.fillText(l, P, y); y += 92; });
+    c.font = "500 38px " + F; c.fillStyle = "#CBD5E1";
+    quebrar(c, ["com " + (item.profissional || ctx.personal || "Wellington Brito"), item.especialidade].filter(Boolean).join(" · "), W - 2 * P).forEach((l) => { c.fillText(l, P, y); y += 50; });
+    y += 70; c.font = "500 38px " + F; c.fillStyle = "#94A3B8"; c.fillText("Para", P, y);
+    y += 74; c.font = "800 64px " + F; c.fillStyle = "#fff"; c.fillText(pr.nome, P, y);
+    if (pr.mensagem) {
+      y += 60; c.font = "italic 500 42px " + F;
+      const ls = quebrar(c, pr.mensagem, W - 2 * P - 70).slice(0, 5);
+      const bh = ls.length * 56 + 50;
+      c.fillStyle = "rgba(255,255,255,0.07)"; c.fillRect(P, y, W - 2 * P, bh);
+      c.fillStyle = "#FF5603"; c.fillRect(P, y, 8, bh);
+      c.fillStyle = "#F1F5F9"; ls.forEach((l, i) => c.fillText(l, P + 40, y + 66 + i * 56));
+      y += bh;
+    }
+    y += 80; c.font = "500 40px " + F; c.fillStyle = "#CBD5E1"; c.fillText("Com carinho, " + primeiroNome(ctx.aluno), P, y);
+    c.fillStyle = "rgba(255,255,255,0.14)"; c.fillRect(P, H - 170, W - 2 * P, 2);
+    c.font = "500 34px " + F; c.fillStyle = "#94A3B8"; c.fillText("Já está pago. É só agendar.", P, H - 100);
+    c.font = "800 42px " + F; c.fillStyle = "#FF5603"; c.textAlign = "right"; c.fillText("Longevus", W - P, H - 100);
+    if (!alturaFinal) return desenharVale(item, ctx, pr, Math.max(1080, Math.ceil(y + 280)));
+    return cv;
+  };
+  const Vale = ({ item, ctx, pr, onFechar }) => {
+    const [salvo, setSalvo] = useState("");
+    const msg = msgVale(item, ctx, pr);
+    const wa = waLink(pr.whatsapp, msg) || "https://wa.me/?text=" + encodeURIComponent(msg);
+    const avisoPersonal = waLink(item.whatsapp || ctx.personalWhats, "Oi, " + (primeiroNome(ctx.personal) || "Wellington") + "! Acabei de pagar pelo app: " + (item.titulo || "serviço") + ", de presente para " + pr.nome + ".");
+    const salvar = () => {
+      try {
+        const cv = desenharVale(item, ctx, pr);
+        cv.toBlob(async (blob) => {
+          if (!blob) return;
+          const nome = "vale-presente-" + primeiroNome(pr.nome).toLowerCase() + ".png";
+          try {
+            const file = new File([blob], nome, { type: "image/png" });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text: msg }); setSalvo("ok"); return; }
+          } catch (e) { if (e && e.name === "AbortError") return; }
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a"); a.href = url; a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 4000);
+          setSalvo("ok");
+        }, "image/png");
+      } catch (e) {}
+    };
+    return h("div", { style: { position: "fixed", inset: 0, zIndex: 80, background: COR.fundo, overflowY: "auto", WebkitOverflowScrolling: "touch", color: COR.escuro, padding: "calc(22px + env(safe-area-inset-top)) 18px calc(26px + env(safe-area-inset-bottom))" } },
+      h("div", { style: { textAlign: "center", marginBottom: 16 } },
+        h("div", { style: { width: 52, height: 52, borderRadius: "50%", background: "#DCFCE7", margin: "0 auto 10px", display: "flex", alignItems: "center", justifyContent: "center" } }, h("svg", { width: 26, height: 26, viewBox: "0 0 24 24", fill: "none", stroke: "#16A34A", strokeWidth: 3, strokeLinecap: "round", strokeLinejoin: "round" }, h("path", { d: "M5 12l5 5L20 7" }))),
+        h("div", { style: { fontSize: 19, fontWeight: 800 } }, "Pronto, " + (primeiroNome(ctx.aluno) || "tudo certo") + "!"),
+        h("div", { style: { fontSize: 13.5, color: COR.cinza, marginTop: 3 } }, "Seu personal já recebeu o aviso. Agora é só entregar o presente.")),
+      h("div", { style: { borderRadius: 22, background: "linear-gradient(160deg,#1B2538,#0F1623)", color: "#fff", padding: "22px 20px", position: "relative", overflow: "hidden" } },
+        h("div", { style: { position: "absolute", right: -40, top: -40, width: 150, height: 150, borderRadius: "50%", background: "rgba(255,86,3,0.18)" } }),
+        h("span", { style: { position: "relative", display: "inline-block", background: "rgba(255,86,3,0.18)", color: "#FDBA74", fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", padding: "5px 10px", borderRadius: 20 } }, "VALE-PRESENTE"),
+        h("div", { style: { position: "relative", fontSize: 23, fontWeight: 800, lineHeight: 1.2, margin: "14px 0 4px" } }, item.titulo),
+        h("div", { style: { position: "relative", fontSize: 12.5, color: "#CBD5E1" } }, ["com " + (item.profissional || ctx.personal || "Wellington Brito"), item.especialidade].filter(Boolean).join(" · ")),
+        h("div", { style: { marginTop: 18, fontSize: 12.5, color: "#94A3B8" } }, "Para", h("div", { style: { color: "#fff", fontSize: 20, fontWeight: 800, marginTop: 2 } }, pr.nome)),
+        pr.mensagem ? h("div", { style: { marginTop: 12, background: "rgba(255,255,255,0.07)", borderLeft: "3px solid " + COR.laranja, borderRadius: 8, padding: "10px 12px", fontSize: 14.5, fontStyle: "italic", color: "#F1F5F9", whiteSpace: "pre-wrap" } }, pr.mensagem) : null,
+        h("div", { style: { marginTop: 14, fontSize: 13, color: "#CBD5E1" } }, "Com carinho, ", h("b", { style: { color: "#fff" } }, primeiroNome(ctx.aluno))),
+        h("div", { style: { height: 1, background: "rgba(255,255,255,0.12)", margin: "16px 0 10px" } }),
+        h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, color: "#94A3B8" } }, h("span", null, "Já está pago. É só agendar."), h("b", { style: { color: COR.laranja, fontSize: 14 } }, "Longevus"))),
+      h("div", { style: { marginTop: 14, background: "#E9F5F2", borderRadius: 12, padding: 12, fontSize: 13, lineHeight: 1.5, color: COR.verde, whiteSpace: "pre-wrap" } }, h("div", { style: { fontSize: 11, fontWeight: 800, letterSpacing: "0.06em", marginBottom: 4 } }, "VAI JUNTO NO WHATSAPP"), msg),
+      h("a", { href: wa, target: "_blank", rel: "noopener noreferrer", style: { display: "block", marginTop: 14, height: 50, lineHeight: "50px", textAlign: "center", borderRadius: 25, background: "#16A34A", color: "#fff", fontWeight: 800, fontSize: 15, textDecoration: "none" } }, "Enviar vale pelo WhatsApp"),
+      h("button", { type: "button", onClick: salvar, style: { display: "block", width: "100%", marginTop: 8, height: 46, borderRadius: 23, border: "1.5px solid " + COR.borda, background: "#fff", color: COR.escuro, fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" } }, salvo ? "Imagem do vale pronta" : "Salvar imagem do vale"),
+      avisoPersonal ? h("a", { href: avisoPersonal, target: "_blank", rel: "noopener noreferrer", style: { display: "block", marginTop: 12, textAlign: "center", fontSize: 13, color: COR.cinza, fontWeight: 600 } }, "Falar com meu personal") : null,
+      h("button", { type: "button", onClick: onFechar, style: { display: "block", margin: "8px auto 0", background: "transparent", border: "none", color: COR.cinza, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", padding: 8 } }, "Concluir"));
+  };
   const PixPagamento = ({ item, ctx, ownerId, studentId }) => {
     const qr = useRef(null);
     const [copiado, setCopiado] = useState(false);
     const [avisado, setAvisado] = useState(false);
+    const [para, setPara] = useState("mim");
+    const [pr, setPr] = useState({ nome: "", whatsapp: "", mensagem: "" });
+    const [erro, setErro] = useState("");
+    const [vale, setVale] = useState(null);
+    const [valeAberto, setValeAberto] = useState(false);
+    const aceita = item.aceitaPresente !== false;
+    const presente = aceita && para === "presente";
     const px = window.__LV_PIX;
     const valor = valorNum(item.valor);
     const prof = px && px.prof;
@@ -76,18 +186,46 @@
     const copiar = () => { try { navigator.clipboard.writeText(payload).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 2500); }); } catch (e) {} };
     const msg = "Oi, " + primeiroNome(ctx.personal) + "! Acabei de pagar pelo app: " + (item.titulo || "serviço") + ". Quando podemos agendar?";
     const wa = waLink(item.whatsapp || ctx.personalWhats, msg);
-    const avisar = () => {
-      setAvisado(true);
-      api.registrar(ownerId, item.id, studentId, "pagou");
+    const enviarAviso = (dadosPresente) => {
+      api.registrar(ownerId, item.id, studentId, dadosPresente ? "presente" : "pagou");
       (async () => {
         try {
           const hd = { ...(await api.headers()), Prefer: "return=minimal" };
-          await fetch(SUPA_URL + "/rest/v1/l360_avisos", { method: "POST", headers: hd, body: JSON.stringify({ id: novoId("av"), owner_id: String(ownerId), student_id: String(studentId), servico: item.titulo || "Serviço" }) });
+          const corpo = { id: novoId("av"), owner_id: String(ownerId), student_id: String(studentId), servico: item.titulo || "Serviço" };
+          let r = await fetch(SUPA_URL + "/rest/v1/l360_avisos", { method: "POST", headers: hd, body: JSON.stringify(dadosPresente ? { ...corpo, presente: dadosPresente } : corpo) });
+          if (!r.ok && dadosPresente) await fetch(SUPA_URL + "/rest/v1/l360_avisos", { method: "POST", headers: hd, body: JSON.stringify({ ...corpo, servico: corpo.servico + " (presente para " + dadosPresente.nome + (dadosPresente.whatsapp ? ", " + dadosPresente.whatsapp : "") + ")" }) });
         } catch (e) {}
       })();
     };
+    const avisar = () => { setAvisado(true); enviarAviso(null); };
+    const avisarPresente = () => {
+      const nome = pr.nome.trim().replace(/\s+/g, " ");
+      if (!nome) return setErro("Escreva o nome de quem vai ganhar.");
+      const dg = pr.whatsapp.replace(/\D/g, "");
+      if (dg && dg.length < 10) return setErro("Confira o WhatsApp, faltam números.");
+      setErro("");
+      const wf = dg ? fmtWhats(dg) : "";
+      if (vale && vale.nome === nome && vale.whatsapp === wf) { setVale({ ...vale, mensagem: pr.mensagem.trim() }); setValeAberto(true); return; }
+      const dados = { nome, whatsapp: dg ? fmtWhats(dg) : "", mensagem: pr.mensagem.trim() };
+      enviarAviso(dados);
+      setAvisado(true);
+      setVale(dados);
+      setValeAberto(true);
+    };
+    const tit = (t) => h("div", { style: { fontSize: 11.5, fontWeight: 700, letterSpacing: "0.08em", color: COR.cinza, textTransform: "uppercase", margin: "18px 0 8px" } }, t);
+    const inp = { width: "100%", boxSizing: "border-box", border: "1.5px solid #CBD5E1", borderRadius: 10, padding: "11px 12px", fontSize: 15, color: COR.escuro, background: "#F8FAFC", fontFamily: "inherit", outline: "none" };
+    const rot = (t) => h("div", { style: { fontSize: 12, fontWeight: 700, color: COR.cinza, marginBottom: 5 } }, t);
+    const segBtn = (k, rotulo, icone) => h("button", { type: "button", onClick: () => { setPara(k); setErro(""); }, style: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 0", borderRadius: 9, border: "none", background: para === k ? "#fff" : "transparent", color: para === k ? COR.laranja : "#475569", boxShadow: para === k ? "0 1px 3px rgba(0,0,0,0.1)" : "none", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" } }, icone, rotulo);
     return h("div", null,
-      h("div", { style: { fontSize: 11.5, fontWeight: 700, letterSpacing: "0.08em", color: COR.cinza, textTransform: "uppercase", margin: "18px 0 8px" } }, "Pagamento"),
+      aceita ? h("div", null,
+        tit("Para quem é?"),
+        h("div", { style: { display: "flex", background: COR.borda, borderRadius: 12, padding: 4 } }, segBtn("mim", "Para mim"), segBtn("presente", "Presente", h(IcPresente, { cor: para === "presente" ? COR.laranja : "#475569" }))),
+        presente ? h("div", { style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 16, padding: 14, marginTop: 12 } },
+          h("div", { style: { marginBottom: 12 } }, rot("Nome de quem vai ganhar"), h("input", { value: pr.nome, onChange: (e) => setPr({ ...pr, nome: e.target.value }), placeholder: "Ex.: Maria Souza", autoComplete: "off", style: inp })),
+          h("div", { style: { marginBottom: 12 } }, rot("WhatsApp dessa pessoa"), h("input", { value: pr.whatsapp, onChange: (e) => setPr({ ...pr, whatsapp: fmtWhats(e.target.value) }), placeholder: "(11) 90000-0000", inputMode: "tel", autoComplete: "off", style: inp })),
+          h("div", null, rot("Mensagem no vale (opcional)"), h("textarea", { value: pr.mensagem, onChange: (e) => setPr({ ...pr, mensagem: e.target.value.slice(0, 160) }), rows: 2, placeholder: "Ex.: Feliz aniversário, mãe!", style: { ...inp, resize: "none", lineHeight: 1.4 } })),
+          h("div", { style: { fontSize: 12, color: COR.cinza, lineHeight: 1.45, marginTop: 8 } }, "Depois do pagamento você recebe um vale-presente para enviar pelo WhatsApp.")) : null) : null,
+      tit("Pagamento"),
       h("div", { style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 16, padding: 14, textAlign: "center" } },
         h("div", { style: { fontSize: 12, color: COR.cinza } }, "Valor"),
         h("div", { style: { fontSize: 26, fontWeight: 800, color: COR.escuro, marginBottom: 10 } }, fmtReal(valor)),
@@ -96,8 +234,12 @@
           h("button", { type: "button", onClick: copiar, style: { width: "100%", height: 44, borderRadius: 22, border: "none", background: copiado ? "#16A34A" : COR.laranja, color: "#fff", fontWeight: 800, fontSize: 14, cursor: "pointer", fontFamily: "inherit" } }, copiado ? "Código copiado" : "Copiar código Pix"),
           h("div", { style: { fontSize: 11.5, color: "#94A3B8", marginTop: 8 } }, "Escaneie no app do banco ou cole o código no Pix copia e cola."))
           : h("div", { style: { fontSize: 12.5, color: "#92400E", background: "#FEF9C3", borderRadius: 10, padding: "9px 10px" } }, "O Pix ainda não está configurado. Fale com seu personal pelo WhatsApp."),
-        item.posPagamento ? h("div", { style: { fontSize: 12.5, color: "#334155", marginTop: 12, lineHeight: 1.5, textAlign: "left", background: COR.fundo, borderRadius: 10, padding: "9px 11px" } }, item.posPagamento) : null),
-      wa ? h("a", { href: wa, target: "_blank", rel: "noopener noreferrer", onClick: avisar, style: { display: "block", marginTop: 10, height: 46, lineHeight: "46px", textAlign: "center", borderRadius: 23, background: avisado ? "#F0FDF4" : "#16A34A", color: avisado ? "#15803D" : "#fff", border: avisado ? "1.5px solid #BBF7D0" : "none", fontWeight: 800, fontSize: 14, textDecoration: "none" } }, avisado ? "Aviso enviado ao seu personal" : "Avisar que já paguei") : null);
+        item.posPagamento ? h("div", { style: { fontSize: 12.5, color: "#334155", marginTop: 12, lineHeight: 1.5, textAlign: "left", background: COR.fundo, borderRadius: 10, padding: "9px 11px" } }, presente ? "Assim que o pagamento for confirmado, seu personal chama " + (primeiroNome(pr.nome) || "a pessoa") + " para agendar." : item.posPagamento) : null),
+      erro ? h("div", { role: "alert", style: { marginTop: 10, fontSize: 13, color: "#B91C1C", background: "#FEF2F2", borderRadius: 10, padding: "9px 11px" } }, erro) : null,
+      presente
+        ? h("button", { type: "button", onClick: avisarPresente, style: { display: "block", width: "100%", marginTop: 10, height: 46, borderRadius: 23, border: "none", background: "#16A34A", color: "#fff", fontWeight: 800, fontSize: 14, cursor: "pointer", fontFamily: "inherit" } }, avisado && vale ? "Ver vale-presente" : "Já paguei, gerar o vale")
+        : (wa ? h("a", { href: wa, target: "_blank", rel: "noopener noreferrer", onClick: avisar, style: { display: "block", marginTop: 10, height: 46, lineHeight: "46px", textAlign: "center", borderRadius: 23, background: avisado ? "#F0FDF4" : "#16A34A", color: avisado ? "#15803D" : "#fff", border: avisado ? "1.5px solid #BBF7D0" : "none", fontWeight: 800, fontSize: 14, textDecoration: "none" } }, avisado ? "Aviso enviado ao seu personal" : "Avisar que já paguei") : null),
+      vale && valeAberto ? h(Vale, { item, ctx, pr: vale, onFechar: () => setValeAberto(false) }) : null);
   };
   const publicoOk = (d, ctx) => {
     if (d.validade && d.validade < hojeISO()) return false;
@@ -399,7 +541,8 @@
             h(Campo, { rotulo: "Como o aluno paga" }, h(Pilulas, { opcoes: [["whatsapp", "Combina comigo no WhatsApp"], ["pix", "Paga pelo app (Pix)"]], valor: d.cobranca || "whatsapp", onChange: set("cobranca") })),
             d.cobranca === "pix" ? h("div", { style: { display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 0 } },
               h(Campo, { rotulo: "Valor (R$)", dica: "Entra no Pix com a sua chave do Meu Perfil." }, h("input", { inputMode: "decimal", value: d.valor || "", onChange: (e) => set("valor")(e.target.value.replace(/[^0-9.,]/g, "")), placeholder: "Ex.: 80,00", style: estiloInput })),
-              h(Campo, { rotulo: "O que acontece depois do pagamento", dica: "Aparece embaixo do Pix. Ex.: Assim que confirmar, te chamo para agendar." }, h("input", { value: d.posPagamento || "", onChange: (e) => set("posPagamento")(e.target.value), style: estiloInput }))) : null,
+              h(Campo, { rotulo: "O que acontece depois do pagamento", dica: "Aparece embaixo do Pix. Ex.: Assim que confirmar, te chamo para agendar." }, h("input", { value: d.posPagamento || "", onChange: (e) => set("posPagamento")(e.target.value), style: estiloInput })),
+              h(Campo, { rotulo: "Pode ser comprado de presente?", dica: "O aluno escolhe \"Presente\" e recebe um vale para enviar a quem vai ganhar." }, h(Pilulas, { opcoes: [["sim", "Sim"], ["nao", "Não"]], valor: d.aceitaPresente === false ? "nao" : "sim", onChange: (v) => set("aceitaPresente")(v === "sim") }))) : null,
             d.cobranca === "pix" ? null : h(Campo, { rotulo: "Quando o aluno tocar" }, h(Pilulas, { opcoes: [["whatsapp", "Abrir meu WhatsApp"], ["link", "Abrir um link"]], valor: d.destino, onChange: set("destino") })),
             d.cobranca !== "pix" && d.destino === "link" ? h(Campo, { rotulo: "Link" }, h("input", { value: d.link || "", onChange: (e) => set("link")(e.target.value), placeholder: "https://", style: estiloInput }))
               : h(Campo, { rotulo: "Seu WhatsApp", dica: "Em branco, usa o WhatsApp do seu perfil." }, h("input", { inputMode: "tel", value: d.whatsapp || "", onChange: (e) => set("whatsapp")(e.target.value), style: estiloInput }))),

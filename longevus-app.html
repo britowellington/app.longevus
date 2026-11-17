@@ -27,7 +27,7 @@ var __LOGO_WB__ = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAFuCAYAAAC
 <script type="text/babel" data-presets="react" src="longevus-condominios.js"></script>
 <script src="longevus-alimentacao.js?v=14"></script>
 <script src="longevus-antropometria.js?v=3"></script>
-<script src="longevus-vitrine.js?v=2"></script>
+<script src="longevus-vitrine.js?v=3"></script>
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useCallback, useRef } = React;
 // ── Supabase ─────────────────────────────────────────────────────────────────
@@ -922,19 +922,30 @@ return (
 </div>
 );
 };
-const Avisos360 = ({ students, setStudents, nav }) => {
+const Avisos360 = ({ students, setStudents, setLeads, nav }) => {
 const [avisos,setAvisos]=useState([]);
 useEffect(()=>{
 (async()=>{
 try {
 const headers = await DB.authHeaders();
-let r = await fetch(SUPA_URL+"/rest/v1/l360_avisos?select=id,student_id,created_at,servico&visto=eq.false&order=created_at.desc&limit=50", { headers });
+let r = await fetch(SUPA_URL+"/rest/v1/l360_avisos?select=id,student_id,created_at,servico,presente&visto=eq.false&order=created_at.desc&limit=50", { headers });
+if(!r.ok) r = await fetch(SUPA_URL+"/rest/v1/l360_avisos?select=id,student_id,created_at,servico&visto=eq.false&order=created_at.desc&limit=50", { headers });
 if(!r.ok) r = await fetch(SUPA_URL+"/rest/v1/l360_avisos?select=id,student_id,created_at&visto=eq.false&order=created_at.desc&limit=50", { headers });
 if(r.ok){ const rows = await r.json(); setAvisos(rows||[]); }
 } catch(e) {}
 })();
 },[]);
-const chave = (a) => String(a.student_id)+"|"+(a.servico||"");
+const chave = (a) => String(a.student_id)+"|"+(a.servico||"")+"|"+((a.presente&&a.presente.nome)||"");
+const waNum = (n) => { let d=String(n||"").replace(/\D/g,""); if(!d) return null; if(!(d.length>=12&&d.indexOf("55")===0)) d="55"+d; return d; };
+const virarLead = (a, st) => {
+const pr = a.presente; if(!pr || !pr.nome || !setLeads) return;
+const num = String(pr.whatsapp||"").replace(/\D/g,"");
+const agora = new Date().toISOString();
+setLeads(p=>{
+if(num && p.some(l=>String(l.whatsapp||"").replace(/\D/g,"").slice(-9)===num.slice(-9))) return p;
+return [...p,{ id:uid(), name:pr.nome, whatsapp:pr.whatsapp||"", instagram:"", idade:"", sexo:"", origem:"Presente de aluno", indicadoPor:st.name, objetivo:"", necessidade:"Ganhou de presente: "+(a.servico||"serviço"), temperatura:"quente", etapa:"novo", status:"ativo", obs:pr.mensagem?"Mensagem do vale: \""+pr.mensagem+"\"":"", proximaAcaoTipo:"Enviar mensagem", proximaAcaoData:todayStr(), proximaAcaoHorario:"", proximaAcaoObs:"Agendar "+(a.servico||"o serviço"), motivoNaoFechamento:"", motivoObs:"", valorPotencial:"", createdAt:todayStr(), historico:[{ ts:agora, texto:"Presente de "+st.name+": "+(a.servico||"serviço") }] }];
+});
+};
 const marcar = async (a) => {
 const k = chave(a);
 const ids = avisos.filter(x=>chave(x)===k).map(x=>x.id);
@@ -963,12 +974,19 @@ return (
 <div style={{ marginBottom:22 }}>
 <div style={{ fontSize:12,fontWeight:700,color:"#64748b",marginBottom:8 }}>Pagamentos avisados pelo app</div>
 <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-{lista.map(({a,st})=>{ const servico=a.servico; return (
+{lista.map(({a,st})=>{ const servico=a.servico; const pr=a.presente&&a.presente.nome?a.presente:null; const prWa=pr&&waNum(pr.whatsapp); return (
 <Card key={a.id} style={{ padding:"10px 14px",background:"#fff7ed",border:"1.5px solid #fed7aa" }}>
+{pr && <div style={{ display:"inline-block",fontSize:10.5,fontWeight:800,letterSpacing:"0.06em",color:"#C2410C",background:"#ffedd5",borderRadius:10,padding:"3px 8px",marginBottom:5 }}>🎁 PRESENTE</div>}
 <div onClick={()=>nav("studentDetail",{id:st.id})} style={{ fontSize:13,fontWeight:700,color:"#9a3412",cursor:"pointer" }}>{servico ? st.name+" avisou que pagou: "+servico : st.name+" avisou que pagou o 360"}</div>
 <div style={{ fontSize:11,color:"#64748b",marginTop:2 }}>{"Em "+new Date(a.created_at).toLocaleDateString("pt-BR")+" às "+new Date(a.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})+". "+(servico?"Confira no banco e combine a data com o aluno.":"Confira no banco antes de liberar.")}</div>
+{pr && <div style={{ marginTop:8,background:"#fff",border:"1px solid #fed7aa",borderRadius:9,padding:"8px 10px",fontSize:12.5,color:"#334155",lineHeight:1.5 }}>
+<div>Para <b>{pr.nome}</b>{pr.whatsapp?" · "+pr.whatsapp:""}</div>
+{pr.mensagem && <div style={{ fontStyle:"italic",color:"#64748b" }}>"{pr.mensagem}"</div>}
+<div style={{ fontSize:11,color:"#94a3b8",marginTop:2 }}>Ao confirmar, {pr.nome.split(" ")[0]} entra nos seus Leads.</div>
+</div>}
 <div style={{ display:"flex",gap:8,marginTop:8 }}>
-<button onClick={()=>servico?marcar(a):liberar(a)} style={{ flex:1,padding:"8px",borderRadius:9,border:"none",background:"#FF5603",color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>{servico?"Confirmar pagamento":"Confirmar e liberar 30 dias"}</button>
+{prWa && <a href={"https://wa.me/"+prWa+"?text="+encodeURIComponent("Oi, "+pr.nome.split(" ")[0]+"! Aqui é o Wellington Brito, personal trainer. "+st.name.split(" ")[0]+" te deu de presente: "+(servico||"um atendimento")+". Vamos agendar? Qual dia e horário ficam bons para você?")} target="_blank" rel="noopener noreferrer" style={{ flex:1,padding:"8px",borderRadius:9,background:"#E9F5F2",color:"#0F6E56",fontWeight:700,fontSize:12,textAlign:"center",textDecoration:"none" }}>{"Chamar "+pr.nome.split(" ")[0]}</a>}
+<button onClick={()=>{ if(pr) virarLead(a,st); servico?marcar(a):liberar(a); }} style={{ flex:1,padding:"8px",borderRadius:9,border:"none",background:"#FF5603",color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>{servico?"Confirmar pagamento":"Confirmar e liberar 30 dias"}</button>
 <button onClick={()=>marcar(a)} style={{ flex:0.7,padding:"8px",borderRadius:9,border:"1.5px solid #fed7aa",background:"#fff",color:"#9a3412",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>Ainda não caiu</button>
 </div>
 </Card>
@@ -977,7 +995,7 @@ return (
 </div>
 );
 };
-const Dashboard = ({ students, setStudents, assessments, dailyLogs, pagamentos, receitasExtras, nav }) => {
+const Dashboard = ({ students, setStudents, setLeads, assessments, dailyLogs, pagamentos, receitasExtras, nav }) => {
 const recent = [...assessments].sort((a,b)=>b.date?.localeCompare(a.date)).slice(0,4);
 const hoje = todayStr();
 const anoMes = hoje.slice(0,7);
@@ -1004,7 +1022,7 @@ return (
 <div style={{ fontSize:22,fontWeight:800,color:"#0f172a" }}>Olá, Professor 👋</div>
 <div style={{ fontSize:13,color:"#64748b",marginTop:3 }}>{new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"})}</div>
 </div>
-{setStudents && <Avisos360 students={students} setStudents={setStudents} nav={nav}/>}
+{setStudents && <Avisos360 students={students} setStudents={setStudents} setLeads={setLeads} nav={nav}/>}
 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:16 }}>
 {[["Alunos",ativos.length,"#6366f1"],["Aval.",assessments.length,O],["Reavaliar",ativos.filter(s=>{const ult=[...assessments].filter(a=>a.studentId===s.id).sort((a,b)=>b.date?.localeCompare(a.date))[0];if(!ult)return false;const dias=(new Date(hoje)-new Date(ult.date))/86400000;return dias>=75;}).length,"#d97706"]].map(([l,v,c])=>(
 <Card key={l} style={{ padding:"14px 10px",textAlign:"center" }}>
@@ -7912,7 +7930,7 @@ const LEAD_STATUS = [
 { id:"perdido", label:"Perdido", emoji:"⚫", color:"#475569", bg:"#e2e8f0" },
 { id:"convertido", label:"Convertido", emoji:"✅", color:"#16a34a", bg:"#dcfce7" },
 ];
-const LEAD_ORIGENS = ["Instagram","Indicação de aluno","Indicação de amigo","Academia","WhatsApp","Google","Evento","Outro"];
+const LEAD_ORIGENS = ["Instagram","Indicação de aluno","Presente de aluno","Indicação de amigo","Academia","WhatsApp","Google","Evento","Outro"];
 const LEAD_OBJETIVOS = ["Emagrecimento","Hipertrofia","Força","Mobilidade","Condicionamento","Saúde","Autonomia","50+","Outro"];
 const LEAD_TEMPERATURAS = [
 { id:"quente", label:"Quente", emoji:"🔥", color:"#dc2626", bg:"#fee2e2" },
@@ -10023,7 +10041,7 @@ return (
 </div>
 )}
 <div style={{ padding:"20px 16px",maxWidth:640,margin:"0 auto" }}>
-{page==="dashboard"&&<Dashboard students={students} setStudents={setStudents} assessments={assessments} dailyLogs={dailyLogs} pagamentos={pagamentos} receitasExtras={receitasExtras} nav={nav}/>}
+{page==="dashboard"&&<Dashboard students={students} setStudents={setStudents} setLeads={setLeads} assessments={assessments} dailyLogs={dailyLogs} pagamentos={pagamentos} receitasExtras={receitasExtras} nav={nav}/>}
 {page==="students"&&<Students students={students} setStudents={setStudents} planos={planos} setPagamentos={setPagamentos} nav={nav}/>}
 {page==="studentDetail"&&<StudentDetail studentId={pageProps.studentId} students={students} setStudents={setStudents} assessments={assessments} setAssessments={setAssessments} programs={programs} setPrograms={setPrograms} dailyLogs={dailyLogs} documents={documents} checkins={checkins} sessions={sessions} setSessions={setSessions} exerciciosBiblioteca={exerciciosBiblioteca} planos={planos} professorFeedbacks={professorFeedbacks} setProfessorFeedbacks={setProfessorFeedbacks} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} pagamentos={pagamentos} setPagamentos={setPagamentos} ultimoAcesso={ultimoAcesso} initialTab={pageProps.initialTab} nav={nav}/>}
 {page==="assessments"&&<AssessmentsList assessments={assessments} students={students} setAssessments={setAssessments} nav={nav}/>}
