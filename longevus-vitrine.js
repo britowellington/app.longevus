@@ -57,7 +57,8 @@
     return waLink(numero, montarMensagem(d, ctx));
   };
   const valorNum = (v) => { const n = parseFloat(String(v || "").replace(/[^0-9,\.]/g, "").replace(/\.(?=\d{3})/g, "").replace(",", ".")); return isFinite(n) && n > 0 ? n : 0; };
-  const ehPix = (d) => d && d.tipo !== "parceiro" && d.cobranca === "pix" && valorNum(d.valor) > 0;
+  const valorPix = (d) => valorNum((d && d.valor) || (d && d.preco));
+  const ehPix = (d) => d && d.tipo !== "parceiro" && d.cobranca === "pix" && valorPix(d) > 0;
   const fmtReal = (n) => "R$ " + n.toFixed(2).replace(".", ",");
   const fmtWhats = (v) => {
     const d = String(v || "").replace(/\D/g, "").slice(0, 11);
@@ -141,7 +142,7 @@
         }, "image/png");
       } catch (e) {}
     };
-    return h("div", { style: { position: "fixed", inset: 0, zIndex: 80, background: COR.fundo, overflowY: "auto", WebkitOverflowScrolling: "touch", color: COR.escuro, padding: "calc(22px + env(safe-area-inset-top)) 18px calc(26px + env(safe-area-inset-bottom))" } },
+    return h("div", { style: { position: "fixed", inset: 0, zIndex: 320, background: COR.fundo, overflowY: "auto", WebkitOverflowScrolling: "touch", color: COR.escuro, padding: "calc(22px + env(safe-area-inset-top)) 18px calc(26px + env(safe-area-inset-bottom))" } },
       h("div", { style: { textAlign: "center", marginBottom: 16 } },
         h("div", { style: { width: 52, height: 52, borderRadius: "50%", background: "#DCFCE7", margin: "0 auto 10px", display: "flex", alignItems: "center", justifyContent: "center" } }, h("svg", { width: 26, height: 26, viewBox: "0 0 24 24", fill: "none", stroke: "#16A34A", strokeWidth: 3, strokeLinecap: "round", strokeLinejoin: "round" }, h("path", { d: "M5 12l5 5L20 7" }))),
         h("div", { style: { fontSize: 19, fontWeight: 800 } }, "Pronto, " + (primeiroNome(ctx.aluno) || "tudo certo") + "!"),
@@ -174,7 +175,7 @@
     const aceita = item.aceitaPresente !== false;
     const presente = aceita && para === "presente";
     const px = window.__LV_PIX;
-    const valor = valorNum(item.valor);
+    const valor = valorPix(item);
     const prof = px && px.prof;
     const payload = prof && prof.pix_key && px.build ? px.build({ pixKey: prof.pix_key, merchantName: prof.pix_merchant_name || prof.nome, merchantCity: prof.pix_merchant_city, amount: valor, txid: ("SV" + String(item.titulo || "").replace(/[^A-Za-z0-9]/g, "")).slice(0, 20) }) : null;
     useEffect(() => {
@@ -367,7 +368,7 @@
     const at = (ATENDIMENTO.find((a) => a[0] === d.atendimento) || [null, null])[1];
     const secao = (t) => h("div", { style: { fontSize: 11.5, fontWeight: 700, letterSpacing: "0.08em", color: COR.cinza, textTransform: "uppercase", margin: "18px 0 8px" } }, t);
     const copiar = () => { try { navigator.clipboard.writeText(d.cupom).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 2000); }); } catch (e) {} };
-    return h("div", { style: { position: "fixed", inset: 0, zIndex: 70, background: COR.fundo, overflowY: "auto", WebkitOverflowScrolling: "touch", color: COR.escuro } },
+    return h("div", { style: { position: "fixed", inset: 0, zIndex: 310, background: COR.fundo, overflowY: "auto", WebkitOverflowScrolling: "touch", color: COR.escuro } },
       h("div", { style: { background: COR.escuro, color: "#F8FAFC", padding: "calc(14px + env(safe-area-inset-top)) 18px 20px", borderRadius: "0 0 26px 26px" } },
         h("button", { type: "button", onClick: onFechar, style: { background: "transparent", border: "none", padding: "4px 0", color: "#CBD5E1", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "‹ Voltar"),
         h("div", { style: { display: "flex", alignItems: "center", gap: 14, marginTop: 10 } },
@@ -380,7 +381,7 @@
         d.beneficio ? h("div", { style: { marginTop: 14, background: COR.escuro2, border: "1.5px solid " + COR.laranja, borderRadius: 14, padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 } },
           h("div", null, h("div", { style: { fontSize: 11, color: "#94A3B8" } }, parceiro ? "Benefício para aluno Longevus" : "Destaque"), h("div", { style: { fontSize: 18, fontWeight: 800, color: "#FDBA74" } }, d.beneficio)),
           d.cupom ? h("button", { type: "button", onClick: copiar, style: { border: "1.5px dashed #FDBA74", background: "transparent", color: "#FDBA74", borderRadius: 10, padding: "7px 10px", fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" } }, copiado ? "Copiado" : d.cupom) : null) : null),
-      h("div", { style: { padding: "2px 18px " + (pix ? "calc(30px + env(safe-area-inset-bottom))" : "calc(110px + env(safe-area-inset-bottom))") } },
+      h("div", { style: { padding: "2px 18px " + (pix ? "calc(40px + env(safe-area-inset-bottom))" : "calc(110px + env(safe-area-inset-bottom))") } },
         d.sobre ? h("div", null, secao(parceiro ? "Quem é" : "Sobre"), h("div", { style: { fontSize: 14, lineHeight: 1.6, color: "#334155", whiteSpace: "pre-wrap" } }, d.sobre)) : (d.texto ? h("div", { style: { fontSize: 14, lineHeight: 1.6, color: "#334155", marginTop: 16 } }, d.texto) : null),
         lista.length ? h("div", null, secao(parceiro ? "O que oferece" : "O que está incluso"), lista.map((x, i) => h("div", { key: i, style: { display: "flex", gap: 9, alignItems: "flex-start", fontSize: 14, lineHeight: 1.45, marginBottom: 7 } }, h("span", { "aria-hidden": "true", style: { color: COR.laranja, fontWeight: 800 } }, "✓"), h("span", null, x)))) : null,
         (at || d.local || (d.preco && !pix) || insta) ? h("div", null, secao("Informações"), h("div", { style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 14, padding: "4px 14px" } },
@@ -444,11 +445,11 @@
           d.beneficio ? h("span", { style: { fontSize: 12, fontWeight: 800, color: d.tipo === "parceiro" ? COR.verde : COR.laranjaTxt, whiteSpace: "nowrap" } }, d.beneficio) : null),
         h("div", { style: { display: "flex", gap: 8, marginTop: 10 } },
           d.cupom ? h("button", { type: "button", onClick: () => copiar(d), style: { flex: 1, height: 38, borderRadius: 10, border: "1.5px dashed #FDBA74", background: "#FFF7ED", color: COR.laranjaTxt, fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" } }, copiado === d.id ? "Cupom copiado" : "Cupom " + d.cupom) : null,
-          ehPix(d) ? h("button", { type: "button", onClick: () => { setDetalhe(d); api.registrar(p.ownerId, d.id, p.studentId, "abriu"); }, style: { flex: 1, height: 38, borderRadius: 10, border: "none", background: COR.laranja, color: "#fff", fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" } }, "Ver e pagar · " + fmtReal(valorNum(d.valor)))
+          ehPix(d) ? h("button", { type: "button", onClick: () => { setDetalhe(d); api.registrar(p.ownerId, d.id, p.studentId, "abriu"); }, style: { flex: 1, height: 38, borderRadius: 10, border: "none", background: COR.laranja, color: "#fff", fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" } }, "Ver e pagar · " + fmtReal(valorPix(d)))
           : href ? h("a", { href, target: "_blank", rel: "noopener noreferrer", onClick: () => api.registrar(p.ownerId, d.id, p.studentId, "clique"), style: { flex: 1, height: 38, lineHeight: "38px", textAlign: "center", borderRadius: 10, background: COR.laranja, color: "#fff", fontWeight: 800, fontSize: 12.5, textDecoration: "none" } }, d.botao || (d.tipo === "parceiro" ? "Chamar no WhatsApp" : "Quero saber mais")) : null));
     };
     const secao = (t) => h("div", { style: { fontSize: 11.5, fontWeight: 700, letterSpacing: "0.08em", color: COR.cinza, textTransform: "uppercase", margin: "16px 2px 8px" } }, t);
-    return h("div", { style: { position: "fixed", inset: 0, zIndex: 60, background: COR.fundo, overflowY: "auto", WebkitOverflowScrolling: "touch" } },
+    return h("div", { style: { position: "fixed", inset: 0, zIndex: 300, background: COR.fundo, overflowY: "auto", WebkitOverflowScrolling: "touch" } },
       h("div", { style: { background: COR.escuro, color: "#F8FAFC", padding: "calc(14px + env(safe-area-inset-top)) 18px 18px", borderRadius: "0 0 24px 24px" } },
         h("button", { type: "button", onClick: p.onFechar, style: { background: "transparent", border: "none", padding: "4px 0", color: "#CBD5E1", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "‹ Voltar"),
         h("div", { style: { fontSize: 21, fontWeight: 800, marginTop: 6 } }, "Clube Longevus"),
@@ -513,7 +514,7 @@
       setErro("");
       if (!String(d.titulo || "").trim()) return setErro("Dê um título para a oferta.");
       if (parceiro && !String(d.whatsapp || "").replace(/\D/g, "")) return setErro("Informe o WhatsApp do parceiro.");
-      if (!parceiro && d.cobranca === "pix" && !valorNum(d.valor)) return setErro("Informe o valor para o Pix.");
+      if (!parceiro && d.cobranca === "pix" && !valorPix(d)) return setErro("Informe o valor para o Pix.");
       if (!parceiro && d.cobranca !== "pix" && d.destino === "link" && !String(d.link || "").trim()) return setErro("Informe o link.");
       setSalvando(true);
       const ok = await onSalvar({ ...d, id: d.id || novoId("vi"), titulo: String(d.titulo).trim(), atualizadoEm: new Date().toISOString() });
@@ -554,7 +555,7 @@
         h(Campo, { rotulo: "Atendimento" }, h(Pilulas, { opcoes: ATENDIMENTO, valor: d.atendimento, onChange: set("atendimento") })),
         h("div", { style: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 } },
           h(Campo, { rotulo: "Onde", dica: "Ex.: Centro, São Bernardo" }, h("input", { value: d.local || "", onChange: (e) => set("local")(e.target.value), style: estiloInput })),
-          h(Campo, { rotulo: "Valor", dica: "Opcional. Ex.: R$ 180" }, h("input", { value: d.preco || "", onChange: (e) => set("preco")(e.target.value), style: estiloInput }))),
+          !parceiro && d.cobranca === "pix" ? null : h(Campo, { rotulo: "Valor", dica: "Opcional. Ex.: R$ 180" }, h("input", { value: d.preco || "", onChange: (e) => set("preco")(e.target.value), style: estiloInput }))),
         h(Campo, { rotulo: "Instagram", dica: "Ex.: @drapaulanutri" }, h("input", { value: d.instagram || "", onChange: (e) => set("instagram")(e.target.value.trim()), style: estiloInput })),
         h(Campo, { rotulo: "Texto do botão", dica: parceiro ? "Padrão: Quero o desconto" : "Padrão: Quero saber mais" }, h("input", { value: d.botao || "", onChange: (e) => set("botao")(e.target.value), style: estiloInput })),
         h(Campo, { rotulo: "Mostrar para" }, h(Pilulas, { opcoes: PUBLICOS, valor: d.publico || "todos", onChange: set("publico") })),
