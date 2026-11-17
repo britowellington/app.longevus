@@ -27,7 +27,7 @@ var __LOGO_WB__ = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAFuCAYAAAC
 <script type="text/babel" data-presets="react" src="longevus-condominios.js"></script>
 <script src="longevus-alimentacao.js?v=14"></script>
 <script src="longevus-antropometria.js?v=3"></script>
-<script src="longevus-vitrine.js?v=10"></script>
+<script src="longevus-vitrine.js?v=11"></script>
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useCallback, useRef } = React;
 // ── Supabase ─────────────────────────────────────────────────────────────────
@@ -922,6 +922,82 @@ return (
 </div>
 );
 };
+const IndicacoesInicio = ({ students, setStudents, setLeads }) => {
+const [lista,setLista]=useState([]);
+const carregar = async () => {
+try {
+const headers = await DB.authHeaders();
+const r = await fetch(SUPA_URL+"/rest/v1/indicacoes?select=*&status=in.(enviado,conversa)&order=created_at.desc&limit=60", { headers });
+if(!r.ok) return;
+const rows = await r.json();
+setLista(rows||[]);
+const novos = (rows||[]).filter(x=>!x.lead_criado);
+if(novos.length && setLeads){
+const agora = new Date().toISOString();
+setLeads(p=>{
+let out=[...p];
+novos.forEach(x=>{
+const st = students.find(z=>String(z.id)===String(x.student_id));
+const num = String(x.whatsapp||"").replace(/\D/g,"");
+if(num && out.some(l=>String(l.whatsapp||"").replace(/\D/g,"").slice(-9)===num.slice(-9))) return;
+out.push({ id:uid(), name:x.nome, whatsapp:x.whatsapp||"", instagram:"", idade:"", sexo:"", origem:"Indicação de aluno", indicadoPor:st?st.name:"", objetivo:"", necessidade:"Indique e ganhe", temperatura:"quente", etapa:"novo", status:"ativo", obs:"", proximaAcaoTipo:"Enviar mensagem", proximaAcaoData:todayStr(), proximaAcaoHorario:"", proximaAcaoObs:"Chamar a indicação", motivoNaoFechamento:"", motivoObs:"", valorPotencial:"", createdAt:todayStr(), historico:[{ ts:agora, texto:"Indicação de "+(st?st.name:"aluno")+" pelo app" }] });
+});
+return out;
+});
+for (const x of novos) { try { await fetch(SUPA_URL+"/rest/v1/indicacoes?id=eq."+encodeURIComponent(x.id), { method:"PATCH", headers:{ ...headers, Prefer:"return=minimal" }, body: JSON.stringify({ lead_criado:true }) }); } catch(e) {} }
+}
+} catch(e) {}
+};
+useEffect(()=>{ carregar(); },[]);
+const patch = async (x, corpo) => {
+try { const headers = await DB.authHeaders(); await fetch(SUPA_URL+"/rest/v1/indicacoes?id=eq."+encodeURIComponent(x.id), { method:"PATCH", headers:{ ...headers, Prefer:"return=minimal" }, body: JSON.stringify({ ...corpo, atualizado_em:new Date().toISOString() }) }); } catch(e) {}
+};
+const aplicarPremio = (x) => {
+const pr = x.premio || {};
+const hoje = todayStr();
+const mais30 = (base) => { const d=new Date(((base && base>hoje)?base:hoje)+"T12:00:00"); d.setDate(d.getDate()+30); return toISODateLocal(d); };
+setStudents(p=>p.map(z=>{
+if(String(z.id)!==String(x.student_id)) return z;
+if(pr.tipo==="mente" || pr.tipo==="l360"){
+const k = pr.tipo; const l = z[k] || {};
+if(l.status==="pago" && l.vencimento && l.vencimento>=hoje) return { ...z, [k]:{ ...l, vencimento:mais30(l.vencimento), atualizadoEm:new Date().toISOString() } };
+if(l.status==="bonus" && !l.bonusAte) return z;
+return { ...z, [k]:{ ...l, status:"bonus", bonusAte:mais30(l.status==="bonus"?l.bonusAte:null), origem:"indicacao", atualizadoEm:new Date().toISOString() } };
+}
+if(pr.tipo==="servico" && pr.id) return { ...z, servicos:{ ...(z.servicos||{}), [pr.id]:{ status:"bonus", em:hoje, titulo:pr.nome||"", origem:"indicacao" } } };
+return z;
+}));
+};
+const virouAluno = (x, st) => {
+const pr = x.premio || {};
+if(!window.confirm(x.nome+" virou aluno?\n\n"+(st?st.name.split(" ")[0]:"Quem indicou")+" recebe agora: "+(pr.nome||"o prêmio")+".")) return;
+aplicarPremio(x);
+patch(x, { status:"aluno" });
+setLista(p=>p.filter(y=>y.id!==x.id));
+};
+const marcar = (x, status) => { patch(x, { status }); setLista(p=>status==="descartado"?p.filter(y=>y.id!==x.id):p.map(y=>y.id===x.id?{...y,status}:y)); };
+if(!lista.length) return null;
+const waNum = (n) => { let d=String(n||"").replace(/\D/g,""); if(!d) return null; if(!(d.length>=12&&d.indexOf("55")===0)) d="55"+d; return d; };
+return (
+<div style={{ marginBottom:16 }}>
+<div style={{ fontSize:12,fontWeight:700,color:"#64748b",letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:8 }}>Indicações pelo app</div>
+<div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+{lista.map(x=>{ const st = students.find(z=>String(z.id)===String(x.student_id)); const n=waNum(x.whatsapp); const first=String(x.nome||"").split(" ")[0]; return (
+<Card key={x.id} style={{ padding:"10px 14px",background:"#fff7ed",border:"1.5px solid #fed7aa" }}>
+<div style={{ display:"inline-block",fontSize:10.5,fontWeight:800,letterSpacing:"0.06em",color:"#C2410C",background:"#ffedd5",borderRadius:10,padding:"3px 8px",marginBottom:5 }}>🎁 INDIQUE E GANHE{x.status==="conversa"?" · EM CONVERSA":""}</div>
+<div style={{ fontSize:13.5,color:"#0f172a" }}><b>{x.nome}</b>{x.whatsapp?" · "+x.whatsapp:""}</div>
+<div style={{ fontSize:12,color:"#64748b",marginTop:2 }}>Indicado por <b style={{ color:"#0f172a" }}>{st?st.name:"aluno"}</b>{x.premio&&x.premio.nome?" · prêmio: "+x.premio.nome:""}</div>
+<div style={{ display:"flex",gap:6,marginTop:8 }}>
+{n && <a href={"https://wa.me/"+n+"?text="+encodeURIComponent("Oi, "+first+"! Aqui é o Wellington Brito, personal trainer. "+(st?st.name.split(" ")[0]+" me indicou você":"Você foi indicado por um aluno meu")+" e eu tenho um presente para você. Posso te contar como funciona?")} target="_blank" rel="noopener noreferrer" onClick={()=>{ if(x.status==="enviado") marcar(x,"conversa"); }} style={{ flex:1,padding:"8px",borderRadius:9,background:"#E9F5F2",color:"#0F6E56",fontWeight:700,fontSize:12,textAlign:"center",textDecoration:"none" }}>{"Chamar "+first}</a>}
+<button onClick={()=>virouAluno(x,st)} style={{ flex:1,padding:"8px",borderRadius:9,border:"none",background:"#FF5603",color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>Virou aluno</button>
+<button onClick={()=>{ if(window.confirm("Marcar que "+first+" não fechou?")) marcar(x,"descartado"); }} style={{ padding:"8px 10px",borderRadius:9,border:"1px solid #e2e8f0",background:"#fff",color:"#94a3b8",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>Não fechou</button>
+</div>
+</Card>
+); })}
+</div>
+</div>
+);
+};
 const MENTE_JOGOS = {genio:"Gênio das Cores",pares:"Memória de Pares",sequencia:"Sequência Numérica",baloes:"Estourar Balões",caca:"Caça-Palavras",padroes:"Copiar Padrões",listar:"Listar Palavras",completar:"Completar Letra"};
 const ServicosVitrineFicha = ({ st, setStudents }) => {
 const [itens,setItens]=useState(null);
@@ -986,8 +1062,8 @@ const hoje = todayStr();
 const vencido = status==="pago" && (!l.vencimento || l.vencimento<hoje);
 const mais30 = (base) => { const d=new Date(((base && base>hoje)?base:hoje)+"T12:00:00"); d.setDate(d.getDate()+30); return toISODateLocal(d); };
 const setM = (novo) => setStudents(p=>p.map(x=>x.id===st.id?{...x,mente:{...(x.mente||{}),...novo,atualizadoEm:new Date().toISOString()}}:x));
-const escolher = (k) => { if(k===status) return; if(k==="pago") setM({ status:"pago", vencimento:mais30(hoje) }); else setM({ status:k }); };
-const sub = status==="bonus" ? "Liberado de bônus." : status==="pago" ? (vencido ? "Venceu em "+fmt(l.vencimento)+". O cadeado voltou." : "Pago · acesso até "+fmt(l.vencimento)+".") : "O aluno vê o cadeado, 1 jogo grátis e o Pix.";
+const escolher = (k) => { if(k===status) return; if(k==="pago") setM({ status:"pago", vencimento:mais30(hoje), bonusAte:null }); else setM({ status:k, bonusAte:null }); };
+const sub = status==="bonus" ? (l.bonusAte ? (l.bonusAte<hoje ? "Bônus da indicação venceu em "+fmt(l.bonusAte)+"." : "Bônus da indicação até "+fmt(l.bonusAte)+".") : "Liberado de bônus.") : status==="pago" ? (vencido ? "Venceu em "+fmt(l.vencimento)+". O cadeado voltou." : "Pago · acesso até "+fmt(l.vencimento)+".") : "O aluno vê o cadeado, 1 jogo grátis e o Pix.";
 const d30 = new Date(Date.now()-30*86400000).toISOString();
 const ult30 = (res||[]).filter(r=>r.created_at>=d30);
 const diasAtivos = new Set(ult30.map(r=>String(r.created_at).slice(0,10))).size;
@@ -1130,6 +1206,7 @@ return (
 <div style={{ fontSize:13,color:"#64748b",marginTop:3 }}>{new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"})}</div>
 </div>
 {setStudents && <Avisos360 students={students} setStudents={setStudents} setLeads={setLeads} nav={nav}/>}
+{setStudents && <IndicacoesInicio students={students} setStudents={setStudents} setLeads={setLeads}/>}
 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:16 }}>
 {[["Alunos",ativos.length,"#6366f1"],["Aval.",assessments.length,O],["Reavaliar",ativos.filter(s=>{const ult=[...assessments].filter(a=>a.studentId===s.id).sort((a,b)=>b.date?.localeCompare(a.date))[0];if(!ult)return false;const dias=(new Date(hoje)-new Date(ult.date))/86400000;return dias>=75;}).length,"#d97706"]].map(([l,v,c])=>(
 <Card key={l} style={{ padding:"14px 10px",textAlign:"center" }}>
@@ -2550,10 +2627,10 @@ return (
   const set360 = (novo) => setStudents(p=>p.map(x=>x.id===st.id?{...x,l360:{...(x.l360||{}),...novo,atualizadoEm:new Date().toISOString()}}:x));
   const escolher = (k) => {
     if(k===status) return;
-    if(k==="pago") set360({ status:"pago", vencimento:mais30(hoje) });
-    else set360({ status:k });
+    if(k==="pago") set360({ status:"pago", vencimento:mais30(hoje), bonusAte:null });
+    else set360({ status:k, bonusAte:null });
   };
-  const sub = status==="bonus" ? "Liberado de bônus enquanto o plano principal estiver ativo." : status==="pago" ? (vencido ? "Venceu em "+fmt(l.vencimento)+". O cadeado voltou para o aluno." : "Pago · acesso até "+fmt(l.vencimento)+".") : "O aluno vê o cadeado e a oferta com o Pix.";
+  const sub = status==="bonus" ? (l.bonusAte ? (l.bonusAte<hoje ? "Bônus da indicação venceu em "+fmt(l.bonusAte)+"." : "Bônus da indicação até "+fmt(l.bonusAte)+".") : "Liberado de bônus enquanto o plano principal estiver ativo.") : status==="pago" ? (vencido ? "Venceu em "+fmt(l.vencimento)+". O cadeado voltou para o aluno." : "Pago · acesso até "+fmt(l.vencimento)+".") : "O aluno vê o cadeado e a oferta com o Pix.";
   return (
     <Card style={{ padding:"12px 14px",marginBottom:16 }}>
       <div style={{ display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,marginBottom:8 }}>

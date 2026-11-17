@@ -4003,7 +4003,7 @@ function MenteAluno({ aluno }){
   const tol = parseInt(prof && prof.tolerancia_vencimento_dias) || 0;
   const s = sd.mente || {};
   const dias = s.vencimento ? Math.round((new Date(s.vencimento+"T12:00:00") - new Date(hoje+"T12:00:00"))/86400000) : null;
-  const liberado = !cfg.ativo || s.status==="bonus" || (s.status==="pago" && dias!==null && dias >= -tol);
+  const liberado = !cfg.ativo || (s.status==="bonus" && (!s.bonusAte || s.bonusAte>=hoje)) || (s.status==="pago" && dias!==null && dias >= -tol);
   const nomeProduto = cfg.nome || "Mente Ativa";
   const stats = maStats(res);
   const salvar = (r) => {

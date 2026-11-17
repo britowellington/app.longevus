@@ -20,7 +20,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="longevus-aluno-extras.js?v=25"></script>
-<script src="longevus-vitrine.js?v=10"></script>
+<script src="longevus-vitrine.js?v=11"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -3075,7 +3075,7 @@ function App(){
     const s360 = studentData?.l360 || {};
     const dias360 = s360.vencimento ? Math.round((new Date(s360.vencimento)-new Date(hoje))/86400000) : null;
     const pagoOk = s360.status==="pago" && dias360!==null && dias360 >= -toleranciaDias;
-    const status360 = s360.status==="bonus" ? "bonus" : pagoOk ? "pago" : "bloqueado";
+    const status360 = s360.status==="bonus" && (!s360.bonusAte || s360.bonusAte>=hoje) ? "bonus" : pagoOk ? "pago" : "bloqueado";
     acesso360 = { ativo:true, status:status360, bloqueado:status360==="bloqueado", dias:dias360, avisoDias, vencido:s360.status==="pago" && !pagoOk, cfg:cfg360 };
   }
   let acessoMente = { ativo:false, bloqueado:false, carregado:!!cfgMente };
@@ -3083,7 +3083,7 @@ function App(){
     const sm = studentData?.mente || {};
     const diasM = sm.vencimento ? Math.round((new Date(sm.vencimento)-new Date(hoje))/86400000) : null;
     const pagoOkM = sm.status==="pago" && diasM!==null && diasM >= -toleranciaDias;
-    const statusM = sm.status==="bonus" ? "bonus" : pagoOkM ? "pago" : "bloqueado";
+    const statusM = sm.status==="bonus" && (!sm.bonusAte || sm.bonusAte>=hoje) ? "bonus" : pagoOkM ? "pago" : "bloqueado";
     acessoMente = { ativo:true, carregado:true, status:statusM, bloqueado:statusM==="bloqueado", dias:diasM, vencido:sm.status==="pago" && !pagoOkM, cfg:cfgMente };
   }
 

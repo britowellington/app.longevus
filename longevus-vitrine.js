@@ -382,7 +382,69 @@
       h("div", { style: { fontSize: 13, color: "#166534", lineHeight: 1.5 } }, "Agora é só combinar o melhor dia."),
       wa ? h("a", { href: wa, target: "_blank", rel: "noopener noreferrer", onClick: onClique, style: { display: "block", marginTop: 14, height: 48, lineHeight: "48px", borderRadius: 24, background: "#16A34A", color: "#fff", fontWeight: 800, fontSize: 15, textDecoration: "none" } }, "Agendar pelo WhatsApp") : null);
   };
+  const ST_INDIC = { enviado: ["Convite enviado", "#F1F5F9", "#64748B"], conversa: ["Em conversa", "#FFEDD5", "#C2410C"], aluno: ["🎁 Prêmio liberado", "#DCFCE7", "#15803D"], descartado: ["Não fechou", "#F1F5F9", "#94A3B8"] };
+  const IndiqueTela = ({ item, ctx, ownerId, studentId, onFechar }) => {
+    const [lista, setLista] = useState(null);
+    const [f, setF] = useState({ nome: "", whatsapp: "" });
+    const [erro, setErro] = useState("");
+    const [enviado, setEnviado] = useState("");
+    const premio = (item.premio && item.premio.nome) || "um prêmio";
+    const benef = (item.beneficio && item.beneficio.nome) || "";
+    const pers = primeiroNome(ctx.personal) || "Wellington";
+    const carregar = async () => {
+      try {
+        const r = await fetch(SUPA_URL + "/rest/v1/indicacoes?select=id,nome,status,created_at&student_id=eq." + encodeURIComponent(studentId) + "&order=created_at.desc&limit=50", { headers: await api.headers() });
+        setLista(r.ok ? await r.json() : []);
+      } catch (e) { setLista([]); }
+    };
+    useEffect(() => { carregar(); }, []);
+    const enviar = () => {
+      const nome = f.nome.trim().replace(/\s+/g, " ");
+      const dg = f.whatsapp.replace(/\D/g, "");
+      if (!nome) return setErro("Escreva o nome de quem você quer indicar.");
+      if (dg.length < 10) return setErro("Confira o WhatsApp, faltam números.");
+      setErro("");
+      const row = { id: novoId("in"), owner_id: String(ownerId), student_id: String(studentId), nome, whatsapp: fmtWhats(dg), status: "enviado", premio: item.premio || null };
+      (async () => { try { await fetch(SUPA_URL + "/rest/v1/indicacoes", { method: "POST", headers: { ...(await api.headers()), Prefer: "return=minimal" }, body: JSON.stringify(row) }); } catch (e) {} })();
+      setLista((p) => [{ ...row, created_at: new Date().toISOString() }].concat(p || []));
+      const linkPers = waLink(ctx.personalWhats, "Oi, " + pers + "! Vim por indicação de " + primeiroNome(ctx.aluno) + ".");
+      const msg = "Oi, " + primeiroNome(nome) + "! Tudo bem?\n\nEu treino com o " + (ctx.personal || "Wellington Brito") + ", personal trainer especialista em pessoas de 50+, e lembrei de você." + (benef ? "\n\nPor indicação minha, você ganha: " + benef + "." : "") + (linkPers ? "\n\nÉ só chamar ele aqui: " + linkPers : "");
+      const wa = waLink(dg, msg);
+      setEnviado(primeiroNome(nome));
+      setF({ nome: "", whatsapp: "" });
+      if (wa) window.open(wa, "_blank");
+    };
+    const inp = { width: "100%", boxSizing: "border-box", border: "1.5px solid #CBD5E1", borderRadius: 10, padding: "11px 12px", fontSize: 15, color: COR.escuro, background: "#F8FAFC", fontFamily: "inherit", outline: "none", marginBottom: 10 };
+    const sec = (t) => h("div", { style: { fontSize: 11.5, fontWeight: 700, letterSpacing: "0.08em", color: COR.cinza, textTransform: "uppercase", margin: "18px 0 8px" } }, t);
+    const card = { background: "#fff", borderRadius: 16, padding: 14, boxShadow: "0 1px 3px rgba(15,23,42,0.08)" };
+    const passo = (n, t) => h("div", { style: { display: "flex", gap: 11, alignItems: "flex-start", padding: "7px 0", fontSize: 13.5, lineHeight: 1.45, color: "#334155" } }, h("b", { style: { width: 26, height: 26, borderRadius: 13, background: "#FFF4EE", color: COR.laranja, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 } }, n), h("span", null, t));
+    return h("div", { style: { position: "fixed", inset: 0, zIndex: 310, background: COR.fundo, overflowY: "auto", WebkitOverflowScrolling: "touch", color: COR.escuro } },
+      h("div", { style: { background: COR.escuro, color: "#F8FAFC", padding: "calc(14px + env(safe-area-inset-top)) 18px 20px", borderRadius: "0 0 26px 26px" } },
+        h(BotaoVoltar, { onClick: onFechar }),
+        h("div", { style: { display: "flex", gap: 12, alignItems: "center", marginTop: 14 } },
+          h("span", { style: { width: 56, height: 56, borderRadius: 17, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30, flexShrink: 0, background: "linear-gradient(145deg,#FFB37A,#FF5603)", boxShadow: "inset 0 2px 0 rgba(255,255,255,0.45), inset 0 -4px 0 rgba(0,0,0,0.12), 0 6px 14px rgba(255,86,3,0.35)" } }, "🎁"),
+          h("div", null, h("div", { style: { fontSize: 21, fontWeight: 800, lineHeight: 1.15 } }, "Indique e ganhe"), h("div", { style: { fontSize: 12.5, color: "#CBD5E1", marginTop: 2 } }, "Quem cuida de si indica quem gosta"))),
+        h("div", { style: { display: "flex", gap: 8, marginTop: 14 } },
+          h("div", { style: { flex: 1, background: COR.escuro2, border: "1.5px solid " + COR.laranja, borderRadius: 12, padding: "9px 11px" } }, h("div", { style: { fontSize: 10.5, color: "#94A3B8" } }, "VOCÊ GANHA"), h("div", { style: { fontSize: 14, fontWeight: 800, color: "#FDBA74", lineHeight: 1.25 } }, premio)),
+          benef ? h("div", { style: { flex: 1, background: COR.escuro2, borderRadius: 12, padding: "9px 11px" } }, h("div", { style: { fontSize: 10.5, color: "#94A3B8" } }, "SEU AMIGO GANHA"), h("div", { style: { fontSize: 14, fontWeight: 800, lineHeight: 1.25 } }, benef)) : null)),
+      h("div", { style: { padding: "2px 16px calc(30px + env(safe-area-inset-bottom))" } },
+        sec("Como funciona"),
+        h("div", { style: { ...card, padding: "6px 14px" } },
+          passo(1, "Você coloca o nome e o WhatsApp de quem quer indicar."),
+          passo(2, "O convite vai pelo seu WhatsApp, e o " + pers + " entra em contato."),
+          passo(3, "Quando seu amigo virar aluno, seu prêmio é liberado no app.")),
+        sec("Indicar alguém"),
+        h("div", { style: card },
+          h("input", { value: f.nome, onChange: (e) => setF({ ...f, nome: e.target.value }), placeholder: "Nome do seu amigo", autoComplete: "off", style: inp }),
+          h("input", { value: f.whatsapp, onChange: (e) => setF({ ...f, whatsapp: fmtWhats(e.target.value) }), placeholder: "WhatsApp: (11) 90000-0000", inputMode: "tel", autoComplete: "off", style: inp }),
+          erro ? h("div", { role: "alert", style: { fontSize: 13, color: "#B91C1C", background: "#FEF2F2", borderRadius: 10, padding: "9px 11px", marginBottom: 10 } }, erro) : null,
+          enviado ? h("div", { style: { fontSize: 13, color: "#15803D", background: "#F0FDF4", borderRadius: 10, padding: "9px 11px", marginBottom: 10 } }, "Convite para " + enviado + " registrado. Pode indicar mais alguém!") : null,
+          h("button", { type: "button", onClick: enviar, style: { width: "100%", height: 50, borderRadius: 14, border: "none", background: "#16A34A", color: "#fff", fontWeight: 800, fontSize: 15, cursor: "pointer", fontFamily: "inherit" } }, "Enviar convite pelo WhatsApp")),
+        lista && lista.length ? h("div", null, sec("Suas indicações"),
+          h("div", { style: { ...card, padding: "2px 14px" } }, lista.map((x, i) => { const st = ST_INDIC[x.status] || ST_INDIC.enviado; return h("div", { key: x.id, style: { display: "flex", alignItems: "center", gap: 10, padding: "11px 0", borderTop: i ? "1px solid #F1F5F9" : "none", fontSize: 14 } }, h("b", null, x.nome), h("span", { style: { marginLeft: "auto", fontSize: 11.5, fontWeight: 800, borderRadius: 10, padding: "4px 9px", whiteSpace: "nowrap", background: st[1], color: st[2] } }, st[0])); }))) : null));
+  };
   const Detalhe = ({ item, ctx, onFechar, onClique, ownerId, studentId }) => {
+    if (item && item.produto === "indique") return h(IndiqueTela, { item, ctx, ownerId, studentId, onFechar });
     const d = item;
     const parceiro = d.tipo === "parceiro";
     const lib = liberado(ctx, d);
@@ -419,6 +481,12 @@
         h("a", { href, target: "_blank", rel: "noopener noreferrer", onClick: onClique, style: { display: "block", height: 50, lineHeight: "50px", textAlign: "center", borderRadius: 25, background: COR.laranja, color: "#fff", fontWeight: 800, fontSize: 15, textDecoration: "none" } }, d.botao || (parceiro ? "Chamar no WhatsApp" : "Quero saber mais"))) : null);
   };
   const CartaoOferta = ({ item, ctx, onClique, especial, onAbrir }) => {
+    if (item.produto === "indique") return h("div", { onClick: onAbrir, style: { cursor: "pointer", flex: "0 0 84%", minWidth: 0, scrollSnapAlign: "start", boxSizing: "border-box", borderRadius: 16, padding: "11px 12px 11px 12px", display: "flex", alignItems: "center", gap: 11, color: "#fff", background: "linear-gradient(120deg,#FF5603,#FF8A3D)", boxShadow: "0 6px 14px rgba(255,86,3,0.28)" } },
+      h("span", { style: { width: 44, height: 44, borderRadius: 13, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 23, flexShrink: 0, background: "linear-gradient(145deg,#fff,#FFE4D2)", boxShadow: "inset 0 2px 0 rgba(255,255,255,0.6), inset 0 -4px 0 rgba(0,0,0,0.08), 0 4px 10px rgba(0,0,0,0.15)" } }, "🎁"),
+      h("div", { style: { flex: 1, minWidth: 0 } },
+        h("div", { style: { fontSize: 10, fontWeight: 800, letterSpacing: "0.05em", opacity: 0.92 } }, "INDIQUE E GANHE"),
+        h("div", { style: { fontSize: 15, fontWeight: 800, lineHeight: 1.2, marginTop: 1 } }, "Indique um amigo e ganhe prêmios")),
+      h("button", { type: "button", onClick: (e) => { e.stopPropagation(); onAbrir && onAbrir(); }, style: { flexShrink: 0, border: "none", borderRadius: 10, padding: "8px 11px", fontSize: 12, fontWeight: 800, background: "#fff", color: "#C2410C", fontFamily: "inherit", cursor: "pointer" } }, "Indicar"));
     const proprio = item.tipo !== "parceiro";
     const escuro = proprio || especial;
     const sub = item.beneficio || item.texto || "";
@@ -453,7 +521,7 @@
     const [copiado, setCopiado] = useState(null);
     const [detalhe, setDetalhe] = useState(null);
     const lista = (p.itens || []).filter((d) => publicoOk(d, ctx));
-    const proprios = lista.filter((d) => d.tipo !== "parceiro");
+    const proprios = lista.filter((d) => d.tipo !== "parceiro").sort((a, b) => (b.produto === "indique") - (a.produto === "indique"));
     const parceiros = lista.filter((d) => d.tipo === "parceiro");
     const copiar = (d) => {
       try { navigator.clipboard.writeText(d.cupom).then(() => { setCopiado(d.id); setTimeout(() => setCopiado(null), 2000); }); } catch (e) {}
@@ -499,11 +567,11 @@
     const trilho = useRef(null);
     const abrir = (d) => { setDetalhe(d); api.registrar(p.ownerId, d.id, p.studentId, "abriu"); };
     const lista = (itens || []).filter((d) => publicoOk(d, ctx));
-    const cards = [];
+    const cards = lista.filter((d) => d.produto === "indique");
     const anunciaMente = false;
     if (ctx.anuncia360) cards.push({ id: "__360", especial: true, tipo: "proprio", titulo: (p.l360.cfg && p.l360.cfg.nome) || "Longevus 360", texto: "Treino e alimentação conversando todos os dias.", botao: p.l360.vencido ? "Renovar" : "Conhecer" });
     if (anunciaMente) cards.push({ id: "__mente", especial: true, tipo: "proprio", titulo: (p.mente.cfg && p.mente.cfg.nome) || "Mente Ativa", texto: "Memória e atenção, 10 minutos por dia.", botao: p.mente.vencido ? "Renovar" : "Conhecer" });
-    lista.forEach((d) => cards.push(d));
+    lista.forEach((d) => { if (d.produto !== "indique") cards.push(d); });
     useEffect(() => {
       lista.forEach((d) => registrarVisto(p.ownerId, p.studentId, d.id));
       if (itens && ctx.anuncia360) registrarVisto(p.ownerId, p.studentId, "__360");
@@ -718,6 +786,47 @@
         h("div", { style: { fontSize: 12.5, color: "#7F1D1D", lineHeight: 1.5, marginTop: 4 } }, prod.desligarTxt),
         h("button", { type: "button", onClick: desligar, disabled: salvando, style: { width: "100%", marginTop: 10, height: 40, borderRadius: 10, border: "1.5px solid #FCA5A5", background: "#fff", color: "#B91C1C", fontWeight: 700, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit" } }, "Desligar para todos")) : null);
   };
+  const comGratis = (o) => (o && o.tipo === "servico" && !/grátis$/i.test(o.nome)) ? { ...o, nome: o.nome + " grátis" } : o;
+  const FormIndique = ({ inicial, opcoes, onSalvar, onCancelar, onApagar }) => {
+    const [d, setD] = useState(() => ({ id: "vi_indique", produto: "indique", tipo: "proprio", categoria: "outro", titulo: "Indique e ganhe", publico: "todos", ativo: true, premio: opcoes[0] || null, beneficio: comGratis(opcoes.find((o) => /avalia/i.test(o.nome)) || opcoes[2] || opcoes[0] || null), ...(inicial || {}) }));
+    const [outro, setOutro] = useState(() => (inicial && inicial.beneficio && inicial.beneficio.tipo === "texto") ? inicial.beneficio.nome : "");
+    const [salvando, setSalvando] = useState(false);
+    const [erro, setErro] = useState("");
+    const chip = (o, sel, onClick) => h("button", { key: o.tipo + o.id, type: "button", onClick, style: { padding: "9px 12px", borderRadius: 11, border: "1.5px solid " + (sel ? COR.laranja : COR.borda), background: sel ? "#FFF4EE" : "#fff", color: sel ? COR.laranjaTxt : "#334155", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", textAlign: "left" } }, (sel ? "● " : "○ ") + o.nome);
+    const igual = (a, b) => a && b && a.tipo === b.tipo && a.id === b.id;
+    const salvar = async () => {
+      setErro("");
+      const benef = d.beneficio && d.beneficio.tipo === "texto" ? { tipo: "texto", id: "texto", nome: outro.trim() } : d.beneficio;
+      if (!d.premio) return setErro("Escolha o prêmio de quem indica.");
+      if (!benef || !benef.nome) return setErro("Escolha ou escreva o benefício do amigo.");
+      setSalvando(true);
+      const ok = await onSalvar({ ...d, beneficio: benef, atualizadoEm: new Date().toISOString() });
+      setSalvando(false);
+      if (!ok) setErro("Não consegui salvar. Confira se o SQL da vitrine foi rodado.");
+    };
+    const card = { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 16, padding: "14px 16px", marginBottom: 12 };
+    return h("div", { style: { paddingBottom: 90 } },
+      h("button", { type: "button", onClick: onCancelar, style: { background: "transparent", border: "none", padding: "4px 0", color: COR.cinza, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "‹ Vitrine"),
+      h("div", { style: { fontWeight: 800, fontSize: 20, margin: "4px 0 4px" } }, "Indique e ganhe"),
+      h("div", { style: { fontSize: 12.5, color: COR.cinza, lineHeight: 1.5, marginBottom: 14 } }, "Fica sempre em primeiro lugar no \"Para você\". As indicações chegam no seu Início e entram nos Leads."),
+      h("div", { style: card },
+        h("div", { style: { fontWeight: 800, fontSize: 14, marginBottom: 3 } }, "Prêmio de quem indica"),
+        h("div", { style: { fontSize: 12, color: COR.cinza, marginBottom: 10 } }, "Liberado como bônus quando o amigo virar aluno. Produtos mensais valem por 30 dias."),
+        h("div", { style: { display: "flex", flexDirection: "column", gap: 6 } }, opcoes.map((o) => chip(o, igual(d.premio, o), () => setD({ ...d, premio: o }))))),
+      h("div", { style: card },
+        h("div", { style: { fontWeight: 800, fontSize: 14, marginBottom: 3 } }, "Benefício do amigo"),
+        h("div", { style: { fontSize: 12, color: COR.cinza, marginBottom: 10 } }, "Vai na mensagem do convite. Você entrega quando ele vier."),
+        h("div", { style: { display: "flex", flexDirection: "column", gap: 6 } },
+          opcoes.map((o) => chip(comGratis(o), igual(d.beneficio, o), () => setD({ ...d, beneficio: comGratis(o) }))),
+          chip({ tipo: "texto", id: "texto", nome: "Outro (escrever)" }, d.beneficio && d.beneficio.tipo === "texto", () => setD({ ...d, beneficio: { tipo: "texto", id: "texto", nome: outro } }))),
+        d.beneficio && d.beneficio.tipo === "texto" ? h("input", { value: outro, onChange: (e) => setOutro(e.target.value), placeholder: "Ex.: Aula experimental grátis", style: { width: "100%", boxSizing: "border-box", marginTop: 8, padding: "10px 12px", borderRadius: 9, border: "1.5px solid " + COR.borda, fontSize: 14, fontFamily: "inherit" } }) : null),
+      h("div", { style: { ...card, background: "#FFF7ED", borderColor: "#FDE7D3" } },
+        h("div", { style: { fontSize: 11, fontWeight: 700, color: "#9A3412", letterSpacing: "0.06em", marginBottom: 6 } }, "COMO O ALUNO VÊ"),
+        h("div", { style: { fontSize: 13.5, color: "#7C2D12", lineHeight: 1.5 } }, "Você ganha: ", h("b", null, (d.premio && d.premio.nome) || "—"), h("br"), "Seu amigo ganha: ", h("b", null, d.beneficio ? (d.beneficio.tipo === "texto" ? (outro || "—") : d.beneficio.nome) : "—"))),
+      erro ? h("div", { role: "alert", style: { fontSize: 13, color: "#DC2626", marginBottom: 10 } }, erro) : null,
+      h("button", { type: "button", onClick: salvar, disabled: salvando, style: { width: "100%", height: 46, borderRadius: 12, border: "none", background: COR.laranja, color: "#fff", fontWeight: 700, fontSize: 14.5, cursor: "pointer", fontFamily: "inherit", opacity: salvando ? 0.7 : 1 } }, salvando ? "Salvando..." : "Salvar"),
+      inicial && inicial.id && onApagar ? h("button", { type: "button", onClick: () => onApagar(d), style: { width: "100%", marginTop: 10, height: 40, borderRadius: 10, border: "1.5px solid #FCA5A5", background: "#fff", color: "#B91C1C", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" } }, "Remover da vitrine") : null);
+  };
   const Painel = ({ profNome, students }) => {
     const [cfgs, setCfgs] = useState({});
     const [avisos, setAvisos] = useState([]);
@@ -777,6 +886,8 @@
     };
     const prodAberto = verProd && PRODUTOS.find((x) => x.col === verProd);
     if (prodAberto && cfgs[verProd]) return h(Config360, { prod: prodAberto, cfg: cfgs[verProd], onSalvar: (novo) => salvarProd(verProd, novo), onVoltar: () => setVerProd(null) });
+    const opcoesPremio = [{ tipo: "mente", id: "mente", nome: "1 mês de Mente Ativa" }, { tipo: "l360", id: "l360", nome: "1 mês de Longevus 360" }].concat((itens || []).filter((x) => x.tipo !== "parceiro" && !x.produto && x.cobranca === "pix").map((x) => ({ tipo: "servico", id: x.id, nome: x.titulo })));
+    if (editando && (editando.produto === "indique" || editando === "indique")) return h(FormIndique, { inicial: editando === "indique" ? null : editando, opcoes: opcoesPremio, onSalvar: salvar, onCancelar: () => setEditando(null), onApagar: apagar });
     if (editando) return h(FormItem, { inicial: editando === "novo" ? null : editando, profNome, onSalvar: salvar, onCancelar: () => setEditando(null), onApagar: apagar });
     if (itens === null) return h("div", { style: { textAlign: "center", padding: 30, color: "#94A3B8" } }, "Carregando a vitrine...");
     const totalCliques = Object.keys(met).reduce((s, k) => s + met[k].cliques, 0);
@@ -785,6 +896,10 @@
         h("div", { style: { fontWeight: 800, fontSize: 18 } }, "Vitrine do app"),
         h("button", { type: "button", onClick: () => setEditando("novo"), style: { height: 38, padding: "0 16px", borderRadius: 10, border: "none", background: COR.laranja, color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" } }, "+ Nova oferta")),
       h("div", { style: { fontSize: 12.5, color: COR.cinza, marginBottom: 14, lineHeight: 1.5 } }, "O que aparece no carrossel \"Para você\" e no Clube Longevus do app do aluno. Últimos 30 dias: " + totalCliques + (totalCliques === 1 ? " toque" : " toques") + " em ofertas."),
+      itens && !itens.some((x) => x.produto === "indique") ? h("button", { type: "button", onClick: () => setEditando("indique"), style: { width: "100%", textAlign: "left", fontFamily: "inherit", cursor: "pointer", background: "#fff", border: "1.5px dashed #FDBA74", borderRadius: 14, padding: "12px 14px", marginBottom: 8, display: "flex", alignItems: "center", gap: 11 } },
+        h("span", { style: { width: 36, height: 36, borderRadius: 12, background: "linear-gradient(145deg,#FFB37A,#FF5603)", fontSize: 19, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, "🎁"),
+        h("span", { style: { flex: 1 } }, h("span", { style: { display: "block", fontSize: 14, fontWeight: 800, color: COR.escuro } }, "Adicionar Indique e ganhe"), h("span", { style: { display: "block", fontSize: 12, color: COR.cinza } }, "Você escolhe o prêmio de quem indica e o do amigo.")),
+        h("span", { style: { color: "#C2410C", fontWeight: 800, fontSize: 13 } }, "+")) : null,
       cfgs.mente && !(itens || []).some((x) => x.produto === "mente") ? h("button", { type: "button", onClick: () => setEditando({ ...MENTE_MODELO, valor: cfgs.mente.valor ? String(cfgs.mente.valor).replace(".", ",") : "" }), style: { width: "100%", textAlign: "left", fontFamily: "inherit", cursor: "pointer", background: "#fff", border: "1.5px dashed #FDBA74", borderRadius: 14, padding: "12px 14px", marginBottom: 8, display: "flex", alignItems: "center", gap: 11 } },
         h("span", { style: { width: 36, height: 36, borderRadius: 12, background: COR.escuro, color: "#FDBA74", fontWeight: 800, fontSize: 11.5, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, "MA"),
         h("span", { style: { flex: 1 } }, h("span", { style: { display: "block", fontSize: 14, fontWeight: 800, color: COR.escuro } }, "Adicionar a Mente Ativa à vitrine"), h("span", { style: { display: "block", fontSize: 12, color: COR.cinza } }, "Já vem preenchida. Você só confere e salva.")),
