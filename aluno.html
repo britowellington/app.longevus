@@ -20,7 +20,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="longevus-aluno-extras.js?v=25"></script>
-<script src="longevus-vitrine.js?v=7"></script>
+<script src="longevus-vitrine.js?v=8"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -335,7 +335,7 @@ const COGNITIVOS = [
   { id:"listar",    nome:"Listar Palavras",        desc:"Fluência verbal semântica",                 duracao:"3–5 min",  nivel:"Basico",        cor:"#3B82F6" },
   { id:"completar", nome:"Completar Letra",        desc:"Recuperação lexical",                       duracao:"5–8 min",  nivel:"Basico",        cor:"#8B5CF6" },
 ];
-const HUB_URL = "longevus-hub.html";
+const HUB_URL = "longevus-hub.html?aluno=1";
 
 const EXERCISES = [
   {id:"ex01",nome:"Sentar e Levantar da Cadeira",cat:"Fortalecimento",grupo:"MMII",foco:"Pernas e Glúteos",nivel:"Basico",icone:"🪑",tags:["quedas","sarcopenia","mmii","funcional"],momento:"principal"},
@@ -944,7 +944,7 @@ const TelaInicio = ({firstName, treinoHojeLabel, atividadesHoje, atividadesSemDa
             const jogos=["Gênio das Cores","Memória de Pares","Sequência Numérica","Estourar Balões","Caça-Palavras","Copiar Padrões","Listar Palavras","Completar Letra"];
             const n=Math.floor(new Date(new Date().getFullYear(),new Date().getMonth(),new Date().getDate(),12).getTime()/86400000);
             return (
-            <a href="longevus-hub.html" style={{textDecoration:"none",marginTop:atividadesSemData.length>0?8:0,marginBottom:8,background:"#fff",borderRadius:14,padding:"9px 12px",display:"flex",alignItems:"center",gap:10,boxShadow:"0 1px 2px rgba(15,23,42,0.06)"}}>
+            <a href="longevus-hub.html?aluno=1" style={{textDecoration:"none",marginTop:atividadesSemData.length>0?8:0,marginBottom:8,background:"#fff",borderRadius:14,padding:"9px 12px",display:"flex",alignItems:"center",gap:10,boxShadow:"0 1px 2px rgba(15,23,42,0.06)"}}>
               <span style={{width:32,height:32,borderRadius:10,background:"#0F172A",color:"#FDBA74",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:11,fontWeight:800}}>MA</span>
               <span style={{flex:1,minWidth:0}}>
                 <span style={{display:"block",fontSize:13.5,fontWeight:800,color:"#0F172A"}}>{(mente.cfg&&mente.cfg.nome)||"Mente Ativa"}</span>

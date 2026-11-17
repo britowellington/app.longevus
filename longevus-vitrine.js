@@ -172,7 +172,7 @@
     const [erro, setErro] = useState("");
     const [vale, setVale] = useState(null);
     const [valeAberto, setValeAberto] = useState(false);
-    const aceita = item.aceitaPresente !== false;
+    const aceita = item.aceitaPresente !== false && !item.produto;
     const presente = aceita && para === "presente";
     const px = window.__LV_PIX;
     const valor = valorPix(item);
@@ -192,7 +192,7 @@
       (async () => {
         try {
           const hd = { ...(await api.headers()), Prefer: "return=minimal" };
-          const corpo = { id: novoId("av"), owner_id: String(ownerId), student_id: String(studentId), servico: item.titulo || "Serviço" };
+          const corpo = { id: novoId("av"), owner_id: String(ownerId), student_id: String(studentId), servico: item.produto === "mente" ? "Mente Ativa" : (item.titulo || "Serviço") };
           let r = await fetch(SUPA_URL + "/rest/v1/l360_avisos", { method: "POST", headers: hd, body: JSON.stringify(dadosPresente ? { ...corpo, presente: dadosPresente } : corpo) });
           if (!r.ok && dadosPresente) await fetch(SUPA_URL + "/rest/v1/l360_avisos", { method: "POST", headers: hd, body: JSON.stringify({ ...corpo, servico: corpo.servico + " (presente para " + dadosPresente.nome + (dadosPresente.whatsapp ? ", " + dadosPresente.whatsapp : "") + ")" }) });
         } catch (e) {}
@@ -226,7 +226,11 @@
           h("div", { style: { marginBottom: 12 } }, rot("WhatsApp dessa pessoa"), h("input", { value: pr.whatsapp, onChange: (e) => setPr({ ...pr, whatsapp: fmtWhats(e.target.value) }), placeholder: "(11) 90000-0000", inputMode: "tel", autoComplete: "off", style: inp })),
           h("div", null, rot("Mensagem no vale (opcional)"), h("textarea", { value: pr.mensagem, onChange: (e) => setPr({ ...pr, mensagem: e.target.value.slice(0, 160) }), rows: 2, placeholder: "Ex.: Feliz aniversário, mãe!", style: { ...inp, resize: "none", lineHeight: 1.4 } })),
           h("div", { style: { fontSize: 12, color: COR.cinza, lineHeight: 1.45, marginTop: 8 } }, "Depois do pagamento você recebe um vale-presente para enviar pelo WhatsApp.")) : null) : null,
-      tit("Pagamento"),
+      item.produto === "mente" ? h("a", { href: "longevus-hub.html?aluno=1", style: { display: "flex", alignItems: "center", gap: 10, marginTop: 18, background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 14, padding: "11px 13px", textDecoration: "none", color: COR.escuro } },
+        h("span", { style: { width: 32, height: 32, borderRadius: 10, background: "#FFF4EE", color: COR.laranja, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, "G"),
+        h("span", { style: { flex: 1 } }, h("span", { style: { display: "block", fontSize: 13.5, fontWeight: 800 } }, "Experimente grátis"), h("span", { style: { display: "block", fontSize: 11.5, color: COR.cinza } }, "Jogue o Gênio das Cores antes de assinar")),
+        h("span", { style: { color: COR.laranjaTxt || "#C2410C", fontWeight: 800, fontSize: 13 } }, "Jogar ›")) : null,
+      tit(item.produto === "mente" ? "Assinatura mensal" : "Pagamento"),
       h("div", { style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 16, padding: 14, textAlign: "center" } },
         h("div", { style: { fontSize: 12, color: COR.cinza } }, "Valor"),
         h("div", { style: { fontSize: 26, fontWeight: 800, color: COR.escuro, marginBottom: 10 } }, fmtReal(valor)),
@@ -244,6 +248,7 @@
   };
   const publicoOk = (d, ctx) => {
     if (d.validade && d.validade < hojeISO()) return false;
+    if (d.produto === "mente" && !ctx.menteBloq) return false;
     const p = d.publico || "todos";
     if (p === "todos") return true;
     if (p === "mulheres") return ctx.sexo === "F";
@@ -408,7 +413,7 @@
   const contexto = (p) => {
     const sd = p.studentData || {};
     const sem360 = !!(p.l360 && p.l360.ativo && p.l360.bloqueado);
-    return { aluno: sd.name || p.studentName || "", sexo: sd.sex || null, idade: idade(sd.dob), sem360, anuncia360: sem360 && !(p.l360.cfg && p.l360.cfg.anunciar === false), personal: p.profNome || "Wellington Brito", personalWhats: p.profWhats || "" };
+    return { menteBloq: !!(p.mente && p.mente.ativo && p.mente.bloqueado), aluno: sd.name || p.studentName || "", sexo: sd.sex || null, idade: idade(sd.dob), sem360, anuncia360: sem360 && !(p.l360.cfg && p.l360.cfg.anunciar === false), personal: p.profNome || "Wellington Brito", personalWhats: p.profWhats || "" };
   };
 
   const useItens = (ownerId) => {
@@ -474,7 +479,7 @@
     const abrir = (d) => { setDetalhe(d); api.registrar(p.ownerId, d.id, p.studentId, "abriu"); };
     const lista = (itens || []).filter((d) => publicoOk(d, ctx));
     const cards = [];
-    const anunciaMente = !!(p.mente && p.mente.ativo && p.mente.bloqueado && !(p.mente.cfg && p.mente.cfg.anunciar === false));
+    const anunciaMente = false;
     if (ctx.anuncia360) cards.push({ id: "__360", especial: true, tipo: "proprio", titulo: (p.l360.cfg && p.l360.cfg.nome) || "Longevus 360", texto: "Treino e alimentação conversando todos os dias.", botao: p.l360.vencido ? "Renovar" : "Conhecer" });
     if (anunciaMente) cards.push({ id: "__mente", especial: true, tipo: "proprio", titulo: (p.mente.cfg && p.mente.cfg.nome) || "Mente Ativa", texto: "Memória e atenção, 10 minutos por dia.", botao: p.mente.vencido ? "Renovar" : "Conhecer" });
     lista.forEach((d) => cards.push(d));
@@ -524,8 +529,12 @@
       setSalvando(false);
       if (!ok) setErro("Não consegui salvar. Confira se o SQL da vitrine foi rodado.");
     };
-    return h("div", null,
+    return h("div", { style: { paddingBottom: 90 } },
       h("div", { style: { fontWeight: 800, fontSize: 17, marginBottom: 12 } }, d.id ? "Editar oferta" : "Nova oferta"),
+      d.produto === "mente" ? h("div", { style: { background: "#FFF7ED", border: "1.5px solid #FDE7D3", borderRadius: 14, padding: "12px 14px", marginBottom: 12 } },
+        h("div", { style: { fontWeight: 800, fontSize: 14 } }, "Mente Ativa · assinatura mensal"),
+        h("div", { style: { fontSize: 12, color: "#7C2D12", lineHeight: 1.5, margin: "3px 0 10px" } }, "Ao confirmar o Pix no seu Início, o aluno ganha 30 dias de acesso. Também dá para liberar na ficha do aluno (bônus ou pago)."),
+        h(Campo, { rotulo: "Cadeado nos jogos", dica: "Sim: quem não tem a Mente Ativa vê o cadeado e 1 jogo grátis. Não: os jogos ficam livres para todos e a oferta some do app." }, h(Pilulas, { opcoes: [["sim", "Sim, cobrar"], ["nao", "Não, livre para todos"]], valor: d.cadeado === false ? "nao" : "sim", onChange: (v) => set("cadeado")(v === "sim") }))) : null,
       h("div", { style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 16, padding: "14px 16px" } },
         h(Campo, { rotulo: "Tipo" }, h(Pilulas, { opcoes: [["parceiro", "Parceiro"], ["proprio", "Meu serviço"]], valor: d.tipo, onChange: set("tipo") })),
         parceiro ? h(Campo, { rotulo: "Categoria" }, h(Pilulas, { opcoes: CATEGORIAS.map((c) => [c[0], c[1]]), valor: d.categoria, onChange: set("categoria") })) : null,
@@ -543,7 +552,7 @@
             d.cobranca === "pix" ? h("div", { style: { display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 0 } },
               h(Campo, { rotulo: "Valor (R$)", dica: "Entra no Pix com a sua chave do Meu Perfil." }, h("input", { inputMode: "decimal", value: d.valor || "", onChange: (e) => set("valor")(e.target.value.replace(/[^0-9.,]/g, "")), placeholder: "Ex.: 80,00", style: estiloInput })),
               h(Campo, { rotulo: "O que acontece depois do pagamento", dica: "Aparece embaixo do Pix. Ex.: Assim que confirmar, te chamo para agendar." }, h("input", { value: d.posPagamento || "", onChange: (e) => set("posPagamento")(e.target.value), style: estiloInput })),
-              h(Campo, { rotulo: "Pode ser comprado de presente?", dica: "O aluno escolhe \"Presente\" e recebe um vale para enviar a quem vai ganhar." }, h(Pilulas, { opcoes: [["sim", "Sim"], ["nao", "Não"]], valor: d.aceitaPresente === false ? "nao" : "sim", onChange: (v) => set("aceitaPresente")(v === "sim") }))) : null,
+              d.produto ? null : h(Campo, { rotulo: "Pode ser comprado de presente?", dica: "O aluno escolhe \"Presente\" e recebe um vale para enviar a quem vai ganhar." }, h(Pilulas, { opcoes: [["sim", "Sim"], ["nao", "Não"]], valor: d.aceitaPresente === false ? "nao" : "sim", onChange: (v) => set("aceitaPresente")(v === "sim") }))) : null,
             d.cobranca === "pix" ? null : h(Campo, { rotulo: "Quando o aluno tocar" }, h(Pilulas, { opcoes: [["whatsapp", "Abrir meu WhatsApp"], ["link", "Abrir um link"]], valor: d.destino, onChange: set("destino") })),
             d.cobranca !== "pix" && d.destino === "link" ? h(Campo, { rotulo: "Link" }, h("input", { value: d.link || "", onChange: (e) => set("link")(e.target.value), placeholder: "https://", style: estiloInput }))
               : h(Campo, { rotulo: "Seu WhatsApp", dica: "Em branco, usa o WhatsApp do seu perfil." }, h("input", { inputMode: "tel", value: d.whatsapp || "", onChange: (e) => set("whatsapp")(e.target.value), style: estiloInput }))),
@@ -574,6 +583,11 @@
       d.id && onApagar ? h("button", { type: "button", onClick: () => onApagar(d), style: { width: "100%", height: 44, marginTop: 10, borderRadius: 22, border: "1.5px solid #FECACA", background: "#fff", color: "#DC2626", fontWeight: 700, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit" } }, "Excluir esta oferta") : null);
   };
 
+  const MENTE_MODELO = { produto: "mente", tipo: "proprio", categoria: "outro", ativo: true, cadeado: true, publico: "todos", cobranca: "pix", aceitaPresente: false,
+    titulo: "Mente Ativa", texto: "Memória e atenção, 10 minutos por dia.", beneficio: "Jogue em casa", profissional: "Wellington Brito", registro: "CREF 089836-G/SP", especialidade: "Especialista em Gerontologia",
+    sobre: "O corpo você treina comigo. A mente, você treina em casa. São jogos rápidos de memória, atenção e linguagem, pensados para quem tem 50 anos ou mais, com um desafio novo a cada dia e a sua evolução registrada.",
+    inclui: "8 jogos de memória, atenção e linguagem\nDesafio do dia, sem precisar escolher\nSua evolução em cada jogo\nSeu personal acompanha os resultados",
+    atendimento: "online", local: "No app, quando quiser", posPagamento: "Assim que eu confirmar o pagamento, todos os jogos são liberados por 30 dias." };
   const PRODUTOS = [
     { col: "l360", nome: "Longevus 360", sigla: "360", met: "__360", aviso: null, quem: "Quem não tem o 360", nBenef: 5,
       ph: "Registro da refeição por foto\nMetas diárias para o seu objetivo\nDéficit dividido entre alimentação e treino\nCardápios práticos com o que tem em casa\nAcompanhamento direto do seu personal",
@@ -662,7 +676,7 @@
     const desligar = () => { if (window.confirm("Desligar " + nome + " para todos?\n\n" + prod.desligarTxt)) salvar({ ativo: false }, nome + " desligado."); };
     const ligar = () => { if (window.confirm("Ligar " + nome + "?\n\n" + prod.ligarTxt)) salvar({ ativo: true }, nome + " ligado."); };
     const card = { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 14, padding: "14px 16px", marginBottom: 12 };
-    return h("div", null,
+    return h("div", { style: { paddingBottom: 90 } },
       h("button", { type: "button", onClick: onVoltar, style: { background: "transparent", border: "none", padding: "4px 0", color: COR.cinza, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "‹ Vitrine"),
       h("div", { style: { fontWeight: 800, fontSize: 20, margin: "4px 0 14px" } }, nome),
       ligado ? h("div", { style: { ...card, display: "flex", alignItems: "center", gap: 12 } },
@@ -705,6 +719,11 @@
     useEffect(() => { carregar(); }, []);
     const salvar = async (item) => {
       const ok = await api.salvar(uid, item);
+      if (ok && item.produto === "mente") {
+        const atual = cfgs.mente || {};
+        const novoCfg = { ...atual, ativo: item.cadeado !== false, nome: item.titulo || "Mente Ativa", valor: valorPix(item), beneficios: String(item.inclui || "").split("\n").map((x) => x.trim()).filter(Boolean) };
+        if (await cfgApi.gravar(uid, "mente", novoCfg)) setCfgs((p) => ({ ...p, mente: novoCfg }));
+      }
       if (ok) {
         setItens((p) => { const sem = (p || []).filter((x) => x.id !== item.id); return [item].concat(sem); });
         setEditando(null);
@@ -745,7 +764,11 @@
         h("div", { style: { fontWeight: 800, fontSize: 18 } }, "Vitrine do app"),
         h("button", { type: "button", onClick: () => setEditando("novo"), style: { height: 38, padding: "0 16px", borderRadius: 10, border: "none", background: COR.laranja, color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" } }, "+ Nova oferta")),
       h("div", { style: { fontSize: 12.5, color: COR.cinza, marginBottom: 14, lineHeight: 1.5 } }, "O que aparece no carrossel \"Para você\" e no Clube Longevus do app do aluno. Últimos 30 dias: " + totalCliques + (totalCliques === 1 ? " toque" : " toques") + " em ofertas."),
-      PRODUTOS.map((pr) => cfgs[pr.col] ? h(Cartao360, { key: pr.col, prod: pr, cfg: cfgs[pr.col], cont: contarAcesso(students, pr.col), m: met[pr.met] || { viram: 0, abriram: 0 }, pagaram: contarPagaram(avisos, pr), onAbrir: () => setVerProd(pr.col), onAnunciar: () => anunciarProd(pr.col) }) : null),
+      cfgs.mente && !(itens || []).some((x) => x.produto === "mente") ? h("button", { type: "button", onClick: () => setEditando({ ...MENTE_MODELO, valor: cfgs.mente.valor ? String(cfgs.mente.valor).replace(".", ",") : "" }), style: { width: "100%", textAlign: "left", fontFamily: "inherit", cursor: "pointer", background: "#fff", border: "1.5px dashed #FDBA74", borderRadius: 14, padding: "12px 14px", marginBottom: 8, display: "flex", alignItems: "center", gap: 11 } },
+        h("span", { style: { width: 36, height: 36, borderRadius: 12, background: COR.escuro, color: "#FDBA74", fontWeight: 800, fontSize: 11.5, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, "MA"),
+        h("span", { style: { flex: 1 } }, h("span", { style: { display: "block", fontSize: 14, fontWeight: 800, color: COR.escuro } }, "Adicionar a Mente Ativa à vitrine"), h("span", { style: { display: "block", fontSize: 12, color: COR.cinza } }, "Já vem preenchida. Você só confere e salva.")),
+        h("span", { style: { color: "#C2410C", fontWeight: 800, fontSize: 13 } }, "+")) : null,
+      PRODUTOS.filter((pr) => pr.col === "l360").map((pr) => cfgs[pr.col] ? h(Cartao360, { key: pr.col, prod: pr, cfg: cfgs[pr.col], cont: contarAcesso(students, pr.col), m: met[pr.met] || { viram: 0, abriram: 0 }, pagaram: contarPagaram(avisos, pr), onAbrir: () => setVerProd(pr.col), onAnunciar: () => anunciarProd(pr.col) }) : null),
       itens.length === 0 ? h("div", { style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 14, padding: 24, textAlign: "center", color: "#94A3B8", fontSize: 13, lineHeight: 1.5 } }, "Nenhuma oferta ainda. Cadastre um parceiro ou um serviço seu para aparecer no app.") : null,
       itens.map((d) => {
         const m = met[d.id] || { viram: 0, abriram: 0, cliques: 0 };

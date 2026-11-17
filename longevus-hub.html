@@ -4063,6 +4063,11 @@ if (!session) { setBilling(null); setAluno(undefined); return; }
 (async()=>{
 try {
 const headers = await authHeadersFn();
+if (new URLSearchParams(window.location.search).get("aluno")==="1") {
+const rq = await fetch(SUPA_URL+"/rest/v1/students?select=id,owner_id,data&limit=1", { headers });
+const aq = rq.ok ? await rq.json() : [];
+if (aq && aq.length) { setAluno(aq[0]); setBilling({ aluno:true }); return; }
+}
 const r = await fetch(SUPA_URL+"/rest/v1/professionals?select=plano,status_assinatura,trial_ends_at&id=eq."+session.user.id, { headers });
 const rows = r.ok ? await r.json() : [];
 if (rows && rows.length) {
