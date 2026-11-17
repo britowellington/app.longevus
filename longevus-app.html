@@ -27,7 +27,7 @@ var __LOGO_WB__ = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAFuCAYAAAC
 <script type="text/babel" data-presets="react" src="longevus-condominios.js"></script>
 <script src="longevus-alimentacao.js?v=14"></script>
 <script src="longevus-antropometria.js?v=3"></script>
-<script src="longevus-vitrine.js?v=1"></script>
+<script src="longevus-vitrine.js?v=2"></script>
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useCallback, useRef } = React;
 // ── Supabase ─────────────────────────────────────────────────────────────────
@@ -928,19 +928,24 @@ useEffect(()=>{
 (async()=>{
 try {
 const headers = await DB.authHeaders();
-const r = await fetch(SUPA_URL+"/rest/v1/l360_avisos?select=id,student_id,created_at&visto=eq.false&order=created_at.desc&limit=50", { headers });
+let r = await fetch(SUPA_URL+"/rest/v1/l360_avisos?select=id,student_id,created_at,servico&visto=eq.false&order=created_at.desc&limit=50", { headers });
+if(!r.ok) r = await fetch(SUPA_URL+"/rest/v1/l360_avisos?select=id,student_id,created_at&visto=eq.false&order=created_at.desc&limit=50", { headers });
 if(r.ok){ const rows = await r.json(); setAvisos(rows||[]); }
 } catch(e) {}
 })();
 },[]);
-const marcarAluno = async (sid) => {
-setAvisos(p=>p.filter(a=>String(a.student_id)!==String(sid)));
+const chave = (a) => String(a.student_id)+"|"+(a.servico||"");
+const marcar = async (a) => {
+const k = chave(a);
+const ids = avisos.filter(x=>chave(x)===k).map(x=>x.id);
+setAvisos(p=>p.filter(x=>chave(x)!==k));
 try {
 const headers = await DB.authHeaders();
-await fetch(SUPA_URL+"/rest/v1/l360_avisos?student_id=eq."+encodeURIComponent(sid)+"&visto=eq.false", { method:"PATCH", headers:{ ...headers, "Prefer":"return=minimal" }, body: JSON.stringify({ visto:true }) });
+for (const id of ids) await fetch(SUPA_URL+"/rest/v1/l360_avisos?id=eq."+encodeURIComponent(id), { method:"PATCH", headers:{ ...headers, "Prefer":"return=minimal" }, body: JSON.stringify({ visto:true }) });
 } catch(e) {}
 };
-const liberar = (sid) => {
+const liberar = (a) => {
+const sid = a.student_id;
 const hoje = todayStr();
 setStudents(p=>p.map(x=>{
 if(String(x.id)!==String(sid)) return x;
@@ -949,25 +954,25 @@ const base = (l.status==="pago" && l.vencimento && l.vencimento>hoje) ? l.vencim
 const d = new Date(base+"T12:00:00"); d.setDate(d.getDate()+30);
 return { ...x, l360:{ ...l, status:"pago", vencimento:toISODateLocal(d), atualizadoEm:new Date().toISOString() } };
 }));
-marcarAluno(sid);
+marcar(a);
 };
 const vistos = {};
-const lista = avisos.filter(a=>{ const k=String(a.student_id); if(vistos[k]) return false; vistos[k]=true; return true; }).map(a=>({ a, st:students.find(s=>String(s.id)===String(a.student_id)) })).filter(x=>x.st);
+const lista = avisos.filter(a=>{ const k=chave(a); if(vistos[k]) return false; vistos[k]=true; return true; }).map(a=>({ a, st:students.find(s=>String(s.id)===String(a.student_id)) })).filter(x=>x.st);
 if(!lista.length) return null;
 return (
 <div style={{ marginBottom:22 }}>
-<div style={{ fontSize:12,fontWeight:700,color:"#64748b",marginBottom:8 }}>Longevus 360 · pagamentos avisados</div>
+<div style={{ fontSize:12,fontWeight:700,color:"#64748b",marginBottom:8 }}>Pagamentos avisados pelo app</div>
 <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-{lista.map(({a,st})=>(
+{lista.map(({a,st})=>{ const servico=a.servico; return (
 <Card key={a.id} style={{ padding:"10px 14px",background:"#fff7ed",border:"1.5px solid #fed7aa" }}>
-<div onClick={()=>nav("studentDetail",{id:st.id})} style={{ fontSize:13,fontWeight:700,color:"#9a3412",cursor:"pointer" }}>{st.name} avisou que pagou o 360</div>
-<div style={{ fontSize:11,color:"#64748b",marginTop:2 }}>{"Em "+new Date(a.created_at).toLocaleDateString("pt-BR")+" às "+new Date(a.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})+". Confira no banco antes de liberar."}</div>
+<div onClick={()=>nav("studentDetail",{id:st.id})} style={{ fontSize:13,fontWeight:700,color:"#9a3412",cursor:"pointer" }}>{servico ? st.name+" avisou que pagou: "+servico : st.name+" avisou que pagou o 360"}</div>
+<div style={{ fontSize:11,color:"#64748b",marginTop:2 }}>{"Em "+new Date(a.created_at).toLocaleDateString("pt-BR")+" às "+new Date(a.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})+". "+(servico?"Confira no banco e combine a data com o aluno.":"Confira no banco antes de liberar.")}</div>
 <div style={{ display:"flex",gap:8,marginTop:8 }}>
-<button onClick={()=>liberar(st.id)} style={{ flex:1,padding:"8px",borderRadius:9,border:"none",background:"#FF5603",color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>Confirmar e liberar 30 dias</button>
-<button onClick={()=>marcarAluno(st.id)} style={{ flex:0.7,padding:"8px",borderRadius:9,border:"1.5px solid #fed7aa",background:"#fff",color:"#9a3412",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>Ainda não caiu</button>
+<button onClick={()=>servico?marcar(a):liberar(a)} style={{ flex:1,padding:"8px",borderRadius:9,border:"none",background:"#FF5603",color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>{servico?"Confirmar pagamento":"Confirmar e liberar 30 dias"}</button>
+<button onClick={()=>marcar(a)} style={{ flex:0.7,padding:"8px",borderRadius:9,border:"1.5px solid #fed7aa",background:"#fff",color:"#9a3412",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>Ainda não caiu</button>
 </div>
 </Card>
-))}
+);})}
 </div>
 </div>
 );

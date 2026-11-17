@@ -56,6 +56,49 @@
     const numero = d.tipo === "parceiro" ? d.whatsapp : (d.whatsapp || (ctx && ctx.personalWhats));
     return waLink(numero, montarMensagem(d, ctx));
   };
+  const valorNum = (v) => { const n = parseFloat(String(v || "").replace(/[^0-9,\.]/g, "").replace(/\.(?=\d{3})/g, "").replace(",", ".")); return isFinite(n) && n > 0 ? n : 0; };
+  const ehPix = (d) => d && d.tipo !== "parceiro" && d.cobranca === "pix" && valorNum(d.valor) > 0;
+  const fmtReal = (n) => "R$ " + n.toFixed(2).replace(".", ",");
+  const PixPagamento = ({ item, ctx, ownerId, studentId }) => {
+    const qr = useRef(null);
+    const [copiado, setCopiado] = useState(false);
+    const [avisado, setAvisado] = useState(false);
+    const px = window.__LV_PIX;
+    const valor = valorNum(item.valor);
+    const prof = px && px.prof;
+    const payload = prof && prof.pix_key && px.build ? px.build({ pixKey: prof.pix_key, merchantName: prof.pix_merchant_name || prof.nome, merchantCity: prof.pix_merchant_city, amount: valor, txid: ("SV" + String(item.titulo || "").replace(/[^A-Za-z0-9]/g, "")).slice(0, 20) }) : null;
+    useEffect(() => {
+      if (payload && qr.current && window.QRCode) {
+        qr.current.innerHTML = "";
+        new window.QRCode(qr.current, { text: payload, width: 160, height: 160, colorDark: "#0f172a", colorLight: "#ffffff" });
+      }
+    }, [payload]);
+    const copiar = () => { try { navigator.clipboard.writeText(payload).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 2500); }); } catch (e) {} };
+    const msg = "Oi, " + primeiroNome(ctx.personal) + "! Acabei de pagar pelo app: " + (item.titulo || "serviço") + ". Quando podemos agendar?";
+    const wa = waLink(item.whatsapp || ctx.personalWhats, msg);
+    const avisar = () => {
+      setAvisado(true);
+      api.registrar(ownerId, item.id, studentId, "pagou");
+      (async () => {
+        try {
+          const hd = { ...(await api.headers()), Prefer: "return=minimal" };
+          await fetch(SUPA_URL + "/rest/v1/l360_avisos", { method: "POST", headers: hd, body: JSON.stringify({ id: novoId("av"), owner_id: String(ownerId), student_id: String(studentId), servico: item.titulo || "Serviço" }) });
+        } catch (e) {}
+      })();
+    };
+    return h("div", null,
+      h("div", { style: { fontSize: 11.5, fontWeight: 700, letterSpacing: "0.08em", color: COR.cinza, textTransform: "uppercase", margin: "18px 0 8px" } }, "Pagamento"),
+      h("div", { style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 16, padding: 14, textAlign: "center" } },
+        h("div", { style: { fontSize: 12, color: COR.cinza } }, "Valor"),
+        h("div", { style: { fontSize: 26, fontWeight: 800, color: COR.escuro, marginBottom: 10 } }, fmtReal(valor)),
+        payload ? h("div", null,
+          h("div", { ref: qr, style: { display: "flex", justifyContent: "center", marginBottom: 10 } }),
+          h("button", { type: "button", onClick: copiar, style: { width: "100%", height: 44, borderRadius: 22, border: "none", background: copiado ? "#16A34A" : COR.laranja, color: "#fff", fontWeight: 800, fontSize: 14, cursor: "pointer", fontFamily: "inherit" } }, copiado ? "Código copiado" : "Copiar código Pix"),
+          h("div", { style: { fontSize: 11.5, color: "#94A3B8", marginTop: 8 } }, "Escaneie no app do banco ou cole o código no Pix copia e cola."))
+          : h("div", { style: { fontSize: 12.5, color: "#92400E", background: "#FEF9C3", borderRadius: 10, padding: "9px 10px" } }, "O Pix ainda não está configurado. Fale com seu personal pelo WhatsApp."),
+        item.posPagamento ? h("div", { style: { fontSize: 12.5, color: "#334155", marginTop: 12, lineHeight: 1.5, textAlign: "left", background: COR.fundo, borderRadius: 10, padding: "9px 11px" } }, item.posPagamento) : null),
+      wa ? h("a", { href: wa, target: "_blank", rel: "noopener noreferrer", onClick: avisar, style: { display: "block", marginTop: 10, height: 46, lineHeight: "46px", textAlign: "center", borderRadius: 23, background: avisado ? "#F0FDF4" : "#16A34A", color: avisado ? "#15803D" : "#fff", border: avisado ? "1.5px solid #BBF7D0" : "none", fontWeight: 800, fontSize: 14, textDecoration: "none" } }, avisado ? "Aviso enviado ao seu personal" : "Avisar que já paguei") : null);
+  };
   const publicoOk = (d, ctx) => {
     if (d.validade && d.validade < hojeISO()) return false;
     const p = d.publico || "todos";
@@ -171,10 +214,11 @@
     if (/^https?:\/\//.test(t)) return t;
     return "https://instagram.com/" + t.replace(/^@/, "");
   };
-  const Detalhe = ({ item, ctx, onFechar, onClique }) => {
+  const Detalhe = ({ item, ctx, onFechar, onClique, ownerId, studentId }) => {
     const d = item;
     const parceiro = d.tipo === "parceiro";
-    const href = linkDoItem(d, ctx);
+    const pix = ehPix(d);
+    const href = pix ? null : linkDoItem(d, ctx);
     const [copiado, setCopiado] = useState(false);
     const lista = String(d.inclui || "").split("\n").map((x) => x.trim()).filter(Boolean);
     const insta = instaLink(d.instagram);
@@ -188,17 +232,19 @@
           h(Icone, { item: d, tam: 64 }),
           h("div", { style: { minWidth: 0 } },
             h(Selo, { tipo: d.tipo }),
-            h("div", { style: { fontSize: 20, fontWeight: 800, lineHeight: 1.2, marginTop: 6 } }, d.profissional || d.titulo),
-            h("div", { style: { fontSize: 12.5, color: "#CBD5E1", marginTop: 2 } }, [d.especialidade || (parceiro ? categoria(d.categoria)[1] : d.titulo !== (d.profissional || d.titulo) ? d.titulo : null), d.registro].filter(Boolean).join(" · ")))),
+            h("div", { style: { fontSize: 20, fontWeight: 800, lineHeight: 1.2, marginTop: 6 } }, parceiro ? (d.profissional || d.titulo) : d.titulo),
+            h("div", { style: { fontSize: 12.5, color: "#CBD5E1", marginTop: 2 } }, (parceiro ? [d.especialidade || categoria(d.categoria)[1], d.registro] : [d.profissional ? "com " + d.profissional : null, d.registro]).filter(Boolean).join(" · ")),
+            !parceiro && d.especialidade ? h("div", { style: { fontSize: 12, color: "#94A3B8", marginTop: 1 } }, d.especialidade) : null)),
         d.beneficio ? h("div", { style: { marginTop: 14, background: COR.escuro2, border: "1.5px solid " + COR.laranja, borderRadius: 14, padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 } },
-          h("div", null, h("div", { style: { fontSize: 11, color: "#94A3B8" } }, parceiro ? "Benefício para aluno Longevus" : "Condição especial"), h("div", { style: { fontSize: 18, fontWeight: 800, color: "#FDBA74" } }, d.beneficio)),
+          h("div", null, h("div", { style: { fontSize: 11, color: "#94A3B8" } }, parceiro ? "Benefício para aluno Longevus" : "Destaque"), h("div", { style: { fontSize: 18, fontWeight: 800, color: "#FDBA74" } }, d.beneficio)),
           d.cupom ? h("button", { type: "button", onClick: copiar, style: { border: "1.5px dashed #FDBA74", background: "transparent", color: "#FDBA74", borderRadius: 10, padding: "7px 10px", fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" } }, copiado ? "Copiado" : d.cupom) : null) : null),
-      h("div", { style: { padding: "2px 18px calc(110px + env(safe-area-inset-bottom))" } },
+      h("div", { style: { padding: "2px 18px " + (pix ? "calc(30px + env(safe-area-inset-bottom))" : "calc(110px + env(safe-area-inset-bottom))") } },
         d.sobre ? h("div", null, secao(parceiro ? "Quem é" : "Sobre"), h("div", { style: { fontSize: 14, lineHeight: 1.6, color: "#334155", whiteSpace: "pre-wrap" } }, d.sobre)) : (d.texto ? h("div", { style: { fontSize: 14, lineHeight: 1.6, color: "#334155", marginTop: 16 } }, d.texto) : null),
         lista.length ? h("div", null, secao(parceiro ? "O que oferece" : "O que está incluso"), lista.map((x, i) => h("div", { key: i, style: { display: "flex", gap: 9, alignItems: "flex-start", fontSize: 14, lineHeight: 1.45, marginBottom: 7 } }, h("span", { "aria-hidden": "true", style: { color: COR.laranja, fontWeight: 800 } }, "✓"), h("span", null, x)))) : null,
-        (at || d.local || d.preco || insta) ? h("div", null, secao("Informações"), h("div", { style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 14, padding: "4px 14px" } },
-          [["Atendimento", at], ["Onde", d.local], ["Valor", d.preco]].filter((x) => x[1]).map((x, i) => h("div", { key: x[0], style: { display: "flex", justifyContent: "space-between", gap: 12, padding: "10px 0", borderTop: i ? "1px solid #F1F5F9" : "none", fontSize: 13.5 } }, h("span", { style: { color: COR.cinza } }, x[0]), h("span", { style: { fontWeight: 700, textAlign: "right" } }, x[1]))),
-          insta ? h("a", { href: insta, target: "_blank", rel: "noopener noreferrer", style: { display: "flex", justifyContent: "space-between", padding: "10px 0", borderTop: (at || d.local || d.preco) ? "1px solid #F1F5F9" : "none", fontSize: 13.5, textDecoration: "none", color: COR.escuro } }, h("span", { style: { color: COR.cinza } }, "Instagram"), h("span", { style: { fontWeight: 700, color: COR.laranjaTxt } }, (String(d.instagram).indexOf("http") === 0 ? "Ver perfil" : "@" + String(d.instagram).replace(/^@/, "")) + " ›")) : null)) : null,
+        (at || d.local || (d.preco && !pix) || insta) ? h("div", null, secao("Informações"), h("div", { style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 14, padding: "4px 14px" } },
+          [["Atendimento", at], ["Onde", d.local], ["Valor", pix ? null : d.preco]].filter((x) => x[1]).map((x, i) => h("div", { key: x[0], style: { display: "flex", justifyContent: "space-between", gap: 12, padding: "10px 0", borderTop: i ? "1px solid #F1F5F9" : "none", fontSize: 13.5 } }, h("span", { style: { color: COR.cinza } }, x[0]), h("span", { style: { fontWeight: 700, textAlign: "right" } }, x[1]))),
+          insta ? h("a", { href: insta, target: "_blank", rel: "noopener noreferrer", style: { display: "flex", justifyContent: "space-between", padding: "10px 0", borderTop: (at || d.local || (d.preco && !pix)) ? "1px solid #F1F5F9" : "none", fontSize: 13.5, textDecoration: "none", color: COR.escuro } }, h("span", { style: { color: COR.cinza } }, "Instagram"), h("span", { style: { fontWeight: 700, color: COR.laranjaTxt } }, (String(d.instagram).indexOf("http") === 0 ? "Ver perfil" : "@" + String(d.instagram).replace(/^@/, "")) + " ›")) : null)) : null,
+        pix ? h(PixPagamento, { item: d, ctx, ownerId, studentId }) : null,
         parceiro ? h("div", { style: { fontSize: 11.5, color: "#94A3B8", lineHeight: 1.5, marginTop: 16 } }, "Parceiro indicado pelo seu personal. O atendimento é feito diretamente com o parceiro.") : null),
       href ? h("div", { style: { position: "fixed", left: 0, right: 0, bottom: 0, padding: "12px 18px calc(12px + env(safe-area-inset-bottom))", background: "linear-gradient(rgba(244,245,247,0), " + COR.fundo + " 30%)" } },
         h("a", { href, target: "_blank", rel: "noopener noreferrer", onClick: onClique, style: { display: "block", height: 50, lineHeight: "50px", textAlign: "center", borderRadius: 25, background: COR.laranja, color: "#fff", fontWeight: 800, fontSize: 15, textDecoration: "none" } }, d.botao || (parceiro ? "Chamar no WhatsApp" : "Quero saber mais"))) : null);
@@ -206,8 +252,9 @@
   const CartaoOferta = ({ item, ctx, onClique, especial, onAbrir }) => {
     const proprio = item.tipo !== "parceiro";
     const escuro = proprio || especial;
-    const href = especial ? null : linkDoItem(item, ctx);
-    const rotulo = item.botao || (proprio ? "Quero saber mais" : "Quero o desconto");
+    const pix = ehPix(item);
+    const href = especial || pix ? null : linkDoItem(item, ctx);
+    const rotulo = item.botao || (pix ? "Quero fazer · " + fmtReal(valorNum(item.valor)) : proprio ? "Quero saber mais" : "Quero o desconto");
     const btnStyle = { display: "block", textAlign: "center", borderRadius: 12, padding: "9px 10px", fontSize: 13, fontWeight: 800, textDecoration: "none", background: COR.laranja, color: "#fff", border: "none", fontFamily: "inherit", cursor: "pointer", marginTop: "auto" };
     return h("div", { onClick: especial ? void 0 : onAbrir, style: { cursor: especial ? "default" : "pointer", flex: "0 0 84%", scrollSnapAlign: "start", boxSizing: "border-box", borderRadius: 18, padding: "13px 14px", display: "flex", flexDirection: "column", gap: 6, minHeight: 150, background: escuro ? COR.escuro : "#fff", color: escuro ? "#F8FAFC" : COR.escuro, border: "1.5px solid " + (escuro ? COR.laranja : COR.borda) } },
       h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 } }, h(Selo, { tipo: item.tipo }), item.beneficio ? h("span", { style: { fontSize: 11, fontWeight: 800, color: escuro ? "#FDBA74" : COR.laranjaTxt, whiteSpace: "nowrap" } }, item.beneficio) : null),
@@ -215,6 +262,7 @@
       item.texto ? h("div", { style: { fontSize: 12, lineHeight: 1.45, color: escuro ? "#CBD5E1" : COR.cinza } }, item.texto) : null,
       !especial ? h("span", { style: { fontSize: 12, fontWeight: 800, color: escuro ? "#FDBA74" : COR.laranjaTxt } }, "Saiba mais ›") : null,
       especial ? h("button", { type: "button", onClick: onClique, style: btnStyle }, rotulo)
+        : pix ? h("button", { type: "button", onClick: (e) => { e.stopPropagation(); onAbrir && onAbrir(); }, style: btnStyle }, rotulo)
         : href ? h("a", { href, target: "_blank", rel: "noopener noreferrer", onClick: (e) => { e.stopPropagation(); onClique && onClique(); }, style: btnStyle }, rotulo)
         : h("span", { style: { ...btnStyle, background: "#cbd5e1", cursor: "default" } }, "Em breve"));
   };
@@ -258,7 +306,8 @@
           d.beneficio ? h("span", { style: { fontSize: 12, fontWeight: 800, color: d.tipo === "parceiro" ? COR.verde : COR.laranjaTxt, whiteSpace: "nowrap" } }, d.beneficio) : null),
         h("div", { style: { display: "flex", gap: 8, marginTop: 10 } },
           d.cupom ? h("button", { type: "button", onClick: () => copiar(d), style: { flex: 1, height: 38, borderRadius: 10, border: "1.5px dashed #FDBA74", background: "#FFF7ED", color: COR.laranjaTxt, fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" } }, copiado === d.id ? "Cupom copiado" : "Cupom " + d.cupom) : null,
-          href ? h("a", { href, target: "_blank", rel: "noopener noreferrer", onClick: () => api.registrar(p.ownerId, d.id, p.studentId, "clique"), style: { flex: 1, height: 38, lineHeight: "38px", textAlign: "center", borderRadius: 10, background: COR.laranja, color: "#fff", fontWeight: 800, fontSize: 12.5, textDecoration: "none" } }, d.botao || (d.tipo === "parceiro" ? "Chamar no WhatsApp" : "Quero saber mais")) : null));
+          ehPix(d) ? h("button", { type: "button", onClick: () => { setDetalhe(d); api.registrar(p.ownerId, d.id, p.studentId, "abriu"); }, style: { flex: 1, height: 38, borderRadius: 10, border: "none", background: COR.laranja, color: "#fff", fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" } }, "Ver e pagar · " + fmtReal(valorNum(d.valor)))
+          : href ? h("a", { href, target: "_blank", rel: "noopener noreferrer", onClick: () => api.registrar(p.ownerId, d.id, p.studentId, "clique"), style: { flex: 1, height: 38, lineHeight: "38px", textAlign: "center", borderRadius: 10, background: COR.laranja, color: "#fff", fontWeight: 800, fontSize: 12.5, textDecoration: "none" } }, d.botao || (d.tipo === "parceiro" ? "Chamar no WhatsApp" : "Quero saber mais")) : null));
     };
     const secao = (t) => h("div", { style: { fontSize: 11.5, fontWeight: 700, letterSpacing: "0.08em", color: COR.cinza, textTransform: "uppercase", margin: "16px 2px 8px" } }, t);
     return h("div", { style: { position: "fixed", inset: 0, zIndex: 60, background: COR.fundo, overflowY: "auto", WebkitOverflowScrolling: "touch" } },
@@ -273,7 +322,7 @@
         parceiros.map(linha),
         !lista.length && !(p.l360 && p.l360.bloqueado) ? h("div", { style: { textAlign: "center", color: "#94A3B8", fontSize: 13, padding: 30 } }, "Em breve, novidades por aqui.") : null,
         parceiros.length ? h("div", { style: { fontSize: 11, color: "#94A3B8", lineHeight: 1.5, marginTop: 10 } }, "Os parceiros atendem de forma independente. O desconto vale com o cupom informado.") : null),
-      detalhe ? h(Detalhe, { item: detalhe, ctx, onFechar: () => setDetalhe(null), onClique: () => api.registrar(p.ownerId, detalhe.id, p.studentId, "clique") }) : null);
+      detalhe ? h(Detalhe, { item: detalhe, ctx, ownerId: p.ownerId, studentId: p.studentId, onFechar: () => setDetalhe(null), onClique: () => api.registrar(p.ownerId, detalhe.id, p.studentId, "clique") }) : null);
   };
 
   const Carrossel = (p) => {
@@ -307,7 +356,7 @@
         cards.map((d) => h(CartaoOferta, { key: d.id, item: d, ctx, especial: d.especial, onAbrir: () => abrir(d), onClique: d.especial ? () => p.onIr && p.onIr("alimentacao") : () => api.registrar(p.ownerId, d.id, p.studentId, "clique") }))),
       cards.length > 1 ? h("div", { "aria-hidden": "true", style: { display: "flex", gap: 5, justifyContent: "center", marginTop: 8 } }, cards.map((d, i) => h("span", { key: d.id, style: { width: i === ativo ? 16 : 6, height: 6, borderRadius: 3, background: i === ativo ? COR.laranja : "#CBD5E1", transition: "width 0.2s" } }))) : null,
       clube ? h(ClubeTela, { ...p, itens: itens, onFechar: () => setClube(false) }) : null,
-      detalhe ? h(Detalhe, { item: detalhe, ctx, onFechar: () => setDetalhe(null), onClique: () => api.registrar(p.ownerId, detalhe.id, p.studentId, "clique") }) : null);
+      detalhe ? h(Detalhe, { item: detalhe, ctx, ownerId: p.ownerId, studentId: p.studentId, onFechar: () => setDetalhe(null), onClique: () => api.registrar(p.ownerId, detalhe.id, p.studentId, "clique") }) : null);
   };
 
   const Campo = ({ rotulo, children, dica }) => h("label", { style: { display: "flex", flexDirection: "column", gap: 4, fontSize: 12, fontWeight: 600, color: "#475569", marginBottom: 12 } }, h("span", null, rotulo), children, dica ? h("span", { style: { fontSize: 11, fontWeight: 400, color: "#94A3B8" } }, dica) : null);
@@ -325,7 +374,8 @@
       setErro("");
       if (!String(d.titulo || "").trim()) return setErro("Dê um título para a oferta.");
       if (parceiro && !String(d.whatsapp || "").replace(/\D/g, "")) return setErro("Informe o WhatsApp do parceiro.");
-      if (!parceiro && d.destino === "link" && !String(d.link || "").trim()) return setErro("Informe o link.");
+      if (!parceiro && d.cobranca === "pix" && !valorNum(d.valor)) return setErro("Informe o valor para o Pix.");
+      if (!parceiro && d.cobranca !== "pix" && d.destino === "link" && !String(d.link || "").trim()) return setErro("Informe o link.");
       setSalvando(true);
       const ok = await onSalvar({ ...d, id: d.id || novoId("vi"), titulo: String(d.titulo).trim(), atualizadoEm: new Date().toISOString() });
       setSalvando(false);
@@ -346,8 +396,12 @@
           h(Campo, { rotulo: "WhatsApp do parceiro" }, h("input", { inputMode: "tel", value: d.whatsapp || "", onChange: (e) => set("whatsapp")(e.target.value), placeholder: "(11) 90000-0000", style: estiloInput })),
           h(Campo, { rotulo: "Serviço que o aluno vai pedir", dica: "Ex.: o acompanhamento nutricional" }, h("input", { value: d.servico || "", onChange: (e) => set("servico")(e.target.value), style: estiloInput })))
           : h("div", null,
-            h(Campo, { rotulo: "Quando o aluno tocar" }, h(Pilulas, { opcoes: [["whatsapp", "Abrir meu WhatsApp"], ["link", "Abrir um link"]], valor: d.destino, onChange: set("destino") })),
-            d.destino === "link" ? h(Campo, { rotulo: "Link" }, h("input", { value: d.link || "", onChange: (e) => set("link")(e.target.value), placeholder: "https://", style: estiloInput }))
+            h(Campo, { rotulo: "Como o aluno paga" }, h(Pilulas, { opcoes: [["whatsapp", "Combina comigo no WhatsApp"], ["pix", "Paga pelo app (Pix)"]], valor: d.cobranca || "whatsapp", onChange: set("cobranca") })),
+            d.cobranca === "pix" ? h("div", { style: { display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 0 } },
+              h(Campo, { rotulo: "Valor (R$)", dica: "Entra no Pix com a sua chave do Meu Perfil." }, h("input", { inputMode: "decimal", value: d.valor || "", onChange: (e) => set("valor")(e.target.value.replace(/[^0-9.,]/g, "")), placeholder: "Ex.: 80,00", style: estiloInput })),
+              h(Campo, { rotulo: "O que acontece depois do pagamento", dica: "Aparece embaixo do Pix. Ex.: Assim que confirmar, te chamo para agendar." }, h("input", { value: d.posPagamento || "", onChange: (e) => set("posPagamento")(e.target.value), style: estiloInput }))) : null,
+            d.cobranca === "pix" ? null : h(Campo, { rotulo: "Quando o aluno tocar" }, h(Pilulas, { opcoes: [["whatsapp", "Abrir meu WhatsApp"], ["link", "Abrir um link"]], valor: d.destino, onChange: set("destino") })),
+            d.cobranca !== "pix" && d.destino === "link" ? h(Campo, { rotulo: "Link" }, h("input", { value: d.link || "", onChange: (e) => set("link")(e.target.value), placeholder: "https://", style: estiloInput }))
               : h(Campo, { rotulo: "Seu WhatsApp", dica: "Em branco, usa o WhatsApp do seu perfil." }, h("input", { inputMode: "tel", value: d.whatsapp || "", onChange: (e) => set("whatsapp")(e.target.value), style: estiloInput }))),
         h("div", { style: { fontSize: 13, fontWeight: 800, color: COR.escuro, margin: "6px 0 10px", paddingTop: 12, borderTop: "1px solid #F1F5F9" } }, "Página de detalhe (Saiba mais)"),
         h(Campo, { rotulo: "Foto (link da imagem)", dica: "Opcional. Cole o link de uma foto. Sem foto, aparece a inicial." }, h("input", { value: d.foto || "", onChange: (e) => set("foto")(e.target.value.trim()), placeholder: "https://", style: estiloInput })),
@@ -365,7 +419,7 @@
         h(Campo, { rotulo: "Texto do botão", dica: parceiro ? "Padrão: Quero o desconto" : "Padrão: Quero saber mais" }, h("input", { value: d.botao || "", onChange: (e) => set("botao")(e.target.value), style: estiloInput })),
         h(Campo, { rotulo: "Mostrar para" }, h(Pilulas, { opcoes: PUBLICOS, valor: d.publico || "todos", onChange: set("publico") })),
         h(Campo, { rotulo: "Válido até", dica: "Opcional. Depois dessa data, some do app sozinho." }, h("input", { type: "date", value: d.validade || "", onChange: (e) => set("validade")(e.target.value), style: estiloInput }))),
-      (parceiro || d.destino !== "link") ? h("div", { style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 16, padding: "14px 16px", marginTop: 12 } },
+      (parceiro || (d.cobranca !== "pix" && d.destino !== "link")) ? h("div", { style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 16, padding: "14px 16px", marginTop: 12 } },
         h(Campo, { rotulo: "Mensagem do WhatsApp", dica: "Pode editar. Códigos que o app troca sozinho: {aluno}, {aluno_a}, {personal}, {personal_nome}, {parceiro}, {servico}, {cupom}, {cupom_frase}." }, h("textarea", { rows: 6, value: d.mensagem || (parceiro ? MSG_PARCEIRO : MSG_PROPRIO), onChange: (e) => set("mensagem")(e.target.value), style: { ...estiloInput, resize: "vertical", lineHeight: 1.45 } })),
         h("div", { style: { fontSize: 11.5, fontWeight: 700, color: COR.cinza, margin: "2px 0 6px" } }, "Prévia com uma aluna de exemplo"),
         h("div", { style: { background: "#ECE5DD", borderRadius: 12, padding: 10 } }, h("div", { style: { background: "#DCF8C6", borderRadius: "12px 12px 2px 12px", padding: "9px 11px", fontSize: 13, lineHeight: 1.5, whiteSpace: "pre-wrap", color: "#111827" } }, montarMensagem(d, exemplo)))) : null,
