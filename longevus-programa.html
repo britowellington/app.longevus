@@ -2427,6 +2427,60 @@ const FB50_BASES={
   "Pullover com halter":"pullover halter|pull_over halter|pullover -polia -cabo|pull_over",
   "Rosca Scott":"rosca scott|scott",
   "Tríceps testa":"triceps testa|testa halter|triceps frances",
+  "Afundo":"afundo -lateral|avanco -lateral|lunge -lateral|passada -lateral",
+  "Agachamento sumô":"agachamento sumo|sumo -terra",
+  "Cadeira adutora":"cadeira adutora|adutora|aducao maquina",
+  "Adução na polia":"aducao polia|aducao cabo|aducao em_pe|aducao -cadeira -maquina",
+  "Transferência de Peso Lateral":"id:eq16",
+  "Trabalho de Equilíbrio · Alcance Posterior":"id:eq06",
+  "Caminhada em Linha":"id:lc10",
+  "Caminhada Tandem":"id:bi18",
+  "Equilíbrio unipodal":"id:bi17",
+  "Trabalho de Equilíbrio · Alcance Anterior com Objeto":"id:eq14",
+  "Senta e Levanta Apoiado":"id:fc02",
+  "Senta e Levanta":"id:fc01",
+  "Agachamento Senta e Levanta com Carga":"id:fc05",
+  "Fortalecimento de Panturrilha (com Apoio na Cadeira)":"id:nc27",
+  "Elevação de Joelho com Apoio na Parede":"id:ep10",
+  "Elevação de Perna · Marcha Apenas Uma Perna":"id:ep19",
+  "Fortalecimento do Quadril · Elevação de Joelho com Miniband":"id:el07",
+  "Locomoção Lateral Vai e Volta":"id:lc06",
+  "Fortalecimento do Quadril · Caminhada Lateral com Miniband":"id:el06",
+  "Locomoção Frente e Costas":"id:lc05",
+  "Subida Alternada no Degrau":"id:ep21",
+  "Caminhada Passando por Cima do Obstáculo":"id:lc01",
+  "Agachamento na Cadeira":"id:aq02",
+  "Abdução de Quadril em Pé":"id:bi06",
+  "Toque em 3 Direções com Mini Band":"id:hd21",
+  "Trabalho de Equilíbrio Encostando no Objeto":"id:eq13",
+  "Locomoção em Diferentes Direções":"id:lc19",
+  "Caminhando de 3 Metros (TUG Funcional)":"id:lc08",
+  "Marcha Estacionária com Bastão":"id:ca11",
+  "Trabalho de Equilíbrio Dobrando a Perna":"id:eq12",
+  "Caminhada Rápida em Diferentes Direções":"id:lc21",
+  "Isométrico em Pé com Troca de Carga":"id:et07",
+  "Panturrilha em pé":"id:bi02",
+  "Deslocamento Lateral":"id:lc09",
+  "Toque Lateral com Mini Band":"id:hd20",
+  "Subida no Step ou Degrau da Escada":"id:ep11",
+  "Subida no Degrau com Elevação de Joelho":"id:ep20",
+  "Treino de Reação com Estímulo Direcional":"id:et36",
+  "Sentar e Levantar da Cadeira":"id:bi01",
+  "Agachamento Assistido (cadeira)":"id:bi07",
+  "Meio Agachamento":"id:aq01",
+  "Agachamento Goblet":"id:aq05",
+  "Passada":"id:tp06",
+  "Afundo com Halteres":"id:hi22",
+  "Caminhada Lateral Passando por Cima do Obstáculo":"id:lc03",
+  "Rotação de tronco em pé":"id:mob009",
+  "Caminhando de 3 Metros Segurando Peso":"id:lc16",
+  "Caminhada 3 Metros com Peso em Apenas Uma Mão":"id:lc17",
+  "Equilíbrio em Uma Perna":"id:eq20",
+  "Elevação da Ponta dos Pés":"id:ep13",
+  "Caminhada Lateral com os Calcanhares":"id:lc02",
+  "Panturrilha em Pé (Livre)":"id:hi54",
+  "Trabalho de Equilíbrio · Alcance Posterior com Objeto":"id:eq15",
+  "Locomoção com Peso em Uma Mão, Passando por Cima do Obstáculo":"id:lc12",
   "Cadeira abdutora":"cadeira abdutora|abducao maquina|abdutora",
   "Abdução na polia":"abducao polia|abducao cabo|abducao em_pe|abducao -cadeira -maquina",
   "Abdução em pé":"abducao em_pe|abducao quadril -cadeira -maquina|abducao -cadeira -maquina",
@@ -2456,6 +2510,7 @@ const FB50_BASES={
 const FB50_DIV_FB={modelo:"academia_fb_abc",label:"Full Body A/B/C (3×)",desc:"Três Full Body com exercícios diferentes",sequencia:["FBA","FBB","FBC"]};
 const FB50_DIV_AB={modelo:"academia_sup_inf",label:"Superior / Inferior (2×)",desc:"Superiores e inferiores alternados",sequencia:["SUP","INF"]};
 const FB50_DIV_PPL={modelo:"academia_ppl",label:"Puxa / Empurra / Inferiores (3×)",desc:"Puxa, empurra e inferiores",sequencia:["PULL","PUSH","LEGS"]};
+const FB50_DIV_FEM={modelo:"academia_fem_abc",label:"Superior / Anterior / Posterior (3×)",desc:"Superiores, anterior de pernas e posterior de pernas e glúteos",sequencia:["SUP","INF","LEGS"]};
 const FB50_PROGRAMAS=[
   {id:"fb50_p1",nome:"Full Body 50+ · Programa 1",treinos:{
     FBA:{nome:"Treino A · Força global",enf:"força global",par3:[5,6],slots:[
@@ -2715,6 +2770,198 @@ const FB50_PROGRAMAS=[
       ["l","A",["Caminhada em linha","Com apoio próximo"],["Caminhada em linha","Sem apoio, alguém por perto"],["Caminhada em linha","Com giro de cabeça ou tarefa cognitiva"]],
     ]},
   }},
+  {id:"fem50_p1",nome:"Ênfase Feminina 50+ · Programa 1",freq:3,divisao:FB50_DIV_FEM,treinos:{
+    SUP:{nome:"Treino A · Superiores",enf:"membros superiores",par3:[4,5],slots:[
+      ["f","Â",["Supino máquina"]],
+      ["f","Â",["Puxada frontal"]],
+      ["f","S",["Remada unilateral com halter"],["Remada unilateral na polia","Em pé"],["Remada unilateral com halter","Em pé, base escalonada"]],
+      ["f","S",["Desenvolvimento na máquina"],["Desenvolvimento com halteres","Sentado"],["Desenvolvimento landmine"]],
+      ["f","A",["Elevação lateral com halteres"],["Elevação lateral na polia"],["Elevação lateral com halteres","Sentado, pausa de 1s no topo"]],
+      ["f","A",["Crucifixo inverso na máquina"],["Crucifixo inverso com halteres","Inclinado no banco, com apoio do peito"],["Crucifixo inverso na máquina","Pausa de 2s na contração"]],
+      ["f","A",["Tríceps corda"],["Tríceps barra V"],["Tríceps unilateral na polia","Um braço por vez"]],
+      ["t","A",["Pallof press"],["Pallof press","Semiajoelhado"],["Pallof press","Com passo lateral"]],
+    ]},
+    INF:{nome:"Treino B · Anterior de pernas",enf:"anterior de pernas e adutores",par3:[6,7],slots:[
+      ["f","Â",["Leg press"]],
+      ["f","S",["Agachamento até o banco"],["Agachamento goblet","Até o banco"],["Agachamento goblet","Livre, sem banco"]],
+      ["f","A",["Cadeira extensora"],["Cadeira extensora","Uma perna por vez"],["Cadeira extensora","Pausa de 2s no topo"]],
+      ["f","S",["Step-up","Degrau baixo, mão em apoio"],["Step-up","Degrau médio, sem apoio"],["Step-up","Com halteres leves"]],
+      ["f","S",["Afundo","Estacionário, com apoio"],["Afundo","Estacionário, sem apoio"],["Afundo","Estacionário, com halteres"]],
+      ["f","S",["Agachamento sumô","Com halter, até o banco"],["Agachamento sumô","Com halter, livre"],["Agachamento sumô","Com halter, pausa de 2s embaixo"]],
+      ["f","A",["Cadeira adutora"],["Cadeira adutora","Pausa de 2s na contração"],["Cadeira adutora","Descida lenta em 3s"]],
+      ["f","A",["Panturrilha em pé","Com apoio"],["Panturrilha em pé","Uma perna, com apoio"],["Panturrilha em pé","Livre, sem máquina"]],
+    ]},
+    LEGS:{nome:"Treino C · Posterior de pernas e glúteos",enf:"posterior de pernas e glúteos",par3:[3,4],slots:[
+      ["f","Â",["Elevação pélvica"]],
+      ["f","S",["Terra com kettlebell","Kettlebell sobre um step"],["Terra romeno","Com halteres, amplitude confortável"],["Terra romeno","Uma perna, com apoio"]],
+      ["f","Â",["Mesa flexora"]],
+      ["f","A",["Extensão de quadril na polia"],["Extensão de quadril em pé","Caneleira leve"],["Extensão de quadril na polia","Pausa de 2s atrás"]],
+      ["f","A",["Cadeira abdutora"],["Abdução na polia","Em pé, com apoio"],["Caminhada lateral com mini band","Passos para cada lado"]],
+      ["f","A",["Cadeira flexora"],["Cadeira flexora","Uma perna por vez"],["Cadeira flexora","Descida lenta em 3s"]],
+      ["f","A",["Abdução em pé","Com apoio das mãos"],["Abdução em pé","Com caneleira leve"],["Abdução em pé","Com elástico, sem apoio"]],
+      ["f","A",["Panturrilha sentada"],["Panturrilha sentada","Uma perna por vez"],["Panturrilha sentada","Pausa de 2s no topo"]],
+    ]},
+  }},
+  {id:"fem50_p2",nome:"Ênfase Feminina 50+ · Programa 2",freq:3,divisao:FB50_DIV_FEM,treinos:{
+    SUP:{nome:"Treino A · Superiores",enf:"membros superiores",par3:[4,5],slots:[
+      ["f","Â",["Puxada neutra","Pegada neutra"]],
+      ["f","Â",["Supino inclinado na máquina"]],
+      ["f","S",["Remada articulada"],["Remada cavalinho","Com apoio de peito"],["Remada unilateral com halter"]],
+      ["f","S",["Desenvolvimento com halteres","Sentado"],["Desenvolvimento landmine"],["Desenvolvimento com halteres","Em pé, alternando os braços"]],
+      ["f","A",["Elevação lateral na polia"],["Elevação lateral com halteres"],["Elevação lateral com halteres","Sentado, pausa de 1s no topo"]],
+      ["f","A",["Face pull"],["Face pull","Pausa de 2s na contração"],["Face pull","Semiajoelhado"]],
+      ["f","A",["Tríceps na polia"],["Tríceps corda"],["Tríceps francês","Sentado, um braço por vez, carga leve"]],
+      ["t","A",["Dead bug"],["Dead bug","Com carga leve"],["Bird dog","Pausa de 3s na extensão"]],
+    ]},
+    INF:{nome:"Treino B · Anterior de pernas",enf:"anterior de pernas e adutores",par3:[6,7],slots:[
+      ["f","Â",["Agachamento no Smith"]],
+      ["f","S",["Leg press","Pés na largura do quadril"],["Leg press","Uma perna por vez, alternando"],["Leg press","Uma perna por vez, pausa de 2s embaixo"]],
+      ["f","A",["Cadeira extensora"],["Cadeira extensora","Uma perna por vez"],["Cadeira extensora","Pausa de 2s no topo"]],
+      ["f","S",["Step lateral","Sobre step baixo, para cada lado"],["Step lateral","Sobre step médio, para cada lado"],["Step lateral","Com halteres leves"]],
+      ["f","S",["Afundo","Reverso, com apoio"],["Afundo","Reverso, sem apoio"],["Afundo","Reverso, com halteres"]],
+      ["f","A",["Cadeira adutora"],["Cadeira adutora","Pausa de 2s na contração"],["Cadeira adutora","Descida lenta em 3s"]],
+      ["f","A",["Adução na polia","Em pé, com apoio"],["Adução na polia","Pausa de 1s na contração"],["Adução na polia","Sem apoio"]],
+      ["f","A",["Panturrilha no leg press"],["Panturrilha em pé","Uma perna, com apoio"],["Panturrilha em pé","Livre, sem máquina"]],
+    ]},
+    LEGS:{nome:"Treino C · Posterior de pernas e glúteos",enf:"posterior de pernas e glúteos",par3:[4,5],slots:[
+      ["f","Â",["Elevação pélvica"]],
+      ["f","S",["Terra com kettlebell","Kettlebell sobre um step"],["Terra romeno","Com halteres, amplitude confortável"],["Terra romeno","Com halteres, pausa de 2s embaixo"]],
+      ["f","Â",["Cadeira flexora"]],
+      ["f","A",["Mesa flexora"],["Mesa flexora","Uma perna por vez"],["Mesa flexora","Descida lenta em 3s"]],
+      ["f","A",["Extensão de quadril em pé","Caneleira leve"],["Extensão de quadril na polia"],["Extensão de quadril na polia","Pausa de 2s atrás"]],
+      ["f","A",["Abdução na polia","Em pé, com apoio"],["Caminhada lateral com mini band","Passos para cada lado"],["Abdução na polia","Pausa de 1s na contração"]],
+      ["f","A",["Cadeira abdutora"],["Cadeira abdutora","Pausa de 2s na contração"],["Cadeira abdutora","Tronco inclinado à frente"]],
+      ["f","A",["Panturrilha sentada"],["Panturrilha sentada","Uma perna por vez"],["Panturrilha sentada","Pausa de 2s no topo"]],
+    ]},
+  }},
+  {id:"fem50_p3",nome:"Ênfase Feminina 50+ · Programa 3",freq:3,divisao:FB50_DIV_FEM,treinos:{
+    SUP:{nome:"Treino A · Superiores",enf:"membros superiores",par3:[4,5],slots:[
+      ["f","Â",["Supino máquina"]],
+      ["f","Â",["Remada baixa na polia","Pegada neutra"]],
+      ["f","S",["Puxada frontal","Polia alta"],["Puxada unilateral","Um braço por vez"],["Puxada supinada","Pegada supinada"]],
+      ["f","S",["Desenvolvimento na máquina"],["Desenvolvimento na máquina","Um braço por vez"],["Desenvolvimento com halteres","Sentado"]],
+      ["f","A",["Elevação lateral com halteres"],["Elevação lateral na polia"],["Elevação lateral com halteres","Sentado, pausa de 1s no topo"]],
+      ["f","A",["Crucifixo inverso com halteres"],["Crucifixo inverso na polia"],["Crucifixo inverso com halteres","Sentado, pausa de 2s"]],
+      ["f","A",["Tríceps corda"],["Tríceps barra V"],["Tríceps unilateral na polia","Um braço por vez"]],
+      ["t","A",["Pallof press"],["Pallof press","Semiajoelhado"],["Pallof press","Com passo lateral"]],
+    ]},
+    INF:{nome:"Treino B · Anterior de pernas",enf:"anterior de pernas e adutores",par3:[6,7],slots:[
+      ["f","Â",["Agachamento goblet","Halter no peito, até o banco"],["Agachamento goblet","Banco mais baixo"],["Agachamento goblet","Livre, pausa de 2s embaixo"]],
+      ["f","S",["Agachamento no Smith","Até o banco"],["Agachamento no Smith","Livre"],["Agachamento no Smith","Pausa de 2s embaixo"]],
+      ["f","Â",["Cadeira extensora"]],
+      ["f","S",["Step-up","Frontal, degrau baixo, com apoio"],["Step-up","Degrau médio, sem apoio"],["Step-up","Com halteres leves"]],
+      ["f","S",["Afundo","Estacionário, com apoio"],["Afundo","Estacionário, sem apoio"],["Afundo","Estacionário, com halteres"]],
+      ["f","S",["Agachamento lateral","Com apoio das mãos"],["Agachamento lateral","Sem apoio"],["Agachamento lateral","Halter no peito"]],
+      ["f","A",["Cadeira adutora"],["Cadeira adutora","Pausa de 2s na contração"],["Cadeira adutora","Descida lenta em 3s"]],
+      ["f","A",["Panturrilha em pé"],["Panturrilha em pé","Uma perna, com apoio"],["Panturrilha em pé","Livre, sem máquina"]],
+    ]},
+    LEGS:{nome:"Treino C · Posterior de pernas e glúteos",enf:"posterior de pernas e glúteos",par3:[3,4],slots:[
+      ["f","Â",["Elevação pélvica"]],
+      ["f","S",["Terra romeno","Com halteres, amplitude curta até o joelho"],["Terra romeno","Com halteres, amplitude confortável"],["Terra romeno","Com halteres, pausa de 2s embaixo"]],
+      ["f","Â",["Mesa flexora"]],
+      ["f","A",["Extensão de quadril na polia"],["Extensão de quadril em pé","Caneleira leve"],["Extensão de quadril na polia","Pausa de 2s atrás"]],
+      ["f","A",["Abdução em pé","Com apoio das mãos"],["Abdução em pé","Com caneleira leve"],["Abdução em pé","Com elástico, sem apoio"]],
+      ["f","A",["Flexora em pé","Uma perna por vez"],["Cadeira flexora","Uma perna por vez"],["Mesa flexora","Descida lenta em 3s"]],
+      ["f","A",["Caminhada lateral com mini band","Passos para cada lado"],["Caminhada lateral com mini band","Elástico mais forte"],["Caminhada lateral com mini band","Semiagachado"]],
+      ["f","A",["Panturrilha sentada"],["Panturrilha sentada","Uma perna por vez"],["Panturrilha sentada","Pausa de 2s no topo"]],
+    ]},
+  }},
+  {id:"eq50_p1",nome:"Equilíbrio 50+ · Programa 1",freq:3,divisao:FB50_DIV_FB,semBiset:true,obsPrefixo:"Foco em equilíbrio. ",notaReteste:"Reteste: registre repetições ou tempo",treinos:{
+    FBA:{nome:"Treino A · Equilíbrio estático e controle postural",enf:"equilíbrio estático e controle postural",slots:[
+      ["t","A",["Transferência de Peso Lateral","Com apoio próximo"],["Transferência de Peso Lateral","Sem apoio, amplitude maior"],["Transferência de Peso Lateral","Sobre colchonete, apoio próximo"]],
+      ["t","A",["Trabalho de Equilíbrio · Alcance Posterior","Transferência frente e trás, com apoio"],["Trabalho de Equilíbrio · Alcance Posterior","Sem apoio, amplitude maior"],["Trabalho de Equilíbrio · Alcance Posterior","Sobre colchonete, apoio próximo"]],
+      ["p","A",["Caminhada em Linha","Pausas de 5s em semi-tandem, apoio próximo"],["Caminhada em Linha","Pausas de 5s em semi-tandem, sem apoio"],["Caminhada em Linha","Semi-tandem com giro de cabeça nas pausas"]],
+      ["p","A",["Caminhada Tandem","Pausas de 5s em tandem, com apoio"],["Caminhada Tandem","Pausas em tandem, um dedo de apoio"],["Caminhada Tandem","Pausas em tandem, sem apoio"]],
+      ["t","A",["Equilíbrio unipodal","Assistido, mãos no apoio"],["Equilíbrio unipodal","Um dedo de apoio"],["Equilíbrio unipodal","Sem apoio, alguém por perto"]],
+      ["f","A",["Trabalho de Equilíbrio · Alcance Anterior com Objeto","Alcance em várias direções"],["Trabalho de Equilíbrio · Alcance Anterior com Objeto","Com halter leve na mão"],["Trabalho de Equilíbrio · Alcance Anterior com Objeto","Em semi-tandem"]],
+      ["f","Â",["Senta e Levanta Apoiado","Banco alto, com apoio dos braços"],["Senta e Levanta","Sem impulso dos braços"],["Agachamento Senta e Levanta com Carga","Halter no peito"]],
+      ["f","A",["Fortalecimento de Panturrilha (com Apoio na Cadeira)"],["Fortalecimento de Panturrilha (com Apoio na Cadeira)","Apoio de uma mão só"],["Fortalecimento de Panturrilha (com Apoio na Cadeira)","Uma perna, com apoio"]],
+    ]},
+    FBB:{nome:"Treino B · Equilíbrio dinâmico e deslocamentos",enf:"equilíbrio dinâmico e deslocamentos",slots:[
+      ["f","A",["Elevação de Joelho com Apoio na Parede","Alternando as pernas"],["Elevação de Perna · Marcha Apenas Uma Perna","Pausa de 1s com o joelho no alto"],["Fortalecimento do Quadril · Elevação de Joelho com Miniband","Com tarefa cognitiva"]],
+      ["p","A",["Locomoção Lateral Vai e Volta","Com apoio próximo"],["Locomoção Lateral Vai e Volta","Sem apoio"],["Fortalecimento do Quadril · Caminhada Lateral com Miniband"]],
+      ["p","A",["Locomoção Frente e Costas","Ênfase na caminhada para trás, com supervisão"],["Locomoção Frente e Costas","Passos mais longos"],["Locomoção Frente e Costas","Com tarefa cognitiva"]],
+      ["f","A",["Subida Alternada no Degrau","Toque alternado no step baixo"],["Subida Alternada no Degrau","Step médio"],["Subida Alternada no Degrau","Ritmo mais rápido, controlado"]],
+      ["p","A",["Caminhada Passando por Cima do Obstáculo","Obstáculos baixos"],["Caminhada Passando por Cima do Obstáculo","Obstáculos até a canela"],["Caminhada Passando por Cima do Obstáculo","Com mudança de ritmo"]],
+      ["p","A",["Caminhada em Linha","Base reduzida"],["Caminhada Tandem","Apoio próximo"],["Caminhada Tandem","Com giro de cabeça"]],
+      ["f","Â",["Agachamento na Cadeira","Até o banco"],["Agachamento na Cadeira","Banco mais baixo"],["Agachamento Senta e Levanta com Carga","Halter no peito"]],
+      ["f","A",["Abdução de Quadril em Pé","Com apoio"],["Abdução de Quadril em Pé","Com caneleira leve"],["Abdução de Quadril em Pé","Com elástico, sem apoio"]],
+    ]},
+    FBC:{nome:"Treino C · Coordenação e estabilidade funcional",enf:"coordenação e estabilidade funcional",slots:[
+      ["f","A",["Toque em 3 Direções com Mini Band","Passo e toque à frente, ao lado e na diagonal, sem mini band"],["Toque em 3 Direções com Mini Band","Ritmo ao comando, sem mini band"],["Toque em 3 Direções com Mini Band","Com mini band"]],
+      ["f","A",["Trabalho de Equilíbrio Encostando no Objeto","Objetos em diferentes alturas"],["Trabalho de Equilíbrio Encostando no Objeto","Do chão à altura do ombro"],["Trabalho de Equilíbrio Encostando no Objeto","Em semi-tandem"]],
+      ["p","A",["Locomoção em Diferentes Direções"],["Locomoção em Diferentes Direções","Mudança de direção ao comando verbal"],["Locomoção em Diferentes Direções","Com tarefa cognitiva"]],
+      ["p","A",["Caminhada em Linha","Girando a cabeça para os lados"],["Caminhada em Linha","Girando a cabeça, ritmo maior"],["Caminhada em Linha","Girando a cabeça e identificando cores ou placas"]],
+      ["tug","Â",["Caminhando de 3 Metros (TUG Funcional)"],["Caminhando de 3 Metros (TUG Funcional)","Mais rápido, com segurança"],["Caminhando de 3 Metros (TUG Funcional)","Com tarefa cognitiva"]],
+      ["f","A",["Marcha Estacionária com Bastão","Elevando os joelhos e movendo os braços"],["Marcha Estacionária com Bastão","Pausa com o joelho no alto"],["Marcha Estacionária com Bastão","Braço e perna contrários, com contagem"]],
+      ["t","A",["Trabalho de Equilíbrio Dobrando a Perna","Assistido, perna livre em movimento"],["Trabalho de Equilíbrio Dobrando a Perna","Um dedo de apoio"],["Trabalho de Equilíbrio Dobrando a Perna","Sem apoio, alguém por perto"]],
+      ["p","A",["Caminhada Rápida em Diferentes Direções","Alternando devagar e rápido"],["Caminhada Rápida em Diferentes Direções","Mudança de velocidade ao comando"],["Caminhada Rápida em Diferentes Direções","Com mudança de direção"]],
+    ]},
+  }},
+  {id:"eq50_p2",nome:"Equilíbrio 50+ · Programa 2",freq:3,divisao:FB50_DIV_FB,semBiset:true,obsPrefixo:"Foco em equilíbrio. ",notaReteste:"Reteste: registre repetições ou tempo",treinos:{
+    FBA:{nome:"Treino A · Base de suporte e estabilidade",enf:"base de suporte e estabilidade",slots:[
+      ["t","A",["Isométrico em Pé com Troca de Carga","Pés unidos, sem carga, apoio próximo"],["Isométrico em Pé com Troca de Carga","Pés unidos, olhos fechados com apoio próximo"],["Isométrico em Pé com Troca de Carga","Pés unidos sobre colchonete"]],
+      ["t","A",["Transferência de Peso Lateral","Pés em posição alternada, com apoio"],["Transferência de Peso Lateral","Pés alternados, sem apoio"],["Transferência de Peso Lateral","Pés alternados, sobre colchonete"]],
+      ["p","A",["Caminhada em Linha","Pausas em semi-tandem movendo os braços"],["Caminhada em Linha","Pausas em semi-tandem segurando uma bola"],["Caminhada em Linha","Pausas em semi-tandem com giro de cabeça"]],
+      ["p","A",["Caminhada Tandem","Pausas em tandem, apoio próximo"],["Caminhada Tandem","Pausas em tandem, sem apoio"],["Caminhada Tandem","Pausas em tandem movendo os braços"]],
+      ["f","A",["Toque em 3 Direções com Mini Band","Toque só à frente, com apoio, sem mini band"],["Toque em 3 Direções com Mini Band","Frente e lado, sem mini band"],["Toque em 3 Direções com Mini Band","Três direções (estrela)"]],
+      ["f","A",["Trabalho de Equilíbrio · Alcance Anterior com Objeto","Alcance na diagonal com transferência de peso"],["Trabalho de Equilíbrio · Alcance Anterior com Objeto","Com halter leve"],["Trabalho de Equilíbrio · Alcance Anterior com Objeto","Com passo cruzado"]],
+      ["f","Â",["Senta e Levanta","Sem impulso dos braços"],["Senta e Levanta","Banco mais baixo"],["Agachamento Senta e Levanta com Carga","Halter no peito"]],
+      ["f","A",["Panturrilha em pé"],["Panturrilha em pé","Uma perna, com apoio"],["Panturrilha em pé","Pausa de 2s no topo"]],
+    ]},
+    FBB:{nome:"Treino B · Agilidade e respostas de equilíbrio",enf:"agilidade e respostas de equilíbrio",slots:[
+      ["p","A",["Deslocamento Lateral","Passos laterais sobre marcações"],["Deslocamento Lateral","Mais rápido"],["Deslocamento Lateral","Ao comando verbal"]],
+      ["p","A",["Locomoção Frente e Costas","Entre marcações, frente e trás"],["Locomoção Frente e Costas","Mais rápido"],["Locomoção Frente e Costas","Ao comando"]],
+      ["f","A",["Toque Lateral com Mini Band","Toque alternado em cones, sem mini band"],["Toque Lateral com Mini Band","Cones mais distantes, sem mini band"],["Toque Lateral com Mini Band","Sequência por cores, com mini band"]],
+      ["f","Â",["Subida no Step ou Degrau da Escada","Step baixo, com apoio"],["Subida no Step ou Degrau da Escada","Step médio, sem apoio"],["Subida no Degrau com Elevação de Joelho"]],
+      ["f","A",["Subida no Step ou Degrau da Escada","Subida lateral, step baixo, com apoio"],["Subida no Step ou Degrau da Escada","Subida lateral, sem apoio"],["Subida no Step ou Degrau da Escada","Subida lateral, step médio"]],
+      ["p","A",["Locomoção em Diferentes Direções","Desviando de cones"],["Locomoção em Diferentes Direções","Cones mais próximos"],["Locomoção em Diferentes Direções","Desviando de cones com tarefa cognitiva"]],
+      ["t","A",["Treino de Reação com Estímulo Direcional","Ritmo de caminhada, mudando de direção ao comando"],["Treino de Reação com Estímulo Direcional","Comandos mais rápidos"],["Treino de Reação com Estímulo Direcional","Comando visual"]],
+      ["t","A",["Marcha Estacionária com Bastão","Parar e retomar a marcha ao comando"],["Marcha Estacionária com Bastão","Parar numa perna só"],["Marcha Estacionária com Bastão","Comando visual"]],
+    ]},
+    FBC:{nome:"Treino C · Equilíbrio funcional e mobilidade",enf:"equilíbrio funcional e mobilidade",slots:[
+      ["f","A",["Sentar e Levantar da Cadeira","Ao levantar, alcançar à frente"],["Sentar e Levantar da Cadeira","Alcance mais longe"],["Sentar e Levantar da Cadeira","Segurando objeto leve"]],
+      ["p","A",["Locomoção em Diferentes Direções"],["Locomoção em Diferentes Direções","Ao comando"],["Locomoção em Diferentes Direções","Com tarefa cognitiva"]],
+      ["p","A",["Deslocamento Lateral","Alcançando objetos durante o deslocamento"],["Deslocamento Lateral","Objetos mais distantes"],["Deslocamento Lateral","Segurando objeto"]],
+      ["f","Â",["Agachamento Assistido (cadeira)"],["Meio Agachamento","Sem apoio"],["Agachamento Goblet"]],
+      ["f","A",["Passada","Passada curta com retorno, com apoio"],["Passada","Passada média"],["Afundo com Halteres","Halteres leves"]],
+      ["p","A",["Caminhada Passando por Cima do Obstáculo"],["Caminhada Passando por Cima do Obstáculo","Obstáculos mais altos"],["Caminhada Lateral Passando por Cima do Obstáculo","Com tarefa cognitiva"]],
+      ["f","A",["Rotação de tronco em pé"],["Rotação de tronco em pé","Com bola ou peso leve"],["Rotação de tronco em pé","Em semi-tandem"]],
+      ["p","A",["Caminhando de 3 Metros Segurando Peso","Objeto leve"],["Caminhando de 3 Metros Segurando Peso","Objeto mais pesado"],["Caminhada 3 Metros com Peso em Apenas Uma Mão"]],
+    ]},
+  }},
+  {id:"eq50_p3",nome:"Equilíbrio 50+ · Programa 3",freq:3,divisao:FB50_DIV_FB,semBiset:true,obsPrefixo:"Foco em equilíbrio. ",notaReteste:"Reteste: registre repetições ou tempo",treinos:{
+    FBA:{nome:"Treino A · Equilíbrio estático e propriocepção",enf:"equilíbrio estático e propriocepção",slots:[
+      ["t","A",["Transferência de Peso Lateral","Pés unidos, com apoio próximo"],["Transferência de Peso Lateral","Pés unidos, olhos fechados com apoio próximo"],["Transferência de Peso Lateral","Pés unidos sobre colchonete"]],
+      ["f","A",["Trabalho de Equilíbrio · Alcance Anterior com Objeto","Em semi-tandem, com apoio próximo"],["Trabalho de Equilíbrio · Alcance Anterior com Objeto","Em semi-tandem, alcance mais longe"],["Trabalho de Equilíbrio · Alcance Anterior com Objeto","Em semi-tandem sobre colchonete"]],
+      ["p","A",["Caminhada Tandem","Pausas em tandem, apoio próximo"],["Caminhada Tandem","Pausas em tandem, sem apoio"],["Caminhada Tandem","Pausas em tandem com giro de cabeça"]],
+      ["t","A",["Equilíbrio em Uma Perna","Assistido"],["Equilíbrio em Uma Perna","Um dedo de apoio"],["Equilíbrio em Uma Perna","Sem apoio, alguém por perto"]],
+      ["f","A",["Toque em 3 Direções com Mini Band","Toques em várias direções, com apoio, sem mini band"],["Toque em 3 Direções com Mini Band","Amplitude maior, sem mini band"],["Toque em 3 Direções com Mini Band","Sem apoio das mãos"]],
+      ["f","A",["Elevação da Ponta dos Pés","Com apoio"],["Elevação da Ponta dos Pés","Sem apoio"],["Caminhada Lateral com os Calcanhares"]],
+      ["f","Â",["Fortalecimento de Panturrilha (com Apoio na Cadeira)"],["Fortalecimento de Panturrilha (com Apoio na Cadeira)","Apoio de uma mão só"],["Panturrilha em Pé (Livre)"]],
+      ["f","A",["Trabalho de Equilíbrio · Alcance Posterior com Objeto","Alcance em diferentes direções"],["Trabalho de Equilíbrio · Alcance Posterior com Objeto","Com passo"],["Trabalho de Equilíbrio · Alcance Posterior com Objeto","Em semi-tandem"]],
+    ]},
+    FBB:{nome:"Treino B · Marcha e equilíbrio dinâmico",enf:"marcha e equilíbrio dinâmico",slots:[
+      ["f","A",["Elevação de Joelho com Apoio na Parede","Alternando as pernas"],["Elevação de Perna · Marcha Apenas Uma Perna","Pausa de 1s com o joelho no alto"],["Fortalecimento do Quadril · Elevação de Joelho com Miniband","Com tarefa cognitiva"]],
+      ["p","A",["Locomoção Lateral Vai e Volta","Passos cruzados simples"],["Locomoção Lateral Vai e Volta","Passos cruzados, mais rápido"],["Locomoção Lateral Vai e Volta","Passos cruzados ao comando"]],
+      ["p","A",["Locomoção Frente e Costas","Ênfase na caminhada para trás"],["Locomoção Frente e Costas","Passos mais longos"],["Locomoção Frente e Costas","Com tarefa cognitiva"]],
+      ["p","A",["Caminhada Tandem","Com apoio próximo"],["Caminhada Tandem","Sem apoio"],["Caminhada Tandem","Com giro de cabeça"]],
+      ["p","A",["Caminhada Passando por Cima do Obstáculo"],["Caminhada Passando por Cima do Obstáculo","Obstáculos mais altos"],["Caminhada Lateral Passando por Cima do Obstáculo","Sequência variada"]],
+      ["p","A",["Caminhada Rápida em Diferentes Direções","Mudanças de direção, ritmo confortável"],["Caminhada Rápida em Diferentes Direções","Ao comando"],["Caminhada Rápida em Diferentes Direções","Com tarefa cognitiva"]],
+      ["f","Â",["Toque em 3 Direções com Mini Band","Passo e toque em várias direções, sem mini band"],["Toque em 3 Direções com Mini Band","Ritmo ao comando, sem mini band"],["Toque em 3 Direções com Mini Band","Com mini band"]],
+      ["p","A",["Caminhada em Linha","Girando a cabeça para os lados"],["Caminhada em Linha","Girando a cabeça, mais rápido"],["Caminhada em Linha","Girando a cabeça e identificando cores"]],
+    ]},
+    FBC:{nome:"Treino C · Dupla tarefa e autonomia",enf:"dupla tarefa e autonomia",slots:[
+      ["t","A",["Marcha Estacionária com Bastão","Marcha com contagem numérica"],["Marcha Estacionária com Bastão","Contagem regressiva"],["Marcha Estacionária com Bastão","Contando de 3 em 3"]],
+      ["p","A",["Locomoção em Diferentes Direções","Direção indicada por cores ou números"],["Locomoção em Diferentes Direções","Comandos mais rápidos"],["Locomoção em Diferentes Direções","Com mudança de direção"]],
+      ["p","A",["Deslocamento Lateral","Alcançando objetos durante o deslocamento"],["Deslocamento Lateral","Objetos mais distantes"],["Deslocamento Lateral","Segurando objeto"]],
+      ["tug","Â",["Caminhando de 3 Metros (TUG Funcional)"],["Caminhando de 3 Metros (TUG Funcional)","Mais rápido, com segurança"],["Caminhando de 3 Metros (TUG Funcional)","Com tarefa cognitiva"]],
+      ["p","A",["Caminhada Rápida em Diferentes Direções","Desviando de obstáculos ao comando verbal"],["Caminhada Rápida em Diferentes Direções","Comandos mais rápidos"],["Caminhada Rápida em Diferentes Direções","Comando visual"]],
+      ["t","A",["Treino de Reação com Estímulo Direcional","Passos conforme estímulo visual, ritmo de caminhada"],["Treino de Reação com Estímulo Direcional","Mais rápido"],["Treino de Reação com Estímulo Direcional","Com tarefa cognitiva"]],
+      ["p","A",["Caminhando de 3 Metros Segurando Peso","Objeto leve e seguro"],["Caminhando de 3 Metros Segurando Peso","Objeto mais pesado"],["Caminhada 3 Metros com Peso em Apenas Uma Mão"]],
+      ["v","A",["Locomoção com Peso em Uma Mão, Passando por Cima do Obstáculo","Circuito com cones, marcações e obstáculos baixos"],["Locomoção com Peso em Uma Mão, Passando por Cima do Obstáculo","Circuito, uma volta a mais"],["Locomoção com Peso em Uma Mão, Passando por Cima do Obstáculo","Circuito com tarefa cognitiva no percurso"]],
+    ]},
+  }},
 ];
 // Fases de cada bloco de 8 semanas · força: [séries, reps, RIR (já com +1 da faixa 50+), descanso em s]
 const FB50_FASES_NOMES=["Adaptação","Acúmulo","Intensificação","Deload","Reteste"];
@@ -2730,23 +2977,26 @@ const fb50Presc=(cat,c,f)=>{
   const ser=(f===3||c===0)?"2":"3";
   if(cat==="t")return{s:ser,r:["20–30s","30s","40s"][c],d:"30s"};
   if(cat==="c")return{s:ser,r:["20m","20m","30m"][c],d:"60s"};
+  if(cat==="p")return{s:ser,r:["5m ida e volta","5m ida e volta","8m ida e volta"][c],d:"45s"};
+  if(cat==="tug")return{s:ser,r:["3 percursos","4 percursos","5 percursos"][c],d:"60s"};
+  if(cat==="v")return{s:"1",r:["2 voltas","3 voltas","3 voltas"][c],d:"90s"};
   return{s:ser,r:["3m","5m","5m"][c],d:"30s"};
 };
-const fb50BlocosConfig=(treinoKeys)=>{
+const fb50BlocosConfig=(treinoKeys,comBiset=true)=>{
   const out=[];
   for(let c=0;c<3;c++){
     FB50_FASES_NOMES.forEach((nome,f)=>{
       const [s,r,rir,d]=FB50_FORCA[c][f];
       const [w1,w2]=FB50_SEMANAS[f];
       out.push({key:"b"+(out.length+1),label:"Bloco "+(c+1)+" · "+nome,semanas:(w1===w2?String(w1+c*8):(w1+c*8)+"–"+(w2+c*8)),semanasCount:w2-w1+1,
-        cor:CORES_CICLO_CONSULTORIA[c],desc:s+"×"+r+" · RIR "+rir+(f===4?" · reteste dos âncoras":"")+(c===2&&(f===1||f===2)?" · bi-set leve":""),
+        cor:CORES_CICLO_CONSULTORIA[c],desc:s+"×"+r+" · RIR "+rir+(f===4?" · reteste dos âncoras":"")+(c===2&&(f===1||f===2)&&comBiset?" · bi-set leve":""),
         cicloIdx:c,faseIdx:f,series:s,reps:r,rir,descanso_segundos:d,treinos:[...treinoKeys]});
     });
   }
   return out;
 };
 const fb50Montar=(prog,resolver,bib)=>{
-  const blocosConfig=fb50BlocosConfig(Object.keys(prog.treinos));
+  const blocosConfig=fb50BlocosConfig(Object.keys(prog.treinos),!prog.semBiset);
   const prescricao={};
   blocosConfig.forEach(bl=>{
     const c=bl.cicloIdx,f=bl.faseIdx,bRef=["b1","b2","b3"][c];
@@ -2765,12 +3015,12 @@ const fb50Montar=(prog,resolver,bib)=>{
         const cat=sl[0],papel=sl[1];
         const ent=sl[2+c]||sl[2];
         const p=fb50Presc(cat,c,f);
-        const obs=[ent[1]||"",(papel==="Â"&&f===4)?"Reteste: registre a carga":""].filter(Boolean).join(". ");
+        const obs=[ent[1]||"",(papel==="Â"&&f===4)?(prog.notaReteste||"Reteste: registre a carga"):""].filter(Boolean).join(". ");
         const it={exId:resolver(ent[0])||"",series:p.s,reps:p.r,descanso:p.d,obs};
         if(papel==="Â")it.benchmark=true;
         return it;
       });
-      if(c===2&&(f===1||f===2)&&T.par3){
+      if(c===2&&(f===1||f===2)&&T.par3&&!prog.semBiset){
         const gid="g"+tk.toLowerCase()+bl.key;
         T.par3.forEach(pos=>{const it=principal[pos];if(it){it.metodo="B7";it.grupoId=gid;it.reps="7";it.series=principal[T.par3[0]].series;}});
       }
@@ -2789,13 +3039,14 @@ const fb50Montar=(prog,resolver,bib)=>{
     titulo:prog.nome,freq:prog.freq||3,
     divisao:prog.divisao||FB50_DIV_FB,
     nomesTreinos,enfases,
-    obs:(prog.divisao===FB50_DIV_AB?"Superior / Inferior. ":prog.divisao===FB50_DIV_PPL?"Puxa / Empurra / Inferiores. ":"Full Body. ")+"Iniciante 50+. 24 semanas em 3 blocos de 8 (Adaptação, Acúmulo, Intensificação, Deload, Reteste). RIR já inclui +1 da faixa 50+. Bi-set leve só no Bloco 3, semanas 19 a 22.",
+    obs:prog.obsPrefixo?prog.obsPrefixo+"Iniciante 50+. 24 semanas em 3 blocos de 8 (Adaptação, Acúmulo, Intensificação, Deload, Reteste). Apoio próximo em todo exercício de equilíbrio. Sem métodos de intensificação.":(prog.divisao===FB50_DIV_AB?"Superior / Inferior. ":prog.divisao===FB50_DIV_PPL?"Puxa / Empurra / Inferiores. ":prog.divisao===FB50_DIV_FEM?"Ênfase feminina: superiores, anterior e posterior de pernas. ":"Full Body. ")+"Iniciante 50+. 24 semanas em 3 blocos de 8 (Adaptação, Acúmulo, Intensificação, Deload, Reteste). RIR já inclui +1 da faixa 50+. Bi-set leve só no Bloco 3, semanas 19 a 22.",
     prescricao,blocosConfig,origem:"modelo_fb50",local:"academia",patologiaId:null,
   };
 };
 const fb50Norm=s=>" "+(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim()+" ";
 const fb50Match=(q,bib)=>{
   for(const alt of q.split("|")){
+    if(alt.startsWith("id:")){const e=bib.find(x=>x.id===alt.slice(3));if(e)return e;continue;}
     const termos=alt.trim().split(/\s+/).filter(Boolean);
     const inc=termos.filter(t=>t[0]!=="-").map(t=>" "+t.replace(/_/g," "));
     const exc=termos.filter(t=>t[0]==="-").map(t=>" "+t.slice(1).replace(/_/g," "));
@@ -2821,6 +3072,7 @@ const InstalarModelosFB50=({bibCustom,modelos,setModelos,nav})=>{
   const exDe=id=>id?allEx.find(e=>e.id===id):null;
   const resolvido=b=>(manual[b]&&exDe(manual[b]))?manual[b]:(auto[b]||"");
   const pendentes=bases.filter(b=>!exDe(resolvido(b)));
+  const semMidia=bases.filter(b=>{const e=exDe(resolvido(b));return e&&!(e.foto||e.video);});
   const lista=soPend?pendentes:bases;
   const jaInstalados=FB50_PROGRAMAS.filter(p=>modelos.find(m=>m.id===p.id)).length;
   const escolher=(b,id)=>{const n={...manual,[b]:id};setManual(n);LS.set("longevus_fb50_map",n);setPicker(null);setBusca("");};
@@ -2848,7 +3100,7 @@ const InstalarModelosFB50=({bibCustom,modelos,setModelos,nav})=>{
         <div style={{fontWeight:800,fontSize:18}}>Modelos 50+</div>
       </div>
       <Card>
-        <div style={{fontSize:13,color:"#334155",lineHeight:1.55,marginBottom:10}}>9 programas de 24 semanas para iniciantes 50+: 3 Full Body A/B/C, 3 Superior / Inferior e 3 Puxa / Empurra / Inferiores. Cada um tem 3 blocos de 8 semanas com Adaptação, Acúmulo, Intensificação, Deload e Reteste.</div>
+        <div style={{fontSize:13,color:"#334155",lineHeight:1.55,marginBottom:10}}>15 programas de 24 semanas para iniciantes 50+: 3 Full Body A/B/C, 3 Superior / Inferior, 3 Puxa / Empurra / Inferiores, 3 com ênfase feminina e 3 com foco em equilíbrio. Cada um tem 3 blocos de 8 semanas com Adaptação, Acúmulo, Intensificação, Deload e Reteste.</div>
         <div style={{fontSize:12,color:"#64748b",lineHeight:1.55}}>Antes de instalar, confira abaixo qual exercício da sua biblioteca foi escolhido para cada um. Variações (unilateral, pausa, com apoio) entram como observação no treino.</div>
         {jaInstalados>0&&<div style={{fontSize:11,color:"#1d4ed8",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:7,padding:"6px 9px",marginTop:10,lineHeight:1.5}}>{jaInstalados} já instalado(s). Instalar de novo atualiza os modelos, sem mexer nos programas que você já enviou para alunos.</div>}
       </Card>
@@ -2866,10 +3118,12 @@ const InstalarModelosFB50=({bibCustom,modelos,setModelos,nav})=>{
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:13,fontWeight:700,color:"#0f172a"}}>{b}</div>
             <div style={{fontSize:11,color:ex?"#64748b":"#dc2626",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ex?ex.nome:"Não encontrado na biblioteca"}{manual[b]&&ex?" · escolhido por você":""}</div>
+            {ex&&!(ex.foto||ex.video)&&<div style={{fontSize:10,fontWeight:700,color:"#b45309",marginTop:1}}>⚠️ sem vídeo/GIF</div>}
           </div>
           <Btn sm variant="ghost" onClick={()=>{setPicker(b);setBusca("");}}>{ex?"Trocar":"Escolher"}</Btn>
         </div>
       );})}
+      {semMidia.length>0&&<div style={{fontSize:11,color:"#b45309",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"8px 10px",margin:"10px 0",lineHeight:1.5}}>{semMidia.length} exercício(s) escolhido(s) estão sem vídeo/GIF. Toque em "Trocar" para escolher um com mídia, se preferir.</div>}
       {pendentes.length>0&&<div style={{fontSize:11,color:"#b45309",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"8px 10px",margin:"10px 0",lineHeight:1.5}}>Se instalar com pendentes, esses itens aparecem como "exercício não encontrado" e precisam ser trocados no programa do aluno.</div>}
       <div style={{marginTop:12}}><Btn full disabled={instalando} onClick={instalar}>{instalando?"Instalando...":(jaInstalados?"🔄 Atualizar os "+FB50_PROGRAMAS.length+" modelos":"⭐ Instalar os "+FB50_PROGRAMAS.length+" modelos")}</Btn></div>
       {msg&&<div style={{fontSize:13,fontWeight:700,textAlign:"center",marginTop:10,color:msg.startsWith("✅")?"#16a34a":"#dc2626"}}>{msg}</div>}
@@ -2949,7 +3203,7 @@ const ListaModelos=({modelos,loading,nav}) => {
         <div style={{fontWeight:800,fontSize:20}}>⭐ Modelos de Periodização</div>
       </div>
       <div style={{fontSize:12,color:"#94a3b8",marginBottom:10,lineHeight:1.5}}>Periodizações completas que você salvou pra reaproveitar com futuros alunos — envie exatamente como está ou edite antes.</div>
-      <div style={{marginBottom:14}}><Btn sm variant="ghost" onClick={()=>nav("instalarFB50")}>➕ Modelos 50+ (Full Body, Superior / Inferior e Puxa / Empurra)</Btn></div>
+      <div style={{marginBottom:14}}><Btn sm variant="ghost" onClick={()=>nav("instalarFB50")}>➕ Modelos 50+ (15 programas prontos)</Btn></div>
       <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar modelo..." style={{width:"100%",padding:"10px 14px",borderRadius:10,border:"1.5px solid #e2e8f0",background:"#fff",fontSize:14,fontFamily:"inherit",marginBottom:14}}/>
       {loading?(
         <Card style={{textAlign:"center",padding:40}}><div style={{color:"#94a3b8"}}>Carregando modelos...</div></Card>
