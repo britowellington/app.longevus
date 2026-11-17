@@ -411,7 +411,8 @@
 
   const contexto = (p) => {
     const sd = p.studentData || {};
-    return { aluno: sd.name || p.studentName || "", sexo: sd.sex || null, idade: idade(sd.dob), sem360: !!(p.l360 && p.l360.ativo && p.l360.bloqueado), personal: p.profNome || "Wellington Brito", personalWhats: p.profWhats || "" };
+    const sem360 = !!(p.l360 && p.l360.ativo && p.l360.bloqueado);
+    return { aluno: sd.name || p.studentName || "", sexo: sd.sex || null, idade: idade(sd.dob), sem360, anuncia360: sem360 && !(p.l360.cfg && p.l360.cfg.anunciar === false), personal: p.profNome || "Wellington Brito", personalWhats: p.profWhats || "" };
   };
 
   const useItens = (ownerId) => {
@@ -458,11 +459,11 @@
         h("div", { style: { fontSize: 21, fontWeight: 800, marginTop: 6 } }, "Clube Longevus"),
         h("div", { style: { fontSize: 12.5, color: "#CBD5E1", marginTop: 2 } }, "Vantagens para quem treina com o " + primeiroNome(ctx.personal))),
       h("div", { style: { padding: "4px 16px calc(24px + env(safe-area-inset-bottom))" } },
-        p.l360 && p.l360.ativo && p.l360.bloqueado ? h("div", null, secao("Do seu personal"), h("div", { style: { background: COR.escuro, color: "#F8FAFC", border: "1.5px solid " + COR.laranja, borderRadius: 16, padding: "12px 13px", marginBottom: 8, display: "flex", alignItems: "center", gap: 11 } }, h(Icone, { item: { titulo: "L" } }), h("div", { style: { flex: 1 } }, h("div", { style: { fontSize: 14, fontWeight: 800 } }, (p.l360.cfg && p.l360.cfg.nome) || "Longevus 360"), h("div", { style: { fontSize: 12, color: "#CBD5E1" } }, "Treino e alimentação juntos")), h("button", { type: "button", onClick: () => { p.onFechar(); p.onIr && p.onIr("alimentacao"); }, style: { border: "none", background: COR.laranja, color: "#fff", borderRadius: 10, padding: "8px 12px", fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" } }, "Conhecer"))) : (proprios.length ? secao("Do seu personal") : null),
+        ctx.anuncia360 ? h("div", null, secao("Do seu personal"), h("div", { style: { background: COR.escuro, color: "#F8FAFC", border: "1.5px solid " + COR.laranja, borderRadius: 16, padding: "12px 13px", marginBottom: 8, display: "flex", alignItems: "center", gap: 11 } }, h(Icone, { item: { titulo: "L" } }), h("div", { style: { flex: 1 } }, h("div", { style: { fontSize: 14, fontWeight: 800 } }, (p.l360.cfg && p.l360.cfg.nome) || "Longevus 360"), h("div", { style: { fontSize: 12, color: "#CBD5E1" } }, "Treino e alimentação juntos")), h("button", { type: "button", onClick: () => { p.onFechar(); p.onIr && p.onIr("alimentacao"); }, style: { border: "none", background: COR.laranja, color: "#fff", borderRadius: 10, padding: "8px 12px", fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" } }, "Conhecer"))) : (proprios.length ? secao("Do seu personal") : null),
         proprios.map(linha),
         parceiros.length ? secao("Parceiros") : null,
         parceiros.map(linha),
-        !lista.length && !(p.l360 && p.l360.bloqueado) ? h("div", { style: { textAlign: "center", color: "#94A3B8", fontSize: 13, padding: 30 } }, "Em breve, novidades por aqui.") : null,
+        !lista.length && !ctx.anuncia360 ? h("div", { style: { textAlign: "center", color: "#94A3B8", fontSize: 13, padding: 30 } }, "Em breve, novidades por aqui.") : null,
         parceiros.length ? h("div", { style: { fontSize: 11, color: "#94A3B8", lineHeight: 1.5, marginTop: 10 } }, "Os parceiros atendem de forma independente. O desconto vale com o cupom informado.") : null),
       detalhe ? h(Detalhe, { item: detalhe, ctx, ownerId: p.ownerId, studentId: p.studentId, onFechar: () => setDetalhe(null), onClique: () => api.registrar(p.ownerId, detalhe.id, p.studentId, "clique") }) : null);
   };
@@ -477,10 +478,11 @@
     const abrir = (d) => { setDetalhe(d); api.registrar(p.ownerId, d.id, p.studentId, "abriu"); };
     const lista = (itens || []).filter((d) => publicoOk(d, ctx));
     const cards = [];
-    if (ctx.sem360) cards.push({ id: "__360", especial: true, tipo: "proprio", titulo: (p.l360.cfg && p.l360.cfg.nome) || "Longevus 360", texto: "Seu treino e sua alimentação conversando todos os dias.", botao: p.l360.vencido ? "Renovar o 360" : "Conhecer o 360" });
+    if (ctx.anuncia360) cards.push({ id: "__360", especial: true, tipo: "proprio", titulo: (p.l360.cfg && p.l360.cfg.nome) || "Longevus 360", texto: "Seu treino e sua alimentação conversando todos os dias.", botao: p.l360.vencido ? "Renovar o 360" : "Conhecer o 360" });
     lista.forEach((d) => cards.push(d));
     useEffect(() => {
       lista.forEach((d) => registrarVisto(p.ownerId, p.studentId, d.id));
+      if (itens && ctx.anuncia360) registrarVisto(p.ownerId, p.studentId, "__360");
     }, [itens]);
     if (itens === null) return null;
     if (!cards.length) return null;
@@ -495,7 +497,7 @@
         h("span", { style: { fontSize: 11.5, fontWeight: 700, letterSpacing: "0.08em", color: COR.cinza, textTransform: "uppercase" } }, "Para você"),
         h("button", { type: "button", onClick: () => setClube(true), style: { background: "transparent", border: "none", padding: 0, fontSize: 12.5, fontWeight: 800, color: COR.laranjaTxt, cursor: "pointer", fontFamily: "inherit" } }, "Clube Longevus ›")),
       h("div", { ref: trilho, onScroll: aoRolar, style: { display: "flex", gap: 10, overflowX: "auto", scrollSnapType: "x mandatory", padding: "0 18px", scrollPaddingLeft: 18, scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } },
-        cards.map((d) => h(CartaoOferta, { key: d.id, item: d, ctx, especial: d.especial, onAbrir: () => abrir(d), onClique: d.especial ? () => p.onIr && p.onIr("alimentacao") : () => api.registrar(p.ownerId, d.id, p.studentId, "clique") }))),
+        cards.map((d) => h(CartaoOferta, { key: d.id, item: d, ctx, especial: d.especial, onAbrir: () => abrir(d), onClique: d.especial ? () => { api.registrar(p.ownerId, "__360", p.studentId, "abriu"); p.onIr && p.onIr("alimentacao"); } : () => api.registrar(p.ownerId, d.id, p.studentId, "clique") }))),
       cards.length > 1 ? h("div", { "aria-hidden": "true", style: { display: "flex", gap: 5, justifyContent: "center", marginTop: 8 } }, cards.map((d, i) => h("span", { key: d.id, style: { width: i === ativo ? 16 : 6, height: 6, borderRadius: 3, background: i === ativo ? COR.laranja : "#CBD5E1", transition: "width 0.2s" } }))) : null,
       clube ? h(ClubeTela, { ...p, itens: itens, onFechar: () => setClube(false) }) : null,
       detalhe ? h(Detalhe, { item: detalhe, ctx, ownerId: p.ownerId, studentId: p.studentId, onFechar: () => setDetalhe(null), onClique: () => api.registrar(p.ownerId, detalhe.id, p.studentId, "clique") }) : null);
@@ -573,7 +575,105 @@
       d.id && onApagar ? h("button", { type: "button", onClick: () => onApagar(d), style: { width: "100%", height: 44, marginTop: 10, borderRadius: 22, border: "1.5px solid #FECACA", background: "#fff", color: "#DC2626", fontWeight: 700, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit" } }, "Excluir esta oferta") : null);
   };
 
-  const Painel = ({ profNome }) => {
+  const cfg360Api = {
+    async ler(uid) {
+      try {
+        const r = await fetch(SUPA_URL + "/rest/v1/professionals?select=l360&id=eq." + encodeURIComponent(uid), { headers: await api.headers() });
+        if (!r.ok) return null;
+        const rows = await r.json();
+        return (rows && rows[0] && rows[0].l360) || {};
+      } catch (e) { return null; }
+    },
+    async gravar(uid, cfg) {
+      try {
+        const r = await fetch(SUPA_URL + "/rest/v1/professionals?id=eq." + encodeURIComponent(uid), { method: "PATCH", headers: { ...(await api.headers()), Prefer: "return=representation" }, body: JSON.stringify({ l360: cfg }) });
+        if (!r.ok) return false;
+        const rows = await r.json().catch(() => []);
+        return Array.isArray(rows) && rows.length > 0;
+      } catch (e) { return false; }
+    },
+    async pagaram(desdeISO) {
+      try {
+        const r = await fetch(SUPA_URL + "/rest/v1/l360_avisos?select=student_id,servico&created_at=gte." + desdeISO + "&limit=2000", { headers: await api.headers() });
+        if (!r.ok) return 0;
+        const rows = await r.json();
+        const v = {};
+        (rows || []).forEach((x) => { if (!x.servico) v[x.student_id] = true; });
+        return Object.keys(v).length;
+      } catch (e) { return 0; }
+    }
+  };
+  const contar360 = (students) => {
+    const hoje = hojeISO();
+    let bonus = 0, pago = 0;
+    (students || []).forEach((st) => {
+      if ((st.status || "ativo") !== "ativo") return;
+      const l = st.l360 || {};
+      if (l.status === "bonus") bonus++;
+      else if (l.status === "pago" && l.vencimento && l.vencimento >= hoje) pago++;
+    });
+    return { bonus, pago, total: bonus + pago };
+  };
+  const Toggle = ({ on, onClick, rotulo }) => h("button", { type: "button", onClick, "aria-label": rotulo, "aria-pressed": !!on, style: { width: 44, height: 24, borderRadius: 12, border: "none", background: on ? COR.laranja : "#CBD5E1", position: "relative", cursor: "pointer", flexShrink: 0 } }, h("span", { style: { position: "absolute", top: 3, left: on ? 23 : 3, width: 18, height: 18, borderRadius: 9, background: "#fff", transition: "left 0.2s" } }));
+  const fmtValor360 = (v) => { const n = valorNum(v); return n ? fmtReal(n) : ""; };
+  const Cartao360 = ({ cfg, cont, m, pagaram, onAbrir, onAnunciar }) => {
+    const ligado = !!cfg.ativo;
+    const anuncia = ligado && cfg.anunciar !== false;
+    const caixa = (n, t) => h("div", { style: { flex: 1, background: "#F8FAFC", borderRadius: 10, padding: "7px 10px", fontSize: 11.5, color: COR.cinza } }, h("b", { style: { display: "block", fontSize: 16, color: COR.escuro } }, n), t);
+    return h("div", { style: { background: ligado ? "linear-gradient(180deg,#FFF7ED,#fff 60%)" : "#fff", border: "1.5px solid " + (ligado ? "#FDBA74" : COR.borda), borderRadius: 14, padding: "12px 14px", marginBottom: 8 } },
+      h("div", { style: { display: "flex", alignItems: "center", gap: 11 } },
+        h("span", { "aria-hidden": "true", style: { width: 36, height: 36, borderRadius: 12, background: COR.escuro, color: "#FDBA74", fontWeight: 800, fontSize: 11.5, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, "360"),
+        h("div", { style: { flex: 1, minWidth: 0, cursor: "pointer" }, onClick: onAbrir },
+          h("span", { style: { display: "inline-block", fontSize: 10, fontWeight: 800, background: COR.escuro, color: "#FDBA74", borderRadius: 8, padding: "2px 7px", marginBottom: 3 } }, "PLANO MENSAL"),
+          h("div", { style: { fontSize: 14, fontWeight: 800 } }, cfg.nome || "Longevus 360"),
+          h("div", { style: { fontSize: 12, color: COR.cinza } }, ligado ? [fmtValor360(cfg.valor) ? fmtValor360(cfg.valor) + "/mês" : "Defina o valor", "Quem não tem o 360"].join(" · ") : "Desligado. Toque para configurar")),
+        ligado ? h(Toggle, { on: anuncia, onClick: onAnunciar, rotulo: anuncia ? "Parar de anunciar" : "Anunciar no app" }) : null),
+      ligado ? h("div", { style: { display: "flex", gap: 8, marginTop: 10 } }, caixa(cont.total, "com acesso"), caixa(cont.bonus, "bônus"), caixa(cont.pago, "pago")) : null,
+      ligado ? h("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 12, color: COR.cinza, marginTop: 8, paddingTop: 8, borderTop: "1px solid #F1F5F9" } },
+        h("span", null, anuncia ? "No app" : "Anúncio pausado"),
+        h("span", null, h("b", { style: { color: COR.escuro } }, m.viram), " viram · ", h("b", { style: { color: COR.escuro } }, m.abriram || 0), " abriram · ", h("b", { style: { color: COR.escuro } }, pagaram), pagaram === 1 ? " pagou" : " pagaram")) : null);
+  };
+  const Config360 = ({ cfg, onSalvar, onVoltar }) => {
+    const [f, setF] = useState({ nome: cfg.nome || "Longevus 360", valor: cfg.valor ? String(cfg.valor).replace(".", ",") : "", beneficios: Array.isArray(cfg.beneficios) ? cfg.beneficios.join("\n") : "", anunciar: cfg.anunciar !== false });
+    const [msg, setMsg] = useState("");
+    const [salvando, setSalvando] = useState(false);
+    const ligado = !!cfg.ativo;
+    const estiloInput = { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 9, border: "1.5px solid " + COR.borda, fontSize: 14, fontFamily: "inherit", background: "#fff" };
+    const montar = (extra) => ({ ...cfg, nome: f.nome.trim() || "Longevus 360", valor: valorNum(f.valor), beneficios: f.beneficios.split("\n").map((x) => x.trim()).filter(Boolean), anunciar: f.anunciar, ...(extra || {}) });
+    const salvar = async (extra, aviso) => {
+      setSalvando(true); setMsg("");
+      const ok = await onSalvar(montar(extra));
+      setSalvando(false);
+      setMsg(ok ? (aviso || "Salvo!") : "Erro ao salvar. Tente de novo.");
+    };
+    const desligar = () => { if (window.confirm("Desligar o Longevus 360 para todos?\n\nA aba Calorias volta a ficar livre, sem cadeado, e o cartão do 360 some da home de todos os alunos, inclusive de quem pagou.")) salvar({ ativo: false }, "Longevus 360 desligado."); };
+    const ligar = () => { if (window.confirm("Ligar o Longevus 360?\n\nA aba Calorias fica com cadeado para quem não tem o 360. Libere por aluno na ficha dele (bônus ou pago).")) salvar({ ativo: true }, "Longevus 360 ligado."); };
+    const card = { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 14, padding: "14px 16px", marginBottom: 12 };
+    return h("div", null,
+      h("button", { type: "button", onClick: onVoltar, style: { background: "transparent", border: "none", padding: "4px 0", color: COR.cinza, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "‹ Vitrine"),
+      h("div", { style: { fontWeight: 800, fontSize: 20, margin: "4px 0 14px" } }, f.nome || "Longevus 360"),
+      ligado ? h("div", { style: { ...card, display: "flex", alignItems: "center", gap: 12 } },
+        h("div", { style: { flex: 1 } }, h("div", { style: { fontWeight: 800, fontSize: 14 } }, "Anunciar no app"), h("div", { style: { fontSize: 12, color: COR.cinza, lineHeight: 1.45, marginTop: 2 } }, "Aparece no carrossel e no Clube Longevus para quem ainda não tem. Desligado, quem já tem continua usando.")),
+        h(Toggle, { on: f.anunciar, onClick: () => setF({ ...f, anunciar: !f.anunciar }), rotulo: "Anunciar no app" }))
+        : h("div", { style: { ...card, background: "#F8FAFC" } },
+          h("div", { style: { fontWeight: 800, fontSize: 14 } }, "O Longevus 360 está desligado"),
+          h("div", { style: { fontSize: 12, color: COR.cinza, lineHeight: 1.45, margin: "3px 0 10px" } }, "A aba Calorias está livre para todos e nada é anunciado."),
+          h("button", { type: "button", onClick: ligar, disabled: salvando, style: { width: "100%", height: 42, borderRadius: 11, border: "none", background: COR.laranja, color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" } }, "Ligar o Longevus 360")),
+      h("div", { style: card },
+        h(Campo, { rotulo: "Nome do plano" }, h("input", { value: f.nome, onChange: (e) => setF({ ...f, nome: e.target.value }), style: estiloInput })),
+        h(Campo, { rotulo: "Valor mensal (R$)", dica: "Entra no Pix da tela de oferta. Para quem ganha de bônus, aparece riscado como referência." }, h("input", { inputMode: "decimal", placeholder: "Ex: 49,00", value: f.valor, onChange: (e) => setF({ ...f, valor: e.target.value.replace(/[^0-9.,]/g, "") }), style: estiloInput })),
+        h(Campo, { rotulo: "Benefícios (um por linha)", dica: "Em branco, o app usa os 5 benefícios padrão." }, h("textarea", { rows: 5, value: f.beneficios, placeholder: "Registro da refeição por foto\nMetas diárias para o seu objetivo\nDéficit dividido entre alimentação e treino\nCardápios práticos com o que tem em casa\nAcompanhamento direto do seu personal", onChange: (e) => setF({ ...f, beneficios: e.target.value }), style: { ...estiloInput, resize: "vertical", lineHeight: 1.5 } }))),
+      msg ? h("div", { style: { fontSize: 12.5, color: msg.indexOf("Erro") === 0 ? "#DC2626" : "#16A34A", marginBottom: 10 } }, msg) : null,
+      h("button", { type: "button", onClick: () => salvar(), disabled: salvando, style: { width: "100%", height: 46, borderRadius: 12, border: "none", background: COR.laranja, color: "#fff", fontWeight: 700, fontSize: 14.5, cursor: "pointer", fontFamily: "inherit", marginBottom: 18, opacity: salvando ? 0.7 : 1 } }, salvando ? "Salvando..." : "Salvar"),
+      ligado ? h("div", { style: { background: "#FEF2F2", border: "1.5px solid #FECACA", borderRadius: 14, padding: "14px 16px" } },
+        h("div", { style: { fontWeight: 800, fontSize: 14, color: "#991B1B" } }, "Desligar o Longevus 360"),
+        h("div", { style: { fontSize: 12.5, color: "#7F1D1D", lineHeight: 1.5, marginTop: 4 } }, "Encerra o produto para todos: a aba Calorias volta a ficar livre, sem cadeado, e o cartão do 360 some da home, inclusive de quem pagou."),
+        h("button", { type: "button", onClick: desligar, disabled: salvando, style: { width: "100%", marginTop: 10, height: 40, borderRadius: 10, border: "1.5px solid #FCA5A5", background: "#fff", color: "#B91C1C", fontWeight: 700, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit" } }, "Desligar para todos")) : null);
+  };
+  const Painel = ({ profNome, students }) => {
+    const [cfg360, setCfg360] = useState(null);
+    const [pagaram, setPagaram] = useState(0);
+    const [ver360, setVer360] = useState(false);
     const [uid, setUid] = useState(null);
     const [itens, setItens] = useState(null);
     const [met, setMet] = useState({});
@@ -583,9 +683,11 @@
       setUid(u);
       if (!u) { setItens([]); return; }
       const desde = new Date(Date.now() - 30 * 86400000).toISOString();
-      const [l, m] = await Promise.all([api.listar(u, false), api.metricas(u, desde)]);
+      const [l, m, c, pg] = await Promise.all([api.listar(u, false), api.metricas(u, desde), cfg360Api.ler(u), cfg360Api.pagaram(desde)]);
       setItens(l);
       setMet(m || {});
+      setCfg360(c);
+      setPagaram(pg || 0);
     };
     useEffect(() => { carregar(); }, []);
     const salvar = async (item) => {
@@ -608,6 +710,19 @@
       const ok = await api.salvar(uid, novo);
       if (!ok) { setItens((p) => p.map((x) => (x.id === item.id ? item : x))); alert("Não consegui alterar. Tente de novo."); }
     };
+    const salvar360 = async (novo) => {
+      const ok = await cfg360Api.gravar(uid, novo);
+      if (ok) setCfg360(novo);
+      return ok;
+    };
+    const anunciar360 = async () => {
+      const antes = cfg360;
+      const novo = { ...cfg360, anunciar: cfg360.anunciar === false };
+      setCfg360(novo);
+      const ok = await cfg360Api.gravar(uid, novo);
+      if (!ok) { setCfg360(antes); alert("Não consegui alterar. Tente de novo."); }
+    };
+    if (ver360 && cfg360) return h(Config360, { cfg: cfg360, onSalvar: salvar360, onVoltar: () => setVer360(false) });
     if (editando) return h(FormItem, { inicial: editando === "novo" ? null : editando, profNome, onSalvar: salvar, onCancelar: () => setEditando(null), onApagar: apagar });
     if (itens === null) return h("div", { style: { textAlign: "center", padding: 30, color: "#94A3B8" } }, "Carregando a vitrine...");
     const totalCliques = Object.keys(met).reduce((s, k) => s + met[k].cliques, 0);
@@ -616,6 +731,7 @@
         h("div", { style: { fontWeight: 800, fontSize: 18 } }, "Vitrine do app"),
         h("button", { type: "button", onClick: () => setEditando("novo"), style: { height: 38, padding: "0 16px", borderRadius: 10, border: "none", background: COR.laranja, color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" } }, "+ Nova oferta")),
       h("div", { style: { fontSize: 12.5, color: COR.cinza, marginBottom: 14, lineHeight: 1.5 } }, "O que aparece no carrossel \"Para você\" e no Clube Longevus do app do aluno. Últimos 30 dias: " + totalCliques + (totalCliques === 1 ? " toque" : " toques") + " em ofertas."),
+      cfg360 ? h(Cartao360, { cfg: cfg360, cont: contar360(students), m: met.__360 || { viram: 0, abriram: 0 }, pagaram, onAbrir: () => setVer360(true), onAnunciar: anunciar360 }) : null,
       itens.length === 0 ? h("div", { style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 14, padding: 24, textAlign: "center", color: "#94A3B8", fontSize: 13, lineHeight: 1.5 } }, "Nenhuma oferta ainda. Cadastre um parceiro ou um serviço seu para aparecer no app.") : null,
       itens.map((d) => {
         const m = met[d.id] || { viram: 0, abriram: 0, cliques: 0 };
