@@ -3559,7 +3559,7 @@ function BalloonGame({mode, onBack, onResult}) {
 
   return (
     <div style={{background:"#0f172a",minHeight:"100vh",maxWidth:480,margin:"0 auto",position:"relative",overflow:"hidden",userSelect:"none",touchAction:"none"}}>
-      <div style={{position:"fixed",top:40,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(15,23,42,0.95)",padding:"10px 16px",display:"flex",alignItems:"center",gap:10,zIndex:20}}>
+      <div style={{position:"fixed",top:56,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(15,23,42,0.95)",padding:"10px 16px",display:"flex",alignItems:"center",gap:10,zIndex:20}}>
         <button onClick={()=>{cancelAnimationFrame(animRef.current);onBack();}} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:8,padding:"5px 10px",color:"#fff",fontSize:12,cursor:"pointer"}}><IcoBack/></button>
         <div style={{flex:1}}>
           <div style={{fontWeight:800,fontSize:14,color:"#fff"}}>{modeInfo.label}</div>
@@ -3752,7 +3752,7 @@ function AppInner(){
     if(mod==="baloes")     return <ModuleBalloon    onBack={back}/>;
     return <HubHome onOpen={setMod}/>;
   })();
-  const barra = mod ? <div style={{background:"#0F172A",height:40,boxSizing:"border-box",padding:"0 16px",display:"flex",alignItems:"center",position:"sticky",top:0,zIndex:30}}><button type="button" onClick={back} style={{background:"transparent",border:"none",padding:0,fontSize:13,fontWeight:700,color:"#CBD5E1",cursor:"pointer"}}>‹ Mente Ativa</button></div> : null;
+  const barra = mod ? <div style={{background:"#0F172A",height:56,boxSizing:"border-box",padding:"0 16px",display:"flex",alignItems:"center",position:"sticky",top:0,zIndex:30}}><MaVoltar onClick={back}/></div> : null;
   return <><div style={{paddingBottom:80}}>{barra}{content}</div><NavBar active="hub"/></>;
 }
 
@@ -3783,14 +3783,14 @@ Falar no WhatsApp
 // ═══════════════════════════════════════════════════════════
 const MA = { escuro:"#0F172A", escuro2:"#18233A", laranja:"#FF5603", laranjaTxt:"#C2410C", cinza:"#64748B", cinzaClaro:"#94A3B8", borda:"#E2E8F0", fundo:"#F4F5F7", verde:"#16A34A" };
 const MA_JOGOS = [
-  { id:"genio",     nome:"Gênio das Cores",    desc:"Sequência de cores",  grupo:"memoria",   tempo:"3 min" },
-  { id:"pares",     nome:"Memória de Pares",   desc:"Encontre os iguais",  grupo:"memoria",   tempo:"4 min" },
-  { id:"sequencia", nome:"Sequência Numérica", desc:"1, 2, 3... rápido",   grupo:"atencao",   tempo:"2 min" },
-  { id:"baloes",    nome:"Estourar Balões",    desc:"Reflexo e foco",      grupo:"atencao",   tempo:"3 min" },
-  { id:"caca",      nome:"Caça-Palavras",      desc:"Varredura visual",    grupo:"atencao",   tempo:"6 min" },
-  { id:"padroes",   nome:"Copiar Padrões",     desc:"Raciocínio visual",   grupo:"atencao",   tempo:"5 min" },
-  { id:"listar",    nome:"Listar Palavras",    desc:"Fluência verbal",     grupo:"linguagem", tempo:"5 min" },
-  { id:"completar", nome:"Completar Letra",    desc:"Lembrar palavras",    grupo:"linguagem", tempo:"4 min" },
+  { id:"genio",     nome:"Gênio das Cores",    desc:"Sequência de cores",  grupo:"memoria",   tempo:"3 min", ic:"🎨", g:["#FFB37A","#FF5603"] },
+  { id:"pares",     nome:"Memória de Pares",   desc:"Encontre os iguais",  grupo:"memoria",   tempo:"4 min", ic:"🃏", g:["#FDBA74","#EA580C"] },
+  { id:"sequencia", nome:"Sequência Numérica", desc:"1, 2, 3... rápido",   grupo:"atencao",   tempo:"2 min", ic:"🔢", g:["#6EE7B7","#059669"] },
+  { id:"baloes",    nome:"Estourar Balões",    desc:"Reflexo e foco",      grupo:"atencao",   tempo:"3 min", ic:"🎈", g:["#7DD3FC","#0284C7"] },
+  { id:"caca",      nome:"Caça-Palavras",      desc:"Varredura visual",    grupo:"atencao",   tempo:"6 min", ic:"🔍", g:["#5EEAD4","#0F766E"] },
+  { id:"padroes",   nome:"Copiar Padrões",     desc:"Raciocínio visual",   grupo:"atencao",   tempo:"5 min", ic:"🧩", g:["#A5B4FC","#4F46E5"] },
+  { id:"listar",    nome:"Listar Palavras",    desc:"Fluência verbal",     grupo:"linguagem", tempo:"5 min", ic:"📝", g:["#F9A8D4","#DB2777"] },
+  { id:"completar", nome:"Completar Letra",    desc:"Lembrar palavras",    grupo:"linguagem", tempo:"4 min", ic:"🔤", g:["#C4B5FD","#7C3AED"] },
 ];
 const MA_GRUPOS = [["memoria","Memória","#FFF4EE","#FF5603"],["atencao","Atenção e velocidade","#E9F5F2","#0F6E56"],["linguagem","Linguagem","#FDF2F8","#BE185D"]];
 const MA_GRATIS = "genio";
@@ -3834,28 +3834,38 @@ const maStats = (res) => {
 };
 const maDesafio = () => { const n = Math.floor(new Date(maDia()+"T12:00:00").getTime()/86400000); return MA_JOGOS[n % MA_JOGOS.length]; };
 
+const MaIcone = ({ j, tam }) => {
+  const t = tam || 46; const g = j.g || ["#CBD5E1","#64748B"];
+  return (
+    <span aria-hidden="true" style={{position:"relative",display:"flex",width:t,height:t,borderRadius:t*0.3,alignItems:"center",justifyContent:"center",flexShrink:0,background:"linear-gradient(145deg,"+g[0]+" 0%,"+g[1]+" 100%)",boxShadow:"0 6px 14px "+g[1]+"55, inset 0 2px 0 rgba(255,255,255,0.55), inset 0 -4px 0 rgba(0,0,0,0.14)",fontSize:t*0.5,lineHeight:1}}>
+      <span style={{position:"absolute",top:3,left:5,right:5,height:t*0.38,borderRadius:t*0.25,background:"linear-gradient(180deg,rgba(255,255,255,0.45),rgba(255,255,255,0))"}}/>
+      <span style={{position:"relative",filter:"drop-shadow(0 2px 2px rgba(0,0,0,0.25))"}}>{j.ic||"⭐"}</span>
+    </span>
+  );
+};
+const MaVoltar = ({ onClick, href, rotulo }) => {
+  const st = {display:"inline-flex",alignItems:"center",gap:6,height:40,padding:"0 16px 0 10px",borderRadius:20,border:"1.5px solid rgba(255,255,255,0.28)",background:"rgba(255,255,255,0.10)",color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer",textDecoration:"none",fontFamily:"inherit"};
+  const seta = <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>;
+  return href ? <a href={href} style={st}>{seta}{rotulo||"Voltar"}</a> : <button type="button" onClick={onClick} style={st}>{seta}{rotulo||"Voltar"}</button>;
+};
 const MaTopo = ({ voltar, onVoltar, titulo, sub, children, href }) => (
   <div style={{background:MA.escuro,color:"#F8FAFC",padding:"14px 16px 16px",borderRadius:"0 0 24px 24px"}}>
-    {href
-      ? <a href={href} style={{fontSize:13,fontWeight:700,color:"#CBD5E1",textDecoration:"none"}}>‹ {voltar}</a>
-      : <button type="button" onClick={onVoltar} style={{background:"transparent",border:"none",padding:0,fontSize:13,fontWeight:700,color:"#CBD5E1",cursor:"pointer"}}>‹ {voltar}</button>}
-    {titulo && <div style={{fontSize:22,fontWeight:800,marginTop:8}}>{titulo}</div>}
+    <MaVoltar href={href} onClick={onVoltar} rotulo={voltar}/>
+    {titulo && <div style={{fontSize:22,fontWeight:800,marginTop:12}}>{titulo}</div>}
     {sub && <div style={{fontSize:12.5,color:MA.cinzaClaro,marginTop:2,lineHeight:1.45}}>{sub}</div>}
     {children}
   </div>
 );
 const MaSecao = ({ children }) => <div style={{margin:"16px 16px 7px",fontSize:11,fontWeight:700,letterSpacing:"0.08em",color:MA.cinza,textTransform:"uppercase"}}>{children}</div>;
-const MaCartaoJogo = ({ j, feito, bloqueado, onClick }) => {
-  const g = maGrupo(j.grupo);
-  return (
-    <button type="button" onClick={bloqueado?undefined:onClick} style={{textAlign:"left",fontFamily:"inherit",cursor:bloqueado?"default":"pointer",background:"#fff",border:"none",borderRadius:14,padding:"11px 12px",boxShadow:"0 1px 2px rgba(15,23,42,0.06)",opacity:bloqueado?0.55:1,position:"relative",color:MA.escuro}}>
-      <span style={{display:"flex",width:32,height:32,borderRadius:10,alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:13,marginBottom:7,background:bloqueado?"#F1F5F9":g[2],color:bloqueado?MA.cinza:g[3]}}>{bloqueado?"🔒":j.nome.charAt(0)}</span>
-      {feito && !bloqueado && <span style={{position:"absolute",top:12,right:12,fontSize:10.5,fontWeight:700,color:MA.verde}}>✓ hoje</span>}
-      <span style={{display:"block",fontSize:13.5,fontWeight:800}}>{j.nome}</span>
-      <span style={{display:"block",fontSize:11,color:MA.cinza,marginTop:1}}>{j.desc}</span>
-    </button>
-  );
-};
+const MaCartaoJogo = ({ j, feito, bloqueado, onClick }) => (
+  <button type="button" onClick={onClick} style={{textAlign:"left",fontFamily:"inherit",cursor:"pointer",background:"#fff",border:"none",borderRadius:16,padding:"12px 12px 13px",boxShadow:"0 1px 3px rgba(15,23,42,0.08)",position:"relative",color:MA.escuro}}>
+    <span style={{display:"block",marginBottom:9,opacity:bloqueado?0.55:1}}><MaIcone j={j}/></span>
+    {bloqueado && <span style={{position:"absolute",top:10,right:10,width:26,height:26,borderRadius:13,background:"#F1F5F9",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>🔒</span>}
+    {feito && !bloqueado && <span style={{position:"absolute",top:12,right:12,fontSize:10.5,fontWeight:700,color:MA.verde}}>✓ hoje</span>}
+    <span style={{display:"block",fontSize:13.5,fontWeight:800,color:bloqueado?"#475569":MA.escuro}}>{j.nome}</span>
+    <span style={{display:"block",fontSize:11,color:MA.cinza,marginTop:1}}>{j.desc}</span>
+  </button>
+);
 
 const MaPix = ({ cfg, prof, ownerId, studentId, nomeAluno }) => {
   const qr = useRef(null);
@@ -3936,6 +3946,7 @@ function MenteAluno({ aluno }){
   const [tela,setTela] = useState("home");
   const [ultimo,setUltimo] = useState(null);
   const [rodada,setRodada] = useState(0);
+  const [aviso,setAviso] = useState(false);
   const sd = aluno.data || {};
   useEffect(()=>{
     (async()=>{
@@ -3961,14 +3972,15 @@ function MenteAluno({ aluno }){
     maApi.salvar({ id:row.id, owner_id:row.owner_id, student_id:row.student_id, jogo:row.jogo, pontos:row.pontos, data:row.data });
   };
   const abrir = (id) => { setRodada(n=>n+1); setTela(id); window.scrollTo(0,0); };
+  const irPagamento = () => { setAviso(true); setTimeout(()=>setAviso(false),2600); const el=document.getElementById("ma-pagamento"); if(el) el.scrollIntoView({behavior:"smooth",block:"start"}); };
 
   if(tela==="resultado" && ultimo) return <MaResultado r={ultimo} historico={res} nomeAluno={sd.name} stats={maStats(res)} onDeNovo={()=>abrir(ultimo.jogo)} onOutro={()=>{ setTela("home"); window.scrollTo(0,0); }}/>;
   if(MA_MODULOS[tela]){
     const M = MA_MODULOS[tela];
     return (
       <div>
-        <div style={{background:MA.escuro,height:40,boxSizing:"border-box",padding:"0 16px",display:"flex",alignItems:"center",position:"sticky",top:0,zIndex:30}}>
-          <button type="button" onClick={()=>setTela("home")} style={{background:"transparent",border:"none",padding:0,fontSize:13,fontWeight:700,color:"#CBD5E1",cursor:"pointer"}}>‹ {nomeProduto}</button>
+        <div style={{background:MA.escuro,height:56,boxSizing:"border-box",padding:"0 16px",display:"flex",alignItems:"center",position:"sticky",top:0,zIndex:30}}>
+          <MaVoltar onClick={()=>setTela("home")}/>
         </div>
         <M key={tela+rodada} onBack={()=>setTela("home")} onResult={salvar}/>
       </div>
@@ -3989,13 +4001,19 @@ function MenteAluno({ aluno }){
         <div style={{margin:"0 16px",background:"#fff",borderRadius:16,padding:"4px 14px",boxShadow:"0 1px 2px rgba(15,23,42,0.06)"}}>
           {beneficios.map((b,i)=><div key={i} style={{padding:"9px 0",fontSize:13.5,borderTop:i?"1px solid #F1F5F9":"none",display:"flex",gap:8}}><span style={{color:MA.laranja,fontWeight:800}}>✓</span>{b}</div>)}
         </div>
-        <MaSecao>Experimente grátis</MaSecao>
+        <div id="ma-pagamento"><MaPix cfg={cfg} prof={prof} ownerId={aluno.owner_id} studentId={aluno.id} nomeAluno={sd.name}/></div>
+        <MaSecao>Quer conhecer antes?</MaSecao>
+        <button type="button" onClick={()=>abrir(MA_GRATIS)} style={{display:"flex",width:"calc(100% - 32px)",margin:"0 16px",alignItems:"center",gap:12,textAlign:"left",fontFamily:"inherit",cursor:"pointer",background:"#fff",border:"none",borderRadius:16,padding:"12px 14px",boxShadow:"0 1px 3px rgba(15,23,42,0.08)",color:MA.escuro}}>
+          <MaIcone j={maJogo(MA_GRATIS)}/>
+          <span style={{flex:1}}><span style={{display:"block",fontSize:14,fontWeight:800}}>{maJogo(MA_GRATIS).nome}</span><span style={{display:"block",fontSize:12,color:MA.cinza}}>{stats.hojeJogos[MA_GRATIS]?"Você já jogou hoje. Pode jogar de novo.":"Grátis para experimentar"}</span></span>
+          <span style={{color:MA.laranjaTxt,fontWeight:800,fontSize:13.5}}>Jogar ›</span>
+        </button>
+        {res.length>0 && <div style={{margin:"10px 16px 0",fontSize:12,color:MA.cinza,textAlign:"center"}}>Seus resultados ficam guardados. Ao assinar, você continua de onde parou.</div>}
+        <MaSecao>Os jogos da assinatura</MaSecao>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,margin:"0 16px"}}>
-          <MaCartaoJogo j={maJogo(MA_GRATIS)} feito={stats.hojeJogos[MA_GRATIS]} onClick={()=>abrir(MA_GRATIS)}/>
-          <MaCartaoJogo j={{ nome:"Outros 7 jogos", desc:"Com o plano", grupo:"atencao" }} bloqueado/>
+          {MA_JOGOS.filter(j=>j.id!==MA_GRATIS).map(j=><MaCartaoJogo key={j.id} j={j} bloqueado onClick={irPagamento}/>)}
         </div>
-        {res.length>0 && <div style={{margin:"10px 16px 0",fontSize:12,color:MA.cinza,textAlign:"center"}}>Seus resultados ficam guardados. Ao liberar, você continua de onde parou.</div>}
-        <MaPix cfg={cfg} prof={prof} ownerId={aluno.owner_id} studentId={aluno.id} nomeAluno={sd.name}/>
+        {aviso && <div style={{position:"fixed",left:16,right:16,bottom:24,zIndex:50,background:MA.escuro,color:"#fff",borderRadius:14,padding:"12px 14px",fontSize:13.5,textAlign:"center",boxShadow:"0 10px 24px rgba(15,23,42,0.35)"}}>Esse jogo faz parte da assinatura. O pagamento fica logo acima.</div>}
       </div>
     );
   }
@@ -4010,7 +4028,8 @@ function MenteAluno({ aluno }){
           ))}
         </div>
       </MaTopo>
-      <button type="button" onClick={()=>abrir(desafio.id)} style={{display:"flex",width:"calc(100% - 32px)",margin:"14px 16px 0",textAlign:"left",fontFamily:"inherit",cursor:"pointer",border:"none",background:"linear-gradient(90deg,#FF5603,#FF7A2E)",borderRadius:16,padding:"12px 12px 12px 14px",color:"#fff",alignItems:"center",gap:12}}>
+      <button type="button" onClick={()=>abrir(desafio.id)} style={{display:"flex",width:"calc(100% - 32px)",margin:"14px 16px 0",textAlign:"left",fontFamily:"inherit",cursor:"pointer",border:"none",background:"linear-gradient(90deg,#FF5603,#FF7A2E)",borderRadius:16,padding:"12px 12px 12px 12px",color:"#fff",alignItems:"center",gap:12,boxShadow:"0 8px 18px rgba(255,86,3,0.3)"}}>
+        <span style={{display:"flex",width:50,height:50,borderRadius:15,background:"rgba(255,255,255,0.2)",alignItems:"center",justifyContent:"center",fontSize:27,flexShrink:0,boxShadow:"inset 0 2px 0 rgba(255,255,255,0.35)"}}>{desafio.ic}</span>
         <span style={{flex:1}}>
           <span style={{display:"block",fontSize:10,fontWeight:800,letterSpacing:"0.12em",opacity:0.9}}>{stats.hojeJogos[desafio.id]?"DESAFIO DE HOJE · FEITO":"DESAFIO DE HOJE"}</span>
           <span style={{display:"block",fontSize:17,fontWeight:800}}>{desafio.nome}</span>

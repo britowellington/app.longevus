@@ -193,7 +193,9 @@
         try {
           const hd = { ...(await api.headers()), Prefer: "return=minimal" };
           const corpo = { id: novoId("av"), owner_id: String(ownerId), student_id: String(studentId), servico: item.produto === "mente" ? "Mente Ativa" : (item.titulo || "Serviço") };
-          let r = await fetch(SUPA_URL + "/rest/v1/l360_avisos", { method: "POST", headers: hd, body: JSON.stringify(dadosPresente ? { ...corpo, presente: dadosPresente } : corpo) });
+          const comItem = item.produto ? corpo : { ...corpo, item_id: item.id };
+          let r = await fetch(SUPA_URL + "/rest/v1/l360_avisos", { method: "POST", headers: hd, body: JSON.stringify(dadosPresente ? { ...comItem, presente: dadosPresente } : comItem) });
+          if (!r.ok && !item.produto) r = await fetch(SUPA_URL + "/rest/v1/l360_avisos", { method: "POST", headers: hd, body: JSON.stringify(dadosPresente ? { ...corpo, presente: dadosPresente } : corpo) });
           if (!r.ok && dadosPresente) await fetch(SUPA_URL + "/rest/v1/l360_avisos", { method: "POST", headers: hd, body: JSON.stringify({ ...corpo, servico: corpo.servico + " (presente para " + dadosPresente.nome + (dadosPresente.whatsapp ? ", " + dadosPresente.whatsapp : "") + ")" }) });
         } catch (e) {}
       })();
@@ -226,10 +228,6 @@
           h("div", { style: { marginBottom: 12 } }, rot("WhatsApp dessa pessoa"), h("input", { value: pr.whatsapp, onChange: (e) => setPr({ ...pr, whatsapp: fmtWhats(e.target.value) }), placeholder: "(11) 90000-0000", inputMode: "tel", autoComplete: "off", style: inp })),
           h("div", null, rot("Mensagem no vale (opcional)"), h("textarea", { value: pr.mensagem, onChange: (e) => setPr({ ...pr, mensagem: e.target.value.slice(0, 160) }), rows: 2, placeholder: "Ex.: Feliz aniversário, mãe!", style: { ...inp, resize: "none", lineHeight: 1.4 } })),
           h("div", { style: { fontSize: 12, color: COR.cinza, lineHeight: 1.45, marginTop: 8 } }, "Depois do pagamento você recebe um vale-presente para enviar pelo WhatsApp.")) : null) : null,
-      item.produto === "mente" ? h("a", { href: "longevus-hub.html?aluno=1", style: { display: "flex", alignItems: "center", gap: 10, marginTop: 18, background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 14, padding: "11px 13px", textDecoration: "none", color: COR.escuro } },
-        h("span", { style: { width: 32, height: 32, borderRadius: 10, background: "#FFF4EE", color: COR.laranja, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, "G"),
-        h("span", { style: { flex: 1 } }, h("span", { style: { display: "block", fontSize: 13.5, fontWeight: 800 } }, "Experimente grátis"), h("span", { style: { display: "block", fontSize: 11.5, color: COR.cinza } }, "Jogue o Gênio das Cores antes de assinar")),
-        h("span", { style: { color: COR.laranjaTxt || "#C2410C", fontWeight: 800, fontSize: 13 } }, "Jogar ›")) : null,
       tit(item.produto === "mente" ? "Assinatura mensal" : "Pagamento"),
       h("div", { style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 16, padding: 14, textAlign: "center" } },
         h("div", { style: { fontSize: 12, color: COR.cinza } }, "Valor"),
@@ -244,6 +242,10 @@
       presente
         ? h("button", { type: "button", onClick: avisarPresente, style: { display: "block", width: "100%", marginTop: 10, height: 46, borderRadius: 23, border: "none", background: "#16A34A", color: "#fff", fontWeight: 800, fontSize: 14, cursor: "pointer", fontFamily: "inherit" } }, avisado && vale ? "Ver vale-presente" : "Já paguei, gerar o vale")
         : (wa ? h("a", { href: wa, target: "_blank", rel: "noopener noreferrer", onClick: avisar, style: { display: "block", marginTop: 10, height: 46, lineHeight: "46px", textAlign: "center", borderRadius: 23, background: avisado ? "#F0FDF4" : "#16A34A", color: avisado ? "#15803D" : "#fff", border: avisado ? "1.5px solid #BBF7D0" : "none", fontWeight: 800, fontSize: 14, textDecoration: "none" } }, avisado ? "Aviso enviado ao seu personal" : "Avisar que já paguei") : null),
+      item.produto === "mente" ? h("a", { href: "longevus-hub.html?aluno=1", style: { display: "flex", alignItems: "center", gap: 10, marginTop: 14, background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 14, padding: "11px 13px", textDecoration: "none", color: COR.escuro } },
+        h("span", { style: { width: 38, height: 38, borderRadius: 12, background: "linear-gradient(145deg,#FFB37A,#FF5603)", boxShadow: "0 5px 12px rgba(255,86,3,0.33), inset 0 2px 0 rgba(255,255,255,0.5), inset 0 -3px 0 rgba(0,0,0,0.12)", fontSize: 19, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, "🎨"),
+        h("span", { style: { flex: 1 } }, h("span", { style: { display: "block", fontSize: 13.5, fontWeight: 800 } }, "Quer conhecer antes?"), h("span", { style: { display: "block", fontSize: 11.5, color: COR.cinza } }, "Jogue o Gênio das Cores grátis")),
+        h("span", { style: { color: COR.laranjaTxt || "#C2410C", fontWeight: 800, fontSize: 13 } }, "Jogar ›")) : null,
       vale && valeAberto ? h(Vale, { item, ctx, pr: vale, onFechar: () => setValeAberto(false) }) : null);
   };
   const publicoOk = (d, ctx) => {
@@ -355,6 +357,8 @@
     return h("span", { "aria-hidden": "true", style: { width: s, height: s, borderRadius: Math.round(s * 0.32), background: c[2], color: c[3], display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: Math.round(s * 0.42), flexShrink: 0 } }, (item.titulo || "?").trim().charAt(0).toUpperCase());
   };
 
+  const BotaoVoltar = ({ onClick, rotulo }) => h("button", { type: "button", onClick, style: { display: "inline-flex", alignItems: "center", gap: 6, height: 40, padding: "0 16px 0 10px", borderRadius: 20, border: "1.5px solid rgba(255,255,255,0.28)", background: "rgba(255,255,255,0.10)", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } },
+    h("svg", { width: 20, height: 20, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2.6, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true" }, h("path", { d: "M15 18l-6-6 6-6" })), rotulo || "Voltar");
   const ATENDIMENTO = [["presencial", "Presencial"], ["online", "Online"], ["ambos", "Presencial e online"]];
   const instaLink = (v) => {
     const t = String(v || "").trim();
@@ -362,11 +366,28 @@
     if (/^https?:\/\//.test(t)) return t;
     return "https://instagram.com/" + t.replace(/^@/, "");
   };
+  const liberado = (ctx, d) => {
+    if (!d || d.tipo === "parceiro" || d.produto || !ctx || !ctx.servicos) return null;
+    const s = ctx.servicos[d.id];
+    return s && (s.status === "bonus" || s.status === "pago") ? s.status : null;
+  };
+  const Liberado = ({ item, ctx, status, onClique }) => {
+    const pers = primeiroNome(ctx.personal) || "Wellington";
+    const msg = status === "bonus" ? "Oi, " + pers + "! Vi no app que ganhei de bônus: " + (item.titulo || "um serviço") + ". Quando podemos agendar?" : "Oi, " + pers + "! Quero agendar: " + (item.titulo || "meu serviço") + ". Quais horários você tem?";
+    const wa = waLink(item.whatsapp || ctx.personalWhats, msg);
+    return h("div", { style: { marginTop: 18, background: "#F0FDF4", border: "1.5px solid #BBF7D0", borderRadius: 16, padding: 16, textAlign: "center" } },
+      h("div", { style: { fontSize: 30, lineHeight: 1, marginBottom: 8 } }, status === "bonus" ? "🎁" : "✅"),
+      h("div", { style: { fontSize: 17, fontWeight: 800, color: "#14532D" } }, status === "bonus" ? "Presente do seu personal" : "Pagamento confirmado"),
+      h("div", { style: { fontSize: 13, color: "#166534", lineHeight: 1.5, marginTop: 4 } }, status === "bonus" ? "Este serviço é um bônus para você. Não precisa pagar nada." : "Este serviço já é seu."),
+      h("div", { style: { fontSize: 13, color: "#166534", lineHeight: 1.5 } }, "Agora é só combinar o melhor dia."),
+      wa ? h("a", { href: wa, target: "_blank", rel: "noopener noreferrer", onClick: onClique, style: { display: "block", marginTop: 14, height: 48, lineHeight: "48px", borderRadius: 24, background: "#16A34A", color: "#fff", fontWeight: 800, fontSize: 15, textDecoration: "none" } }, "Agendar pelo WhatsApp") : null);
+  };
   const Detalhe = ({ item, ctx, onFechar, onClique, ownerId, studentId }) => {
     const d = item;
     const parceiro = d.tipo === "parceiro";
-    const pix = ehPix(d);
-    const href = pix ? null : linkDoItem(d, ctx);
+    const lib = liberado(ctx, d);
+    const pix = ehPix(d) && !lib;
+    const href = pix || lib ? null : linkDoItem(d, ctx);
     const [copiado, setCopiado] = useState(false);
     const lista = String(d.inclui || "").split("\n").map((x) => x.trim()).filter(Boolean);
     const insta = instaLink(d.instagram);
@@ -375,7 +396,7 @@
     const copiar = () => { try { navigator.clipboard.writeText(d.cupom).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 2000); }); } catch (e) {} };
     return h("div", { style: { position: "fixed", inset: 0, zIndex: 310, background: COR.fundo, overflowY: "auto", WebkitOverflowScrolling: "touch", color: COR.escuro } },
       h("div", { style: { background: COR.escuro, color: "#F8FAFC", padding: "calc(14px + env(safe-area-inset-top)) 18px 20px", borderRadius: "0 0 26px 26px" } },
-        h("button", { type: "button", onClick: onFechar, style: { background: "transparent", border: "none", padding: "4px 0", color: "#CBD5E1", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "‹ Voltar"),
+        h(BotaoVoltar, { onClick: onFechar }),
         h("div", { style: { display: "flex", alignItems: "center", gap: 14, marginTop: 10 } },
           h(Icone, { item: d, tam: 64 }),
           h("div", { style: { minWidth: 0 } },
@@ -389,10 +410,10 @@
       h("div", { style: { padding: "2px 18px " + (pix ? "calc(40px + env(safe-area-inset-bottom))" : "calc(110px + env(safe-area-inset-bottom))") } },
         d.sobre ? h("div", null, secao(parceiro ? "Quem é" : "Sobre"), h("div", { style: { fontSize: 14, lineHeight: 1.6, color: "#334155", whiteSpace: "pre-wrap" } }, d.sobre)) : (d.texto ? h("div", { style: { fontSize: 14, lineHeight: 1.6, color: "#334155", marginTop: 16 } }, d.texto) : null),
         lista.length ? h("div", null, secao(parceiro ? "O que oferece" : "O que está incluso"), lista.map((x, i) => h("div", { key: i, style: { display: "flex", gap: 9, alignItems: "flex-start", fontSize: 14, lineHeight: 1.45, marginBottom: 7 } }, h("span", { "aria-hidden": "true", style: { color: COR.laranja, fontWeight: 800 } }, "✓"), h("span", null, x)))) : null,
-        (at || d.local || (d.preco && !pix) || insta) ? h("div", null, secao("Informações"), h("div", { style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 14, padding: "4px 14px" } },
-          [["Atendimento", at], ["Onde", d.local], ["Valor", pix ? null : d.preco]].filter((x) => x[1]).map((x, i) => h("div", { key: x[0], style: { display: "flex", justifyContent: "space-between", gap: 12, padding: "10px 0", borderTop: i ? "1px solid #F1F5F9" : "none", fontSize: 13.5 } }, h("span", { style: { color: COR.cinza } }, x[0]), h("span", { style: { fontWeight: 700, textAlign: "right" } }, x[1]))),
-          insta ? h("a", { href: insta, target: "_blank", rel: "noopener noreferrer", style: { display: "flex", justifyContent: "space-between", padding: "10px 0", borderTop: (at || d.local || (d.preco && !pix)) ? "1px solid #F1F5F9" : "none", fontSize: 13.5, textDecoration: "none", color: COR.escuro } }, h("span", { style: { color: COR.cinza } }, "Instagram"), h("span", { style: { fontWeight: 700, color: COR.laranjaTxt } }, (String(d.instagram).indexOf("http") === 0 ? "Ver perfil" : "@" + String(d.instagram).replace(/^@/, "")) + " ›")) : null)) : null,
-        pix ? h(PixPagamento, { item: d, ctx, ownerId, studentId }) : null,
+        (at || d.local || (d.preco && !pix && !lib && !ehPix(d)) || insta) ? h("div", null, secao("Informações"), h("div", { style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 14, padding: "4px 14px" } },
+          [["Atendimento", at], ["Onde", d.local], ["Valor", pix || lib || ehPix(d) ? null : d.preco]].filter((x) => x[1]).map((x, i) => h("div", { key: x[0], style: { display: "flex", justifyContent: "space-between", gap: 12, padding: "10px 0", borderTop: i ? "1px solid #F1F5F9" : "none", fontSize: 13.5 } }, h("span", { style: { color: COR.cinza } }, x[0]), h("span", { style: { fontWeight: 700, textAlign: "right" } }, x[1]))),
+          insta ? h("a", { href: insta, target: "_blank", rel: "noopener noreferrer", style: { display: "flex", justifyContent: "space-between", padding: "10px 0", borderTop: (at || d.local || (d.preco && !pix && !lib && !ehPix(d))) ? "1px solid #F1F5F9" : "none", fontSize: 13.5, textDecoration: "none", color: COR.escuro } }, h("span", { style: { color: COR.cinza } }, "Instagram"), h("span", { style: { fontWeight: 700, color: COR.laranjaTxt } }, (String(d.instagram).indexOf("http") === 0 ? "Ver perfil" : "@" + String(d.instagram).replace(/^@/, "")) + " ›")) : null)) : null,
+        lib ? h(Liberado, { item: d, ctx, status: lib, onClique }) : pix ? h(PixPagamento, { item: d, ctx, ownerId, studentId }) : null,
         parceiro ? h("div", { style: { fontSize: 11.5, color: "#94A3B8", lineHeight: 1.5, marginTop: 16 } }, "Parceiro indicado pelo seu personal. O atendimento é feito diretamente com o parceiro.") : null),
       href ? h("div", { style: { position: "fixed", left: 0, right: 0, bottom: 0, padding: "12px 18px calc(12px + env(safe-area-inset-bottom))", background: "linear-gradient(rgba(244,245,247,0), " + COR.fundo + " 30%)" } },
         h("a", { href, target: "_blank", rel: "noopener noreferrer", onClick: onClique, style: { display: "block", height: 50, lineHeight: "50px", textAlign: "center", borderRadius: 25, background: COR.laranja, color: "#fff", fontWeight: 800, fontSize: 15, textDecoration: "none" } }, d.botao || (parceiro ? "Chamar no WhatsApp" : "Quero saber mais"))) : null);
@@ -404,7 +425,7 @@
     const rotulo = especial ? (item.botao || "Conhecer") : "Saiba mais";
     return h("div", { onClick: especial ? void 0 : onAbrir, style: { cursor: especial ? "default" : "pointer", flex: "0 0 84%", minWidth: 0, scrollSnapAlign: "start", boxSizing: "border-box", borderRadius: 16, padding: "11px 12px 11px 14px", display: "flex", alignItems: "center", gap: 10, background: escuro ? COR.escuro : "#fff", color: escuro ? "#F8FAFC" : COR.escuro, border: "1.5px solid " + (escuro ? COR.laranja : COR.borda) } },
       h("div", { style: { flex: 1, minWidth: 0 } },
-        h("div", { style: { fontSize: 10, fontWeight: 800, letterSpacing: "0.04em", color: escuro ? "#FDBA74" : COR.verde, textTransform: "uppercase" } }, especial ? "Plano mensal" : proprio ? "Do seu personal" : "Parceiro"),
+        h("div", { style: { fontSize: 10, fontWeight: 800, letterSpacing: "0.04em", color: escuro ? "#FDBA74" : COR.verde, textTransform: "uppercase" } }, especial ? "Plano mensal" : liberado(ctx, item) === "bonus" ? "🎁 Bônus do seu personal" : liberado(ctx, item) === "pago" ? "✓ Já é seu" : proprio ? "Do seu personal" : "Parceiro"),
         h("div", { style: { fontSize: 15, fontWeight: 800, lineHeight: 1.2, marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, item.titulo),
         sub ? h("div", { style: { fontSize: 11.5, color: escuro ? "#CBD5E1" : COR.cinza, marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, sub) : null),
       h("button", { type: "button", onClick: (e) => { e.stopPropagation(); if (especial) { onClique && onClique(); } else { onAbrir && onAbrir(); } }, style: { flexShrink: 0, border: "none", borderRadius: 10, padding: "8px 11px", fontSize: 12, fontWeight: 800, background: COR.laranja, color: "#fff", fontFamily: "inherit", cursor: "pointer", whiteSpace: "nowrap" } }, rotulo));
@@ -413,7 +434,7 @@
   const contexto = (p) => {
     const sd = p.studentData || {};
     const sem360 = !!(p.l360 && p.l360.ativo && p.l360.bloqueado);
-    return { menteBloq: !!(p.mente && p.mente.ativo && p.mente.bloqueado), aluno: sd.name || p.studentName || "", sexo: sd.sex || null, idade: idade(sd.dob), sem360, anuncia360: sem360 && !(p.l360.cfg && p.l360.cfg.anunciar === false), personal: p.profNome || "Wellington Brito", personalWhats: p.profWhats || "" };
+    return { servicos: sd.servicos || {}, menteBloq: !!(p.mente && p.mente.ativo && p.mente.bloqueado), aluno: sd.name || p.studentName || "", sexo: sd.sex || null, idade: idade(sd.dob), sem360, anuncia360: sem360 && !(p.l360.cfg && p.l360.cfg.anunciar === false), personal: p.profNome || "Wellington Brito", personalWhats: p.profWhats || "" };
   };
 
   const useItens = (ownerId) => {
@@ -456,7 +477,7 @@
     const secao = (t) => h("div", { style: { fontSize: 11.5, fontWeight: 700, letterSpacing: "0.08em", color: COR.cinza, textTransform: "uppercase", margin: "16px 2px 8px" } }, t);
     return h("div", { style: { position: "fixed", inset: 0, zIndex: 300, background: COR.fundo, overflowY: "auto", WebkitOverflowScrolling: "touch" } },
       h("div", { style: { background: COR.escuro, color: "#F8FAFC", padding: "calc(14px + env(safe-area-inset-top)) 18px 18px", borderRadius: "0 0 24px 24px" } },
-        h("button", { type: "button", onClick: p.onFechar, style: { background: "transparent", border: "none", padding: "4px 0", color: "#CBD5E1", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "‹ Voltar"),
+        h(BotaoVoltar, { onClick: p.onFechar }),
         h("div", { style: { fontSize: 21, fontWeight: 800, marginTop: 6 } }, "Clube Longevus"),
         h("div", { style: { fontSize: 12.5, color: "#CBD5E1", marginTop: 2 } }, "Vantagens para quem treina com o " + primeiroNome(ctx.personal))),
       h("div", { style: { padding: "4px 16px calc(24px + env(safe-area-inset-bottom))" } },

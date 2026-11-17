@@ -27,7 +27,7 @@ var __LOGO_WB__ = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAFuCAYAAAC
 <script type="text/babel" data-presets="react" src="longevus-condominios.js"></script>
 <script src="longevus-alimentacao.js?v=14"></script>
 <script src="longevus-antropometria.js?v=3"></script>
-<script src="longevus-vitrine.js?v=8"></script>
+<script src="longevus-vitrine.js?v=10"></script>
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useCallback, useRef } = React;
 // ── Supabase ─────────────────────────────────────────────────────────────────
@@ -923,6 +923,48 @@ return (
 );
 };
 const MENTE_JOGOS = {genio:"Gênio das Cores",pares:"Memória de Pares",sequencia:"Sequência Numérica",baloes:"Estourar Balões",caca:"Caça-Palavras",padroes:"Copiar Padrões",listar:"Listar Palavras",completar:"Completar Letra"};
+const ServicosVitrineFicha = ({ st, setStudents }) => {
+const [itens,setItens]=useState(null);
+useEffect(()=>{
+let vivo=true;
+(async()=>{
+try {
+const headers = await DB.authHeaders();
+const r = await fetch(SUPA_URL+"/rest/v1/vitrine_itens?select=id,data,ativo&order=ordem.asc", { headers });
+const rows = r.ok ? await r.json() : [];
+if(vivo) setItens((rows||[]).filter(x=>x.data && x.data.tipo!=="parceiro" && !x.data.produto));
+} catch(e) { if(vivo) setItens([]); }
+})();
+return ()=>{ vivo=false; };
+},[]);
+if(!itens || !itens.length) return null;
+const mapa = st.servicos || {};
+const setS = (id, titulo, k) => setStudents(p=>p.map(x=>{
+if(x.id!==st.id) return x;
+const m = { ...(x.servicos||{}) };
+if(k==="bloqueado") delete m[id]; else m[id] = { status:k, em:todayStr(), titulo };
+return { ...x, servicos:m };
+}));
+return (
+<Card style={{ padding:"12px 14px",marginBottom:16 }}>
+<div style={{ fontSize:12,fontWeight:700,color:"#334155" }}>Serviços da vitrine</div>
+<div style={{ fontSize:11,color:"#64748b",marginTop:2,marginBottom:4,lineHeight:1.45 }}>Bloqueado: o aluno vê o preço e o Pix. Bônus ou Pago: aparece como liberado, com o botão para agendar.</div>
+{itens.map((it,i)=>{ const v = mapa[it.id] || {}; const status = v.status || "bloqueado"; return (
+<div key={it.id} style={{ padding:"10px 0",borderTop:i?"1px solid #f1f5f9":"none" }}>
+<div style={{ display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,marginBottom:6 }}>
+<div style={{ fontSize:13,fontWeight:700,color:"#0f172a" }}>{it.data.titulo}{it.ativo===false?<span style={{ fontSize:11,color:"#94a3b8",fontWeight:500 }}> · fora do app</span>:null}</div>
+<div style={{ fontSize:11,color:"#64748b" }}>{status==="bonus"?"Bônus desde "+fmt(v.em):status==="pago"?"Pago em "+fmt(v.em):""}</div>
+</div>
+<div style={{ display:"flex",gap:6 }}>
+{[["bloqueado","Bloqueado"],["bonus","Bônus"],["pago","Pago"]].map(([k,lb])=>(
+<button key={k} onClick={()=>{ if(k!==status) setS(it.id,it.data.titulo,k); }} style={{ flex:1,padding:"8px 4px",borderRadius:9,border:"1.5px solid "+(status===k?"#FF5603":"#e2e8f0"),background:status===k?"#fff4ee":"#fff",color:status===k?"#c2410c":"#64748b",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>{lb}</button>
+))}
+</div>
+</div>); })}
+<div style={{ fontSize:11,color:"#94a3b8",marginTop:4,lineHeight:1.45 }}>Depois de atender, volte para Bloqueado se o aluno puder comprar de novo.</div>
+</Card>
+);
+};
 const MenteAtivaFicha = ({ st, setStudents }) => {
 const [res,setRes]=useState(null);
 const [aberto,setAberto]=useState(false);
@@ -987,7 +1029,8 @@ useEffect(()=>{
 (async()=>{
 try {
 const headers = await DB.authHeaders();
-let r = await fetch(SUPA_URL+"/rest/v1/l360_avisos?select=id,student_id,created_at,servico,presente&visto=eq.false&order=created_at.desc&limit=50", { headers });
+let r = await fetch(SUPA_URL+"/rest/v1/l360_avisos?select=id,student_id,created_at,servico,presente,item_id&visto=eq.false&order=created_at.desc&limit=50", { headers });
+if(!r.ok) r = await fetch(SUPA_URL+"/rest/v1/l360_avisos?select=id,student_id,created_at,servico,presente&visto=eq.false&order=created_at.desc&limit=50", { headers });
 if(!r.ok) r = await fetch(SUPA_URL+"/rest/v1/l360_avisos?select=id,student_id,created_at,servico&visto=eq.false&order=created_at.desc&limit=50", { headers });
 if(!r.ok) r = await fetch(SUPA_URL+"/rest/v1/l360_avisos?select=id,student_id,created_at&visto=eq.false&order=created_at.desc&limit=50", { headers });
 if(r.ok){ const rows = await r.json(); setAvisos(rows||[]); }
@@ -1006,6 +1049,10 @@ return [...p,{ id:uid(), name:pr.nome, whatsapp:pr.whatsapp||"", instagram:"", i
 });
 };
 const marcar = async (a) => {
+if (a.item_id && !(a.presente && a.presente.nome)) {
+const hojeM = todayStr();
+setStudents(p=>p.map(x=>String(x.id)!==String(a.student_id)?x:{ ...x, servicos:{ ...(x.servicos||{}), [a.item_id]:{ status:"pago", em:hojeM, titulo:a.servico||"" } } }));
+}
 const k = chave(a);
 const ids = avisos.filter(x=>chave(x)===k).map(x=>x.id);
 setAvisos(p=>p.filter(x=>chave(x)!==k));
@@ -2523,6 +2570,7 @@ return (
   );
 })()}
 <MenteAtivaFicha st={st} setStudents={setStudents}/>
+<ServicosVitrineFicha st={st} setStudents={setStudents}/>
 {baixaAberta && <PagamentoModal student={st} pagamentos={pagamentos} setPagamentos={setPagamentos} setStudents={setStudents} onClose={()=>setBaixaAberta(false)}/>}
 <div style={{ display:"flex",gap:6,marginBottom:16,overflowX:"auto" }}>
 {TABS.map(t=>(
