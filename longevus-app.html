@@ -168,6 +168,42 @@ const fmt = (d) => d ? new Date(d + "T00:00:00").toLocaleDateString("pt-BR") : "
 const O = "#FF5603";
 // ---- Financeiro: previsto x realizado ----
 const fmtR = (v) => "R$ "+Number(v||0).toFixed(2).replace(".",",");
+// ---- Vitrine: vendas viram receita, bônus vira histórico ----
+const valorBR = (v) => { if(typeof v==="number") return v; const t=String(v||"").replace(/[^\d,.-]/g,""); if(!t) return 0; const n = t.includes(",") ? Number(t.replace(/\./g,"").replace(",",".")) : Number(t); return isNaN(n)?0:n; };
+let _precosVit = null;
+const precosVitrine = async () => {
+if(_precosVit) return _precosVit;
+const m = { l360:{ titulo:"Longevus 360", valor:0 }, mente:{ titulo:"Mente Ativa", valor:0 } };
+try {
+const headers = await DB.authHeaders();
+const { data } = await supa.auth.getSession();
+const id = data?.session?.user?.id;
+const [rp, ri] = await Promise.all([
+id ? fetch(SUPA_URL+"/rest/v1/professionals?select=l360,mente&id=eq."+id, { headers }) : Promise.resolve(null),
+fetch(SUPA_URL+"/rest/v1/vitrine_itens?select=id,data&order=ordem.asc", { headers })
+]);
+const pf = rp && rp.ok ? ((await rp.json())[0]||{}) : {};
+if(pf.l360) m.l360 = { titulo:pf.l360.nome||"Longevus 360", valor:valorBR(pf.l360.valor) };
+if(pf.mente) m.mente = { titulo:pf.mente.nome||"Mente Ativa", valor:valorBR(pf.mente.valor) };
+const itens = ri && ri.ok ? await ri.json() : [];
+(itens||[]).forEach(x=>{ const d=x.data||{}; if(d.tipo==="parceiro" || d.produto==="indique") return; if(d.produto==="mente"){ if(!m.mente.valor) m.mente.valor=valorBR(d.valor||d.preco); return; } m[x.id] = { titulo:d.titulo||"Serviço", valor:valorBR(d.valor||d.preco) }; });
+_precosVit = m;
+setTimeout(()=>{ _precosVit=null; }, 60000);
+} catch(e) {}
+return m;
+};
+const pedirValorVit = (titulo, sugerido) => {
+const r = window.prompt("Quanto você recebeu por "+titulo+"? (R$)\n\nEsse valor entra no Financeiro.", sugerido ? String(Number(sugerido).toFixed(2)).replace(".",",") : "");
+if(r===null) return null;
+return valorBR(r);
+};
+// tipo: "venda" (entra como receita) ou "bonus" (só no contador de bônus)
+const registrarVitrine = (setStudents, st, tipo, produto, titulo, valor) => {
+const v = Number(valor)||0;
+const hoje = todayStr();
+setStudents(p=>p.map(x=>String(x.id)!==String(st.id)?x:{ ...x, vitrineHist:[...(x.vitrineHist||[]), { id:uid(), tipo, produto, titulo, valor:v, data:hoje }] }));
+if(tipo==="venda" && v>0 && window.__lvAddReceita) window.__lvAddReceita({ id:uid(), descricao:titulo+" · "+(st.name||"aluno"), categoria:"vitrine", recorrente:false, frequencia:null, status:"recebido", dataPrevista:hoje, valorPrevisto:v, dataPagamento:hoje, valorPago:v, obs:"", createdAt:hoje, studentId:st.id, produto, produtoTitulo:titulo, origem:"vitrine" });
+};
 const mesChave = (d) => (d||"").slice(0,7);
 const novoPagamentoMensal = (student, dataPrevista, periodoInicio) => ({
 id: uid(), studentId: student.id, tipo:"mensal", plano: student.billing?.plano||"",
@@ -986,6 +1022,7 @@ const virouAluno = (x, st) => {
 const pr = x.premio || {};
 if(!window.confirm(x.nome+" virou aluno?\n\n"+(st?st.name.split(" ")[0]:"Quem indicou")+" recebe agora: "+(pr.nome||"o prêmio")+".")) return;
 aplicarPremio(x);
+if(st){ const pr2 = x.premio || {}; precosVitrine().then(m=>{ const k = pr2.tipo==="servico" ? pr2.id : pr2.tipo; const it = m[k] || {}; registrarVitrine(setStudents, st, "bonus", k || "indique", (it.titulo || pr2.nome || "Prêmio")+" (indicação)", it.valor); }); }
 patch(x, { status:"aluno" });
 setLista(p=>p.filter(y=>y.id!==x.id));
 };
@@ -1029,7 +1066,15 @@ return ()=>{ vivo=false; };
 },[]);
 if(!itens || !itens.length) return null;
 const mapa = st.servicos || {};
-const setS = (id, titulo, k) => setStudents(p=>p.map(x=>{
+const setS = async (id, titulo, k) => {
+if(k!=="bloqueado"){
+const pr = (await precosVitrine())[id] || {};
+if(k==="pago"){ const v = pedirValorVit(titulo, pr.valor); if(v===null) return; registrarVitrine(setStudents, st, "venda", id, titulo, v); }
+else registrarVitrine(setStudents, st, "bonus", id, titulo, pr.valor);
+}
+setSRaw(id, titulo, k);
+};
+const setSRaw = (id, titulo, k) => setStudents(p=>p.map(x=>{
 if(x.id!==st.id) return x;
 const m = { ...(x.servicos||{}) };
 if(k==="bloqueado") delete m[id]; else m[id] = { status:k, em:todayStr(), titulo };
@@ -1076,7 +1121,13 @@ const hoje = todayStr();
 const vencido = status==="pago" && (!l.vencimento || l.vencimento<hoje);
 const mais30 = (base) => { const d=new Date(((base && base>hoje)?base:hoje)+"T12:00:00"); d.setDate(d.getDate()+30); return toISODateLocal(d); };
 const setM = (novo) => setStudents(p=>p.map(x=>x.id===st.id?{...x,mente:{...(x.mente||{}),...novo,atualizadoEm:new Date().toISOString()}}:x));
-const escolher = (k) => { if(k===status) return; if(k==="pago") setM({ status:"pago", vencimento:mais30(hoje), bonusAte:null }); else setM({ status:k, bonusAte:null }); };
+const escolher = async (k) => {
+if(k===status) return;
+const pr = (await precosVitrine()).mente || {};
+if(k==="pago"){ const v = pedirValorVit(pr.titulo||"a Mente Ativa", pr.valor); if(v===null) return; setM({ status:"pago", vencimento:mais30(hoje), bonusAte:null }); registrarVitrine(setStudents, st, "venda", "mente", pr.titulo||"Mente Ativa", v); }
+else { setM({ status:k, bonusAte:null }); if(k==="bonus") registrarVitrine(setStudents, st, "bonus", "mente", pr.titulo||"Mente Ativa", pr.valor); }
+};
+const renovarM = async () => { const pr = (await precosVitrine()).mente || {}; const v = pedirValorVit("a renovação da "+(pr.titulo||"Mente Ativa"), pr.valor); if(v===null) return; setM({ status:"pago", vencimento:mais30(l.vencimento) }); registrarVitrine(setStudents, st, "venda", "mente", pr.titulo||"Mente Ativa", v); };
 const sub = status==="bonus" ? (l.bonusAte ? (l.bonusAte<hoje ? "Bônus da indicação venceu em "+fmt(l.bonusAte)+"." : "Bônus da indicação até "+fmt(l.bonusAte)+".") : "Liberado de bônus.") : status==="pago" ? (vencido ? "Venceu em "+fmt(l.vencimento)+". O cadeado voltou." : "Pago · acesso até "+fmt(l.vencimento)+".") : "O aluno vê o cadeado, 1 jogo grátis e o Pix.";
 const d30 = new Date(Date.now()-30*86400000).toISOString();
 const ult30 = (res||[]).filter(r=>r.created_at>=d30);
@@ -1093,7 +1144,7 @@ return (
 <button key={k} onClick={()=>escolher(k)} style={{ flex:1,padding:"8px 4px",borderRadius:9,border:"1.5px solid "+(status===k?"#FF5603":"#e2e8f0"),background:status===k?"#fff4ee":"#fff",color:status===k?"#c2410c":"#64748b",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>{lb}</button>
 ))}
 </div>
-{status==="pago" && <button onClick={()=>{ if(window.confirm("Renovar a Mente Ativa por mais 30 dias?")) setM({ status:"pago", vencimento:mais30(l.vencimento) }); }} style={{ width:"100%",marginTop:8,padding:"8px",borderRadius:9,border:"1.5px dashed #fed7aa",background:"#fff",color:"#c2410c",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>Renovar +30 dias</button>}
+{status==="pago" && <button onClick={renovarM} style={{ width:"100%",marginTop:8,padding:"8px",borderRadius:9,border:"1.5px dashed #fed7aa",background:"#fff",color:"#c2410c",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>Renovar +30 dias</button>}
 <div style={{ marginTop:10,paddingTop:10,borderTop:"1px solid #f1f5f9" }}>
 {res===null ? <div style={{ fontSize:12,color:"#94a3b8" }}>Carregando resultados...</div>
 : res.length===0 ? <div style={{ fontSize:12,color:"#94a3b8" }}>Nenhum jogo feito ainda.</div>
@@ -1138,11 +1189,18 @@ if(num && p.some(l=>String(l.whatsapp||"").replace(/\D/g,"").slice(-9)===num.sli
 return [...p,{ id:uid(), name:pr.nome, whatsapp:pr.whatsapp||"", instagram:"", idade:"", sexo:"", origem:"Presente de aluno", indicadoPor:st.name, objetivo:"", necessidade:"Ganhou de presente: "+(a.servico||"serviço"), temperatura:"quente", etapa:"novo", status:"ativo", obs:pr.mensagem?"Mensagem do vale: \""+pr.mensagem+"\"":"", proximaAcaoTipo:"Enviar mensagem", proximaAcaoData:todayStr(), proximaAcaoHorario:"", proximaAcaoObs:"Agendar "+(a.servico||"o serviço"), motivoNaoFechamento:"", motivoObs:"", valorPotencial:"", createdAt:todayStr(), historico:[{ ts:agora, texto:"Presente de "+st.name+": "+(a.servico||"serviço") }] }];
 });
 };
-const marcar = async (a) => {
+const confirmarServ = async (a, st) => {
+const pr = (await precosVitrine())[a.item_id] || {};
+const titulo = a.servico || pr.titulo || "Serviço";
+const v = pedirValorVit(titulo, pr.valor); if(v===null) return false;
 if (a.item_id && !(a.presente && a.presente.nome)) {
 const hojeM = todayStr();
 setStudents(p=>p.map(x=>String(x.id)!==String(a.student_id)?x:{ ...x, servicos:{ ...(x.servicos||{}), [a.item_id]:{ status:"pago", em:hojeM, titulo:a.servico||"" } } }));
 }
+registrarVitrine(setStudents, st, "venda", a.item_id || titulo, (a.presente && a.presente.nome) ? titulo+" (presente)" : titulo, v);
+marcar(a);
+};
+const marcar = async (a) => {
 const k = chave(a);
 const ids = avisos.filter(x=>chave(x)===k).map(x=>x.id);
 setAvisos(p=>p.filter(x=>chave(x)!==k));
@@ -1151,7 +1209,11 @@ const headers = await DB.authHeaders();
 for (const id of ids) await fetch(SUPA_URL+"/rest/v1/l360_avisos?id=eq."+encodeURIComponent(id), { method:"PATCH", headers:{ ...headers, "Prefer":"return=minimal" }, body: JSON.stringify({ visto:true }) });
 } catch(e) {}
 };
-const liberar = (a) => {
+const liberar = async (a, st) => {
+const kk = a.servico==="Mente Ativa" ? "mente" : "l360";
+const pr = (await precosVitrine())[kk] || {};
+const v = pedirValorVit(pr.titulo || a.servico || "o plano", pr.valor); if(v===null) return false;
+registrarVitrine(setStudents, st, "venda", kk, pr.titulo || (kk==="mente"?"Mente Ativa":"Longevus 360"), v);
 const sid = a.student_id;
 const hoje = todayStr();
 const k = a.servico==="Mente Ativa" ? "mente" : "l360";
@@ -1183,7 +1245,7 @@ return (
 </div>}
 <div style={{ display:"flex",gap:8,marginTop:8 }}>
 {prWa && <a href={"https://wa.me/"+prWa+"?text="+encodeURIComponent("Oi, "+pr.nome.split(" ")[0]+"! Aqui é o Wellington Brito, personal trainer. "+st.name.split(" ")[0]+" te deu de presente: "+(servico||"um atendimento")+". Vamos agendar? Qual dia e horário ficam bons para você?")} target="_blank" rel="noopener noreferrer" style={{ flex:1,padding:"8px",borderRadius:9,background:"#E9F5F2",color:"#0F6E56",fontWeight:700,fontSize:12,textAlign:"center",textDecoration:"none" }}>{"Chamar "+pr.nome.split(" ")[0]}</a>}
-<button onClick={()=>{ if(pr) virarLead(a,st); servico?marcar(a):liberar(a); }} style={{ flex:1,padding:"8px",borderRadius:9,border:"none",background:"#FF5603",color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>{servico?"Confirmar pagamento":"Confirmar e liberar 30 dias"}</button>
+<button onClick={async ()=>{ const ok = servico ? await confirmarServ(a,st) : await liberar(a,st); if(ok!==false && pr) virarLead(a,st); }} style={{ flex:1,padding:"8px",borderRadius:9,border:"none",background:"#FF5603",color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>{servico?"Confirmar pagamento":"Confirmar e liberar 30 dias"}</button>
 <button onClick={()=>marcar(a)} style={{ flex:0.7,padding:"8px",borderRadius:9,border:"1.5px solid #fed7aa",background:"#fff",color:"#9a3412",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>Ainda não caiu</button>
 </div>
 </Card>
@@ -1238,6 +1300,11 @@ return (
 </Card>
 ))}
 </div>
+{(()=>{ const rv = resumoVitrine(rx, students, mesStart, mesEnd); if(!rv.vendas.length && !rv.bonus.length) return null; return (
+<Card onClick={()=>nav("financeiro")} style={{ padding:"10px 12px",marginTop:-12,marginBottom:22,display:"flex",justifyContent:"space-between",alignItems:"center",gap:8 }}>
+<div style={{ fontSize:12,color:"#334155" }}>Vitrine no mês: <b>{fmtR(rv.totalV)}</b> vendidos</div>
+<div style={{ fontSize:12,color:"#c2410c",fontWeight:700,whiteSpace:"nowrap" }}>{fmtR(rv.totalB)} em bônus</div>
+</Card>); })()}
 {temAlertas&&<div style={{ marginBottom:22 }}>
 <div style={{ fontSize:12,fontWeight:700,color:"#64748b",marginBottom:8 }}>Precisa de atenção</div>
 <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
@@ -1518,6 +1585,44 @@ return (
 </Modal>
 );
 };
+const resumoVitrine = (receitasExtras, students, inicio, fim) => {
+const vendas = (receitasExtras||[]).filter(r=>r.categoria==="vitrine" && r.status==="recebido" && r.dataPagamento && r.dataPagamento>=inicio && r.dataPagamento<=fim);
+const bonus = (students||[]).flatMap(s=>(s.vitrineHist||[]).filter(h=>h.tipo==="bonus" && h.data>=inicio && h.data<=fim).map(h=>({ ...h, aluno:s.name })));
+const grupo = {};
+vendas.forEach(r=>{ const k=r.produtoTitulo||String(r.descricao||"").split(" · ")[0]||"Outro"; grupo[k]=grupo[k]||{ nome:k, n:0, v:0, nb:0, vb:0 }; grupo[k].n++; grupo[k].v+=Number(r.valorPago)||0; });
+bonus.forEach(h=>{ const k=String(h.titulo||"Outro").replace(" (indicação)",""); grupo[k]=grupo[k]||{ nome:k, n:0, v:0, nb:0, vb:0 }; grupo[k].nb++; grupo[k].vb+=Number(h.valor)||0; });
+return { vendas, bonus, totalV:vendas.reduce((a,r)=>a+(Number(r.valorPago)||0),0), totalB:bonus.reduce((a,h)=>a+(Number(h.valor)||0),0), linhas:Object.values(grupo).sort((a,b)=>(b.v+b.vb)-(a.v+a.vb)) };
+};
+const VitrineResumo = ({ receitasExtras, students, inicio, fim, nav }) => {
+const r = resumoVitrine(receitasExtras, students, inicio, fim);
+return (
+<Card style={{ padding:"14px 16px",marginBottom:18 }}>
+<div style={{ display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:10 }}>
+<div style={{ fontSize:12,fontWeight:700,color:"#475569" }}>Vitrine no período</div>
+<button onClick={()=>nav("vitrine")} style={{ border:"none",background:"none",padding:0,fontSize:12,fontWeight:700,color:"#c2410c",cursor:"pointer",fontFamily:"inherit" }}>Abrir vitrine ›</button>
+</div>
+<div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10 }}>
+<div style={{ background:"#dcfce7",borderRadius:12,padding:"10px 12px" }}>
+<div style={{ fontSize:11,fontWeight:700,color:"#15803d" }}>Vendido</div>
+<div style={{ fontSize:17,fontWeight:800,color:"#0f172a" }}>{fmtR(r.totalV)}</div>
+<div style={{ fontSize:11,color:"#64748b" }}>{r.vendas.length} {r.vendas.length===1?"venda":"vendas"} · entra no recebido</div>
+</div>
+<div style={{ background:"#fff4ee",borderRadius:12,padding:"10px 12px" }}>
+<div style={{ fontSize:11,fontWeight:700,color:"#c2410c" }}>Dado em bônus</div>
+<div style={{ fontSize:17,fontWeight:800,color:"#0f172a" }}>{fmtR(r.totalB)}</div>
+<div style={{ fontSize:11,color:"#64748b" }}>{r.bonus.length} {r.bonus.length===1?"bônus":"bônus"} · não soma na receita</div>
+</div>
+</div>
+{r.linhas.length===0 ? <div style={{ fontSize:12,color:"#94a3b8",marginTop:10 }}>Nenhuma venda ou bônus da vitrine nesse período.</div> :
+<div style={{ marginTop:10 }}>{r.linhas.map(l=>(
+<div key={l.nome} style={{ display:"flex",justifyContent:"space-between",gap:8,padding:"8px 0",borderTop:"1px solid #f1f5f9",fontSize:12.5 }}>
+<div style={{ minWidth:0 }}><div style={{ fontWeight:700,color:"#0f172a" }}>{l.nome}</div><div style={{ color:"#94a3b8",fontSize:11 }}>{[l.n?l.n+(l.n===1?" venda":" vendas"):null, l.nb?l.nb+" bônus ("+fmtR(l.vb)+")":null].filter(Boolean).join(" · ")}</div></div>
+<div style={{ fontWeight:800,color:"#0f172a",whiteSpace:"nowrap" }}>{fmtR(l.v)}</div>
+</div>
+))}</div>}
+</Card>
+);
+};
 const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setPagamentos, receitasExtras, setReceitasExtras, nav, agendaEntries }) => {
   const [finView,setFinView] = useState("alunos");
   const [planoModal,setPlanoModal] = useState(false);
@@ -1555,7 +1660,7 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
     await DB.remove("planos",id);
     setPlanos(p=>p.filter(pl=>pl.id!==id));
   };
-  const CATEGORIAS_EXTRA = [{v:"produto",l:"Produto"},{v:"servico",l:"Serviço"},{v:"outro",l:"Outro"}];
+  const CATEGORIAS_EXTRA = [{v:"produto",l:"Produto"},{v:"servico",l:"Serviço"},{v:"vitrine",l:"Vitrine"},{v:"outro",l:"Outro"}];
   const FREQ_EXTRA = [{v:"semanal",l:"Semanal",dias:7},{v:"quinzenal",l:"Quinzenal",dias:15},{v:"mensal",l:"Mensal",dias:30}];
   const proximaDataRecorrente = (dataStr, frequencia) => {
     const dias = (FREQ_EXTRA.find(f=>f.v===frequencia)||FREQ_EXTRA[2]).dias;
@@ -1915,6 +2020,7 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
         );
       })}
       </>}
+      <VitrineResumo receitasExtras={receitasExtras} students={students} inicio={periodoInicio} fim={periodoFimSel} nav={nav}/>
       {(previstoPorMes.some(v=>v>0)||pagoPorMes.some(v=>v>0)) &&
       <div style={{ marginBottom:18 }}>
         <div style={{ fontSize:12,fontWeight:700,color:"#475569",marginBottom:8 }}>Previsto x Recebido — últimos 6 meses</div>
@@ -2648,11 +2754,13 @@ return (
   const vencido = status==="pago" && (!l.vencimento || l.vencimento<hoje);
   const mais30 = (base) => { const d=new Date(((base && base>hoje)?base:hoje)+"T12:00:00"); d.setDate(d.getDate()+30); return toISODateLocal(d); };
   const set360 = (novo) => setStudents(p=>p.map(x=>x.id===st.id?{...x,l360:{...(x.l360||{}),...novo,atualizadoEm:new Date().toISOString()}}:x));
-  const escolher = (k) => {
+  const escolher = async (k) => {
     if(k===status) return;
-    if(k==="pago") set360({ status:"pago", vencimento:mais30(hoje), bonusAte:null });
-    else set360({ status:k, bonusAte:null });
+    const pr = (await precosVitrine()).l360 || {};
+    if(k==="pago"){ const v = pedirValorVit(pr.titulo||"o Longevus 360", pr.valor); if(v===null) return; set360({ status:"pago", vencimento:mais30(hoje), bonusAte:null }); registrarVitrine(setStudents, st, "venda", "l360", pr.titulo||"Longevus 360", v); }
+    else { set360({ status:k, bonusAte:null }); if(k==="bonus") registrarVitrine(setStudents, st, "bonus", "l360", pr.titulo||"Longevus 360", pr.valor); }
   };
+  const renovar360 = async () => { const pr = (await precosVitrine()).l360 || {}; const v = pedirValorVit("a renovação do "+(pr.titulo||"Longevus 360"), pr.valor); if(v===null) return; set360({ status:"pago", vencimento:mais30(l.vencimento) }); registrarVitrine(setStudents, st, "venda", "l360", pr.titulo||"Longevus 360", v); };
   const sub = status==="bonus" ? (l.bonusAte ? (l.bonusAte<hoje ? "Bônus da indicação venceu em "+fmt(l.bonusAte)+"." : "Bônus da indicação até "+fmt(l.bonusAte)+".") : "Liberado de bônus enquanto o plano principal estiver ativo.") : status==="pago" ? (vencido ? "Venceu em "+fmt(l.vencimento)+". O cadeado voltou para o aluno." : "Pago · acesso até "+fmt(l.vencimento)+".") : "O aluno vê o cadeado e a oferta com o Pix.";
   return (
     <Card style={{ padding:"12px 14px",marginBottom:16 }}>
@@ -2665,12 +2773,23 @@ return (
           <button key={k} onClick={()=>escolher(k)} style={{ flex:1,padding:"8px 4px",borderRadius:9,border:"1.5px solid "+(status===k?"#FF5603":"#e2e8f0"),background:status===k?"#fff4ee":"#fff",color:status===k?"#c2410c":"#64748b",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>{lb}</button>
         ))}
       </div>
-      {status==="pago" && <button onClick={()=>{ if(window.confirm("Renovar o Longevus 360 por mais 30 dias?")) set360({ status:"pago", vencimento:mais30(l.vencimento) }); }} style={{ width:"100%",marginTop:8,padding:"8px",borderRadius:9,border:"1.5px dashed #fed7aa",background:"#fff",color:"#c2410c",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>Renovar +30 dias</button>}
+      {status==="pago" && <button onClick={renovar360} style={{ width:"100%",marginTop:8,padding:"8px",borderRadius:9,border:"1.5px dashed #fed7aa",background:"#fff",color:"#c2410c",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>Renovar +30 dias</button>}
     </Card>
   );
 })()}
 <MenteAtivaFicha st={st} setStudents={setStudents}/>
 <ServicosVitrineFicha st={st} setStudents={setStudents}/>
+{(()=>{ const hs=[...(st.vitrineHist||[])].reverse(); if(!hs.length) return null; const tv=hs.filter(h=>h.tipo==="venda").reduce((a,h)=>a+h.valor,0), tb=hs.filter(h=>h.tipo==="bonus").reduce((a,h)=>a+h.valor,0); return (
+<Card style={{ padding:"12px 14px",marginBottom:16 }}>
+<div style={{ fontSize:12,fontWeight:700,color:"#334155" }}>Histórico na vitrine</div>
+<div style={{ fontSize:12,color:"#64748b",marginTop:2,marginBottom:6 }}>Já comprou <b style={{ color:"#0f172a" }}>{fmtR(tv)}</b> · ganhou em bônus <b style={{ color:"#c2410c" }}>{fmtR(tb)}</b></div>
+{hs.slice(0,20).map(h=>(
+<div key={h.id} style={{ display:"flex",justifyContent:"space-between",gap:8,padding:"7px 0",borderTop:"1px solid #f1f5f9",fontSize:12 }}>
+<div><div style={{ fontWeight:700,color:"#0f172a" }}>{h.titulo}</div><div style={{ color:"#94a3b8" }}>{fmt(h.data)} · {h.tipo==="venda"?"Venda":"Bônus"}</div></div>
+<div style={{ fontWeight:800,color:h.tipo==="venda"?"#15803d":"#c2410c",whiteSpace:"nowrap" }}>{h.tipo==="venda"?fmtR(h.valor):(h.valor?"vale "+fmtR(h.valor):"bônus")}</div>
+</div>
+))}
+</Card>); })()}
 </div>
 )}
 {tab==="aval"&&(
@@ -10038,6 +10157,7 @@ useEffect(()=>{LS.set("longevus_professor_feedbacks",professorFeedbacks);},[prof
 useEffect(()=>{LS.set("longevus_agenda",agendaEntries);},[agendaEntries]);
 useEffect(()=>{LS.set("longevus_pagamentos",pagamentos);},[pagamentos]);
 useEffect(()=>{LS.set("longevus_receitas_extras",receitasExtras);},[receitasExtras]);
+useEffect(()=>{ window.__lvAddReceita = (r)=>setReceitasExtras(p=>[...p,r]); return ()=>{ window.__lvAddReceita = null; }; },[]);
 useEffect(()=>{LS.set("longevus_leads",leads);},[leads]);
 useEffect(()=>{LS.set("longevus_condominios",condos);},[condos]);
 useEffect(()=>{LS.set("longevus_condominio_leads",condoLeads);},[condoLeads]);
