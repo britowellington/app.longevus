@@ -481,23 +481,23 @@
       href ? h("div", { style: { position: "fixed", left: 0, right: 0, bottom: 0, padding: "12px 18px calc(12px + env(safe-area-inset-bottom))", background: "linear-gradient(rgba(244,245,247,0), " + COR.fundo + " 30%)" } },
         h("a", { href, target: "_blank", rel: "noopener noreferrer", onClick: onClique, style: { display: "block", height: 50, lineHeight: "50px", textAlign: "center", borderRadius: 25, background: COR.laranja, color: "#fff", fontWeight: 800, fontSize: 15, textDecoration: "none" } }, d.botao || (parceiro ? "Chamar no WhatsApp" : "Quero saber mais"))) : null);
   };
+  const svgIc = (d, cor, tam) => h("svg", { width: tam || 20, height: tam || 20, viewBox: "0 0 24 24", fill: "none", stroke: cor || "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true" }, d.map((x, k) => h("path", { key: k, d: x })));
+  const IC_PRESENTE = ["M20 12v9H4v-9", "M2 7h20v5H2z", "M12 21V7", "M12 7H7.5a2.5 2.5 0 1 1 0-5C11 2 12 7 12 7z", "M12 7h4.5a2.5 2.5 0 1 0 0-5C13 2 12 7 12 7z"];
+  const FaixaIndique = ({ onAbrir }) => h("div", { onClick: onAbrir, role: "button", style: { cursor: "pointer", margin: "0 16px 12px", borderRadius: 16, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, color: "#fff", background: "linear-gradient(120deg,#FF5603,#FF8A3D)", boxShadow: "0 6px 16px rgba(255,86,3,0.22)" } },
+    h("span", { style: { width: 38, height: 38, borderRadius: 11, background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, svgIc(IC_PRESENTE, "#fff", 21)),
+    h("div", { style: { flex: 1, minWidth: 0, fontSize: 14.5, fontWeight: 800, lineHeight: 1.25 } }, "Indique um amigo e ganhe prêmios"),
+    h("span", { style: { flexShrink: 0, fontSize: 13, fontWeight: 800, whiteSpace: "nowrap" } }, "Indicar ›"));
   const CartaoOferta = ({ item, ctx, onClique, especial, onAbrir }) => {
-    if (item.produto === "indique") return h("div", { onClick: onAbrir, style: { cursor: "pointer", flex: "0 0 84%", minWidth: 0, scrollSnapAlign: "start", boxSizing: "border-box", borderRadius: 16, padding: "11px 12px 11px 12px", display: "flex", alignItems: "center", gap: 11, color: "#fff", background: "linear-gradient(120deg,#FF5603,#FF8A3D)", boxShadow: "0 6px 14px rgba(255,86,3,0.28)" } },
-      h("span", { style: { width: 44, height: 44, borderRadius: 13, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 23, flexShrink: 0, background: "linear-gradient(145deg,#fff,#FFE4D2)", boxShadow: "inset 0 2px 0 rgba(255,255,255,0.6), inset 0 -4px 0 rgba(0,0,0,0.08), 0 4px 10px rgba(0,0,0,0.15)" } }, "🎁"),
-      h("div", { style: { flex: 1, minWidth: 0 } },
-        h("div", { style: { fontSize: 10, fontWeight: 800, letterSpacing: "0.05em", opacity: 0.92 } }, "INDIQUE E GANHE"),
-        h("div", { style: { fontSize: 15, fontWeight: 800, lineHeight: 1.2, marginTop: 1 } }, "Indique um amigo e ganhe prêmios")),
-      h("button", { type: "button", onClick: (e) => { e.stopPropagation(); onAbrir && onAbrir(); }, style: { flexShrink: 0, border: "none", borderRadius: 10, padding: "8px 11px", fontSize: 12, fontWeight: 800, background: "#fff", color: "#C2410C", fontFamily: "inherit", cursor: "pointer" } }, "Indicar"));
     const proprio = item.tipo !== "parceiro";
-    const escuro = proprio || especial;
-    const sub = item.beneficio || item.texto || "";
-    const rotulo = especial ? (item.botao || "Conhecer") : "Saiba mais";
-    return h("div", { onClick: especial ? void 0 : onAbrir, style: { cursor: especial ? "default" : "pointer", flex: "0 0 84%", minWidth: 0, scrollSnapAlign: "start", boxSizing: "border-box", borderRadius: 16, padding: "11px 12px 11px 14px", display: "flex", alignItems: "center", gap: 10, background: escuro ? COR.escuro : "#fff", color: escuro ? "#F8FAFC" : COR.escuro, border: "1.5px solid " + (escuro ? COR.laranja : COR.borda) } },
-      h("div", { style: { flex: 1, minWidth: 0 } },
-        h("div", { style: { fontSize: 10, fontWeight: 800, letterSpacing: "0.04em", color: escuro ? "#FDBA74" : COR.verde, textTransform: "uppercase" } }, especial ? "Plano mensal" : liberado(ctx, item) === "bonus" ? "🎁 Bônus do seu personal" : liberado(ctx, item) === "pago" ? "✓ Já é seu" : proprio ? "Do seu personal" : "Parceiro"),
-        h("div", { style: { fontSize: 15, fontWeight: 800, lineHeight: 1.2, marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, item.titulo),
-        sub ? h("div", { style: { fontSize: 11.5, color: escuro ? "#CBD5E1" : COR.cinza, marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, sub) : null),
-      h("button", { type: "button", onClick: (e) => { e.stopPropagation(); if (especial) { onClique && onClique(); } else { onAbrir && onAbrir(); } }, style: { flexShrink: 0, border: "none", borderRadius: 10, padding: "8px 11px", fontSize: 12, fontWeight: 800, background: COR.laranja, color: "#fff", fontFamily: "inherit", cursor: "pointer", whiteSpace: "nowrap" } }, rotulo));
+    const sub = item.beneficio ? txtBenef(item.beneficio) : item.texto || "";
+    const rotulo = especial ? (item.botao || "Conhecer") : "Conhecer";
+    const lib = especial ? null : liberado(ctx, item);
+    const tag = especial ? "Plano mensal" : lib === "bonus" ? "Bônus do seu personal" : lib === "pago" ? "Já é seu" : proprio ? "Do seu personal" : "Parceiro";
+    return h("div", { onClick: especial ? () => onClique && onClique() : onAbrir, style: { cursor: "pointer", flex: "0 0 76%", minWidth: 0, scrollSnapAlign: "start", boxSizing: "border-box", borderRadius: 16, padding: "13px 14px 12px", background: "#fff", color: COR.escuro, boxShadow: "0 1px 2px rgba(15,23,42,0.05), 0 6px 18px rgba(15,23,42,0.05)" } },
+      h("div", { style: { fontSize: 10, fontWeight: 800, letterSpacing: "0.06em", color: proprio || especial ? COR.laranjaTxt : COR.verde, textTransform: "uppercase" } }, tag),
+      h("div", { style: { fontSize: 15, fontWeight: 800, lineHeight: 1.2, marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, item.titulo),
+      h("div", { style: { fontSize: 12, color: COR.cinza, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minHeight: 15 } }, sub),
+      h("div", { style: { fontSize: 13, fontWeight: 800, color: COR.laranjaTxt, marginTop: 9 } }, rotulo + " ›"));
   };
 
   const contexto = (p) => {
@@ -530,7 +530,7 @@
     };
     const linha = (d) => {
       if (d.produto === "indique") return h("div", { key: d.id, onClick: () => { setDetalhe(d); api.registrar(p.ownerId, d.id, p.studentId, "abriu"); }, style: { cursor: "pointer", borderRadius: 16, padding: "12px 13px", marginBottom: 8, display: "flex", alignItems: "center", gap: 11, color: "#fff", background: "linear-gradient(120deg,#FF5603,#FF8A3D)", boxShadow: "0 6px 14px rgba(255,86,3,0.25)" } },
-        h("div", { style: { width: 44, height: 44, borderRadius: 12, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 } }, "🎁"),
+        h("div", { style: { width: 44, height: 44, borderRadius: 12, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, svgIc(IC_PRESENTE, "#FF5603", 22)),
         h("div", { style: { flex: 1, minWidth: 0 } },
           h("div", { style: { fontSize: 14, fontWeight: 800 } }, "Indique um amigo e ganhe prêmios"),
           h("div", { style: { fontSize: 12, opacity: 0.92, marginTop: 1 } }, "Você ganha " + (txtBenef(d.premio) || "um prêmio"))),
@@ -597,11 +597,10 @@
       setAtivo(Math.max(0, Math.min(n - 1, Math.round(el.scrollLeft / w))));
     };
     if (!n) return null;
-    return h("div", { style: { marginBottom: 12 } },
-      rotulo ? h("div", { style: { fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", color: "#94A3B8", textTransform: "uppercase", padding: "0 16px", marginBottom: 6 } }, rotulo) : null,
-      h("div", { ref: trilho, onScroll: aoRolar, onTouchStart: pausar, onMouseDown: pausar, onWheel: pausar, style: { display: "flex", gap: 10, overflowX: "auto", scrollSnapType: "x mandatory", padding: "0 16px", scrollPaddingLeft: 16, scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } },
-        cards.map(render)),
-      n > 1 ? h("div", { "aria-hidden": "true", style: { display: "flex", gap: 5, justifyContent: "center", marginTop: 7 } }, cards.map((d, i) => h("span", { key: d.id, style: { width: i === ativo ? 16 : 6, height: 6, borderRadius: 3, background: i === ativo ? COR.laranja : "#CBD5E1", transition: "width 0.2s" } }))) : null);
+    return h("div", { style: { marginBottom: 6 } },
+      rotulo ? h("div", { style: { fontSize: 11.5, fontWeight: 700, letterSpacing: "0.08em", color: COR.cinza, textTransform: "uppercase", padding: "6px 18px 0", marginBottom: 9 } }, rotulo) : null,
+      h("div", { ref: trilho, onScroll: aoRolar, onTouchStart: pausar, onMouseDown: pausar, onWheel: pausar, style: { display: "flex", gap: 10, overflowX: "auto", scrollSnapType: "x mandatory", padding: "2px 16px 10px", scrollPaddingLeft: 16, scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } },
+        cards.map(render)));
   };
   const Carrossel = (p) => {
     const itens = useItens(p.ownerId);
@@ -622,13 +621,15 @@
     }, [itens]);
     if (itens === null) return null;
     if (!cards.length) return null;
-    const meus = cards.filter((d) => d.tipo !== "parceiro");
+    const indique = cards.find((d) => d.produto === "indique");
+    const meus = cards.filter((d) => d.tipo !== "parceiro" && d.produto !== "indique");
     const parc = cards.filter((d) => d.tipo === "parceiro");
     const render = (d) => h(CartaoOferta, { key: d.id, item: d, ctx, especial: d.especial, onAbrir: () => abrir(d), onClique: d.id === "__mente" ? () => { api.registrar(p.ownerId, "__mente", p.studentId, "abriu"); window.location.href = "longevus-hub.html"; } : d.especial ? () => { api.registrar(p.ownerId, "__360", p.studentId, "abriu"); p.onIr && p.onIr("alimentacao"); } : () => api.registrar(p.ownerId, d.id, p.studentId, "clique") });
     return h("div", { style: { flexShrink: 0 } },
-      h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "0 16px", marginBottom: 7 } },
+      h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "0 18px", marginBottom: 9 } },
         h("span", { style: { fontSize: 11.5, fontWeight: 700, letterSpacing: "0.08em", color: COR.cinza, textTransform: "uppercase" } }, "Para você"),
-        h("button", { type: "button", onClick: () => setClube(true), style: { background: "transparent", border: "none", padding: 0, fontSize: 12.5, fontWeight: 800, color: COR.laranjaTxt, cursor: "pointer", fontFamily: "inherit" } }, "Clube Longevus ›")),
+        h("button", { type: "button", onClick: () => setClube(true), style: { background: "transparent", border: "none", padding: 0, fontSize: 12.5, fontWeight: 800, color: COR.laranjaTxt, cursor: "pointer", fontFamily: "inherit" } }, "Ver tudo ›")),
+      indique ? h(FaixaIndique, { onAbrir: () => abrir(indique) }) : null,
       h(Faixa, { cards: meus, render, atraso: 0 }),
       h(Faixa, { cards: parc, rotulo: meus.length ? "Parceiros" : null, render, atraso: 2000 }),
       clube ? h(ClubeTela, { ...p, itens: itens, onFechar: () => setClube(false) }) : null,
