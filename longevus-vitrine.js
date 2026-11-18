@@ -566,13 +566,48 @@
       detalhe ? h(Detalhe, { item: detalhe, ctx, ownerId: p.ownerId, studentId: p.studentId, onFechar: () => setDetalhe(null), onClique: () => api.registrar(p.ownerId, detalhe.id, p.studentId, "clique") }) : null);
   };
 
+  const Faixa = ({ cards, rotulo, render, atraso }) => {
+    const trilho = useRef(null);
+    const [ativo, setAtivo] = useState(0);
+    const pausaAte = useRef(0);
+    const n = cards.length;
+    useEffect(() => {
+      if (n < 2) return;
+      let reduz = false;
+      try { reduz = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) {}
+      if (reduz) return;
+      let timer = null;
+      const passo = () => {
+        const el = trilho.current;
+        if (el && el.children.length && Date.now() > pausaAte.current && !document.hidden) {
+          const w = el.children[0].getBoundingClientRect().width + 10;
+          const atual = Math.round(el.scrollLeft / w);
+          const prox = atual >= n - 1 || el.scrollLeft + el.clientWidth >= el.scrollWidth - 4 ? 0 : atual + 1;
+          try { el.scrollTo({ left: prox * w, behavior: "smooth" }); } catch (e) { el.scrollLeft = prox * w; }
+        }
+      };
+      const inicio = setTimeout(() => { passo(); timer = setInterval(passo, 4000); }, 4000 + (atraso || 0));
+      return () => { clearTimeout(inicio); if (timer) clearInterval(timer); };
+    }, [n]);
+    const pausar = () => { pausaAte.current = Date.now() + 10000; };
+    const aoRolar = () => {
+      const el = trilho.current;
+      if (!el || !el.children.length) return;
+      const w = el.children[0].getBoundingClientRect().width + 10;
+      setAtivo(Math.max(0, Math.min(n - 1, Math.round(el.scrollLeft / w))));
+    };
+    if (!n) return null;
+    return h("div", { style: { marginBottom: 12 } },
+      rotulo ? h("div", { style: { fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", color: "#94A3B8", textTransform: "uppercase", padding: "0 16px", marginBottom: 6 } }, rotulo) : null,
+      h("div", { ref: trilho, onScroll: aoRolar, onTouchStart: pausar, onMouseDown: pausar, onWheel: pausar, style: { display: "flex", gap: 10, overflowX: "auto", scrollSnapType: "x mandatory", padding: "0 16px", scrollPaddingLeft: 16, scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } },
+        cards.map(render)),
+      n > 1 ? h("div", { "aria-hidden": "true", style: { display: "flex", gap: 5, justifyContent: "center", marginTop: 7 } }, cards.map((d, i) => h("span", { key: d.id, style: { width: i === ativo ? 16 : 6, height: 6, borderRadius: 3, background: i === ativo ? COR.laranja : "#CBD5E1", transition: "width 0.2s" } }))) : null);
+  };
   const Carrossel = (p) => {
     const itens = useItens(p.ownerId);
     const ctx = contexto(p);
-    const [ativo, setAtivo] = useState(0);
     const [clube, setClube] = useState(false);
     const [detalhe, setDetalhe] = useState(null);
-    const trilho = useRef(null);
     const abrir = (d) => { setDetalhe(d); api.registrar(p.ownerId, d.id, p.studentId, "abriu"); };
     const lista = (itens || []).filter((d) => publicoOk(d, ctx));
     const cards = lista.filter((d) => d.produto === "indique");
@@ -587,19 +622,15 @@
     }, [itens]);
     if (itens === null) return null;
     if (!cards.length) return null;
-    const aoRolar = () => {
-      const el = trilho.current;
-      if (!el || !el.children.length) return;
-      const w = el.children[0].getBoundingClientRect().width + 10;
-      setAtivo(Math.max(0, Math.min(cards.length - 1, Math.round(el.scrollLeft / w))));
-    };
+    const meus = cards.filter((d) => d.tipo !== "parceiro");
+    const parc = cards.filter((d) => d.tipo === "parceiro");
+    const render = (d) => h(CartaoOferta, { key: d.id, item: d, ctx, especial: d.especial, onAbrir: () => abrir(d), onClique: d.id === "__mente" ? () => { api.registrar(p.ownerId, "__mente", p.studentId, "abriu"); window.location.href = "longevus-hub.html"; } : d.especial ? () => { api.registrar(p.ownerId, "__360", p.studentId, "abriu"); p.onIr && p.onIr("alimentacao"); } : () => api.registrar(p.ownerId, d.id, p.studentId, "clique") });
     return h("div", { style: { flexShrink: 0 } },
       h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "0 16px", marginBottom: 7 } },
         h("span", { style: { fontSize: 11.5, fontWeight: 700, letterSpacing: "0.08em", color: COR.cinza, textTransform: "uppercase" } }, "Para você"),
         h("button", { type: "button", onClick: () => setClube(true), style: { background: "transparent", border: "none", padding: 0, fontSize: 12.5, fontWeight: 800, color: COR.laranjaTxt, cursor: "pointer", fontFamily: "inherit" } }, "Clube Longevus ›")),
-      h("div", { ref: trilho, onScroll: aoRolar, style: { display: "flex", gap: 10, overflowX: "auto", scrollSnapType: "x mandatory", padding: "0 16px", scrollPaddingLeft: 16, scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } },
-        cards.map((d) => h(CartaoOferta, { key: d.id, item: d, ctx, especial: d.especial, onAbrir: () => abrir(d), onClique: d.id === "__mente" ? () => { api.registrar(p.ownerId, "__mente", p.studentId, "abriu"); window.location.href = "longevus-hub.html"; } : d.especial ? () => { api.registrar(p.ownerId, "__360", p.studentId, "abriu"); p.onIr && p.onIr("alimentacao"); } : () => api.registrar(p.ownerId, d.id, p.studentId, "clique") }))),
-      cards.length > 1 ? h("div", { "aria-hidden": "true", style: { display: "flex", gap: 5, justifyContent: "center", marginTop: 7 } }, cards.map((d, i) => h("span", { key: d.id, style: { width: i === ativo ? 16 : 6, height: 6, borderRadius: 3, background: i === ativo ? COR.laranja : "#CBD5E1", transition: "width 0.2s" } }))) : null,
+      h(Faixa, { cards: meus, render, atraso: 0 }),
+      h(Faixa, { cards: parc, rotulo: meus.length ? "Parceiros" : null, render, atraso: 2000 }),
       clube ? h(ClubeTela, { ...p, itens: itens, onFechar: () => setClube(false) }) : null,
       detalhe ? h(Detalhe, { item: detalhe, ctx, ownerId: p.ownerId, studentId: p.studentId, onFechar: () => setDetalhe(null), onClique: () => api.registrar(p.ownerId, detalhe.id, p.studentId, "clique") }) : null);
   };
