@@ -20,7 +20,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="longevus-aluno-extras.js?v=27"></script>
-<script src="longevus-vitrine.js?v=15"></script>
+<script src="longevus-vitrine.js?v=16"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -2318,7 +2318,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
 };
 
 // ── App raiz ─────────────────────────────────────────────────────────────────
-const PixPagamentoCard = ({billing, profPix, studentName}) => {
+const PixPagamentoCard = ({billing, profPix, studentName, semWhats}) => {
   const qrRef = useRef(null);
   const [copiado,setCopiado]=useState(false);
   const pixKey = profPix?.pix_key;
@@ -2363,7 +2363,7 @@ const PixPagamentoCard = ({billing, profPix, studentName}) => {
         </div>
       )}
 
-      {whatsappUrl && (
+      {whatsappUrl && !semWhats && (
         <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" style={{display:"block",width:"100%",padding:"12px",borderRadius:10,background:"#16a34a",color:"#fff",fontWeight:700,fontSize:13,textDecoration:"none",boxSizing:"border-box"}}>
           💬 Avisar que já paguei
         </a>
@@ -2630,7 +2630,15 @@ const CadastroPublico = ({ planoParam }) => {
         const rows = r.ok ? await r.json() : [];
         const found = rows && rows[0];
         if(!ativo) return;
-        if(found && found.nome){ setPlano({ nome: found.nome, valor: Number(found.valor) }); }
+        if(found && found.nome){
+          const base = { nome: found.nome, valor: Number(found.valor) };
+          setPlano(base);
+          try{
+            const rd = await fetch(SUPA_URL+"/rest/v1/rpc/rpc_plano_venda_detalhe", { method:"POST", headers:{ "apikey":SUPA_KEY, "Authorization":"Bearer "+SUPA_KEY, "Content-Type":"application/json" }, body: JSON.stringify({ p_prof_id: PROF_ID, p_slug: planoParam }) });
+            const dd = rd.ok ? await rd.json() : [];
+            if(ativo && dd && dd[0]) setPlano({ ...base, descricao: dd[0].descricao || "", frequencia: dd[0].frequencia || "" });
+          } catch(e){}
+        }
         else { setPlano(PLANOS_VENDA_FALLBACK[planoParam] || null); }
       } catch(e){ if(ativo) setPlano(PLANOS_VENDA_FALLBACK[planoParam] || null); }
     })();
@@ -2687,10 +2695,22 @@ const CadastroPublico = ({ planoParam }) => {
           <img src={__LOGO_ALUNO__} alt="Wellington Brito" style={{width:150,height:"auto",objectFit:"contain",marginBottom:10}}/>
           <div style={{fontSize:19,fontWeight:800,marginBottom:6}}>Criar minha conta</div>
           <div style={{fontSize:13,color:"#64748b",marginBottom:6,lineHeight:1.5,textAlign:"left"}}>
-            {plano===undefined ? "Carregando plano..." : plano ? <>Plano escolhido: <strong>{plano.nome}</strong> — R$ {plano.valor.toFixed(2).replace(".",",")}{plano.nome!=="Consultoria"?"/mês":""}</> : "Plano não identificado — volte para a página de planos."}
+            {plano===undefined ? "Carregando plano..." : !plano ? "Não encontramos esse plano. Peça um novo link ao seu personal." : null}
           </div>
+          {plano && (
+            <div style={{textAlign:"left",background:"#fff4ee",border:"1.5px solid #fed7c3",borderRadius:14,padding:"14px 15px",marginBottom:14}}>
+              <div style={{fontSize:11,fontWeight:800,letterSpacing:"0.06em",color:"#c2410c",textTransform:"uppercase"}}>Plano escolhido</div>
+              <div style={{fontSize:17,fontWeight:800,color:"#0f172a",marginTop:2}}>{plano.nome}</div>
+              <div style={{fontSize:15,fontWeight:800,color:"#FF5603",marginTop:2}}>R$ {plano.valor.toFixed(2).replace(".",",")}{/consultoria/i.test(plano.nome)?"":"/mês"}{plano.frequencia?" · "+plano.frequencia:""}</div>
+              {plano.descricao && <div style={{marginTop:9}}>{String(plano.descricao).split(/\n|;|·/).map(t=>t.trim()).filter(Boolean).map((t,i)=>(
+                <div key={i} style={{display:"flex",gap:8,alignItems:"flex-start",fontSize:13,color:"#334155",lineHeight:1.45,marginTop:i?4:0}}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0,marginTop:2}}><path d="M20 6 9 17l-5-5"/></svg>
+                  <span>{t}</span>
+                </div>))}</div>}
+            </div>
+          )}
           <div style={{fontSize:12,color:"#94a3b8",marginBottom:18,lineHeight:1.5,textAlign:"left"}}>
-            Depois de criar sua conta, você já cai direto na tela de pagamento.
+            Crie sua conta e, em seguida, você vê o Pix para pagar.
           </div>
 
           <div style={{textAlign:"left",marginBottom:12}}>
@@ -2723,21 +2743,50 @@ const CadastroPublico = ({ planoParam }) => {
   );
 };
 
-const PrimeiroPagamento = ({billing, profPix, studentName, onLogout}) => {
+const PrimeiroPagamento = ({billing, profPix, studentName, onLogout, studentId, ownerId}) => {
+  const chaveAv = "lv_avisou_plano_"+(studentId||"");
+  const [avisado,setAvisado]=useState(()=>{ try{ return !!localStorage.getItem(chaveAv); }catch(e){ return false; } });
+  const [enviando,setEnviando]=useState(false);
+  const primeiro = String(studentName||"").split(" ")[0];
+  const nomeProf = (profPix && (profPix.nome || profPix.pix_merchant_name)) ? String(profPix.nome || profPix.pix_merchant_name).split(" ")[0] : "seu personal";
+  const avisar = async () => {
+    if(enviando) return;
+    setEnviando(true);
+    try{
+      const { data } = await supa.auth.getSession();
+      const token = data?.session?.access_token || SUPA_KEY;
+      await fetch(SUPA_URL+"/rest/v1/l360_avisos", { method:"POST", headers:{ "apikey":SUPA_KEY, "Authorization":"Bearer "+token, "Content-Type":"application/json", "Prefer":"return=minimal" }, body: JSON.stringify({ id:"av_"+studentId+"_"+Date.now(), owner_id:String(ownerId||PROF_ID), student_id:String(studentId), servico:"Plano: "+(billing?.plano||"mensalidade") }) });
+    } catch(e){}
+    try{ localStorage.setItem(chaveAv, "1"); }catch(e){}
+    setAvisado(true); setEnviando(false);
+  };
+  const waProf = profPix?.whatsapp ? "https://wa.me/55"+profPix.whatsapp.replace(/\D/g,"")+"?text="+encodeURIComponent("Oi, "+nomeProf+"! Acabei de pagar o plano "+(billing?.plano||"")+" pelo app. Sou "+(studentName||"")+".") : null;
   return (
     <div style={{minHeight:"100vh",background:"#f8fafc",padding:"24px 18px",display:"flex",flexDirection:"column",alignItems:"center"}}>
       <div style={{width:52,height:52,borderRadius:14,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:14}}>
         <Icon name="lock" size={24} color="#FF5603"/>
       </div>
-      <div style={{fontWeight:800,fontSize:19,textAlign:"center",marginBottom:4}}>Falta só o pagamento</div>
+      <div style={{fontWeight:800,fontSize:19,textAlign:"center",marginBottom:4}}>{primeiro ? "Falta pouco, "+primeiro+"!" : "Falta só o pagamento"}</div>
       <div style={{fontSize:13,color:"#64748b",textAlign:"center",marginBottom:20,maxWidth:340,lineHeight:1.5}}>
-        Sua conta foi criada! Realize o pagamento abaixo para liberar seu acesso ao app.
+        Sua conta já está criada. Pague pelo Pix abaixo e seu acesso ao app é liberado.
       </div>
 
-      <PixPagamentoCard billing={billing} profPix={profPix} studentName={studentName}/>
+      <PixPagamentoCard billing={billing} profPix={profPix} studentName={studentName} semWhats/>
 
-      <div style={{fontSize:11,color:"#94a3b8",marginTop:20,textAlign:"center",maxWidth:320,lineHeight:1.5}}>
-        Após o pagamento, o Wellington confirma manualmente e seu acesso é liberado — normalmente em poucas horas.
+      <div style={{width:"100%",maxWidth:380,marginTop:16}}>
+        {!avisado ? (
+          <button onClick={avisar} disabled={enviando} style={{width:"100%",padding:"14px",borderRadius:12,border:"none",background:"#16a34a",color:"#fff",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 6px 16px rgba(22,163,74,0.25)"}}>{enviando ? "Enviando..." : "Já paguei"}</button>
+        ) : (
+          <div style={{background:"#E9F5F2",borderRadius:12,padding:"13px 14px",textAlign:"center"}}>
+            <div style={{fontSize:14,fontWeight:800,color:"#0F6E56"}}>Aviso enviado</div>
+            <div style={{fontSize:12.5,color:"#334155",marginTop:3,lineHeight:1.45}}>{"O "+nomeProf+" já sabe do seu pagamento. Assim que ele confirmar, seu acesso abre aqui."}</div>
+            {waProf && <a href={waProf} target="_blank" rel="noopener noreferrer" style={{display:"inline-block",marginTop:9,fontSize:12.5,fontWeight:700,color:"#0F6E56"}}>Mandar o comprovante no WhatsApp ›</a>}
+          </div>
+        )}
+      </div>
+
+      <div style={{fontSize:11.5,color:"#94a3b8",marginTop:18,textAlign:"center",maxWidth:320,lineHeight:1.5}}>
+        {"Depois do pagamento, o "+nomeProf+" confere e libera o seu acesso. Normalmente leva poucas horas."}
       </div>
       <button onClick={onLogout} style={{marginTop:16,background:"none",border:"none",color:"#94a3b8",fontSize:12,textDecoration:"underline",cursor:"pointer"}}>Sair</button>
     </div>
@@ -3079,7 +3128,7 @@ function App(){
   }
 
   if(billing?.pendente){
-    return <PrimeiroPagamento billing={billing} profPix={profPix} studentName={studentName} onLogout={onLogout}/>;
+    return <PrimeiroPagamento billing={billing} profPix={profPix} studentName={studentName} onLogout={onLogout} studentId={studentId} ownerId={ownerId}/>;
   }
 
   if(billingBloqueado){

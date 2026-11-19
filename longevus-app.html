@@ -27,7 +27,7 @@ var __LOGO_WB__ = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAFuCAYAAAC
 <script type="text/babel" data-presets="react" src="longevus-condominios.js"></script>
 <script src="longevus-alimentacao.js?v=14"></script>
 <script src="longevus-antropometria.js?v=3"></script>
-<script src="longevus-vitrine.js?v=15"></script>
+<script src="longevus-vitrine.js?v=16"></script>
 <script type="text/babel" data-presets="react">
 const SenhaInput = ({style, ...rest}) => {
   const [ver, setVer] = React.useState(false);
@@ -1233,7 +1233,15 @@ return (
 <div style={{ marginBottom:22 }}>
 <div style={{ fontSize:12,fontWeight:700,color:"#64748b",marginBottom:8 }}>Pagamentos avisados pelo app</div>
 <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-{lista.map(({a,st})=>{ const ehMente=a.servico==="Mente Ativa"; const servico=ehMente?null:a.servico; const pr=a.presente&&a.presente.nome?a.presente:null; const prWa=pr&&waNum(pr.whatsapp); return (
+{lista.map(({a,st})=>{ const ehPlano=String(a.servico||"").startsWith("Plano: "); if(ehPlano) return (
+<Card key={a.id} style={{ padding:"10px 14px",background:"#fff7ed",border:"1.5px solid #fed7aa" }}>
+<div onClick={()=>nav("studentDetail",{studentId:st.id})} style={{ fontSize:13,fontWeight:700,color:"#9a3412",cursor:"pointer" }}>{st.name+" avisou que pagou o "+String(a.servico).replace("Plano: ","plano ")}</div>
+<div style={{ fontSize:11,color:"#64748b",marginTop:2 }}>{"Em "+new Date(a.created_at).toLocaleDateString("pt-BR")+" às "+new Date(a.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})+". Novo aluno pelo link do plano. Confira no banco e marque a mensalidade como paga para liberar o acesso."}</div>
+<div style={{ display:"flex",gap:6,marginTop:8 }}>
+<button onClick={()=>{ marcar(a); nav("studentDetail",{studentId:st.id}); }} style={{ flex:1,padding:"8px",borderRadius:9,border:"none",background:"#FF5603",color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>Abrir aluno</button>
+<button onClick={()=>marcar(a)} style={{ flex:0.7,padding:"8px",borderRadius:9,border:"1.5px solid #fed7aa",background:"#fff",color:"#9a3412",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>Dispensar</button>
+</div>
+</Card>); const ehMente=a.servico==="Mente Ativa"; const servico=ehMente?null:a.servico; const pr=a.presente&&a.presente.nome?a.presente:null; const prWa=pr&&waNum(pr.whatsapp); return (
 <Card key={a.id} style={{ padding:"10px 14px",background:"#fff7ed",border:"1.5px solid #fed7aa" }}>
 {pr && <div style={{ display:"inline-block",fontSize:10.5,fontWeight:800,letterSpacing:"0.06em",color:"#C2410C",background:"#ffedd5",borderRadius:10,padding:"3px 8px",marginBottom:5 }}>🎁 PRESENTE</div>}
 <div onClick={()=>nav("studentDetail",{id:st.id})} style={{ fontSize:13,fontWeight:700,color:"#9a3412",cursor:"pointer" }}>{servico ? st.name+" avisou que pagou: "+servico : st.name+" avisou que pagou "+(ehMente?"a Mente Ativa":"o 360")}</div>
@@ -1283,6 +1291,7 @@ return (
 </div>
 {setStudents && <Avisos360 students={students} setStudents={setStudents} setLeads={setLeads} nav={nav}/>}
 {setStudents && <IndicacoesInicio students={students} setStudents={setStudents} setLeads={setLeads}/>}
+{setStudents && <ComprasPublicasInicio students={students} setStudents={setStudents} setLeads={setLeads} nav={nav}/>}
 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:16 }}>
 {[["Alunos",ativos.length,"#6366f1"],["Aval.",assessments.length,O],["Reavaliar",ativos.filter(s=>{const ult=[...assessments].filter(a=>a.studentId===s.id).sort((a,b)=>b.date?.localeCompare(a.date))[0];if(!ult)return false;const dias=(new Date(hoje)-new Date(ult.date))/86400000;return dias>=75;}).length,"#d97706"]].map(([l,v,c])=>(
 <Card key={l} style={{ padding:"14px 10px",textAlign:"center" }}>
@@ -1585,6 +1594,84 @@ return (
 </Modal>
 );
 };
+const linkComprar = (id) => window.location.origin + window.location.pathname.replace(/[^/]*$/,"") + "comprar.html?i=" + encodeURIComponent(id);
+const copiarLinkPublico = async (url, titulo) => {
+let ok = false;
+try { await navigator.clipboard.writeText(url); ok = true; } catch(e) {}
+if(!ok) { window.prompt("Copie o link:", url); return false; }
+try { if(navigator.share) await navigator.share({ title:titulo, text:titulo+": contrate por este link", url }); } catch(e) {}
+return true;
+};
+const ServicosVitrinePlanos = ({ nav }) => {
+const [itens, setItens] = useState(null);
+const [copiado, setCopiado] = useState(null);
+useEffect(()=>{ (async()=>{ try { const headers = await DB.authHeaders(); const r = await fetch(SUPA_URL+"/rest/v1/vitrine_itens?select=id,ativo,data&order=ordem.asc", { headers }); const rows = r.ok ? await r.json() : []; setItens((rows||[]).filter(x=>{ const d=x.data||{}; return d.tipo!=="parceiro" && !d.produto && d.cobranca!=="plano" && valorBR(d.valor||d.preco)>0; })); } catch(e) { setItens([]); } })(); },[]);
+if(itens===null) return null;
+return (
+<div style={{ marginTop:22 }}>
+<div style={{ fontSize:12,fontWeight:700,color:"#475569",marginBottom:4 }}>Serviços da vitrine</div>
+<div style={{ fontSize:12,color:"#94a3b8",marginBottom:10 }}>Avulsos, sem mensalidade. O link abre uma página de compra com Pix, sem precisar criar conta.</div>
+{itens.length===0 ? <Card style={{ padding:16,fontSize:12.5,color:"#94a3b8" }}>Nenhum serviço seu com valor na vitrine. <span onClick={()=>nav("vitrine")} style={{ color:O,fontWeight:700,cursor:"pointer" }}>Abrir vitrine ›</span></Card> :
+<div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+{itens.map(x=>{ const d=x.data||{}; return (
+<Card key={x.id} style={{ padding:"14px 16px" }}>
+<div style={{ display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10 }}>
+<div style={{ flex:1,minWidth:0 }} onClick={()=>nav("vitrine")}>
+<div style={{ display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:4 }}>
+<span style={{ fontWeight:700,fontSize:14 }}>{d.titulo||"Serviço"}</span>
+<Badge color="#c2410c" bg="#fff4ee">vitrine</Badge>
+{x.ativo===false && <Badge color="#64748b" bg="#f1f5f9">Fora do app</Badge>}
+</div>
+<div style={{ fontSize:13,fontWeight:800,color:O }}>{fmtR(valorBR(d.valor||d.preco))} · avulso</div>
+{d.texto && <div style={{ fontSize:12,color:"#64748b",marginTop:2 }}>{d.texto}</div>}
+{copiado===x.id && <div style={{ fontSize:12,fontWeight:700,color:"#15803d",marginTop:6 }}>✓ Link copiado. Cole no WhatsApp.</div>}
+</div>
+<button onClick={async ()=>{ if(x.ativo===false && !window.confirm("Este serviço está desligado na vitrine, e o link não abre enquanto ele estiver desligado. Copiar mesmo assim?")) return; if(await copiarLinkPublico(linkComprar(x.id), d.titulo||"Serviço")){ setCopiado(x.id); setTimeout(()=>setCopiado(c=>c===x.id?null:c),4000); } }} aria-label="Gerar link de compra" title="Gerar link de compra" style={{ background:"#fff4ee",border:"none",borderRadius:10,cursor:"pointer",color:O,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+</button>
+</div>
+</Card>); })}
+</div>}
+</div>
+);
+};
+const ComprasPublicasInicio = ({ students, setStudents, setLeads, nav }) => {
+const [lista, setLista] = useState([]);
+useEffect(()=>{ (async()=>{ try { const headers = await DB.authHeaders(); const r = await fetch(SUPA_URL+"/rest/v1/compras_publicas?select=*&visto=eq.false&order=created_at.desc&limit=30", { headers }); if(r.ok) setLista(await r.json()); } catch(e) {} })(); },[]);
+const patch = async (c, corpo) => { setLista(p=>p.filter(x=>x.id!==c.id)); try { const headers = await DB.authHeaders(); await fetch(SUPA_URL+"/rest/v1/compras_publicas?id=eq."+c.id, { method:"PATCH", headers:{ ...headers, Prefer:"return=minimal" }, body: JSON.stringify(corpo) }); } catch(e) {} };
+const dig = (t) => String(t||"").replace(/\D/g,"");
+const confirmar = async (c) => {
+const titulo = c.titulo || "Serviço";
+const v = pedirValorVit(titulo, c.valor); if(v===null) return;
+const hoje = todayStr();
+const num = dig(c.whatsapp);
+const aluno = num.length>=10 ? students.find(s=>dig(s.whatsapp||s.phone).slice(-9)===num.slice(-9)) : null;
+const pr = c.presente && c.presente.nome ? c.presente : null;
+if(aluno && !pr){ setStudents(p=>p.map(x=>x.id!==aluno.id?x:{ ...x, servicos:{ ...(x.servicos||{}), [c.item_id]:{ status:"pago", em:hoje, titulo } } })); registrarVitrine(setStudents, aluno, "venda", c.item_id, titulo, v); }
+else if(window.__lvAddReceita) window.__lvAddReceita({ id:uid(), descricao:titulo+(pr?" (presente)":"")+" · "+c.nome, categoria:"vitrine", recorrente:false, frequencia:null, status:"recebido", dataPrevista:hoje, valorPrevisto:v, dataPagamento:hoje, valorPago:v, obs:"Compra pelo link", createdAt:hoje, produto:c.item_id, produtoTitulo:titulo, origem:"link" });
+const novoLead = (n, w, necessidade, obs) => ({ id:uid(), name:n, whatsapp:w||"", instagram:"", idade:"", sexo:"", origem:"Link da vitrine", indicadoPor:pr?c.nome:"", objetivo:"", necessidade, temperatura:"quente", etapa:"novo", status:"ativo", obs:obs||"", proximaAcaoTipo:"Enviar mensagem", proximaAcaoData:hoje, proximaAcaoHorario:"", proximaAcaoObs:"Agendar "+titulo, motivoNaoFechamento:"", motivoObs:"", valorPotencial:"", createdAt:hoje, historico:[{ ts:new Date().toISOString(), texto:(pr?"Ganhou de presente de "+c.nome+": ":"Comprou pelo link: ")+titulo }] });
+if(setLeads){
+const alvo = pr ? { n:pr.nome, w:pr.whatsapp } : (aluno ? null : { n:c.nome, w:c.whatsapp });
+if(alvo) setLeads(p=>{ const wn=dig(alvo.w); if(wn && p.some(l=>dig(l.whatsapp).slice(-9)===wn.slice(-9))) return p; return [...p, novoLead(alvo.n, alvo.w, pr?"Ganhou de presente: "+titulo:"Comprou: "+titulo, pr&&pr.mensagem?"Mensagem do presente: \""+pr.mensagem+"\"":"")]; });
+}
+patch(c, { visto:true, status:"pago" });
+};
+if(!lista.length) return null;
+return (
+<div style={{ marginBottom:16 }}>
+{lista.map(c=>{ const pr=c.presente&&c.presente.nome?c.presente:null; const w=dig(pr&&pr.whatsapp?pr.whatsapp:c.whatsapp); const quem=pr?pr.nome:c.nome; return (
+<Card key={c.id} style={{ padding:"10px 14px",background:"#fff7ed",border:"1.5px solid #fed7aa",marginBottom:8 }}>
+<div style={{ fontSize:13,fontWeight:700,color:"#9a3412" }}>{c.nome+" pagou pelo link: "+(c.titulo||"serviço")+(c.valor?" ("+fmtR(c.valor)+")":"")}</div>
+<div style={{ fontSize:11,color:"#64748b",marginTop:2 }}>{(pr?"Presente para "+pr.nome+". ":"")+"Em "+new Date(c.created_at).toLocaleDateString("pt-BR")+" às "+new Date(c.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})+". Confira no banco antes de confirmar."}</div>
+<div style={{ display:"flex",gap:6,marginTop:8 }}>
+{w.length>=10 && <a href={"https://wa.me/"+(w.length<=11?"55"+w:w)+"?text="+encodeURIComponent("Oi, "+String(quem).split(" ")[0]+"! Aqui é o Wellington Brito. "+(pr?c.nome.split(" ")[0]+" te deu de presente: "+(c.titulo||"um atendimento")+".":"Recebi seu pagamento de "+(c.titulo||"serviço")+", obrigado!")+" Vamos agendar? Qual dia e horário ficam bons para você?")} target="_blank" rel="noopener noreferrer" style={{ flex:1,padding:"8px",borderRadius:9,background:"#E9F5F2",color:"#0F6E56",fontWeight:700,fontSize:12,textAlign:"center",textDecoration:"none" }}>{"Chamar "+String(quem).split(" ")[0]}</a>}
+<button onClick={()=>confirmar(c)} style={{ flex:1,padding:"8px",borderRadius:9,border:"none",background:"#FF5603",color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>Confirmar pagamento</button>
+<button onClick={()=>patch(c, { visto:true, status:"nao_caiu" })} style={{ flex:0.7,padding:"8px",borderRadius:9,border:"1.5px solid #fed7aa",background:"#fff",color:"#9a3412",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>Não caiu</button>
+</div>
+</Card>); })}
+</div>
+);
+};
 const resumoVitrine = (receitasExtras, students, inicio, fim) => {
 const vendas = (receitasExtras||[]).filter(r=>r.categoria==="vitrine" && r.status==="recebido" && r.dataPagamento && r.dataPagamento>=inicio && r.dataPagamento<=fim);
 const bonus = (students||[]).flatMap(s=>(s.vitrineHist||[]).filter(h=>h.tipo==="bonus" && h.data>=inicio && h.data<=fim).map(h=>({ ...h, aluno:s.name })));
@@ -1627,6 +1714,26 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
   const [finView,setFinView] = useState("alunos");
   const [planoModal,setPlanoModal] = useState(false);
   const [planoEditId,setPlanoEditId] = useState(null);
+  const [linkCopiado, setLinkCopiado] = useState(null);
+  const slugDe = (t) => String(t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");
+  const gerarLinkPlano = async (pl) => {
+    if(pl.ativo===false && !window.confirm("Este plano está inativo. Gerar o link mesmo assim?")) return;
+    let slug = pl.slugVenda;
+    const dup = slug && planos.some(o=>o.id!==pl.id && o.slugVenda===slug);
+    if(!slug || dup){
+      const base = slugDe(pl.nome) || "plano"; let novo = base, n = 2;
+      while(planos.some(o=>o.id!==pl.id && o.slugVenda===novo)) novo = base + (n++);
+      if(dup && !window.confirm("Outro plano já usa o identificador \""+slug+"\". Para o link abrir o plano certo, este passa a usar \""+novo+"\".\n\nContinuar?")) return;
+      slug = novo;
+      setPlanos(p=>p.map(x=>x.id===pl.id?{...x,slugVenda:slug}:x));
+    }
+    const url = window.location.origin + window.location.pathname.replace(/[^/]*$/,"") + "aluno.html?cadastro=1&plano=" + encodeURIComponent(slug);
+    let ok = false;
+    try { await navigator.clipboard.writeText(url); ok = true; } catch(e) {}
+    if(!ok) { window.prompt("Copie o link do plano:", url); return; }
+    setLinkCopiado(pl.id); setTimeout(()=>setLinkCopiado(c=>c===pl.id?null:c), 4000);
+    try { if(navigator.share) await navigator.share({ title:pl.nome, text:"Contrate o plano "+pl.nome+" por este link:", url }); } catch(e) {}
+  };
   const emptyPlano = () => ({ nome:"", modoCobranca:"fixo", valor:"", valorSessao:"", frequencia:"", descricao:"", ativo:true, slugVenda:"", regraVencimento:"30dias", toleranciaDias:"" });
   const [planoForm,setPlanoForm] = useState(emptyPlano());
   const openNovoPlano = () => { setPlanoEditId(null); setPlanoForm(emptyPlano()); setPlanoModal(true); };
@@ -2171,12 +2278,17 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
                   <div style={{ fontSize:13,fontWeight:800,color:O,marginBottom:2 }}>{pl.modoCobranca==="porSessao"?"R$ "+Number(pl.valorSessao||0).toFixed(2).replace(".",",")+" / sessão":"R$ "+Number(pl.valor||0).toFixed(2).replace(".",",")}{pl.frequencia?" · "+pl.frequencia:""}</div>
                   {pl.descricao && <div style={{ fontSize:12,color:"#64748b",marginTop:2 }}>{pl.descricao}</div>}
                   <div style={{ fontSize:11,color:"#94a3b8",marginTop:6 }}>{alunosPorPlano(pl.nome)} aluno(s) neste plano</div>
+                  {linkCopiado===pl.id && <div style={{ fontSize:12,fontWeight:700,color:"#15803d",marginTop:6 }}>✓ Link copiado. Cole no WhatsApp do aluno.</div>}
                 </div>
+                <button onClick={ev=>{ev.stopPropagation();gerarLinkPlano(pl);}} aria-label="Gerar link de contratação" title="Gerar link de contratação" style={{ background:"#fff4ee",border:"none",borderRadius:10,cursor:"pointer",color:O,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                </button>
                 <button onClick={ev=>{ev.stopPropagation();excluirPlano(pl.id);}} style={{ background:"none",border:"none",cursor:"pointer",color:"#e2e8f0",padding:4,flexShrink:0 }}><I n="trash" s={15}/></button>
               </div>
             </Card>
           ))}
         </div>}
+        <ServicosVitrinePlanos nav={nav}/>
         {planoModal && <Modal title={planoEditId?"Editar Plano":"Novo Plano"} onClose={()=>setPlanoModal(false)}>
           <Inp label="Nome do plano *" value={planoForm.nome} onChange={v=>setPlanoForm(f=>({...f,nome:v}))} placeholder="Ex: 3x por semana"/>
           <div style={{ display:"flex",gap:6,marginBottom:13 }}>
@@ -10162,6 +10274,19 @@ useEffect(()=>{LS.set("longevus_leads",leads);},[leads]);
 useEffect(()=>{LS.set("longevus_condominios",condos);},[condos]);
 useEffect(()=>{LS.set("longevus_condominio_leads",condoLeads);},[condoLeads]);
 useEffect(()=>{LS.set("longevus_planos",planos);},[planos]);
+const planosRef = useRef(planos); planosRef.current = planos;
+useEffect(()=>{
+window.__lvPlanos = planos;
+window.__lvSlugPlano = (id) => {
+const lista = planosRef.current || []; const pl = lista.find(x=>x.id===id); if(!pl) return null;
+const dup = pl.slugVenda && lista.some(o=>o.id!==pl.id && o.slugVenda===pl.slugVenda);
+if(pl.slugVenda && !dup) return pl.slugVenda;
+const base = String(pl.nome||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"") || "plano";
+let novo = base, n = 2; while(lista.some(o=>o.id!==pl.id && o.slugVenda===novo)) novo = base + (n++);
+setPlanos(p=>p.map(x=>x.id===pl.id?{...x,slugVenda:novo}:x));
+return novo;
+};
+},[planos]);
 useEffect(()=>{LS.set("longevus_contrato_modelos",contratoModelos);},[contratoModelos]);
 // Sync Supabase — salva cada item individualmente
 useEffect(()=>{ if(dbReady) students.forEach(s=>DB.save("students",s.id,s)); },[students,dbReady]);

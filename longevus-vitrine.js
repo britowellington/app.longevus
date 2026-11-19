@@ -50,8 +50,11 @@
     };
     return base.replace(/\{(\w+)\}/g, (m, k) => (k in troca ? troca[k] : m));
   };
+  const linkPlano = (slug) => window.location.origin + window.location.pathname.replace(/[^/]*$/, "") + "aluno.html?cadastro=1&plano=" + encodeURIComponent(slug || "");
+  const ehPlano = (d) => d && d.tipo !== "parceiro" && d.cobranca === "plano" && d.planoSlug;
   const linkDoItem = (item, ctx) => {
     const d = item || {};
+    if (ehPlano(d)) return null;
     if (d.tipo !== "parceiro" && d.destino === "link" && d.link) return d.link;
     const numero = d.tipo === "parceiro" ? d.whatsapp : (d.whatsapp || (ctx && ctx.personalWhats));
     return waLink(numero, montarMensagem(d, ctx));
@@ -450,8 +453,15 @@
     const parceiro = d.tipo === "parceiro";
     const lib = liberado(ctx, d);
     const pix = ehPix(d) && !lib;
-    const href = pix || lib ? null : linkDoItem(d, ctx);
+    const plano = ehPlano(d) && !lib;
+    const href = pix || lib || plano ? null : linkDoItem(d, ctx);
     const [copiado, setCopiado] = useState(false);
+    const [linkOk, setLinkOk] = useState(false);
+    const enviarAmigo = async () => {
+      const url = linkPlano(d.planoSlug);
+      try { if (navigator.share) { await navigator.share({ title: d.titulo, text: "Conheça " + (d.titulo || "este plano") + " com " + (ctx.personal || "meu personal") + ":", url }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
+      try { await navigator.clipboard.writeText(url); setLinkOk(true); setTimeout(() => setLinkOk(false), 3000); } catch (e) { window.prompt("Copie o link:", url); }
+    };
     const lista = String(d.inclui || "").split("\n").map((x) => x.trim()).filter(Boolean);
     const insta = instaLink(d.instagram);
     const at = (ATENDIMENTO.find((a) => a[0] === d.atendimento) || [null, null])[1];
@@ -476,7 +486,12 @@
         (at || d.local || (d.preco && !pix && !lib && !ehPix(d)) || insta) ? h("div", null, secao("Informações"), h("div", { style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 14, padding: "4px 14px" } },
           [["Atendimento", at], ["Onde", d.local], ["Valor", pix || lib || ehPix(d) ? null : d.preco]].filter((x) => x[1]).map((x, i) => h("div", { key: x[0], style: { display: "flex", justifyContent: "space-between", gap: 12, padding: "10px 0", borderTop: i ? "1px solid #F1F5F9" : "none", fontSize: 13.5 } }, h("span", { style: { color: COR.cinza } }, x[0]), h("span", { style: { fontWeight: 700, textAlign: "right" } }, x[1]))),
           insta ? h("a", { href: insta, target: "_blank", rel: "noopener noreferrer", style: { display: "flex", justifyContent: "space-between", padding: "10px 0", borderTop: (at || d.local || (d.preco && !pix && !lib && !ehPix(d))) ? "1px solid #F1F5F9" : "none", fontSize: 13.5, textDecoration: "none", color: COR.escuro } }, h("span", { style: { color: COR.cinza } }, "Instagram"), h("span", { style: { fontWeight: 700, color: COR.laranjaTxt } }, (String(d.instagram).indexOf("http") === 0 ? "Ver perfil" : "@" + String(d.instagram).replace(/^@/, "")) + " ›")) : null)) : null,
-        lib ? h(Liberado, { item: d, ctx, status: lib, onClique }) : pix ? h(PixPagamento, { item: d, ctx, ownerId, studentId }) : null,
+        lib ? h(Liberado, { item: d, ctx, status: lib, onClique }) : pix ? h(PixPagamento, { item: d, ctx, ownerId, studentId }) : plano ? h("div", { style: { marginTop: 18, background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 16, padding: "14px 16px" } },
+          h("div", { style: { fontSize: 11, fontWeight: 800, letterSpacing: "0.06em", color: COR.laranjaTxt, textTransform: "uppercase" } }, "Plano mensal"),
+          h("div", { style: { fontSize: 22, fontWeight: 800, marginTop: 2 } }, d.planoValor ? "R$ " + Number(d.planoValor).toFixed(2).replace(".", ",") + (/consult/i.test(d.planoNome || "") ? "" : "/mês") : (d.planoNome || "")),
+          h("a", { href: waLink(d.whatsapp || ctx.personalWhats, "Oi, " + primeiroNome(ctx.personal) + "! Vi " + (d.titulo || "o plano") + " no app e quero saber como contratar."), target: "_blank", rel: "noopener noreferrer", onClick: onClique, style: { display: "block", marginTop: 12, height: 48, lineHeight: "48px", textAlign: "center", borderRadius: 24, background: COR.laranja, color: "#fff", fontWeight: 800, fontSize: 15, textDecoration: "none" } }, "Quero para mim"),
+          h("button", { type: "button", onClick: enviarAmigo, style: { width: "100%", marginTop: 8, height: 46, borderRadius: 23, border: "1.5px solid " + COR.borda, background: "#fff", color: COR.escuro, fontWeight: 800, fontSize: 14, cursor: "pointer", fontFamily: "inherit" } }, linkOk ? "Link copiado" : "Enviar para um amigo"),
+          h("div", { style: { fontSize: 12, color: COR.cinza, marginTop: 8, lineHeight: 1.5 } }, "O amigo recebe o link para criar a conta e pagar o plano pelo Pix.")) : null,
         parceiro ? h("div", { style: { fontSize: 11.5, color: "#94A3B8", lineHeight: 1.5, marginTop: 16 } }, "Parceiro indicado pelo seu personal. O atendimento é feito diretamente com o parceiro.") : null),
       href ? h("div", { style: { position: "fixed", left: 0, right: 0, bottom: 0, padding: "12px 18px calc(12px + env(safe-area-inset-bottom))", background: "linear-gradient(rgba(244,245,247,0), " + COR.fundo + " 30%)" } },
         h("a", { href, target: "_blank", rel: "noopener noreferrer", onClick: onClique, style: { display: "block", height: 50, lineHeight: "50px", textAlign: "center", borderRadius: 25, background: COR.laranja, color: "#fff", fontWeight: 800, fontSize: 15, textDecoration: "none" } }, d.botao || (parceiro ? "Chamar no WhatsApp" : "Quero saber mais"))) : null);
@@ -652,9 +667,18 @@
       if (!String(d.titulo || "").trim()) return setErro("Dê um título para a oferta.");
       if (parceiro && !String(d.whatsapp || "").replace(/\D/g, "")) return setErro("Informe o WhatsApp do parceiro.");
       if (!parceiro && d.cobranca === "pix" && !valorPix(d)) return setErro("Informe o valor para o Pix.");
-      if (!parceiro && d.cobranca !== "pix" && d.destino === "link" && !String(d.link || "").trim()) return setErro("Informe o link.");
+      if (!parceiro && d.cobranca !== "pix" && d.cobranca !== "plano" && d.destino === "link" && !String(d.link || "").trim()) return setErro("Informe o link.");
+      let extra = {};
+      if (!parceiro && d.cobranca === "plano") {
+        if (!d.planoId) return setErro("Escolha o plano que este card vende.");
+        const slug = window.__lvSlugPlano ? window.__lvSlugPlano(d.planoId) : null;
+        if (!slug) return setErro("Não encontrei esse plano. Abra a tela Planos e tente de novo.");
+        const pl = (window.__lvPlanos || []).find((x) => x.id === d.planoId) || {};
+        const v = Number(pl.modoCobranca === "porSessao" ? pl.valorSessao : pl.valor) || 0;
+        extra = { planoSlug: slug, planoNome: pl.nome || d.planoNome, planoValor: v, valor: "", aceitaPresente: false };
+      }
       setSalvando(true);
-      const ok = await onSalvar({ ...d, id: d.id || novoId("vi"), titulo: String(d.titulo).trim(), atualizadoEm: new Date().toISOString() });
+      const ok = await onSalvar({ ...d, ...extra, id: d.id || novoId("vi"), titulo: String(d.titulo).trim(), atualizadoEm: new Date().toISOString() });
       setSalvando(false);
       if (!ok) setErro("Não consegui salvar. Confira se o SQL da vitrine foi rodado.");
     };
@@ -677,13 +701,17 @@
           h(Campo, { rotulo: "WhatsApp do parceiro" }, h("input", { inputMode: "tel", value: d.whatsapp || "", onChange: (e) => set("whatsapp")(e.target.value), placeholder: "(11) 90000-0000", style: estiloInput })),
           h(Campo, { rotulo: "Serviço que o aluno vai pedir", dica: "Ex.: o acompanhamento nutricional" }, h("input", { value: d.servico || "", onChange: (e) => set("servico")(e.target.value), style: estiloInput })))
           : h("div", null,
-            h(Campo, { rotulo: "Como o aluno paga" }, h(Pilulas, { opcoes: [["whatsapp", "Combina comigo no WhatsApp"], ["pix", "Paga pelo app (Pix)"]], valor: d.cobranca || "whatsapp", onChange: set("cobranca") })),
+            h(Campo, { rotulo: "Como o aluno paga" }, h(Pilulas, { opcoes: [["whatsapp", "Combina comigo no WhatsApp"], ["pix", "Paga pelo app (Pix)"]].concat(d.produto ? [] : [["plano", "É um dos meus planos"]]), valor: d.cobranca || "whatsapp", onChange: set("cobranca") })),
+            d.cobranca === "plano" ? h(Campo, { rotulo: "Vincular a um plano", dica: "O card usa o valor e o link de contratação do plano: o cliente cria a conta e paga a mensalidade. Assim não fica duplicado." },
+              h("select", { value: d.planoId || "", onChange: (e) => { const pl = (window.__lvPlanos || []).find((x) => x.id === e.target.value); setD((x) => ({ ...x, planoId: pl ? pl.id : "", planoNome: pl ? pl.nome : "", planoValor: pl ? Number(pl.modoCobranca === "porSessao" ? pl.valorSessao : pl.valor) || 0 : 0 })); }, style: estiloInput },
+                h("option", { value: "" }, "Escolha o plano"),
+                (window.__lvPlanos || []).filter((x) => x.ativo !== false || x.id === d.planoId).map((x) => h("option", { key: x.id, value: x.id }, x.nome + " · R$ " + Number(x.modoCobranca === "porSessao" ? x.valorSessao : x.valor || 0).toFixed(2).replace(".", ","))))) : null,
             d.cobranca === "pix" ? h("div", { style: { display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 0 } },
               h(Campo, { rotulo: "Valor (R$)", dica: "Entra no Pix com a sua chave do Meu Perfil." }, h("input", { inputMode: "decimal", value: d.valor || "", onChange: (e) => set("valor")(e.target.value.replace(/[^0-9.,]/g, "")), placeholder: "Ex.: 80,00", style: estiloInput })),
               h(Campo, { rotulo: "O que acontece depois do pagamento", dica: "Aparece embaixo do Pix. Ex.: Assim que confirmar, te chamo para agendar." }, h("input", { value: d.posPagamento || "", onChange: (e) => set("posPagamento")(e.target.value), style: estiloInput })),
               d.produto ? null : h(Campo, { rotulo: "Pode ser comprado de presente?", dica: "O aluno escolhe \"Presente\" e recebe um vale para enviar a quem vai ganhar." }, h(Pilulas, { opcoes: [["sim", "Sim"], ["nao", "Não"]], valor: d.aceitaPresente === false ? "nao" : "sim", onChange: (v) => set("aceitaPresente")(v === "sim") }))) : null,
-            d.cobranca === "pix" ? null : h(Campo, { rotulo: "Quando o aluno tocar" }, h(Pilulas, { opcoes: [["whatsapp", "Abrir meu WhatsApp"], ["link", "Abrir um link"]], valor: d.destino, onChange: set("destino") })),
-            d.cobranca !== "pix" && d.destino === "link" ? h(Campo, { rotulo: "Link" }, h("input", { value: d.link || "", onChange: (e) => set("link")(e.target.value), placeholder: "https://", style: estiloInput }))
+            d.cobranca === "pix" || d.cobranca === "plano" ? null : h(Campo, { rotulo: "Quando o aluno tocar" }, h(Pilulas, { opcoes: [["whatsapp", "Abrir meu WhatsApp"], ["link", "Abrir um link"]], valor: d.destino, onChange: set("destino") })),
+            d.cobranca === "plano" ? null : d.cobranca !== "pix" && d.destino === "link" ? h(Campo, { rotulo: "Link" }, h("input", { value: d.link || "", onChange: (e) => set("link")(e.target.value), placeholder: "https://", style: estiloInput }))
               : h(Campo, { rotulo: "Seu WhatsApp", dica: "Em branco, usa o WhatsApp do seu perfil." }, h("input", { inputMode: "tel", value: d.whatsapp || "", onChange: (e) => set("whatsapp")(e.target.value), style: estiloInput }))),
         h("div", { style: { fontSize: 13, fontWeight: 800, color: COR.escuro, margin: "6px 0 10px", paddingTop: 12, borderTop: "1px solid #F1F5F9" } }, "Página de detalhe (Saiba mais)"),
         h(Campo, { rotulo: "Foto (link da imagem)", dica: "Opcional. Cole o link de uma foto. Sem foto, aparece a inicial." }, h("input", { value: d.foto || "", onChange: (e) => set("foto")(e.target.value.trim()), placeholder: "https://", style: estiloInput })),
