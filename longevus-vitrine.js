@@ -508,11 +508,13 @@
     const rotulo = especial ? (item.botao || "Conhecer") : "Conhecer";
     const lib = especial ? null : liberado(ctx, item);
     const tag = especial ? "Plano mensal" : lib === "bonus" ? "Bônus do seu personal" : lib === "pago" ? "Já é seu" : proprio ? "Do seu personal" : "Parceiro";
-    return h("div", { onClick: especial ? () => onClique && onClique() : onAbrir, style: { cursor: "pointer", flex: "0 0 76%", minWidth: 0, scrollSnapAlign: "start", boxSizing: "border-box", borderRadius: 16, padding: "13px 14px 12px", background: "#fff", color: COR.escuro, boxShadow: "0 1px 2px rgba(15,23,42,0.05), 0 6px 18px rgba(15,23,42,0.05)" } },
+    return h("div", { onClick: especial ? () => onClique && onClique() : onAbrir, style: { cursor: "pointer", flex: "0 0 76%", minWidth: 0, scrollSnapAlign: "start", boxSizing: "border-box", borderRadius: 16, padding: "13px 14px 12px", background: "#fff", color: COR.escuro, boxShadow: "0 1px 2px rgba(15,23,42,0.05), 0 6px 18px rgba(15,23,42,0.05)", display: "flex", gap: 12, alignItems: "center" } },
+      h("div", { style: { flex: 1, minWidth: 0 } },
       h("div", { style: { fontSize: 10, fontWeight: 800, letterSpacing: "0.06em", color: proprio || especial ? COR.laranjaTxt : COR.verde, textTransform: "uppercase" } }, tag),
-      h("div", { style: { fontSize: 15, fontWeight: 800, lineHeight: 1.2, marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, item.titulo),
+      h("div", { style: { fontSize: 15, fontWeight: 800, lineHeight: 1.2, marginTop: 3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" } }, item.titulo),
       h("div", { style: { fontSize: 12, color: COR.cinza, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minHeight: 15 } }, sub),
-      h("div", { style: { fontSize: 13, fontWeight: 800, color: COR.laranjaTxt, marginTop: 9 } }, rotulo + " ›"));
+      h("div", { style: { fontSize: 13, fontWeight: 800, color: COR.laranjaTxt, marginTop: 9 } }, rotulo + " ›")),
+      item.foto ? h("img", { src: item.foto, alt: "", loading: "lazy", style: { width: 64, height: 64, borderRadius: 14, objectFit: "cover", flexShrink: 0, background: "#F5F3EE" } }) : null);
   };
 
   const contexto = (p) => {
@@ -572,7 +574,7 @@
         h("div", { style: { fontSize: 21, fontWeight: 800, marginTop: 6 } }, "Clube Longevus"),
         h("div", { style: { fontSize: 12.5, color: "#CBD5E1", marginTop: 2 } }, "Vantagens para quem treina com o " + primeiroNome(ctx.personal))),
       h("div", { style: { padding: "4px 16px calc(24px + env(safe-area-inset-bottom))" } },
-        ctx.anuncia360 ? h("div", null, secao("Do seu personal"), h("div", { style: { background: COR.escuro, color: "#F8FAFC", border: "1.5px solid " + COR.laranja, borderRadius: 16, padding: "12px 13px", marginBottom: 8, display: "flex", alignItems: "center", gap: 11 } }, h(Icone, { item: { titulo: "L" } }), h("div", { style: { flex: 1 } }, h("div", { style: { fontSize: 14, fontWeight: 800 } }, (p.l360.cfg && p.l360.cfg.nome) || "Longevus 360"), h("div", { style: { fontSize: 12, color: "#CBD5E1" } }, "Treino e alimentação juntos")), h("button", { type: "button", onClick: () => { p.onFechar(); p.onIr && p.onIr("alimentacao"); }, style: { border: "none", background: COR.laranja, color: "#fff", borderRadius: 10, padding: "8px 12px", fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" } }, "Conhecer"))) : (proprios.length ? secao("Do seu personal") : null),
+        ctx.anuncia360 ? h("div", null, secao("Do seu personal"), h("div", { style: { background: COR.escuro, color: "#F8FAFC", border: "1.5px solid " + COR.laranja, borderRadius: 16, padding: "12px 13px", marginBottom: 8, display: "flex", alignItems: "center", gap: 11 } }, h(Icone, { item: { titulo: "L", foto: (p.l360.cfg && p.l360.cfg.foto) || "" } }), h("div", { style: { flex: 1 } }, h("div", { style: { fontSize: 14, fontWeight: 800 } }, (p.l360.cfg && p.l360.cfg.nome) || "Longevus 360"), h("div", { style: { fontSize: 12, color: "#CBD5E1" } }, "Treino e alimentação juntos")), h("button", { type: "button", onClick: () => { p.onFechar(); p.onIr && p.onIr("alimentacao"); }, style: { border: "none", background: COR.laranja, color: "#fff", borderRadius: 10, padding: "8px 12px", fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" } }, "Conhecer"))) : (proprios.length ? secao("Do seu personal") : null),
         proprios.map(linha),
         parceiros.length ? secao("Parceiros") : null,
         parceiros.map(linha),
@@ -626,7 +628,7 @@
     const lista = (itens || []).filter((d) => publicoOk(d, ctx));
     const cards = lista.filter((d) => d.produto === "indique");
     const anunciaMente = false;
-    if (ctx.anuncia360) cards.push({ id: "__360", especial: true, tipo: "proprio", titulo: (p.l360.cfg && p.l360.cfg.nome) || "Longevus 360", texto: "Treino e alimentação conversando todos os dias.", botao: p.l360.vencido ? "Renovar" : "Conhecer" });
+    if (ctx.anuncia360) cards.push({ id: "__360", especial: true, tipo: "proprio", foto: (p.l360.cfg && p.l360.cfg.foto) || "", titulo: (p.l360.cfg && p.l360.cfg.nome) || "Longevus 360", texto: "Treino e alimentação conversando todos os dias.", botao: p.l360.vencido ? "Renovar" : "Conhecer" });
     if (anunciaMente) cards.push({ id: "__mente", especial: true, tipo: "proprio", titulo: (p.mente.cfg && p.mente.cfg.nome) || "Mente Ativa", texto: "Memória e atenção, 10 minutos por dia.", botao: p.mente.vencido ? "Renovar" : "Conhecer" });
     lista.forEach((d) => { if (d.produto !== "indique") cards.push(d); });
     useEffect(() => {
@@ -817,13 +819,13 @@
         h("span", null, h("b", { style: { color: COR.escuro } }, m.viram), " viram · ", h("b", { style: { color: COR.escuro } }, m.abriram || 0), " abriram · ", h("b", { style: { color: COR.escuro } }, pagaram), pagaram === 1 ? " pagou" : " pagaram")) : null);
   };
   const Config360 = ({ prod, cfg, onSalvar, onVoltar }) => {
-    const [f, setF] = useState({ nome: cfg.nome || prod.nome, valor: cfg.valor ? String(cfg.valor).replace(".", ",") : "", beneficios: Array.isArray(cfg.beneficios) ? cfg.beneficios.join("\n") : "", anunciar: cfg.anunciar !== false });
+    const [f, setF] = useState({ nome: cfg.nome || prod.nome, valor: cfg.valor ? String(cfg.valor).replace(".", ",") : "", beneficios: Array.isArray(cfg.beneficios) ? cfg.beneficios.join("\n") : "", anunciar: cfg.anunciar !== false, foto: cfg.foto || "" });
     const [msg, setMsg] = useState("");
     const [salvando, setSalvando] = useState(false);
     const ligado = !!cfg.ativo;
     const nome = f.nome || prod.nome;
     const estiloInput = { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 9, border: "1.5px solid " + COR.borda, fontSize: 14, fontFamily: "inherit", background: "#fff" };
-    const montar = (extra) => ({ ...cfg, nome: f.nome.trim() || prod.nome, valor: valorNum(f.valor), beneficios: f.beneficios.split("\n").map((x) => x.trim()).filter(Boolean), anunciar: f.anunciar, ...(extra || {}) });
+    const montar = (extra) => ({ ...cfg, nome: f.nome.trim() || prod.nome, valor: valorNum(f.valor), beneficios: f.beneficios.split("\n").map((x) => x.trim()).filter(Boolean), anunciar: f.anunciar, foto: String(f.foto || "").trim(), ...(extra || {}) });
     const salvar = async (extra, aviso) => {
       setSalvando(true); setMsg("");
       const ok = await onSalvar(montar(extra));
@@ -845,6 +847,9 @@
           h("button", { type: "button", onClick: ligar, disabled: salvando, style: { width: "100%", height: 42, borderRadius: 11, border: "none", background: COR.laranja, color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" } }, "Ligar " + nome)),
       h("div", { style: card },
         h(Campo, { rotulo: "Nome do plano" }, h("input", { value: f.nome, onChange: (e) => setF({ ...f, nome: e.target.value }), style: estiloInput })),
+        h(Campo, { rotulo: "Foto (link da imagem)", dica: "Opcional. Aparece no card do app e na tela de oferta. Ex.: https://britowellington.github.io/app.longevus/longevus-360.jpg" }, h("div", { style: { display: "flex", gap: 10, alignItems: "center" } },
+          f.foto ? h("img", { src: f.foto, alt: "", style: { width: 44, height: 44, borderRadius: 12, objectFit: "cover", flexShrink: 0, background: "#F1F5F9" } }) : null,
+          h("input", { value: f.foto, onChange: (e) => setF({ ...f, foto: e.target.value.trim() }), placeholder: "https://", style: estiloInput }))),
         h(Campo, { rotulo: "Valor mensal (R$)", dica: prod.dicaValor }, h("input", { inputMode: "decimal", placeholder: "Ex: 29,90", value: f.valor, onChange: (e) => setF({ ...f, valor: e.target.value.replace(/[^0-9.,]/g, "") }), style: estiloInput })),
         h(Campo, { rotulo: "Benefícios (um por linha)", dica: "Em branco, o app usa os " + prod.nBenef + " benefícios padrão." }, h("textarea", { rows: 5, value: f.beneficios, placeholder: prod.ph, onChange: (e) => setF({ ...f, beneficios: e.target.value }), style: { ...estiloInput, resize: "vertical", lineHeight: 1.5 } }))),
       msg ? h("div", { style: { fontSize: 12.5, color: msg.indexOf("Erro") === 0 ? "#DC2626" : "#16A34A", marginBottom: 10 } }, msg) : null,

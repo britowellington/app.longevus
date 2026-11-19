@@ -20,7 +20,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="longevus-aluno-extras.js?v=27"></script>
-<script src="longevus-vitrine.js?v=16"></script>
+<script src="longevus-vitrine.js?v=17"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -2438,8 +2438,8 @@ const Oferta360 = ({acesso, profPix, studentName, studentId, ownerId, onVoltar})
     <div style={{height:"calc(100dvh - 66px - env(safe-area-inset-bottom))",display:"flex",flexDirection:"column",background:"#F4F5F7"}}>
       <div style={{background:"#0F172A",color:"#F8FAFC",padding:"14px 18px 16px",borderRadius:"0 0 26px 26px",flexShrink:0}}>
         <button type="button" onClick={onVoltar} style={{background:"transparent",border:"none",padding:"4px 0",color:"#CBD5E1",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>‹ Voltar</button>
-        <div style={{display:"flex",alignItems:"center",gap:8,marginTop:6}}>
-          <Icon name="lock" size={18} color="#FF7A3D"/>
+        <div style={{display:"flex",alignItems:"center",gap:cfg.foto?12:8,marginTop:6}}>
+          {cfg.foto ? <img src={cfg.foto} alt="" style={{width:52,height:52,borderRadius:14,objectFit:"cover",flexShrink:0,background:"#F5F3EE"}}/> : <Icon name="lock" size={18} color="#FF7A3D"/>}
           <div style={{fontSize:20,fontWeight:800}}>{nome}</div>
         </div>
         <div style={{fontSize:12.5,color:"#CBD5E1",marginTop:4,lineHeight:1.45}}>{acesso && acesso.vencido ? "Seu acesso venceu. Renove para continuar acompanhando suas calorias, macros e seu déficit do dia." : "Seu treino e sua alimentação conversando todos os dias, acompanhados pelo seu personal."}</div>
