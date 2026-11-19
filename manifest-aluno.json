@@ -4,7 +4,7 @@
   "short_name": "Meu Treino",
   "description": "Acompanhe seu treino, veja os exercícios e registre suas sessões.",
   "start_url": "./aluno.html",
-  "scope": "./",
+  "scope": "./aluno.html",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#f8fafc",

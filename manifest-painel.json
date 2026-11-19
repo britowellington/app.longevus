@@ -4,7 +4,7 @@
   "short_name": "Longevus",
   "description": "Painel do professor: alunos, avaliações, programas, financeiro e vitrine.",
   "start_url": "./longevus-app.html",
-  "scope": "./",
+  "scope": "./longevus-app.html",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#ffffff",
