@@ -865,6 +865,12 @@ calendar: ["M8 2v4","M16 2v4","M3 10h18","M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2
 money: ["M12 1v22","M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"],
 bell: ["M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9","M13.73 21a2 2 0 0 1-3.46 0"],
 download: ["M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4","M7 10l5 5 5-5","M12 15V3"],
+timer: ["M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16z","M12 9v4l2 2","M10 2h4"],
+store: ["M3 9l1.5-5h15L21 9","M3 9h18v2a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0z","M5 12v8h14v-8"],
+building: ["M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16","M16 9h3a1 1 0 0 1 1 1v11","M8 7h4","M8 11h4","M8 15h4","M2 21h20"],
+folder: ["M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z","M12 10v6","M9 13l3 3 3-3"],
+send: ["M22 2L11 13","M22 2l-7 20-4-9-9-4z"],
+play: ["M7 4l13 8-13 8z"],
 };
 return (
 <svg width={s} height={s} fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
@@ -1265,7 +1271,19 @@ return (
 </div>
 );
 };
-const Dashboard = ({ students, setStudents, setLeads, assessments, dailyLogs, pagamentos, receitasExtras, nav }) => {
+const Dashboard = ({ students, setStudents, setLeads, assessments, dailyLogs, pagamentos, receitasExtras, nav, programs, pendenciasLogin, pendingQCount }) => {
+const [turmas, setTurmas] = useState(()=>{ try { return JSON.parse(localStorage.getItem("circuito_turmas")||"[]"); } catch(e) { return []; } });
+const [bioPend, setBioPend] = useState([]);
+useEffect(()=>{ (async()=>{
+try { const hd = await DB.authHeaders();
+const [rt, rb] = await Promise.all([
+fetch(SUPA_URL+"/rest/v1/circuito_turmas?select=data", { headers:hd }),
+fetch(SUPA_URL+"/rest/v1/avaliacoes_antropometricas?select=id,student_id&data->>status=eq.pendente", { headers:hd })
+]);
+if(rt.ok){ const t = await rt.json(); setTurmas((t||[]).map(x=>x.data).filter(Boolean)); }
+if(rb.ok){ setBioPend(await rb.json()); }
+} catch(e) {}
+})(); },[]);
 const [ocultarFin, setOcultarFin] = useState(()=>{ try { return localStorage.getItem("lv_ocultar_fin")==="1"; } catch(e) { return false; } });
 const trocarOcultar = () => setOcultarFin(v=>{ const n=!v; try { localStorage.setItem("lv_ocultar_fin", n?"1":"0"); } catch(e) {} return n; });
 const valFin = (v) => ocultarFin ? "R$ •••••" : fmtR(v);
@@ -1298,54 +1316,81 @@ return (
 {setStudents && <Avisos360 students={students} setStudents={setStudents} setLeads={setLeads} nav={nav}/>}
 {setStudents && <IndicacoesInicio students={students} setStudents={setStudents} setLeads={setLeads}/>}
 {setStudents && <ComprasPublicasInicio students={students} setStudents={setStudents} setLeads={setLeads} nav={nav}/>}
-<div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:16 }}>
-{[["Alunos",ativos.length,"#6366f1"],["Aval.",assessments.length,O],["Reavaliar",ativos.filter(s=>{const ult=[...assessments].filter(a=>a.studentId===s.id).sort((a,b)=>b.date?.localeCompare(a.date))[0];if(!ult)return false;const dias=(new Date(hoje)-new Date(ult.date))/86400000;return dias>=75;}).length,"#d97706"]].map(([l,v,c])=>(
-<Card key={l} style={{ padding:"14px 10px",textAlign:"center" }}>
-<div style={{ fontSize:26,fontWeight:800,color:c }}>{v}</div>
-<div style={{ fontSize:12,color:"#64748b" }}>{l}</div>
+{(()=>{
+const DIAS_C = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
+const dIdx = (()=>{ const d=new Date().getDay(); return d===0?6:d-1; })();
+const agoraHM = new Date().toTimeString().slice(0,5);
+const doDia = (turmas||[]).filter(t=>(t.dias||[]).indexOf(DIAS_C[dIdx])>=0).sort((x,y)=>(x.horaInicio||"").localeCompare(y.horaInicio||""));
+const proxTurma = doDia.find(t=>!t.horaFim || t.horaFim>=agoraHM) || null;
+const reav = ativos.filter(s=>{const ult=[...assessments].filter(a=>a.studentId===s.id).sort((a,b)=>b.date?.localeCompare(a.date))[0];if(!ult)return false;return (new Date(hoje)-new Date(ult.date))/86400000>=75;});
+const ocultos = ativos.filter(s=>{ const pr=(programs||[]).filter(p=>p.studentId===s.id).sort((a,b)=>(b.criadoEm||"").localeCompare(a.criadoEm||""))[0]; return pr && pr.ocultoAluno===true; });
+const bioIds = [...new Set((bioPend||[]).map(x=>x.student_id).filter(Boolean))];
+const abrirLista = (ids, fallback) => ids.length===1 ? nav("studentDetail",{studentId:ids[0]}) : nav(fallback);
+const pend = [
+(pendenciasLogin||[]).length>0 && { k:"cad", ic:"user", t:"Cadastros para aprovar", n:(pendenciasLogin||[]).length, go:()=>nav("vincular") },
+pendingQCount>0 && { k:"q", ic:"inbox", t:"Questionários para revisar", n:pendingQCount, go:()=>nav("questionarios") },
+bioIds.length>0 && { k:"bio", ic:"act", t:"Bioimpedância para conferir", n:bioIds.length, go:()=>abrirLista(bioIds,"students") },
+ocultos.length>0 && { k:"oc", ic:"eye", t:"Treinos ocultos para liberar", n:ocultos.length, go:()=>abrirLista(ocultos.map(x=>x.id),"students") },
+reav.length>0 && { k:"rv", ic:"clip", t:"Reavaliar", n:reav.length, go:()=>abrirLista(reav.map(x=>x.id),"students") },
+vencidosCount>0 && { k:"pg", ic:"money", t:"Pagamentos em atraso", n:vencidosCount, go:()=>nav("financeiro") },
+...criticos.map(c=>({ k:"cr"+c.id, ic:"bell", t:c.name+" em status crítico", n:"!", go:()=>nav("studentDetail",{studentId:c.id}) }))
+].filter(Boolean);
+if(!proxTurma && !pend.length) return null;
+return (
+<Card style={{ padding:"14px 16px",marginBottom:14 }}>
+{proxTurma && <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:pend.length?8:0 }}>
+<div style={{ width:40,height:40,borderRadius:11,background:"#E1F5EE",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}><I n="timer" c="#0F6E56" s={20}/></div>
+<div style={{ flex:1,minWidth:0 }}>
+<div style={{ fontSize:11.5,color:"#64748b" }}>Hoje · {doDia.length>1?"próxima turma":"turma"}</div>
+<div style={{ fontSize:14.5,fontWeight:800,color:"#0f172a",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>{proxTurma.nome||"Circuito"}{proxTurma.horaInicio?" · "+proxTurma.horaInicio:""}</div>
+{proxTurma.local && <div style={{ fontSize:12,color:"#94a3b8",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>{proxTurma.local}</div>}
+</div>
+<button type="button" onClick={()=>{ window.location.href="longevus-circuito.html"; }} style={{ display:"flex",alignItems:"center",gap:5,border:"none",background:"#0F6E56",color:"#fff",borderRadius:10,padding:"9px 12px",fontSize:13,fontWeight:700,cursor:"pointer",flexShrink:0 }}><I n="play" c="#fff" s={14}/>Iniciar</button>
+</div>}
+{!proxTurma && <div style={{ fontSize:12,fontWeight:700,color:"#64748b",marginBottom:4 }}>Hoje</div>}
+{pend.map(it=>(
+<div key={it.k} onClick={it.go} style={{ display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderTop:"1px solid #f1f5f9",cursor:"pointer" }}>
+<I n={it.ic} c="#64748b" s={17}/>
+<div style={{ flex:1,fontSize:13.5,color:"#0f172a" }}>{it.t}</div>
+<span style={{ fontSize:11.5,fontWeight:800,background:"#FFF1EA",color:"#C2410C",borderRadius:99,padding:"2px 9px" }}>{it.n}</span>
+</div>
+))}
 </Card>
+);
+})()}
+<div style={{ display:"flex",flexWrap:"wrap",gap:7,marginBottom:14 }}>
+{[["Nova avaliação","plus",()=>nav("newAssessment")],["Novo aluno","user",()=>nav("students",{novo:true})],["Iniciar circuito","timer",()=>{ window.location.href="longevus-circuito.html"; }],["Enviar material","send",()=>nav("materiais")]].map(([l,ic,fn])=>(
+<button key={l} type="button" onClick={fn} style={{ display:"inline-flex",alignItems:"center",gap:6,border:"1px solid #e2e8f0",background:"#fff",borderRadius:99,padding:"8px 12px",fontSize:12.5,fontWeight:600,color:"#0f172a",cursor:"pointer" }}><I n={ic} c="#FF5603" s={15}/>{l}</button>
 ))}
 </div>
-<div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8 }}>
-<div style={{ fontSize:12,fontWeight:700,color:"#64748b" }}>Financeiro · {MESES_NOME[Number(anoMes.slice(5,7))-1].toLowerCase()}</div>
-<button type="button" onClick={trocarOcultar} aria-label={ocultarFin?"Mostrar valores":"Ocultar valores"} title={ocultarFin?"Mostrar valores":"Ocultar valores"} style={{ display:"flex",alignItems:"center",gap:6,border:"none",background:"#f1f5f9",borderRadius:99,padding:"5px 10px",cursor:"pointer",color:"#475569",fontSize:11.5,fontWeight:700,fontFamily:"inherit" }}>
+<Card onClick={()=>nav("financeiro")} style={{ padding:"11px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:10 }}>
+<div style={{ fontSize:11.5,fontWeight:700,color:"#64748b" }}>{MESES_NOME[Number(anoMes.slice(5,7))-1].slice(0,3)}</div>
+<div style={{ flex:1,display:"flex",justifyContent:"space-between",gap:6,minWidth:0 }}>
+{[["Previsto",previstoMes,"#4f46e5"],["Recebido",recebidoMes,"#16a34a"],["Aberto",emAbertoMes,"#d97706"]].map(([l,v,c])=>(
+<div key={l} style={{ minWidth:0 }}><div style={{ fontSize:10.5,color:c,fontWeight:700 }}>{l}</div><div style={{ fontSize:13,fontWeight:800,color:"#0f172a",whiteSpace:"nowrap" }}>{valFin(v)}</div></div>
+))}
+</div>
+<button type="button" onClick={(e)=>{ e.stopPropagation(); trocarOcultar(); }} aria-label={ocultarFin?"Mostrar valores":"Ocultar valores"} style={{ border:"none",background:"#f1f5f9",borderRadius:99,width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:"#475569",flexShrink:0 }}>
 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>{ocultarFin && <line x1="3" y1="3" x2="21" y2="21"/>}</svg>
-{ocultarFin?"Mostrar":"Ocultar"}
 </button>
-</div>
-<div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:22 }}>
-{[["Previsto",previstoMes,"#6366f1","#eef2ff"],["Recebido",recebidoMes,"#16a34a","#dcfce7"],["Em aberto",emAbertoMes,"#d97706","#fef3c7"]].map(([l,v,c,bg])=>(
-<Card key={l} onClick={()=>nav("financeiro")} style={{ padding:"10px 8px",background:bg,border:"none" }}>
-<div style={{ fontSize:11,color:c,fontWeight:600,marginBottom:3 }}>{l}</div>
-<div style={{ fontSize:15,fontWeight:800,color:"#0f172a" }}>{valFin(v)}</div>
 </Card>
-))}
-</div>
 {(()=>{ const rv = resumoVitrine(rx, students, mesStart, mesEnd); if(!rv.vendas.length && !rv.bonus.length) return null; return (
-<Card onClick={()=>nav("financeiro")} style={{ padding:"10px 12px",marginTop:-12,marginBottom:22,display:"flex",justifyContent:"space-between",alignItems:"center",gap:8 }}>
+<Card onClick={()=>nav("financeiro")} style={{ padding:"10px 12px",marginTop:-6,marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center",gap:8 }}>
 <div style={{ fontSize:12,color:"#334155" }}>Vitrine no mês: <b>{valFin(rv.totalV)}</b> vendidos</div>
 <div style={{ fontSize:12,color:"#c2410c",fontWeight:700,whiteSpace:"nowrap" }}>{valFin(rv.totalB)} em bônus</div>
 </Card>); })()}
-{temAlertas&&<div style={{ marginBottom:22 }}>
-<div style={{ fontSize:12,fontWeight:700,color:"#64748b",marginBottom:8 }}>Precisa de atenção</div>
-<div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-{criticos.map(s=>(
-<Card key={"c"+s.id} onClick={()=>nav("studentDetail",{id:s.id})} style={{ display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#fee2e2",border:"none" }}>
-<span style={{ fontSize:16 }}>⚠️</span>
-<div style={{ fontSize:13,color:"#dc2626",fontWeight:600 }}>{s.name} — status crítico</div>
-</Card>
-))}
-{vencidosCount>0&&<Card onClick={()=>nav("financeiro")} style={{ display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#fef3c7",border:"none" }}>
-<span style={{ fontSize:16 }}>⏰</span>
-<div style={{ fontSize:13,color:"#d97706",fontWeight:600 }}>{vencidosCount} pagamento{vencidosCount>1?"s":""} em atraso</div>
-</Card>}
-</div>
-</div>}
-<div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:22 }}>
-{[{label:"Alunos",sub:"Gerenciar",icon:"users",color:O,page:"students"},{label:"Avaliações",sub:"Longevus completo",icon:"clip",color:"#6366f1",page:"assessments"},{label:"Mente Ativa",sub:"Jogos cognitivos",icon:"act",color:"#8b5cf6",page:"cognitivehub"},{label:"Biblioteca",sub:"696 exercícios",icon:"bar",color:"#0ea5e9",page:"extbiblioteca"},{label:"Monitoramento",sub:"PA, FC, SpO₂",icon:"act",color:"#16a34a",page:"daily"},{label:"Relatórios",sub:"Evolução",icon:"bar",color:"#d97706",page:"reports"}].map(m=>(
-<Card key={m.page} onClick={()=>{ if(m.page==="cognitivehub"){window.open("longevus-hub.html","_self");return;} if(m.page==="extbiblioteca"){window.open("longevus-biblioteca.html","_self");return;} nav(m.page); }} style={{ display:"flex",alignItems:"center",gap:12,padding:"14px" }}>
-<div style={{ width:40,height:40,borderRadius:11,background:m.color+"18",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}><I n={m.icon} c={m.color} s={19}/></div>
-<div><div style={{ fontWeight:700,fontSize:14,color:"#0f172a" }}>{m.label}</div><div style={{ fontSize:12,color:"#94a3b8" }}>{m.sub}</div></div>
+<div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:22 }}>
+{(()=>{ const avMes = assessments.filter(a=>a.date && a.date>=mesStart && a.date<=mesEnd).length; return [
+{label:"Alunos",sub:ativos.length+" ativo"+(ativos.length===1?"":"s"),icon:"users",color:"#FF5603",go:()=>nav("students")},
+{label:"Avaliações",sub:avMes+" no mês",icon:"clip",color:"#6366f1",go:()=>nav("assessments")},
+{label:"Circuito",sub:"Turmas e aulas",icon:"timer",color:"#0F6E56",go:()=>{ window.location.href="longevus-circuito.html"; }},
+{label:"Vitrine",sub:"Serviços e parceiros",icon:"store",color:"#be185d",go:()=>nav("vitrine")},
+{label:"Condomínios",sub:"Prospecção",icon:"building",color:"#185FA5",go:()=>nav("condominios")},
+{label:"Materiais",sub:"Links e apresentações",icon:"folder",color:"#b45309",go:()=>nav("materiais")}
+]; })().map(m=>(
+<Card key={m.label} onClick={m.go} style={{ display:"flex",alignItems:"center",gap:11,padding:"13px 12px" }}>
+<div style={{ width:38,height:38,borderRadius:11,background:m.color+"18",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}><I n={m.icon} c={m.color} s={19}/></div>
+<div style={{ minWidth:0 }}><div style={{ fontWeight:700,fontSize:14,color:"#0f172a" }}>{m.label}</div><div style={{ fontSize:11.5,color:"#94a3b8",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>{m.sub}</div></div>
 </Card>
 ))}
 </div>
@@ -2421,8 +2466,8 @@ const Financeiro = ({ students, setStudents, planos, setPlanos, pagamentos, setP
     </div>
   );
 };
-const Students = ({ students, setStudents, planos, setPagamentos, nav }) => {
-const [modal,setModal]=useState(false);
+const Students = ({ students, setStudents, planos, setPagamentos, nav, abrirNovo }) => {
+const [modal,setModal]=useState(!!abrirNovo);
 const [cardioModal,setCardioModal]=useState(false);
 const [selCardioSt,setSelCardioSt]=useState("");
 const [editId,setEditId]=useState(null);
@@ -10527,8 +10572,8 @@ return (
 </div>
 )}
 <div style={{ padding:"20px 16px",maxWidth:640,margin:"0 auto" }}>
-{page==="dashboard"&&<Dashboard students={students} setStudents={setStudents} setLeads={setLeads} assessments={assessments} dailyLogs={dailyLogs} pagamentos={pagamentos} receitasExtras={receitasExtras} nav={nav}/>}
-{page==="students"&&<Students students={students} setStudents={setStudents} planos={planos} setPagamentos={setPagamentos} nav={nav}/>}
+{page==="dashboard"&&<Dashboard students={students} setStudents={setStudents} setLeads={setLeads} assessments={assessments} dailyLogs={dailyLogs} pagamentos={pagamentos} receitasExtras={receitasExtras} nav={nav} programs={programs} pendenciasLogin={pendenciasLogin} pendingQCount={pendingQCount}/>}
+{page==="students"&&<Students key={pageProps.novo?"novo":"lista"} students={students} setStudents={setStudents} planos={planos} setPagamentos={setPagamentos} nav={nav} abrirNovo={pageProps.novo}/>}
 {page==="studentDetail"&&<StudentDetail studentId={pageProps.studentId} students={students} setStudents={setStudents} assessments={assessments} setAssessments={setAssessments} programs={programs} setPrograms={setPrograms} dailyLogs={dailyLogs} documents={documents} checkins={checkins} sessions={sessions} setSessions={setSessions} exerciciosBiblioteca={exerciciosBiblioteca} planos={planos} professorFeedbacks={professorFeedbacks} setProfessorFeedbacks={setProfessorFeedbacks} agendaEntries={agendaEntries} setAgendaEntries={setAgendaEntries} pagamentos={pagamentos} setPagamentos={setPagamentos} ultimoAcesso={ultimoAcesso} initialTab={pageProps.initialTab} nav={nav}/>}
 {page==="assessments"&&<AssessmentsList assessments={assessments} students={students} setAssessments={setAssessments} nav={nav}/>}
 {page==="newAssessment"&&<NewAssessment students={students} setAssessments={setAssessments} nav={nav} prefillStudentId={pageProps.studentId}/>}
