@@ -2819,9 +2819,11 @@ function App(){
   const planoParam = urlParams.get("plano");
 
   useEffect(()=>{
-    supa.auth.getSession().then(({data})=>{ setSession(data?.session||null); setAuthLoading(false); });
+    // Conta do professor não entra no app do aluno: sai só deste app, sem derrubar o painel
+    const soAluno = (s)=>{ if(s && s.user && s.user.id===PROF_ID){ supa.auth.signOut({ scope:"local" }); return null; } return s; };
+    supa.auth.getSession().then(({data})=>{ setSession(soAluno(data?.session||null)); setAuthLoading(false); });
     const { data: listener } = supa.auth.onAuthStateChange((event, sess)=>{
-      setSession(sess);
+      setSession(soAluno(sess));
       if(event==="PASSWORD_RECOVERY") setRecoveryMode(true);
     });
     return ()=>listener?.subscription?.unsubscribe();
@@ -2989,7 +2991,7 @@ function App(){
     return ()=>{ ativo=false; clearInterval(id); };
   },[session,questToken]);
 
-  const onLogout = () => { supa.auth.signOut(); };
+  const onLogout = () => { supa.auth.signOut({ scope:"local" }); };
 
   if(cadastroMode && urlParams.get("ver")==="1") return <CadastroPublico planoParam={planoParam} previa/>;
 

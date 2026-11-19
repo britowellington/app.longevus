@@ -10107,7 +10107,19 @@ return (
 </div>
 );
 };
-const TrialExpired = ({ }) => {
+const ContaDeAluno = ({ email }) => (
+<div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f8fafc",padding:20 }}>
+<div style={{ background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:380,boxShadow:"0 4px 24px rgba(0,0,0,0.06)",textAlign:"center" }}>
+<img src={__LOGO_1__} alt="Longevus" style={{ width:56,height:56,margin:"0 auto 12px",display:"block" }}/>
+<div style={{ fontWeight:900,fontSize:18,marginBottom:8 }}>Esta é uma conta de aluno</div>
+<div style={{ fontSize:13,color:"#64748b",marginBottom:6,lineHeight:1.5 }}>O painel do professor é só para profissionais. Para ver seu treino, use o app Meu Treino.</div>
+{email && <div style={{ fontSize:12,color:"#94a3b8",marginBottom:20 }}>Conectado como {email}</div>}
+<a href="aluno.html" style={{ display:"block",width:"100%",boxSizing:"border-box",padding:"12px",borderRadius:8,background:"#FF5603",color:"#fff",fontWeight:700,fontSize:14,textDecoration:"none",marginBottom:10 }}>Abrir Meu Treino</a>
+<button onClick={()=>supa.auth.signOut({ scope:"local" })} style={{ border:"none",background:"transparent",color:"#94a3b8",fontSize:13,cursor:"pointer",textDecoration:"underline" }}>Entrar com outra conta</button>
+</div>
+</div>
+);
+const TrialExpired = ({ email }) => {
 const [showModal, setShowModal] = React.useState(false);
 return (
 <div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f8fafc",padding:20 }}>
@@ -10118,10 +10130,11 @@ return (
 <div style={{ fontSize:13,color:"#64748b",marginBottom:20,lineHeight:1.5 }}>
 Para continuar usando o Longevus e acessar os dados dos seus alunos, ative seu plano.
 </div>
+{email && <div style={{ fontSize:12,color:"#94a3b8",marginTop:-12,marginBottom:16 }}>Conectado como {email}</div>}
 <button onClick={()=>setShowModal(true)} style={{ display:"block",width:"100%",padding:"12px",borderRadius:8,background:"#FF5603",color:"#fff",fontWeight:700,fontSize:14,border:"none",cursor:"pointer",marginBottom:10 }}>
 Ativar plano
 </button>
-<button onClick={()=>supa.auth.signOut()} style={{ border:"none",background:"transparent",color:"#94a3b8",fontSize:13,cursor:"pointer",textDecoration:"underline" }}>Sair</button>
+<button onClick={()=>supa.auth.signOut({ scope:"local" })} style={{ border:"none",background:"transparent",color:"#94a3b8",fontSize:13,cursor:"pointer",textDecoration:"underline" }}>Sair</button>
 </div>
 </div>
 );
@@ -10151,7 +10164,11 @@ const rows = await r.json();
 const p = rows?.[0]||{};
 setProfName(p.nome || session.user.email || "");
 setLogoUrl(p.logo_url || "");
-setBilling({ plano:p.plano||"trial", status_assinatura:p.status_assinatura||"ativo", trial_ends_at:p.trial_ends_at });
+let ehAluno = false;
+if (p.plano!=="anual" && p.plano!=="mensal") {
+try { const ra = await fetch(SUPA_URL+"/rest/v1/students?select=id&owner_id=neq."+session.user.id+"&limit=1", { headers }); const la = ra.ok ? await ra.json() : []; ehAluno = Array.isArray(la) && la.length>0; } catch(e) {}
+}
+setBilling({ plano:p.plano||"trial", status_assinatura:p.status_assinatura||"ativo", trial_ends_at:p.trial_ends_at, aluno:ehAluno });
 // Registra última atividade
 fetch(SUPA_URL+"/rest/v1/professionals?id=eq."+session.user.id, {
 method:"PATCH", headers: { ...headers, "Prefer":"return=minimal" },
@@ -10404,8 +10421,11 @@ const trialEnd = billing.trial_ends_at ? new Date(billing.trial_ends_at) : null;
 const trialExpired = billing.plano==="trial" && trialEnd && trialEnd.getTime() < Date.now();
 const accountBlocked = billing.status_assinatura==="cancelado" || trialExpired;
 const trialDaysLeft = (!trialExpired && billing.plano==="trial" && trialEnd) ? Math.ceil((trialEnd.getTime()-Date.now())/86400000) : null;
+if (billing.aluno) {
+return <ContaDeAluno email={session?.user?.email}/>;
+}
 if (accountBlocked) {
-return <TrialExpired/>;
+return <TrialExpired email={session?.user?.email}/>;
 }
 const notifItems = [
 ...checkins.map(c=>({ id:"ck_"+c.id, ts:c.created_at, kind:"checkin", checkin:c })),
@@ -10497,7 +10517,7 @@ return (
 </>
 )}
 </div>
-<button onClick={()=>supa.auth.signOut()} style={{ border:"none",background:"transparent",color:"#94a3b8",fontSize:12,cursor:"pointer",textDecoration:"underline" }}>Sair</button>
+<button onClick={()=>supa.auth.signOut({ scope:"local" })} style={{ border:"none",background:"transparent",color:"#94a3b8",fontSize:12,cursor:"pointer",textDecoration:"underline" }}>Sair</button>
 </div>
 </div>
 {trialDaysLeft!==null && trialDaysLeft<=3 && (
