@@ -2607,7 +2607,7 @@ const TelaContratoVencido = ({ onLogout }) => (
 );
 
 // ── Cadastro público (lead vindo da página de vendas) ─────────────────────────
-const CadastroPublico = ({ planoParam }) => {
+const CadastroPublico = ({ planoParam, previa }) => {
   const [plano,setPlano]=useState(undefined); // undefined = carregando, null = não encontrado
   const [nome,setNome]=useState("");
   const [whatsapp,setWhatsapp]=useState("");
@@ -2648,6 +2648,7 @@ const CadastroPublico = ({ planoParam }) => {
   const submit = async (e) => {
     e.preventDefault();
     setErr("");
+    if(previa){ setErr("Isto é uma prévia. Pelo link que você envia, o cliente cria a conta aqui e vai para o Pix."); return; }
     if(!nome.trim()){ setErr("Digite seu nome."); return; }
     if(!plano){ setErr("Plano inválido. Volte para a página de planos e tente de novo."); return; }
     if(password.length<6){ setErr("A senha deve ter pelo menos 6 caracteres."); return; }
@@ -2987,6 +2988,8 @@ function App(){
   },[session,questToken]);
 
   const onLogout = () => { supa.auth.signOut(); };
+
+  if(cadastroMode && urlParams.get("ver")==="1") return <CadastroPublico planoParam={planoParam} previa/>;
 
   if(authLoading){
     return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontSize:14}}>Carregando...</div>;
