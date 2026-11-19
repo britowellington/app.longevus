@@ -32,7 +32,10 @@ const { useState, useEffect, useRef, useCallback } = React;
 
 const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
 const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
-const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+// Aberto pelo app do aluno (?aluno=1): usa a sessão do aluno, separada da do professor
+const LV_MODO_ALUNO = new URLSearchParams(window.location.search).get("aluno")==="1";
+if (LV_MODO_ALUNO) { try { if (!localStorage.getItem("lv-aluno-auth")) { const _old = localStorage.getItem("sb-jpduxfbigcdxmtcozqpp-auth-token"); if (_old) localStorage.setItem("lv-aluno-auth", _old); } } catch (e) {} }
+const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY, LV_MODO_ALUNO ? { auth: { storageKey: "lv-aluno-auth", persistSession: true, autoRefreshToken: true } } : undefined);
 const SUPPORT_WHATSAPP = "5511977431011";
 async function authHeadersFn(){ const { data } = await supa.auth.getSession(); const token = data?.session?.access_token || SUPA_KEY; return { "apikey": SUPA_KEY, "Authorization": "Bearer "+token, "Content-Type": "application/json" }; }
 

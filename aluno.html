@@ -45,7 +45,9 @@ var __LOGO_ALUNO__ = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAFuCAYA
 
 const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
 const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
-const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+// Sessão do aluno guardada separada da do professor (evita conflito quando os dois apps estão no mesmo celular)
+try { if (!localStorage.getItem("lv-aluno-auth")) { const _old = localStorage.getItem("sb-jpduxfbigcdxmtcozqpp-auth-token"); if (_old) localStorage.setItem("lv-aluno-auth", _old); } } catch (e) {}
+const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY, { auth: { storageKey: "lv-aluno-auth", persistSession: true, autoRefreshToken: true } });
 
 // ID do profissional (Wellington Brito) dono da conta — usado no cadastro
 // público vindo da página de vendas. TROQUE pelo id real da linha em
