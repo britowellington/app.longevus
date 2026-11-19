@@ -153,7 +153,7 @@ const App = () => {
       h("div", { style: { fontSize: 12, fontWeight: 800, color: "#475569", marginBottom: 8 } }, "O que está incluso"),
       inclui.map((t, i) => h("div", { key: i, style: { display: "flex", gap: 9, fontSize: 14, color: "#334155", lineHeight: 1.45, marginTop: i ? 6 : 0 } }, h(Check), h("span", null, t)))) : null,
     etapa === "dados" && d.sobre ? h("div", { style: { fontSize: 13.5, color: "#475569", lineHeight: 1.55, marginTop: 14 } }, d.sobre) : null,
-    etapa === "dados" && (d.atendimento || d.local) ? h("div", { style: { fontSize: 12.5, color: C.cinza, marginTop: 12 } }, [d.atendimento, d.local].filter(Boolean).join(" · ")) : null);
+    etapa === "dados" && (d.atendimento || d.local) ? h("div", { style: { fontSize: 12.5, color: C.cinza, marginTop: 12 } }, [({ presencial: "Presencial", online: "Online", ambos: "Presencial e online", hibrido: "Presencial e online" })[d.atendimento] || d.atendimento, d.local].filter(Boolean).join(" · ")) : null);
 
   if (etapa === "feito") return wrap(card({ textAlign: "center", padding: "26px 20px" },
     h("div", { style: { width: 56, height: 56, borderRadius: 18, background: "#E9F5F2", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" } }, h("svg", { width: 28, height: 28, viewBox: "0 0 24 24", fill: "none", stroke: C.verdeEsc, strokeWidth: 2.6, strokeLinecap: "round", strokeLinejoin: "round" }, h("path", { d: "M20 6 9 17l-5-5" }))),
@@ -182,7 +182,7 @@ const App = () => {
       h(Campo, { rotulo: "WhatsApp (opcional)", valor: pr.whatsapp, onChange: (v) => setPr({ ...pr, whatsapp: fmtTel(v) }), tipo: "tel" }),
       h(Campo, { rotulo: "Mensagem (opcional)", valor: pr.mensagem, onChange: (v) => setPr({ ...pr, mensagem: v }), area: true })) : null,
     erro ? h("div", { style: { fontSize: 13, color: "#b91c1c", marginBottom: 10 } }, erro) : null,
-    h("button", { onClick: irPagar, style: { width: "100%", padding: "15px", borderRadius: 13, border: "none", background: C.laranja, color: "#fff", fontWeight: 800, fontSize: 16, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 8px 18px rgba(255,86,3,0.25)" } }, d.botao || (valor > 0 ? "Ir para o pagamento" : "Continuar")),
+    h("button", { onClick: irPagar, style: { width: "100%", padding: "15px", borderRadius: 13, border: "none", background: C.laranja, color: "#fff", fontWeight: 800, fontSize: 16, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 8px 18px rgba(255,86,3,0.25)" } }, presente ? "Comprar presente" : "Comprar"),
     h("div", { style: { fontSize: 12, color: "#94A3B8", textAlign: "center", marginTop: 10, lineHeight: 1.5 } }, "Pagamento por Pix direto para " + nomeProf + ". Seus dados são usados só para combinar o atendimento.")));
 };
 ReactDOM.createRoot(document.getElementById("root")).render(h(App));
