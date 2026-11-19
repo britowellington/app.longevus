@@ -1263,6 +1263,9 @@ return (
 );
 };
 const Dashboard = ({ students, setStudents, setLeads, assessments, dailyLogs, pagamentos, receitasExtras, nav }) => {
+const [ocultarFin, setOcultarFin] = useState(()=>{ try { return localStorage.getItem("lv_ocultar_fin")==="1"; } catch(e) { return false; } });
+const trocarOcultar = () => setOcultarFin(v=>{ const n=!v; try { localStorage.setItem("lv_ocultar_fin", n?"1":"0"); } catch(e) {} return n; });
+const valFin = (v) => ocultarFin ? "R$ •••••" : fmtR(v);
 const recent = [...assessments].sort((a,b)=>b.date?.localeCompare(a.date)).slice(0,4);
 const hoje = todayStr();
 const anoMes = hoje.slice(0,7);
@@ -1300,19 +1303,25 @@ return (
 </Card>
 ))}
 </div>
-<div style={{ fontSize:12,fontWeight:700,color:"#64748b",marginBottom:8 }}>Financeiro · {MESES_NOME[Number(anoMes.slice(5,7))-1].toLowerCase()}</div>
+<div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8 }}>
+<div style={{ fontSize:12,fontWeight:700,color:"#64748b" }}>Financeiro · {MESES_NOME[Number(anoMes.slice(5,7))-1].toLowerCase()}</div>
+<button type="button" onClick={trocarOcultar} aria-label={ocultarFin?"Mostrar valores":"Ocultar valores"} title={ocultarFin?"Mostrar valores":"Ocultar valores"} style={{ display:"flex",alignItems:"center",gap:6,border:"none",background:"#f1f5f9",borderRadius:99,padding:"5px 10px",cursor:"pointer",color:"#475569",fontSize:11.5,fontWeight:700,fontFamily:"inherit" }}>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>{ocultarFin && <line x1="3" y1="3" x2="21" y2="21"/>}</svg>
+{ocultarFin?"Mostrar":"Ocultar"}
+</button>
+</div>
 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:22 }}>
 {[["Previsto",previstoMes,"#6366f1","#eef2ff"],["Recebido",recebidoMes,"#16a34a","#dcfce7"],["Em aberto",emAbertoMes,"#d97706","#fef3c7"]].map(([l,v,c,bg])=>(
 <Card key={l} onClick={()=>nav("financeiro")} style={{ padding:"10px 8px",background:bg,border:"none" }}>
 <div style={{ fontSize:11,color:c,fontWeight:600,marginBottom:3 }}>{l}</div>
-<div style={{ fontSize:15,fontWeight:800,color:"#0f172a" }}>{fmtR(v)}</div>
+<div style={{ fontSize:15,fontWeight:800,color:"#0f172a" }}>{valFin(v)}</div>
 </Card>
 ))}
 </div>
 {(()=>{ const rv = resumoVitrine(rx, students, mesStart, mesEnd); if(!rv.vendas.length && !rv.bonus.length) return null; return (
 <Card onClick={()=>nav("financeiro")} style={{ padding:"10px 12px",marginTop:-12,marginBottom:22,display:"flex",justifyContent:"space-between",alignItems:"center",gap:8 }}>
-<div style={{ fontSize:12,color:"#334155" }}>Vitrine no mês: <b>{fmtR(rv.totalV)}</b> vendidos</div>
-<div style={{ fontSize:12,color:"#c2410c",fontWeight:700,whiteSpace:"nowrap" }}>{fmtR(rv.totalB)} em bônus</div>
+<div style={{ fontSize:12,color:"#334155" }}>Vitrine no mês: <b>{valFin(rv.totalV)}</b> vendidos</div>
+<div style={{ fontSize:12,color:"#c2410c",fontWeight:700,whiteSpace:"nowrap" }}>{valFin(rv.totalB)} em bônus</div>
 </Card>); })()}
 {temAlertas&&<div style={{ marginBottom:22 }}>
 <div style={{ fontSize:12,fontWeight:700,color:"#64748b",marginBottom:8 }}>Precisa de atenção</div>
