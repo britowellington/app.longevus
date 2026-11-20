@@ -709,7 +709,9 @@
     const LM = antroNum(rec.dobras && rec.dobras.massaMagra) || antroNum(rec.bio && rec.bio.massaMagra) || W0 - F0;
     const M0 = a.mmePct.v ? W0 * a.mmePct.v / 100 : antroNum(rec.bio && rec.bio.mme) || 0;
     const t = antroFaixaGordura(a.sexo, a.idade);
-    return { W0, h2, F0, LM, M0, O: LM - M0, g0, temMus: M0 > 0, fMin: t[0], fRef: t[1] - 0.1 };
+    const mRefPct = a.mmePct.v ? antroFaixaMusculo(a.sexo, a.idade)[0] : null;
+    const mRefKg = !a.mmePct.v && M0 && h2 ? (a.sexo === "F" ? 6.76 : 10.76) * h2 : null;
+    return { W0, h2, F0, LM, M0, O: LM - M0, g0, temMus: M0 > 0, fMin: t[0], fRef: t[1] - 0.1, mRefPct, mRefKg };
   };
   const antroResolver = (b, modo, Wt, MtAlvo, fAlvo) => {
     if (!b || b.semComposicao) return null;
@@ -724,9 +726,14 @@
       if (Mt < M0 - 0.05) { erro = "perdeMusculo"; pesoMin = (O + M0) / (1 - fAlvo / 100); }
     } else {
       origem = "padrao";
+      const f = (b.g0 <= fRef ? b.g0 : fRef) / 100;
       Mt = M0;
-      if (b.g0 <= fRef) { Wt = W0; Ft = F0; }
-      else { Wt = (O + Mt) / (1 - fRef / 100); Ft = Wt - O - Mt; }
+      if (b.temMus && b.mRefPct) {
+        const w1 = O / (1 - f - b.mRefPct / 100);
+        if (w1 > 0 && b.mRefPct / 100 * w1 > M0) Mt = b.mRefPct / 100 * w1;
+      } else if (b.temMus && b.mRefKg) Mt = Math.max(M0, b.mRefKg);
+      if (b.g0 <= fRef && Mt <= M0 + 0.05) { Wt = W0; Ft = F0; }
+      else { Wt = (O + Mt) / (1 - f); Ft = Wt - O - Mt; }
     }
     if (!erro && Ft <= 0) erro = "pesoBaixo";
     const gAlvo = Ft / Wt * 100;
@@ -769,7 +776,7 @@
     if (pl) {
       const dif = pl.W0 - pl.Wt;
       const cl = Math.abs(dif) <= 0.2 ? antroRelCl("No alvo", ANTRO_REL_OK) : dif > 0 ? antroRelCl("Acima do alvo", ANTRO_REL_ATENCAO) : antroRelCl("Abaixo do alvo", ANTRO_REL_ATENCAO);
-      const faixa = pl.semComposicao ? (pl.modo === "peso" ? "Peso alvo definido pelo professor" : "Peso para IMC até " + antroFmt(pl.imcMax, 1) + " na sua altura") : pl.modo === "musculo" ? "Peso alvo e ganho de músculo definidos pelo professor" : pl.modo === "gordura" ? "Peso alvo e gordura definidos pelo professor" : "Sugestão: manter o músculo e chegar a " + antroFmt(pl.fRef, 1) + "% de gordura";
+      const faixa = pl.semComposicao ? (pl.modo === "peso" ? "Peso alvo definido pelo professor" : "Peso para IMC até " + antroFmt(pl.imcMax, 1) + " na sua altura") : pl.modo === "musculo" ? "Peso alvo e ganho de músculo definidos pelo professor" : pl.modo === "gordura" ? "Peso alvo e gordura definidos pelo professor" : "Sugestão pelas referências de gordura" + (pl.temMus ? " e músculo" : "") + " para a idade e o sexo";
       let extra = null, alerta = null;
       if (!pl.semComposicao) {
         const dF = pl.Ft - pl.F0, dM = pl.Mt - pl.M0, sg = (v) => (Math.abs(v) < 0.05 ? "mantido" : (v > 0 ? "+" : "−") + antroFmt(Math.abs(v), 1) + " kg");
@@ -874,10 +881,19 @@
     const pl = antroPlanoMetas(r0, a, anterior);
     const base = antroBase(r0, a);
     const fmtIn = (v) => (v == null || isNaN(v) ? "" : String(Math.round(v * 10) / 10).replace(".", ","));
-    const [pModo, setPModo] = useState(pl && (pl.modo === "musculo" || pl.modo === "gordura") ? pl.modo : base && base.temMus ? "musculo" : "gordura");
-    const [wTxt, setWTxt] = useState(pl && pl.modo !== "padrao" ? fmtIn(pl.Wt) : "");
-    const [gTxt, setGTxt] = useState(pl && pl.modo === "musculo" ? fmtIn(pl.Mt - pl.M0) : "");
-    const [fTxt, setFTxt] = useState(pl && pl.modo === "gordura" ? fmtIn(pl.gAlvo) : "");
+    const sug = base && !base.semComposicao ? antroResolver(base, null) : null;
+    const personalizado = !!(pl && pl.modo !== "padrao");
+    const modoInicial = pl && (pl.modo === "musculo" || pl.modo === "gordura") ? pl.modo : base && base.temMus ? "musculo" : "gordura";
+    const [pModo, setPModo] = useState(modoInicial);
+    const [wTxt, setWTxt] = useState(pl ? fmtIn(pl.Wt) : "");
+    const [gTxt, setGTxt] = useState(pl && pl.Mt != null && pl.M0 != null ? fmtIn(Math.max(0, pl.Mt - pl.M0)) : "0");
+    const [fTxt, setFTxt] = useState(pl && pl.gAlvo != null ? fmtIn(pl.gAlvo) : "");
+    const voltarReferencias = () => {
+      const r = sug || pl;
+      setPModo(base && base.temMus ? "musculo" : "gordura");
+      if (r) { setWTxt(fmtIn(r.Wt)); setGTxt(r.Mt != null ? fmtIn(Math.max(0, r.Mt - r.M0)) : "0"); setFTxt(r.gAlvo != null ? fmtIn(r.gAlvo) : ""); }
+      if (personalizado) salvarPlano(true); else setPMsg("ref");
+    };
     const [pMsg, setPMsg] = useState("");
     const wNum = antroNum(wTxt), gNum = gTxt === "" ? 0 : antroNum(String(gTxt).replace(",", ".")) || 0, fNum = antroNum(fTxt);
     const ganhoNeg = /^\s*-/.test(String(gTxt));
@@ -890,7 +906,7 @@
       const ok = await antroApi.salvar(st.id, uid, novo);
       if (ok) {
         setR0(novo);
-        if (limpar) { setWTxt(""); setGTxt(""); setFTxt(""); }
+        if (limpar && sug) { setWTxt(fmtIn(sug.Wt)); setGTxt(fmtIn(Math.max(0, sug.Mt - sug.M0))); setFTxt(fmtIn(sug.gAlvo)); }
       }
       setPMsg(ok ? (limpar ? "limpo" : "ok") : "erro");
     };
@@ -901,7 +917,7 @@
         antroRelH("div", { style: { display: "flex", alignItems: "center", gap: 6, marginTop: 4 } },
           antroRelH("input", { type: "text", inputMode: "decimal", value: val, onChange: (e) => { set(e.target.value); setPMsg(""); }, style: { width: "100%", minWidth: 0, height: 38, border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "0 10px", fontSize: 15, fontWeight: 700, fontFamily: "inherit" } }),
           antroRelH("span", { style: { fontSize: 13, color: "#64748b", fontWeight: 700 } }, un)));
-      const salvoTxt = pMsg === "ok" ? antroRelH("div", { style: { fontSize: 12, color: ANTRO_VERDE, fontWeight: 700, marginTop: 8 } }, "Metas salvas. O aluno vê as mesmas metas.") : pMsg === "limpo" ? antroRelH("div", { style: { fontSize: 12, color: ANTRO_VERDE, fontWeight: 700, marginTop: 8 } }, "Metas limpas. Voltou para a sugestão do app.") : pMsg === "erro" ? antroRelH("div", { style: { fontSize: 12, color: "#dc2626", fontWeight: 700, marginTop: 8 } }, "Não consegui salvar. Tente de novo.") : null;
+      const salvoTxt = pMsg === "ok" ? antroRelH("div", { style: { fontSize: 12, color: ANTRO_VERDE, fontWeight: 700, marginTop: 8 } }, "Metas salvas. O aluno vê as mesmas metas.") : pMsg === "limpo" || pMsg === "ref" ? antroRelH("div", { style: { fontSize: 12, color: ANTRO_VERDE, fontWeight: 700, marginTop: 8 } }, "Voltou para as referências.") : pMsg === "erro" ? antroRelH("div", { style: { fontSize: 12, color: "#dc2626", fontWeight: 700, marginTop: 8 } }, "Não consegui salvar. Tente de novo.") : null;
       if (base.semComposicao) {
         return antroRelH("div", caixa,
           antroRelH("div", { style: { fontSize: 14, fontWeight: 800, color: "#0f172a", marginBottom: 8 } }, "Peso alvo"),
@@ -925,7 +941,9 @@
       const podeSalvar = r && !r.erro && wNum >= 30 && wNum <= 250;
       const modoBtn = (m, rot) => antroRelH("button", { type: "button", onClick: () => { setPModo(m); setPMsg(""); }, style: { flex: 1, height: 34, borderRadius: 9, border: "1.5px solid " + (pModo === m ? "#FF5603" : "#e2e8f0"), background: pModo === m ? "#fff4ee" : "#fff", color: pModo === m ? "#c2410c" : "#475569", fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" } }, rot);
       return antroRelH("div", caixa,
-        antroRelH("div", { style: { fontSize: 14, fontWeight: 800, color: "#0f172a" } }, "Planejador de metas"),
+        antroRelH("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 } },
+          antroRelH("div", { style: { fontSize: 14, fontWeight: 800, color: "#0f172a" } }, "Planejador de metas"),
+          antroRelH("span", { style: { fontSize: 11, fontWeight: 700, borderRadius: 6, padding: "3px 8px", whiteSpace: "nowrap", color: personalizado ? "#9a3412" : "#0f766e", background: personalizado ? "#ffedd5" : "#ccfbf1" } }, personalizado ? "Metas personalizadas" : "Sugestão pelas referências")),
         antroRelH("div", { style: { fontSize: 11.5, color: "#64748b", margin: "2px 0 10px", lineHeight: 1.45 } }, "Atual: " + antroFmt(base.W0, 1) + " kg · gordura " + antroFmt(base.F0, 1) + " kg (" + antroFmt(base.g0, 1) + "%)" + (base.temMus ? " · músculo " + antroFmt(base.M0, 1) + " kg (" + antroFmt(base.M0 / base.W0 * 100, 1) + "%)" : "")),
         base.temMus ? antroRelH("div", { style: { display: "flex", gap: 6, marginBottom: 10 } }, modoBtn("musculo", "Peso × músculo"), modoBtn("gordura", "Peso × gordura")) : null,
         antroRelH("div", { style: { display: "flex", gap: 10 } },
@@ -941,8 +959,8 @@
         nota ? antroRelH("div", { style: { fontSize: 12, color: "#92400e", marginTop: 6, lineHeight: 1.45 } }, nota) : null,
         antroRelH("div", { style: { display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" } },
           antroRelH("button", { type: "button", onClick: () => { if (podeSalvar) salvarPlano(false); }, style: { background: podeSalvar ? "#FF5603" : "#e2e8f0", color: podeSalvar ? "#fff" : "#64748b", border: "none", borderRadius: 9, padding: "9px 14px", fontWeight: 700, fontSize: 13, cursor: podeSalvar ? "pointer" : "default", fontFamily: "inherit" } }, pMsg === "salvando" ? "Salvando..." : "Salvar metas"),
-          pl && pl.modo !== "padrao" ? btn("Limpar metas", () => salvarPlano(true)) : null),
-        antroRelH("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 8, lineHeight: 1.45 } }, "Sem metas salvas, o relatório sugere manter o músculo e chegar a " + antroFmt(base.fRef, 1) + "% de gordura."),
+          btn("Voltar às referências", voltarReferencias)),
+        antroRelH("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 8, lineHeight: 1.45 } }, "Referências para a idade e o sexo: gordura até " + antroFmt(base.fRef, 1) + "%" + (base.mRefPct ? ", músculo " + antroFmt(base.mRefPct, 1) + "% ou mais" : base.mRefKg ? ", índice muscular de referência" : "") + ". O músculo nunca cai."),
         salvoTxt);
     };
     const alternarLiberado = async () => {
