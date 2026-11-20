@@ -642,10 +642,10 @@
     if (rec.bio) t.push("Bioimpedância" + (rec.bio.aparelho ? " (" + rec.bio.aparelho + ")" : ""));
     return t.length ? t.join(" · ") : "Peso e altura";
   };
-  const AntroRelLinha = ({ rotulo, valor, cl }) => antroRelH("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: "1px solid #f1f5f9" } },
-    antroRelH("span", { style: { fontSize: 12, color: "#475569" } }, rotulo),
+  const AntroRelLinha = ({ rotulo, valor, cl, refTxt }) => antroRelH("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: "1px solid #f1f5f9" } },
+    antroRelH("span", { style: { fontSize: 12, color: "#475569", minWidth: 0 } }, rotulo, refTxt ? antroRelH("span", { style: { display: "block", fontSize: 10.5, color: "#94a3b8", marginTop: 1, lineHeight: 1.35 } }, refTxt) : null),
     antroRelH("span", { style: { display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "#0f172a", textAlign: "right" } }, valor || "—",
-      cl ? antroRelH("span", { style: { fontSize: 10, fontWeight: 700, color: cl.color, background: cl.bg, borderRadius: 6, padding: "2px 6px" } }, cl.label) : null));
+      cl ? antroRelH("span", { style: { fontSize: 10, fontWeight: 700, color: cl.color, background: cl.bg, borderRadius: 6, padding: "2px 6px", whiteSpace: "nowrap" } }, cl.label) : null));
   const AntroRelSecao = ({ titulo, children }) => antroRelH("div", { className: "report-section", style: { marginBottom: 20 } }, antroRelH("div", { style: ANTRO_REL_SEC }, titulo), children);
   const antroTh = { textAlign: "left", fontSize: 11, color: "#64748b", fontWeight: 700, padding: "6px 4px", borderBottom: "1.5px solid #e2e8f0" };
   const antroTd = { fontSize: 12, padding: "6px 4px", borderBottom: "1px solid #f1f5f9", color: "#0f172a" };
@@ -666,15 +666,47 @@
     antroRelH("div", { style: { marginTop: 18, paddingTop: 10, borderTop: "1px solid #f1f5f9", fontSize: 10.5, color: "#94a3b8", lineHeight: 1.6 } },
       antroRelH("div", null, "Gerado pelo sistema Longevus em " + (/* @__PURE__ */ new Date()).toLocaleDateString("pt-BR")),
       extra ? antroRelH("div", null, extra) : null));
-  const antroIdeais = (rec, a) => {
+  const antroRefBio = (k, v, rec, a, mg) => {
+    const peso = antroNum(rec.peso), alt = antroNum(rec.altura);
+    const mm = antroNum(rec.bio && rec.bio.massaMagra) || (peso && antroNum(rec.bio && rec.bio.massaGorda) ? peso - antroNum(rec.bio.massaGorda) : null);
+    if (k === "gordura") return { txt: mg ? "Ref.: " + antroFmt(mg.min, 0) + " a " + antroFmt(mg.padrao, 1) + "%" + (mg.custom ? " · meta " + antroFmt(mg.meta, 1) + "%" : "") : null };
+    if (k === "massaGorda") return { txt: mg && mm ? (mg.custom ? "Meta" : "Ideal") + ": até " + antroFmt(mm * mg.meta / (100 - mg.meta), 1) + " kg" : null };
+    if (k === "massaMagra") return { txt: peso ? antroFmt(v / peso * 100, 0) + "% do peso · quanto mais, melhor" : null };
+    if (k === "mme") {
+      if (!alt || !a.sexo) return { txt: null };
+      const imm = v / Math.pow(alt / 100, 2), lim = a.sexo === "F" ? 6.76 : 10.76;
+      return { txt: "Índice muscular " + antroFmt(imm, 1) + " kg/m² · ref. " + antroFmt(lim, 1) + " ou mais", cl: imm >= lim ? antroRelCl("Adequado", ANTRO_REL_OK) : antroRelCl("Baixo", ANTRO_REL_ALTO) };
+    }
+    if (k === "agua") {
+      if (!mm) return { txt: null };
+      const pct = v / mm * 100;
+      return { txt: antroFmt(pct, 0) + "% da massa magra · ref. 71 a 75%", cl: pct >= 71 && pct <= 75 ? antroRelCl("Adequada", ANTRO_REL_OK) : antroRelCl(pct < 71 ? "Baixa" : "Alta", ANTRO_REL_ATENCAO) };
+    }
+    if (k === "visceral") return { txt: "Ref.: 1 a 9 · acima de 10 pede atenção" };
+    if (k === "tmb") return { txt: "Energia gasta em repouso, base do plano alimentar" };
+    if (k === "mmePct" && a.sexo) {
+      const t = antroFaixaMusculo(a.sexo, a.idade);
+      return { txt: "Ref.: " + antroFmt(t[0], 1) + " a " + antroFmt(t[1], 1) + "%" };
+    }
+    if (k === "idadeCorporal" && a.idade) return { txt: "Ref.: até " + a.idade + " anos (idade real)" };
+    return { txt: null };
+  };
+  const antroMetaGordura = (rec, a, anterior) => {
+    if (!a.sexo) return null;
+    const t = antroFaixaGordura(a.sexo, a.idade);
+    const padrao = t[1] - 0.1;
+    const rel = rec && rec.relatorio, relAnt = anterior && anterior.relatorio;
+    const custom = antroNum(rel && rel.metaGordura) || antroNum(relAnt && relAnt.metaGordura) || null;
+    return { min: t[0], padrao, meta: custom || padrao, custom: !!custom };
+  };
+  const antroIdeais = (rec, a, mg) => {
     const sexo = a.sexo, idade = a.idade;
     const gord = a.gDob.v ? a.gDob : a.gBio;
     const cards = [], linhas = [];
     let pesoMeta = null;
-    if (gord.v && sexo) {
-      const t = antroFaixaGordura(sexo, idade);
-      const max = t[1] - 0.1;
-      cards.push({ k: "gordura", nome: "Gordura corporal", atual: gord.v, ideal: max, rotIdeal: "Ideal (até)", modo: "max", un: "%", d: 1, cl: gord.cl, faixa: "Faixa adequada: " + antroFmt(t[0], 0) + " a " + antroFmt(max, 1) + "%" });
+    if (gord.v && sexo && mg) {
+      const max = mg.meta;
+      cards.push({ k: "gordura", nome: "Gordura corporal", atual: gord.v, ideal: max, rotIdeal: mg.custom ? "Meta (até)" : "Ideal (até)", modo: "max", un: "%", d: 1, cl: gord.cl, faixa: mg.custom ? "Referência: " + antroFmt(mg.min, 0) + " a " + antroFmt(mg.padrao, 1) + "% · meta individual definida pelo professor" : "Faixa adequada: " + antroFmt(mg.min, 0) + " a " + antroFmt(mg.padrao, 1) + "%" });
       if (gord.v > max && rec.peso) {
         const mm = antroNum(rec.dobras && rec.dobras.massaMagra) || antroNum(rec.bio && rec.bio.massaMagra) || antroNum(rec.peso) * (1 - gord.v / 100);
         const meta = mm / (1 - max / 100);
@@ -698,8 +730,8 @@
     if (a.rcest.v) linhas.push({ nome: "Cintura / estatura", atual: antroFmt(a.rcest.v, 2), meta: "abaixo de 0,50", dif: a.rcest.v >= 0.5 ? a.rcest.v - 0.49 : 0, d: 2, un: "" });
     return { cards, linhas, pesoMeta };
   };
-  const AntroIdeal = ({ rec, a }) => {
-    const { cards, linhas, pesoMeta } = antroIdeais(rec, a);
+  const AntroIdeal = ({ rec, a, mg }) => {
+    const { cards, linhas, pesoMeta } = antroIdeais(rec, a, mg);
     if (!cards.length && !linhas.length) return null;
     const verde = "#0f766e", laranja = "#c2410c";
     const faixaTxt = a.sexo ? "Faixas de referência para " + (a.sexo === "F" ? "mulheres" : "homens") + (a.idade ? (a.idade < 40 ? " de até 39 anos." : a.idade < 60 ? " de 40 a 59 anos." : " de 60 anos ou mais.") : ".") : "";
@@ -745,7 +777,6 @@
     const [textos, setTextos] = useState(() => !rec ? { significado: "", recomendacoes: "" } : rec.relatorio && (rec.relatorio.significado || rec.relatorio.recomendacoes) ? { significado: rec.relatorio.significado || "", recomendacoes: rec.relatorio.recomendacoes || "" } : antroTextos(rec, st));
     const [salvo, setSalvo] = useState("");
     const [editando, setEditando] = useState(false);
-    if (!rec || !st) return null;
     const a = antroAnalise(rec, st);
     const salvarTextos = async () => {
       setSalvo("salvando");
@@ -755,6 +786,20 @@
       if (ok) setR0(novo);
       setSalvo(ok ? "ok" : "erro");
       if (ok) setEditando(false);
+    };
+    const mg = antroMetaGordura(r0, a, anterior);
+    const [metaTxt, setMetaTxt] = useState(mg && mg.custom ? String(mg.meta).replace(".", ",") : "");
+    const [metaMsg, setMetaMsg] = useState("");
+    const salvarMeta = async (valor) => {
+      setMetaMsg("salvando");
+      const uid = await antroApi.usuarioId();
+      const novo = { ...r0, relatorio: { ...r0.relatorio || {}, metaGordura: valor } };
+      const ok = await antroApi.salvar(st.id, uid, novo);
+      if (ok) {
+        setR0(novo);
+        if (!valor) setMetaTxt("");
+      }
+      setMetaMsg(ok ? "ok" : "erro");
     };
     const alternarLiberado = async () => {
       setLiberando(true);
@@ -791,13 +836,28 @@
       !aluno && antroRelH("div", { className: "no-print", style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, background: r0.liberadoAluno ? "#ecfdf5" : "#f8fafc", border: "1.5px solid " + (r0.liberadoAluno ? "#99f6e4" : "#e2e8f0"), borderRadius: 12, padding: "10px 12px", marginBottom: 10 } },
         antroRelH("div", { style: { fontSize: 13, color: r0.liberadoAluno ? ANTRO_VERDE : "#475569", fontWeight: 700 } }, r0.liberadoAluno ? "Visível no app do aluno" : "Oculto do aluno"),
         btn(liberando ? "Salvando..." : r0.liberadoAluno ? "Ocultar do aluno" : "Liberar para o aluno", alternarLiberado, !r0.liberadoAluno)),
+      !aluno && mg && antroRelH("div", { className: "no-print", style: { background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: "10px 12px", marginBottom: 10 } },
+        antroRelH("div", { style: { fontSize: 13, fontWeight: 700, color: "#0f172a" } }, "Meta de gordura corporal"),
+        antroRelH("div", { style: { fontSize: 11.5, color: "#64748b", margin: "2px 0 8px", lineHeight: 1.4 } }, "Referência para a idade e o sexo: até " + antroFmt(mg.padrao, 1) + "%. Ajuste se a estratégia pedir uma meta menor."),
+        antroRelH("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } },
+          antroRelH("input", { type: "text", inputMode: "decimal", value: metaTxt, placeholder: antroFmt(mg.padrao, 1), onChange: (e) => { setMetaTxt(e.target.value); setMetaMsg(""); }, style: { width: 80, height: 36, border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "0 10px", fontSize: 14, fontWeight: 700, fontFamily: "inherit" } }),
+          antroRelH("span", { style: { fontSize: 14, color: "#475569", fontWeight: 700 } }, "%"),
+          btn(metaMsg === "salvando" ? "Salvando..." : "Salvar meta", () => {
+            const v = antroNum(metaTxt);
+            if (!v || v < 5 || v > 50) { setMetaMsg("invalida"); return; }
+            salvarMeta(Math.round(v * 10) / 10);
+          }, true),
+          mg.custom ? btn("Usar referência", () => salvarMeta(null)) : null),
+        metaMsg === "ok" ? antroRelH("div", { style: { fontSize: 12, color: ANTRO_VERDE, fontWeight: 700, marginTop: 6 } }, "Meta salva. O aluno vê a mesma meta.") : null,
+        metaMsg === "erro" ? antroRelH("div", { style: { fontSize: 12, color: "#dc2626", fontWeight: 700, marginTop: 6 } }, "Não consegui salvar. Tente de novo.") : null,
+        metaMsg === "invalida" ? antroRelH("div", { style: { fontSize: 12, color: "#dc2626", fontWeight: 700, marginTop: 6 } }, "Digite um valor entre 5 e 50.") : null),
       !aluno && antroRelH("div", { className: "no-print", style: { display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", margin: "0 0 12px" } },
         editando ? btn(salvo === "salvando" ? "Salvando..." : "Salvar textos", salvarTextos, true) : btn("✏️ Editar textos", () => { setEditando(true); setSalvo(""); }),
         editando ? btn("Gerar de novo", () => setTextos(antroTextos(rec, st))) : null,
         editando ? btn("Cancelar", () => { setEditando(false); setTextos(r0.relatorio && r0.relatorio.significado ? { significado: r0.relatorio.significado, recomendacoes: r0.relatorio.recomendacoes || "" } : antroTextos(rec, st)); }) : null,
         salvo === "ok" ? antroRelH("span", { style: { fontSize: 12, color: ANTRO_VERDE, fontWeight: 700 } }, "Textos salvos") : null,
         salvo === "erro" ? antroRelH("span", { style: { fontSize: 12, color: "#dc2626", fontWeight: 700 } }, "Não consegui salvar") : null),
-      antroRelH("div", { className: "print-page", style: { padding: 20, background: "#fff" } },
+      antroRelH("div", { className: "print-page", style: { padding: 20, background: "#fff", WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" } },
         antroRelH(Cab),
         antroRelH("div", { style: { background: "linear-gradient(135deg,#fff4ee,#fff)", border: "1.5px solid #FF560322", borderRadius: 12, padding: "14px 18px", marginBottom: 20 } },
           antroRelH("div", { style: { fontWeight: 800, fontSize: 17, color: "#0f172a", marginBottom: 4 } }, "Relatório de Avaliação Antropométrica"),
@@ -816,23 +876,24 @@
         (rec.dobras || rec.bio) && antroRelH(AntroRelSecao, { titulo: "Composição Corporal" },
           rec.dobras && antroRelH("div", { style: { marginBottom: rec.bio ? 14 : 0 } },
             antroRelH("div", { style: { fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 4 } }, "Dobras cutâneas · Jackson & Pollock " + (rec.dobras.protocolo === 3 ? "3" : "7") + " dobras (lado direito)"),
-            antroRelH("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 16 } },
+            antroRelH("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", columnGap: 16 } },
               ANTRO_DOBRAS.filter((d) => antroNum((rec.dobras.valores || {})[d[0]])).map((d) => antroRelH(AntroRelLinha, { key: d[0], rotulo: d[1], valor: antroFmt(antroNum(rec.dobras.valores[d[0]]), 1) + " mm" })),
               rec.dobras.soma ? antroRelH(AntroRelLinha, { rotulo: "Soma das dobras", valor: antroFmt(rec.dobras.soma, 1) + " mm" }) : null,
-              antroRelH(AntroRelLinha, { rotulo: "Gordura corporal", valor: a.gDob.v ? antroFmt(a.gDob.v, 1) + "%" : null, cl: a.gDob.cl }),
+              antroRelH(AntroRelLinha, { rotulo: "Gordura corporal", valor: a.gDob.v ? antroFmt(a.gDob.v, 1) + "%" : null, cl: a.gDob.cl, refTxt: mg ? "Ref.: " + antroFmt(mg.min, 0) + " a " + antroFmt(mg.padrao, 1) + "%" + (mg.custom ? " · meta " + antroFmt(mg.meta, 1) + "%" : "") : null }),
               rec.dobras.massaGorda ? antroRelH(AntroRelLinha, { rotulo: "Massa de gordura", valor: antroFmt(rec.dobras.massaGorda, 1) + " kg" }) : null,
               rec.dobras.massaMagra ? antroRelH(AntroRelLinha, { rotulo: "Massa magra", valor: antroFmt(rec.dobras.massaMagra, 1) + " kg" }) : null)),
           rec.bio && antroRelH("div", null,
             antroRelH("div", { style: { fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 4 } }, "Bioimpedância" + (rec.bio.aparelho ? " · " + rec.bio.aparelho : "") + (rec.origem === "aluno" ? " · laudo enviado pelo aluno" : "")),
-            antroRelH("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 16 } },
+            antroRelH("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", columnGap: 16 } },
               ANTRO_BIO_TODOS.filter((b) => antroNum(rec.bio[b[0]])).map((b) => {
                 const v = antroNum(rec.bio[b[0]]);
                 const dec = b[0] === "visceral" || b[0] === "tmb" || b[0] === "idadeCorporal" ? 0 : 1;
                 const cl = b[0] === "gordura" ? a.gBio.cl : b[0] === "visceral" ? a.visceral.cl : b[0] === "mmePct" ? a.mmePct.cl : b[0] === "idadeCorporal" ? a.idadeCorporal.cl : null;
                 const rot = rec.bio.modo === "omron" ? (ANTRO_BIO_OMRON.find((o) => o[0] === b[0]) || b)[1] : b[1];
-                return antroRelH(AntroRelLinha, { key: b[0], rotulo: rot, valor: antroFmt(v, dec) + (b[2] === "%" ? "%" : b[2] === "nível" ? "" : " " + b[2]), cl });
+                const r = antroRefBio(b[0], v, rec, a, mg);
+                return antroRelH(AntroRelLinha, { key: b[0], rotulo: rot, valor: antroFmt(v, dec) + (b[2] === "%" ? "%" : b[2] === "nível" ? "" : " " + b[2]), cl: cl || r.cl, refTxt: r.txt });
               })))),
-        antroRelH(AntroIdeal, { rec, a }),
+        antroRelH(AntroIdeal, { rec, a, mg }),
         (rec.membros || rec.tronco) && antroRelH(AntroRelSecao, { titulo: "Perímetros" },
           rec.membros && antroRelH("table", { style: { width: "100%", borderCollapse: "collapse", marginBottom: rec.tronco ? 10 : 0 } },
             antroRelH("thead", null, antroRelH("tr", null, ["Medida", "Direito", "Esquerdo", "Diferença"].map((t, i) => antroRelH("th", { key: t, style: { ...antroTh, textAlign: i ? "right" : "left" } }, t)))),
@@ -861,12 +922,15 @@
               antroRelH("td", { style: { ...antroTd, textAlign: "right", fontWeight: 700, color: c.melhorou === true ? ANTRO_VERDE : c.melhorou === false ? ANTRO_LARANJA_TXT : "#64748b" } }, (c.dif > 0 ? "+" : "") + antroFmt(c.dif, c.ind.d) + c.ind.un)))))),
         antroRelH(AntroRelSecao, { titulo: "O que os resultados significam" }, caixaTexto("significado")),
         antroRelH(AntroRelSecao, { titulo: "Recomendações Gerais" }, caixaTexto("recomendacoes")),
-        antroRelH("div", { style: { fontSize: 10, color: "#94a3b8", lineHeight: 1.5 } }, "Referências: IMC (OMS; OPAS para 60 anos ou mais), circunferência da cintura e RCQ (OMS), relação cintura/estatura (Ashwell), percentual de gordura (Gallagher et al., 2000), dobras cutâneas (Jackson & Pollock com equação de Siri)."),
+        antroRelH("div", { style: { fontSize: 10, color: "#94a3b8", lineHeight: 1.5 } }, "Referências: IMC (OMS; OPAS para 60 anos ou mais), circunferência da cintura e RCQ (OMS), relação cintura/estatura (Ashwell), percentual de gordura (Gallagher et al., 2000), índice muscular (Janssen et al., 2004), dobras cutâneas (Jackson & Pollock com equação de Siri)."),
         antroRelH(Rod, { extra: "Avaliação antropométrica · " + antroMetodo(rec) })));
   };
   const antroAnteriorDe = (lista, rec) => {
     const ok = (lista || []).filter((x) => x.id !== rec.id && x.status !== "pendente" && (x.date || "") < (rec.date || "")).sort((x, y) => (x.date || "").localeCompare(y.date || ""));
-    return ok.slice(-1)[0] || null;
+    const ant = ok.slice(-1)[0] || null;
+    if (!ant || antroNum(ant.relatorio && ant.relatorio.metaGordura)) return ant;
+    const comMeta = ok.slice().reverse().find((x) => antroNum(x.relatorio && x.relatorio.metaGordura));
+    return comMeta ? { ...ant, relatorio: { ...ant.relatorio || {}, metaGordura: comMeta.relatorio.metaGordura } } : ant;
   };
   const AntroSeletor = ({ st, autoId, onAbrir }) => {
     const [lista, setLista] = useState(null);
