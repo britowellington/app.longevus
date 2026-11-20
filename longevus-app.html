@@ -28,7 +28,7 @@ var __LOGO_WB__ = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAFuCAYAAAC
 </script>
 <script type="text/babel" data-presets="react" src="longevus-condominios.js"></script>
 <script src="longevus-alimentacao.js?v=14"></script>
-<script src="longevus-antropometria.js?v=3"></script>
+<script src="longevus-antropometria.js?v=4"></script>
 <script src="longevus-vitrine.js?v=17"></script>
 <script src="longevus-materiais.js?v=1"></script>
 <script type="text/babel" data-presets="react">
@@ -3595,7 +3595,7 @@ return <Card style={{ padding:"16px 14px" }}><MultiLineChart series={seriesData}
 </div>
 )}
 {tab==="alim"&&(window.LongevusAlimentacao?<window.LongevusAlimentacao.Painel st={st} assessments={assessments}/>:<Card style={{ textAlign:"center",padding:32,color:"#94a3b8" }}>Módulo de alimentação não carregou. Confira se o arquivo longevus-alimentacao.js está no repositório.</Card>)}
-{tab==="antro"&&(window.LongevusAntropometria?<window.LongevusAntropometria.Painel st={st}/>:<Card style={{ textAlign:"center",padding:32,color:"#94a3b8" }}>Módulo de antropometria não carregou. Confira se o arquivo longevus-antropometria.js está no repositório.</Card>)}
+{tab==="antro"&&(window.LongevusAntropometria?<window.LongevusAntropometria.Painel st={st} nav={nav}/>:<Card style={{ textAlign:"center",padding:32,color:"#94a3b8" }}>Módulo de antropometria não carregou. Confira se o arquivo longevus-antropometria.js está no repositório.</Card>)}
 {tab==="doc"&&(
 <div>
 <div style={{ display:"flex",justifyContent:"flex-end",marginBottom:10 }}>
@@ -9647,10 +9647,13 @@ return(
 </div>
 );
 };
-const Reports = ({ students, assessments, setAssessments, dailyLogs, sessions, nav }) => {
-const [selSt, setSelSt] = useState("");
+const Reports = ({ pre, students, assessments, setAssessments, dailyLogs, sessions, nav }) => {
+const [selSt, setSelSt] = useState((pre&&pre.studentId)||"");
 const [selA, setSelA] = useState("");
-const [reportType, setReportType] = useState("");
+const [reportType, setReportType] = useState((pre&&pre.tipo)||"");
+const [antroSel, setAntroSel] = useState(null);
+const [antroAuto, setAntroAuto] = useState((pre&&pre.antroId)||null);
+const LA = window.LongevusAntropometria;
 const [monitoringPeriod, setMonitoringPeriod] = useState(1);
 const [previewing, setPreviewing] = useState(false);
 const [aiTexts, setAiTexts] = useState({ clinical:"", referral:"", evolution:"" });
@@ -9672,6 +9675,7 @@ const reportTypes = [
 { id:"referral", label:"Carta de Encaminhamento", desc:"IA redige a carta para o médico. Você revisa e personaliza.", icon:"📩", needsAssessment:true },
 { id:"evolution", label:"Relatório de Evolução", desc:"IA analisa o progresso do aluno ao longo das avaliações.", icon:"📈", needsAssessment:false },
 { id:"monitoring", label:"Relatório de Monitoramento", desc:"Sinais vitais, adesão, disposição e hidratação por período.", icon:"📊", needsAssessment:false },
+{ id:"antro", label:"Relatório Antropométrico", desc:"Medidas, dobras e bioimpedância com classificação e comparação.", icon:"📏", needsAssessment:false },
 ];
 const handlePrint = () => window.print();
 if (previewing) {
@@ -9692,6 +9696,7 @@ return (
 {reportType==="referral" && <>
 <ReportReferral assessment={selectedAssessment} student={st}/>
 </>}
+{reportType==="antro" && antroSel && LA && LA.Relatorio && <LA.Relatorio key={antroSel.rec.id} st={st} rec={antroSel.rec} anterior={antroSel.anterior} Header={ProfHeader} Footer={ProfFooter}/>}
 {reportType==="monitoring" && <>
 <ReportMonitoring student={st} logs={dailyLogs} period={monitoringPeriod}/>
 </>}
@@ -9709,7 +9714,7 @@ return (
 <div style={{ fontWeight:800,fontSize:20,marginBottom:18 }}>Relatórios</div>
 <Card style={{ marginBottom:14 }}>
 <div style={{ fontWeight:700,fontSize:14,marginBottom:12 }}>1. Selecionar Aluno</div>
-<Inp label="" value={selSt} onChange={v=>{setSelSt(v);setSelA("");setReportType("");setAiTexts({clinical:"",referral:"",evolution:""});}} opts={[{v:"",l:"Selecione o aluno..."},...students.map(s=>({v:s.id,l:`${s.name} (${calcAge(s.dob)} anos)`}))]}/>
+<Inp label="" value={selSt} onChange={v=>{setSelSt(v);setSelA("");setReportType("");setAntroSel(null);setAntroAuto(null);setAiTexts({clinical:"",referral:"",evolution:""});}} opts={[{v:"",l:"Selecione o aluno..."},...students.map(s=>({v:s.id,l:`${s.name} (${calcAge(s.dob)} anos)`}))]}/>
 </Card>
 {st && <>
 <Card style={{ marginBottom:14 }}>
@@ -9732,6 +9737,12 @@ return (
 <Inp label="" value={selA} onChange={setSelA} opts={[{v:"",l:"Selecione..."},...stA.slice().reverse().map(a=>{const gc=classifyGlobal(a.globalScore||0);return{v:a.id,l:`${fmt(a.date)} — ${gc.label} (${a.globalScore||0} pts)`};})]}/>
 </Card>
 )}
+{reportType==="antro" && selSt && (
+<Card style={{ marginBottom:14 }}>
+<div style={{ fontWeight:700,fontSize:14,marginBottom:12 }}>3. Selecionar Avaliação Antropométrica</div>
+{LA && LA.Seletor ? <LA.Seletor st={st} autoId={antroAuto} onAbrir={(rec,anterior)=>{setAntroSel({rec,anterior});setAntroAuto(null);setPreviewing(true);window.scrollTo(0,0);}}/> : <div style={{ fontSize:13,color:"#94a3b8" }}>Módulo de antropometria não carregou.</div>}
+</Card>
+)}
 {/* Botão direto para monitoring */}
 {reportType==="monitoring" && selSt && (
 <Card style={{ marginBottom:14, border:"1.5px solid #FF560322" }}>
@@ -9740,7 +9751,7 @@ return (
 <Btn full icon="eye" onClick={()=>setPreviewing(true)}>Visualizar e Imprimir</Btn>
 </Card>
 )}
-{reportType && reportType!=="monitoring" && (reportTypes.find(r=>r.id===reportType)?.needsAssessment ? selA : true) && (
+{reportType && reportType!=="monitoring" && reportType!=="antro" && (reportTypes.find(r=>r.id===reportType)?.needsAssessment ? selA : true) && (
 <Card style={{ marginBottom:14, border:"1.5px solid #FF560322" }}>
 <div style={{ fontWeight:700,fontSize:14,marginBottom:4 }}>✨ Texto gerado — editável</div>
 <div style={{ fontSize:12,color:"#94a3b8",marginBottom:16 }}>Clique em "Gerar" para criar o texto automaticamente. Edite à vontade antes de imprimir.</div>
@@ -9760,7 +9771,7 @@ Visualizar e Imprimir
 )}
 </Card>
 )}
-{stA.length===0&&selSt&&<div style={{ fontSize:13,color:"#94a3b8",textAlign:"center",padding:"20px 0" }}>Nenhuma avaliação registrada para este aluno.</div>}
+{stA.length===0&&selSt&&reportType!=="antro"&&<div style={{ fontSize:13,color:"#94a3b8",textAlign:"center",padding:"20px 0" }}>Nenhuma avaliação registrada para este aluno.</div>}
 </>}
 </div>
 );
@@ -10579,7 +10590,7 @@ return (
 {page==="newAssessment"&&<NewAssessment students={students} setAssessments={setAssessments} nav={nav} prefillStudentId={pageProps.studentId}/>}
 {page==="result"&&<Result assessmentId={pageProps.id} assessments={assessments} setAssessments={setAssessments} students={students} nav={nav}/>}
 {page==="daily"&&<Daily students={students} assessments={assessments} dailyLogs={dailyLogs} setDailyLogs={setDailyLogs} cardioRecords={cardioRecords} setCardioRecords={setCardioRecords} prefillStudentId={pageProps.studentId}/>}
-{page==="reports"&&<Reports students={students} assessments={assessments} setAssessments={setAssessments} dailyLogs={dailyLogs} sessions={sessions} nav={nav}/>
+{page==="reports"&&<Reports pre={pageProps} students={students} assessments={assessments} setAssessments={setAssessments} dailyLogs={dailyLogs} sessions={sessions} nav={nav}/>
 }{page==="documents"&&<Documents students={students} documents={documents} setDocuments={setDocuments} prefillStudentId={pageProps.studentId}/>
 }{page==="questionarios"&&<Questionarios students={students} nav={nav} onRefreshCount={refreshPendingCount}/>
 }{page==="extprograma"&&(()=>{window.open("longevus-programa.html","_self");return null;})()}{page==="cognitivehub"&&<CognitiveHub students={students} hubResults={hubResults} setHubResults={setHubResults}/>}{page==="sessions"&&<SessionTracker students={students} programs={programs} sessions={sessions} setSessions={setSessions} nav={nav}/>}{page==="vincular"&&<VincularAlunos students={students} setStudents={setStudents}/>
