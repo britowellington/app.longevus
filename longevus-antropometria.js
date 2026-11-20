@@ -693,6 +693,27 @@
     if (k === "idadeCorporal" && a.idade) return { txt: "Ref.: até " + a.idade + " anos (idade real)" };
     return { txt: null };
   };
+  const antroPesoPadrao = (rec, a, mg) => {
+    const peso = antroNum(rec.peso), alt = antroNum(rec.altura);
+    const gord = a.gDob.v ? a.gDob : a.gBio;
+    const mm = antroNum(rec.dobras && rec.dobras.massaMagra) || antroNum(rec.bio && rec.bio.massaMagra) || (gord.v && peso ? peso * (1 - gord.v / 100) : null);
+    if (gord.v && mm && mg) {
+      if (gord.v <= mg.meta) return { valor: peso, origem: "naMeta", mm };
+      return { valor: mm / (1 - mg.meta / 100), origem: "comp", mm };
+    }
+    if (alt) {
+      const imcMax = a.idade && a.idade >= 60 ? 27.9 : 24.9;
+      const lim = imcMax * Math.pow(alt / 100, 2);
+      return { valor: peso && peso <= lim ? peso : lim, origem: "imc", imcMax, mm };
+    }
+    return { valor: null, origem: null, mm };
+  };
+  const antroMetaPeso = (rec, anterior, padrao) => {
+    const rel = rec && rec.relatorio, relAnt = anterior && anterior.relatorio;
+    const custom = antroNum(rel && rel.metaPeso) || antroNum(relAnt && relAnt.metaPeso) || null;
+    const ehCustom = !!custom && (!padrao || Math.abs(custom - padrao) > 0.05);
+    return { meta: ehCustom ? custom : padrao, custom: ehCustom, padrao };
+  };
   const antroMetaMusculo = (rec, a, anterior) => {
     if (!a.sexo) return null;
     const peso = antroNum(rec.peso);
@@ -732,7 +753,7 @@
     }
     return t;
   };
-  const antroIdeais = (rec, a, mg, mu) => {
+  const antroIdeais = (rec, a, mg, mu, mp) => {
     const sexo = a.sexo, idade = a.idade;
     const gord = a.gDob.v ? a.gDob : a.gBio;
     const cards = [], linhas = [];
@@ -746,11 +767,27 @@
         pesoMeta = { meta, perder: antroNum(rec.peso) - meta, mm, max };
       }
     }
+    const pp = antroPesoPadrao(rec, a, mg);
+    const pesoAtual = antroNum(rec.peso);
+    const metaPeso = mp && mp.custom ? mp.meta : pp.valor;
+    const pesoRef = metaPeso ? { meta: metaPeso } : null;
+    if (pesoAtual && metaPeso) {
+      const dif = pesoAtual - metaPeso;
+      const cl = Math.abs(dif) <= 0.2 ? antroRelCl("No alvo", ANTRO_REL_OK) : dif > 0 ? antroRelCl("Acima do alvo", ANTRO_REL_ATENCAO) : antroRelCl("Abaixo do alvo", ANTRO_REL_ATENCAO);
+      let faixa = pp.origem === "imc" ? "Peso para IMC até " + antroFmt(pp.imcMax, 1) + " na sua altura" : pp.origem === "naMeta" ? "Gordura já dentro da meta" : "Estimado mantendo a massa magra e chegando a " + antroFmt(mg.meta, 1) + "% de gordura";
+      if (mp && mp.custom) faixa = "Peso alvo definido pelo professor" + (pp.valor ? " · estimado pela composição: " + antroFmt(pp.valor, 1) + " kg" : "");
+      let extra = null;
+      if (pp.mm && metaPeso > pp.mm) {
+        const g = (metaPeso - pp.mm) / metaPeso * 100;
+        extra = "Nesse peso, mantendo os " + antroFmt(pp.mm, 1) + " kg de massa magra, a gordura ficaria em " + antroFmt(g, 1) + "%" + (dif > 0.2 ? ". São " + antroFmt(dif, 1) + " kg a perder, idealmente de gordura." : ".");
+      } else if (pp.mm && metaPeso <= pp.mm) extra = "Esse peso fica abaixo da massa magra atual e exigiria perder músculo.";
+      cards.unshift({ k: "peso", nome: "Peso na balança", atual: pesoAtual, ideal: metaPeso, rotIdeal: mp && mp.custom ? "Alvo" : "Peso meta", modo: metaPeso >= pesoAtual ? "min" : "max", un: " kg", d: 1, cl, faixa, extra, destaque: true });
+    }
     if (a.visceral.v) cards.push({ k: "visceral", nome: "Gordura visceral", atual: a.visceral.v, ideal: 9, rotIdeal: "Ideal (até)", modo: "max", un: "", d: 0, cl: a.visceral.cl, faixa: "Faixa normal: 1 a 9" });
     if (a.mmePct.v && sexo) {
       const t = antroFaixaMusculo(sexo, idade);
       const alvo = mu && mu.custom ? mu.meta : t[0];
-      cards.push({ k: "musculo", nome: "Músculo esquelético", atual: a.mmePct.v, ideal: alvo, rotIdeal: mu && mu.custom ? "Meta (mín.)" : "Ideal (mín.)", modo: "min", un: "%", d: 1, cl: a.mmePct.cl, faixa: (mu && mu.custom ? "Referência: " : "Faixa normal: ") + antroFmt(t[0], 1) + " a " + antroFmt(t[1], 1) + "%" + (mu && mu.custom ? " · meta individual definida pelo professor" : ""), extra: antroExtraMusculo(rec, a.mmePct.v, alvo, pesoMeta, !!(mu && mu.custom)), kg: antroNum(rec.peso) ? [antroNum(rec.peso) * a.mmePct.v / 100, antroNum(rec.peso) * alvo / 100] : null });
+      cards.push({ k: "musculo", nome: "Músculo esquelético", atual: a.mmePct.v, ideal: alvo, rotIdeal: mu && mu.custom ? "Meta (mín.)" : "Ideal (mín.)", modo: "min", un: "%", d: 1, cl: a.mmePct.cl, faixa: (mu && mu.custom ? "Referência: " : "Faixa normal: ") + antroFmt(t[0], 1) + " a " + antroFmt(t[1], 1) + "%" + (mu && mu.custom ? " · meta individual definida pelo professor" : ""), extra: antroExtraMusculo(rec, a.mmePct.v, alvo, pesoRef, !!(mu && mu.custom)), kg: antroNum(rec.peso) ? [antroNum(rec.peso) * a.mmePct.v / 100, antroNum(rec.peso) * alvo / 100] : null });
     }
     const mmeKg = antroNum(rec.bio && rec.bio.mme), alt = antroNum(rec.altura);
     if (!a.mmePct.v && mmeKg && alt && sexo) {
@@ -773,33 +810,27 @@
     if (a.rcest.v) linhas.push({ nome: "Cintura / estatura", atual: antroFmt(a.rcest.v, 2), meta: "abaixo de 0,50", dif: a.rcest.v >= 0.5 ? a.rcest.v - 0.49 : 0, d: 2, un: "" });
     return { cards, linhas, pesoMeta };
   };
-  const AntroIdeal = ({ rec, a, mg, mu }) => {
-    const { cards, linhas, pesoMeta } = antroIdeais(rec, a, mg, mu);
+  const AntroIdeal = ({ rec, a, mg, mu, mp }) => {
+    const { cards, linhas } = antroIdeais(rec, a, mg, mu, mp);
     if (!cards.length && !linhas.length) return null;
     const verde = "#0f766e", laranja = "#c2410c";
     const faixaTxt = a.sexo ? "Faixas de referência para " + (a.sexo === "F" ? "mulheres" : "homens") + (a.idade ? (a.idade < 40 ? " de até 39 anos." : a.idade < 60 ? " de 40 a 59 anos." : " de 60 anos ou mais.") : ".") : "";
     return antroRelH(AntroRelSecao, { titulo: "Seu resultado × o ideal" },
       faixaTxt ? antroRelH("div", { style: { fontSize: 12, color: "#64748b", margin: "-4px 0 12px" } }, faixaTxt) : null,
-      pesoMeta && pesoMeta.perder > 0.2 ? antroRelH("div", { style: { background: "#fff4ee", border: "1.5px solid #fed7aa", borderRadius: 12, padding: "12px 14px", marginBottom: 12 } },
-        antroRelH("div", { style: { fontSize: 12, color: "#9a3412" } }, "Peso meta estimado"),
-        antroRelH("div", { style: { display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: 8, marginTop: 2 } },
-          antroRelH("span", { style: { fontSize: 22, fontWeight: 800, color: laranja } }, antroFmt(pesoMeta.meta, 1) + " kg"),
-          antroRelH("span", { style: { fontSize: 13, color: "#9a3412" } }, "perder " + antroFmt(pesoMeta.perder, 1) + " kg de gordura")),
-        antroRelH("div", { style: { fontSize: 11.5, color: "#9a3412", marginTop: 4, lineHeight: 1.5 } }, "Mantendo os " + antroFmt(pesoMeta.mm, 1) + " kg de massa magra e chegando a " + antroFmt(pesoMeta.max, 1) + "% de gordura.")) : null,
       cards.map((c) => {
         const ok = c.modo === "max" ? c.atual <= c.ideal : c.atual >= c.ideal;
         const dif = c.atual - c.ideal;
         const pct = c.modo === "max" ? Math.min(100, (c.ideal / c.atual) * 100) : Math.min(100, (c.atual / c.ideal) * 100);
         const num = (v, cor, rot, sub) => antroRelH("div", null, antroRelH("div", { style: { fontSize: 18, fontWeight: 800, color: cor } }, v), sub ? antroRelH("div", { style: { fontSize: 12.5, fontWeight: 700, color: cor, marginTop: 1 } }, sub) : null, antroRelH("div", { style: { fontSize: 11, color: "#64748b" } }, rot));
         const kgA = c.kg ? antroFmt(c.kg[0], 1) + " kg" : null, kgI = c.kg ? antroFmt(c.kg[1], 1) + " kg" : null, kgD = c.kg ? (c.kg[1] - c.kg[0] > 0 ? "+" : "−") + antroFmt(Math.abs(c.kg[1] - c.kg[0]), 1) + " kg" : null;
-        return antroRelH("div", { key: c.k, className: "report-section", style: { border: "1px solid #e2e8f0", borderRadius: 12, padding: "12px 14px", marginBottom: 10 } },
+        return antroRelH("div", { key: c.k, className: "report-section", style: { border: c.destaque ? "1.5px solid #fed7aa" : "1px solid #e2e8f0", background: c.destaque ? "#fffaf6" : "transparent", borderRadius: 12, padding: "12px 14px", marginBottom: 10 } },
           antroRelH("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 } },
             antroRelH("span", { style: { fontSize: 13, color: "#475569" } }, c.nome),
             c.cl ? antroRelH("span", { style: { fontSize: 11, fontWeight: 700, color: c.cl.color, background: c.cl.bg, borderRadius: 6, padding: "2px 7px" } }, c.cl.label) : null),
           antroRelH("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6, marginTop: 8, textAlign: "center" } },
             num(antroFmt(c.atual, c.d) + c.un, ok ? verde : "#dc2626", "Atual", kgA),
             num(antroFmt(c.ideal, c.d) + c.un, verde, c.rotIdeal, kgI),
-            ok ? num("✓", verde, "Na faixa") : num((dif > 0 ? "−" : "+") + antroFmt(Math.abs(dif), c.d) + (c.un === "%" ? "%" : ""), c.modo === "max" ? laranja : verde, c.modo === "max" ? "Diferença" : "A ganhar", kgD)),
+            ok ? num("✓", verde, "Na faixa") : num((dif > 0 ? "−" : "+") + antroFmt(Math.abs(dif), c.d) + (c.un === "%" ? "%" : c.un === " kg" ? " kg" : ""), c.modo === "max" ? laranja : verde, c.modo === "max" ? "Diferença" : "A ganhar", kgD)),
           antroRelH("div", { style: { height: 6, background: "#f1f5f9", borderRadius: 3, marginTop: 10, overflow: "hidden", display: "flex" } },
             antroRelH("div", { style: { width: (ok ? 100 : pct) + "%", background: "#14b8a6" } }),
             ok ? null : antroRelH("div", { style: { flex: 1, background: c.modo === "max" ? "#fdba74" : "#e2e8f0" } })),
@@ -836,6 +867,10 @@
     const [metaTxt, setMetaTxt] = useState(mg && mg.custom ? String(mg.meta).replace(".", ",") : "");
     const [metaMsg, setMetaMsg] = useState("");
     const mu = antroMetaMusculo(r0, a, anterior);
+    const ppEd = antroPesoPadrao(r0, a, mg);
+    const mp = antroMetaPeso(r0, anterior, ppEd.valor);
+    const [pesoTxt, setPesoTxt] = useState(mp.custom ? String(mp.meta).replace(".", ",") : "");
+    const [pesoMsg, setPesoMsg] = useState("");
     const [musTxt, setMusTxt] = useState(mu && mu.custom ? String(mu.meta).replace(".", ",") : "");
     const [musMsg, setMusMsg] = useState("");
     const salvarCampo = async (campo, valor, setMsg, setTxt) => {
@@ -855,16 +890,17 @@
       antroRelH("div", { style: { fontSize: 11.5, color: "#64748b", margin: "2px 0 8px", lineHeight: 1.4 } }, cfg.desc),
       antroRelH("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } },
         antroRelH("input", { type: "text", inputMode: "decimal", value: cfg.txt, placeholder: cfg.placeholder, onChange: (e) => { cfg.setTxt(e.target.value); cfg.setMsg(""); }, style: { width: 80, height: 36, border: "1.5px solid #e2e8f0", borderRadius: 9, padding: "0 10px", fontSize: 14, fontWeight: 700, fontFamily: "inherit" } }),
-        antroRelH("span", { style: { fontSize: 14, color: "#475569", fontWeight: 700 } }, "%"),
+        antroRelH("span", { style: { fontSize: 14, color: "#475569", fontWeight: 700 } }, cfg.un || "%"),
         btn(cfg.msg === "salvando" ? "Salvando..." : "Salvar meta", () => {
           const v = antroNum(cfg.txt);
-          if (!v || v < 5 || v > 70) { cfg.setMsg("invalida"); return; }
+          const lim = cfg.lim || [5, 70];
+          if (!v || v < lim[0] || v > lim[1]) { cfg.setMsg("invalida"); return; }
           salvarCampo(cfg.campo, Math.round(v * 10) / 10, cfg.setMsg, cfg.setTxt);
         }, true),
         cfg.custom ? btn(cfg.rotPadrao, () => salvarCampo(cfg.campo, null, cfg.setMsg, cfg.setTxt)) : null),
       cfg.msg === "ok" ? antroRelH("div", { style: { fontSize: 12, color: ANTRO_VERDE, fontWeight: 700, marginTop: 6 } }, "Meta salva. O aluno vê a mesma meta.") : null,
       cfg.msg === "erro" ? antroRelH("div", { style: { fontSize: 12, color: "#dc2626", fontWeight: 700, marginTop: 6 } }, "Não consegui salvar. Tente de novo.") : null,
-      cfg.msg === "invalida" ? antroRelH("div", { style: { fontSize: 12, color: "#dc2626", fontWeight: 700, marginTop: 6 } }, "Digite um valor entre 5 e 70.") : null);
+      cfg.msg === "invalida" ? antroRelH("div", { style: { fontSize: 12, color: "#dc2626", fontWeight: 700, marginTop: 6 } }, "Digite um valor entre " + (cfg.lim || [5, 70]).join(" e ") + ".") : null);
     const alternarLiberado = async () => {
       setLiberando(true);
       const uid = await antroApi.usuarioId();
@@ -900,6 +936,7 @@
       !aluno && antroRelH("div", { className: "no-print", style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, background: r0.liberadoAluno ? "#ecfdf5" : "#f8fafc", border: "1.5px solid " + (r0.liberadoAluno ? "#99f6e4" : "#e2e8f0"), borderRadius: 12, padding: "10px 12px", marginBottom: 10 } },
         antroRelH("div", { style: { fontSize: 13, color: r0.liberadoAluno ? ANTRO_VERDE : "#475569", fontWeight: 700 } }, r0.liberadoAluno ? "Visível no app do aluno" : "Oculto do aluno"),
         btn(liberando ? "Salvando..." : r0.liberadoAluno ? "Ocultar do aluno" : "Liberar para o aluno", alternarLiberado, !r0.liberadoAluno)),
+      !aluno && antroNum(r0.peso) && caixaMeta({ campo: "metaPeso", titulo: "Peso alvo na balança", desc: ppEd.valor ? (ppEd.origem === "imc" ? "Referência pelo IMC na altura: " : "Estimado pela composição corporal: ") + antroFmt(ppEd.valor, 1) + " kg. Ajuste para o peso alvo que você definir." : "Defina o peso alvo do aluno.", txt: pesoTxt, setTxt: setPesoTxt, msg: pesoMsg, setMsg: setPesoMsg, placeholder: ppEd.valor ? antroFmt(ppEd.valor, 1) : "", custom: mp.custom, rotPadrao: "Usar estimado", un: "kg", lim: [30, 250] }),
       !aluno && mg && caixaMeta({ campo: "metaGordura", titulo: "Meta de gordura corporal", desc: "Referência para a idade e o sexo: até " + antroFmt(mg.padrao, 1) + "%. Ajuste se a estratégia pedir uma meta menor.", txt: metaTxt, setTxt: setMetaTxt, msg: metaMsg, setMsg: setMetaMsg, placeholder: antroFmt(mg.padrao, 1), custom: mg.custom, rotPadrao: "Usar referência" }),
       !aluno && mu && caixaMeta({ campo: "metaMusculo", titulo: "Meta de músculo esquelético", desc: mu.omron ? "Referência para a idade e o sexo: " + antroFmt(mu.padrao, 1) + "% ou mais. Ajuste se quiser uma meta maior." : "Hoje: " + antroFmt(mu.atualPct, 1) + "% do peso. Sem meta definida, vale o índice muscular de referência.", txt: musTxt, setTxt: setMusTxt, msg: musMsg, setMsg: setMusMsg, placeholder: mu.omron ? antroFmt(mu.padrao, 1) : antroFmt(mu.atualPct, 1), custom: mu.custom, rotPadrao: "Usar referência" }),
       !aluno && antroRelH("div", { className: "no-print", style: { display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", margin: "0 0 12px" } },
@@ -944,7 +981,7 @@
                 const r = antroRefBio(b[0], v, rec, a, mg);
                 return antroRelH(AntroRelLinha, { key: b[0], rotulo: rot, valor: antroFmt(v, dec) + (b[2] === "%" ? "%" : b[2] === "nível" ? "" : " " + b[2]), cl: cl || r.cl, refTxt: r.txt });
               })))),
-        antroRelH(AntroIdeal, { rec, a, mg, mu }),
+        antroRelH(AntroIdeal, { rec, a, mg, mu, mp }),
         (rec.membros || rec.tronco) && antroRelH(AntroRelSecao, { titulo: "Perímetros" },
           rec.membros && antroRelH("table", { style: { width: "100%", borderCollapse: "collapse", marginBottom: rec.tronco ? 10 : 0 } },
             antroRelH("thead", null, antroRelH("tr", null, ["Medida", "Direito", "Esquerdo", "Diferença"].map((t, i) => antroRelH("th", { key: t, style: { ...antroTh, textAlign: i ? "right" : "left" } }, t)))),
@@ -985,9 +1022,9 @@
       const c = ok.slice().reverse().find((x) => antroNum(x.relatorio && x.relatorio[campo]));
       return c ? c.relatorio[campo] : null;
     };
-    const mg = herda("metaGordura"), mm = herda("metaMusculo");
-    if (!mg && !mm) return ant;
-    return { ...ant, relatorio: { ...ant.relatorio || {}, metaGordura: mg, metaMusculo: mm } };
+    const mg = herda("metaGordura"), mm = herda("metaMusculo"), mp = herda("metaPeso");
+    if (!mg && !mm && !mp) return ant;
+    return { ...ant, relatorio: { ...ant.relatorio || {}, metaGordura: mg, metaMusculo: mm, metaPeso: mp } };
   };
   const AntroSeletor = ({ st, autoId, onAbrir }) => {
     const [lista, setLista] = useState(null);
