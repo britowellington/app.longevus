@@ -19,8 +19,8 @@
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="longevus-aluno-extras.js?v=28"></script>
-<script src="longevus-antropometria.js?v=5"></script>
+<script src="longevus-aluno-extras.js?v=29"></script>
+<script src="longevus-antropometria.js?v=6"></script>
 <script src="longevus-vitrine.js?v=17"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -1907,7 +1907,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
       )}
 
       {tab==="programacao" && <TelaProgramacao atividades={atividades} concluidasMap={concluidasMap} onToggleAtividade={toggleConcluidaAtividade} bibCustom={bibCustom} onSalvarExercicios={salvarSessaoAtividade} getSessaoAtividade={getSessaoAtividade}/>}
-      {tab==="avaliacao" && <div>{window.LongevusAlunoExtras && <window.LongevusAlunoExtras.AntroAluno studentId={studentId} ownerId={ownerId} studentData={studentData}/>}<TelaAvaliacao studentId={studentId} studentData={studentData}/></div>}
+      {tab==="avaliacao" && <div>{window.LongevusAlunoExtras && <window.LongevusAlunoExtras.AntroAluno studentId={studentId} ownerId={ownerId} studentData={studentData} onIrCalorias={()=>{setTab("alimentacao");window.scrollTo(0,0);}} bloqueado360={!!(acesso360 && acesso360.bloqueado)}/>}<TelaAvaliacao studentId={studentId} studentData={studentData}/></div>}
       {tab==="alimentacao" && acesso360 && acesso360.bloqueado && <Oferta360 acesso={acesso360} profPix={profPix} studentName={studentName} studentId={studentId} ownerId={ownerId} onVoltar={()=>setTab("inicio")}/>}
       {tab==="alimentacao" && !(acesso360 && acesso360.bloqueado) && (window.LongevusAlunoExtras ? <window.LongevusAlunoExtras.TelaAlimentacao studentId={studentId} ownerId={ownerId} studentData={studentData} abrirAtividade={abrirAtiv} onAtividadeAberta={()=>setAbrirAtiv(false)}/> : <div style={{padding:32,textAlign:"center",color:"#94a3b8",fontSize:14}}>Não consegui carregar esta tela. Feche e abra o app de novo.</div>)}
 

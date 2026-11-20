@@ -1263,6 +1263,106 @@
       selModo && h("div", { style: { fontSize: 11.5, color: "#94a3b8", marginTop: 8 } }, "O treino automático vem do check-in e é excluído pela aba Check-in."),
       selModo && h(NutriSelBarra, { n: nSel, apagando, onExcluir: excluir }));
   };
+  const JornadaAdesao = ({ st, antroLista, metas, eBase, onAjustar }) => {
+    const LA = window.LongevusAntropometria;
+    const conf = (antroLista || []).filter((r) => r && r.status !== "pendente").sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+    const rec = conf[conf.length - 1] || null;
+    const info = rec && LA && LA.etapaAtual ? LA.etapaAtual(rec, LA.anteriorDe ? LA.anteriorDe(antroLista, rec) : null, st) : null;
+    const e = info && info.etapa;
+    const hoje = nutriHoje();
+    const ini14 = nutriDiaMais(hoje, -14);
+    const iniEt = e && e.inicioISO ? (e.inicioISO > hoje ? hoje : e.inicioISO) : null;
+    const desde = iniEt && iniEt < ini14 ? iniEt : ini14;
+    const [dados, setDados] = useState(null);
+    useEffect(() => {
+      if (!e) return;
+      let vivo = true;
+      (async () => {
+        const [refs, ck, at] = await Promise.all([nutriApi.listar(st.id, desde, hoje), energiaApi.checkins(st.id, desde, hoje), energiaApi.atividades(st.id, desde, hoje)]);
+        if (vivo) setDados({ refs: refs || [], ck: ck || [], at: at || [] });
+      })();
+      return () => { vivo = false; };
+    }, [st.id, desde]);
+    if (!e || !e.deficitDia || !e.kcalEtapa) return null;
+    const card = (filhos) => /* @__PURE__ */ React.createElement(NutriCard, { style: { padding: 14, marginBottom: 12, border: "1.5px solid #FED7AA" } }, filhos);
+    const cab = /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 } },
+      /* @__PURE__ */ React.createElement("div", null,
+        /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 800, color: "#0F172A" } }, "Jornada · " + (e.final ? "meta final" : "etapa " + e.i + " de " + info.n)),
+        /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748B" } }, "Rumo aos " + (Math.round(e.W * 10) / 10).toFixed(1).replace(".", ",") + " kg · termina em " + e.fimISO.slice(8, 10) + "/" + e.fimISO.slice(5, 7))));
+    if (!dados) return card([cab, /* @__PURE__ */ React.createElement("div", { key: "c", style: { fontSize: 12, color: "#94A3B8", marginTop: 8 } }, "Calculando a adesão...")]);
+    const plano = metas && metas.energia && metas.energia.objetivo ? metas.energia : null;
+    const ex = energiaExercicio(dados.ck, dados.at, eBase.peso);
+    const porDia = {};
+    dados.refs.forEach((r) => {
+      const d = porDia[r.date] || (porDia[r.date] = { kcal: 0, prot: 0 });
+      const t = r.totais || {};
+      d.kcal += nutriNum(t.kcal);
+      d.prot += nutriNum(t.prot);
+    });
+    const diaInfo = (d) => {
+      const x = ex[d] || { kcal: 0, itens: [] };
+      const en = plano ? energiaDia(plano, eBase, x.kcal) : null;
+      const gasto = en && !en.semTmb ? en.gasto : null;
+      const c = porDia[d];
+      return { d, cons: c ? c.kcal : 0, prot: c ? c.prot : 0, gasto, treinos: (x.itens || []).filter((i) => i.tipo === "treino").length };
+    };
+    const lista = [];
+    for (let d = desde; d < hoje; d = nutriDiaMais(d, 1)) lista.push(diaInfo(d));
+    const ult14 = lista.filter((x) => x.d >= ini14);
+    const reg14 = ult14.filter((x) => x.cons > 0);
+    const def14 = reg14.filter((x) => x.gasto);
+    const media = def14.length >= 3 ? def14.reduce((t, x) => t + (x.gasto - x.cons), 0) / def14.length : null;
+    const protMedia = reg14.length ? reg14.reduce((t, x) => t + x.prot, 0) / reg14.length : null;
+    const treinos = ult14.reduce((t, x) => t + x.treinos, 0);
+    const naEtapa = lista.filter((x) => x.d >= iniEt && x.cons > 0 && x.gasto);
+    const acumulado = naEtapa.reduce((t, x) => t + (x.gasto - x.cons), 0);
+    const metaDef = Math.round(e.deficitDia / 10) * 10;
+    const prot = info.proteina;
+    const diasRest = Math.max(1, Math.round((new Date(e.fimISO + "T12:00:00") - new Date(hoje + "T12:00:00")) / 864e5));
+    let previsao = null, atraso = null, status = null;
+    if (media && media > 0) {
+      previsao = nutriDiaMais(hoje, Math.ceil(Math.max(0, e.kcalEtapa - acumulado) / media));
+      atraso = Math.round((new Date(previsao + "T12:00:00") - new Date(e.fimISO + "T12:00:00")) / 864e5);
+      status = atraso <= 3 ? "ok" : atraso <= 21 ? "leve" : "fora";
+    } else if (media !== null) status = "fora";
+    const selo = !plano ? ["Sem plano de calorias", "#475569", "#E2E8F0"] : status === "ok" ? ["No caminho", "#065F46", "#CCFBF1"] : status === "leve" ? ["Ajustar leve", "#92400E", "#FEF3C7"] : status === "fora" ? ["Fora do ritmo", "#991B1B", "#FEE2E2"] : ["Poucos registros", "#475569", "#E2E8F0"];
+    const faltaDef = media ? Math.max(0, Math.round(((e.kcalEtapa - acumulado) / diasRest - media) / 10) * 10) : null;
+    const faltaProt = prot && protMedia ? Math.max(0, Math.round(prot - protMedia)) : null;
+    const nome = String(st.name || "").split(" ")[0];
+    const fmtD = (iso) => iso.slice(8, 10) + "/" + iso.slice(5, 7);
+    const partes = [];
+    if (reg14.length >= 10) partes.push("Você registrou " + reg14.length + " dos últimos 14 dias, muito bom.");
+    else partes.push("Você registrou " + reg14.length + " dos últimos 14 dias. Quanto mais registros, mais preciso fica o acompanhamento.");
+    if (status === "ok") partes.push("No ritmo atual você chega aos " + (Math.round(e.W * 10) / 10).toFixed(1).replace(".", ",") + " kg dentro do prazo. Continue assim!");
+    else if (previsao) partes.push("No ritmo atual você chega aos " + (Math.round(e.W * 10) / 10).toFixed(1).replace(".", ",") + " kg por volta de " + fmtD(previsao) + ". Para voltar ao prazo, faltam cerca de " + faltaDef + " kcal de déficit por dia" + (faltaProt > 5 ? " e " + faltaProt + " g de proteína" : "") + ". Um lanche trocado já ajuda.");
+    else if (media !== null) partes.push("Nos últimos dias o consumo ficou acima do gasto. Vamos conversar para ajustar a estratégia?");
+    else if (faltaProt > 5) partes.push("Tente chegar em " + prot + " g de proteína por dia para proteger o músculo.");
+    const msgWa = "Oi, " + nome + "! " + partes.join(" ");
+    const wa = String(st.whatsapp || "").replace(/\D/g, "");
+    const waNum = wa.length >= 10 ? (wa.length <= 11 ? "55" + wa : wa) : null;
+    const tile = (rot, v, sub, bom) => /* @__PURE__ */ React.createElement("div", { style: { background: "#F8FAFC", borderRadius: 10, padding: 10 } },
+      /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748B" } }, rot),
+      /* @__PURE__ */ React.createElement("div", { style: { fontSize: 17, fontWeight: 800, color: "#0F172A" } }, v),
+      sub ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: bom ? "#0F766E" : "#B45309" } }, sub) : null);
+    return card([
+      /* @__PURE__ */ React.createElement("div", { key: "h", style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 } }, cab,
+        /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: selo[1], background: selo[2], borderRadius: 6, padding: "3px 8px", whiteSpace: "nowrap" } }, selo[0])),
+      /* @__PURE__ */ React.createElement("div", { key: "l", style: { fontSize: 12, color: "#475569", margin: "10px 0 6px" } }, "Últimos 14 dias"),
+      /* @__PURE__ */ React.createElement("div", { key: "g", style: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 } },
+        tile("Dias registrados", reg14.length + " de 14", reg14.length >= 10 ? "Boa adesão" : "Adesão baixa", reg14.length >= 10),
+        tile("Déficit médio", media !== null ? Math.round(media / 10) * 10 + " kcal" : "—", "Meta " + metaDef, media !== null && media >= metaDef - 30),
+        tile("Proteína média", protMedia !== null ? Math.round(protMedia) + " g" : "—", prot ? "Meta " + prot + " g" : null, protMedia !== null && prot && protMedia >= prot - 5),
+        tile("Treinos registrados", String(treinos), "check-ins e atividades", true)),
+      /* @__PURE__ */ React.createElement("div", { key: "p", style: { fontSize: 12.5, lineHeight: 1.5, marginTop: 10, borderRadius: 9, padding: "8px 10px", background: status === "ok" ? "#ECFDF5" : "#FEF3C7", color: status === "ok" ? "#065F46" : "#92400E" } },
+        !plano ? "O aluno ainda não tem plano de calorias. Defina o plano energético para acompanhar o déficit da etapa." : previsao ? "No ritmo atual, chega aos " + (Math.round(e.W * 10) / 10).toFixed(1).replace(".", ",") + " kg por volta de " + fmtD(previsao) + (atraso <= 3 ? ", dentro do prazo." : ", cerca de " + atraso + " dias depois do prazo.") : media !== null ? "Nos últimos dias o consumo ficou acima do gasto." : "Poucos registros para prever. São necessários pelo menos 3 dias registrados."),
+      /* @__PURE__ */ React.createElement("div", { key: "s", style: { marginTop: 10, border: "1.5px solid #E2E8F0", borderRadius: 10, padding: "10px 12px" } },
+        /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, fontWeight: 800, marginBottom: 4 } }, "Sugestão para a conversa"),
+        /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12.5, color: "#475569", lineHeight: 1.55 } }, msgWa)),
+      /* @__PURE__ */ React.createElement("div", { key: "b", style: { display: "flex", gap: 8, marginTop: 10 } },
+        waNum ? /* @__PURE__ */ React.createElement("a", { href: "https://wa.me/" + waNum + "?text=" + encodeURIComponent(msgWa), target: "_blank", rel: "noopener", style: { flex: 1, background: "#FF5603", color: "#fff", borderRadius: 9, padding: "10px", textAlign: "center", fontSize: 13, fontWeight: 800, textDecoration: "none" } }, "Enviar ao aluno") : /* @__PURE__ */ React.createElement("div", { style: { flex: 1, fontSize: 11.5, color: "#94A3B8", alignSelf: "center" } }, "Cadastre o WhatsApp do aluno para enviar."),
+        onAjustar ? /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onAjustar, style: { flex: 1, border: "1.5px solid #E2E8F0", background: "#fff", borderRadius: 9, padding: "10px", fontSize: 13, fontWeight: 800, color: "#475569", cursor: "pointer", fontFamily: "inherit" } }, "Ajustar metas") : null)
+    ]);
+  };
   const NutriPainel = ({ st, assessments }) => {
     const [carregando, setCarregando] = useState(true);
     const [falhou, setFalhou] = useState(false);
@@ -1389,7 +1489,7 @@
       return /* @__PURE__ */ React.createElement(NutriDiaDetalhe, { dia: diaAberto, dias, hoje, refeicoes, metas: m, e: energiaDia(ePlano, eBase, (eExSemana[diaAberto] || { kcal: 0 }).kcal), ex: eExSemana[diaAberto], onVoltar: () => setDiaAberto(null), onTrocar: setDiaAberto, onApagar: apagarRegistros });
     }
     const quem = m.atualizadoPor ? "Metas atualizadas " + (m.atualizadoPor === "aluno" ? "pelo aluno" : "por você") + " em " + nutriDataCurta(m.atualizadoEm) : "Metas ainda não definidas";
-    return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#94a3b8" } }, "Últimos 7 dias · ", comRegistro.length, " de 7 com registro"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: m.atualizadoPor === "aluno" ? NUTRI_LARANJA_TXT : "#94a3b8", marginTop: 2 } }, quem)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setPlanoAberto(true), style: { height: 36, padding: "0 14px", borderRadius: 10, border: "none", background: NUTRI_LARANJA, color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, "Plano energético"), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setEditando(true), style: { height: 36, padding: "0 14px", borderRadius: 10, border: "1.5px solid " + NUTRI_LARANJA, background: "transparent", color: NUTRI_LARANJA_TXT, fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, "Ajustar metas"))), ePlano && /* @__PURE__ */ React.createElement(EnergiaSemana, { plano: ePlano, onDia: setDiaAberto, dias: dias.map((d) => {
+    return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(JornadaAdesao, { st, antroLista, metas, eBase, onAjustar: () => setPlanoAberto(true) }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#94a3b8" } }, "Últimos 7 dias · ", comRegistro.length, " de 7 com registro"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: m.atualizadoPor === "aluno" ? NUTRI_LARANJA_TXT : "#94a3b8", marginTop: 2 } }, quem)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setPlanoAberto(true), style: { height: 36, padding: "0 14px", borderRadius: 10, border: "none", background: NUTRI_LARANJA, color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, "Plano energético"), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setEditando(true), style: { height: 36, padding: "0 14px", borderRadius: 10, border: "1.5px solid " + NUTRI_LARANJA, background: "transparent", color: NUTRI_LARANJA_TXT, fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit" } }, "Ajustar metas"))), ePlano && /* @__PURE__ */ React.createElement(EnergiaSemana, { plano: ePlano, onDia: setDiaAberto, dias: dias.map((d) => {
       const ex = eExSemana[d] || { kcal: 0, itens: [] };
       return { date: d, hoje: d === hoje, consumido: Math.round(porDia[d].kcal), e: energiaDia(ePlano, eBase, ex.kcal), sessoes: ex.itens.length, semDuracao: ex.itens.filter((i) => i.semDuracao).length };
     }) }), !ePlano && /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setPlanoAberto(true), style: { width: "100%", textAlign: "left", background: "#fff4ee", border: "1.5px solid #fed7aa", borderRadius: 14, padding: "12px 14px", marginBottom: 12, cursor: "pointer", fontFamily: "inherit" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 800, color: NUTRI_LARANJA_TXT } }, "Ativar plano energético"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b", marginTop: 2 } }, "Meta de calorias diária a partir da TMB da avaliação e do gasto dos treinos.")), falhou && /* @__PURE__ */ React.createElement(NutriCard, { style: { padding: 12, marginBottom: 10, color: "#dc2626", fontSize: 13 } }, "Não consegui carregar os registros. Confira se os SQLs do registro alimentar foram rodados."), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#94a3b8", marginBottom: 6 } }, "Média diária", completos.length ? " (dias completos)" : "", media("kcal") ? " · " + nutriFmt(media("kcal")) + " kcal" + (m.kcal ? " de " + nutriFmt(m.kcal) : "") : ""), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8, marginBottom: 12 } }, NUTRI_MACROS.map((mc) => {

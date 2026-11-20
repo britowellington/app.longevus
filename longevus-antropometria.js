@@ -824,6 +824,18 @@
     const d = new Date(p[0], p[1] - 1 + n, 1);
     return ANTRO_MESES[d.getMonth()] + "/" + String(d.getFullYear()).slice(2);
   };
+  const antroMaisMesesISO = (iso, n) => {
+    const p = String(iso || "").slice(0, 10).split("-").map(Number);
+    if (p.length < 3 || !p[0]) return null;
+    const d = new Date(p[0], p[1] - 1 + n, p[2]);
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  };
+  const antroDiasEntre = (a, b) => Math.max(1, Math.round((new Date(b + "T12:00:00") - new Date(a + "T12:00:00")) / 864e5));
+  const antroHojeISO = () => {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  };
+  const ANTRO_KCAL_KG_GORDURA = 7700;
   const antroRitmoDe = (rec, anterior) => {
     const r = (rec && rec.relatorio && rec.relatorio.ritmo) || (anterior && anterior.relatorio && anterior.relatorio.ritmo);
     return ANTRO_RITMOS[r] ? r : "moderado";
@@ -845,11 +857,20 @@
       const W = !final && ed && antroNum(ed[i - 1]) ? antroNum(ed[i - 1]) : final ? pl.Wt : auto;
       const M = comp && pl.temMus ? pl.M0 + (pl.Mt - pl.M0) * t : null;
       const F = comp ? W - pl.O - (M || 0) : null;
-      lista.push({ i, final, W, auto, M, F, g: F != null ? F / W * 100 : null, m: M != null ? M / W * 100 : null, quando: antroMaisMeses(rec.date, Math.min(i * 2, nMeses)), editado: !final && ed && antroNum(ed[i - 1]) ? true : false });
+      const fimISO = antroMaisMesesISO(rec.date, Math.min(i * 2, nMeses));
+      const inicioISO = i === 1 ? String(rec.date || "").slice(0, 10) : lista[i - 2].fimISO;
+      const Fant = i === 1 ? (comp ? pl.F0 : null) : lista[i - 2].F;
+      const dias = inicioISO && fimISO ? antroDiasEntre(inicioISO, fimISO) : null;
+      const dFat = F != null && Fant != null ? Fant - F : null;
+      const kcalEtapa = dFat != null && dFat > 0 ? dFat * ANTRO_KCAL_KG_GORDURA : null;
+      lista.push({ i, final, W, auto, M, F, g: F != null ? F / W * 100 : null, m: M != null ? M / W * 100 : null, quando: antroMaisMeses(rec.date, Math.min(i * 2, nMeses)), editado: !final && ed && antroNum(ed[i - 1]) ? true : false, inicioISO, fimISO, dias, dFat, kcalEtapa, deficitDia: kcalEtapa && dias ? kcalEtapa / dias : null });
     }
-    return { n, nMeses, kgMes, lista, ritmo };
+    const proteina = pl.Wt ? Math.round(1.6 * pl.Wt / 5) * 5 : null;
+    const hoje = antroHojeISO();
+    const atual = hoje >= String(rec.date || "").slice(0, 10) ? lista.find((e) => e.fimISO && e.fimISO >= hoje) || null : lista[0];
+    return { n, nMeses, kgMes, lista, ritmo, proteina, atual };
   };
-  const AntroJornada = ({ rec, pl, ritmo, editados }) => {
+  const AntroJornada = ({ rec, pl, ritmo, editados, onIrCalorias, bloqueado360 }) => {
     const j = antroEtapas(pl, rec, ritmo, editados);
     if (!j) return null;
     const ponto = (cor, cheio) => antroRelH("div", { style: { width: 12, height: 12, borderRadius: "50%", border: "2px solid " + cor, background: cheio ? cor : "#fff", marginTop: 3, flexShrink: 0, boxSizing: "border-box" } });
@@ -869,12 +890,26 @@
       j.lista.map((e) => antroRelH("div", { key: e.i, className: "report-section", style: { display: "flex", gap: 10 } },
         antroRelH("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", width: 14 } }, ponto(e.final ? "#FF5603" : "#fdba74", e.final), e.final ? null : linha),
         antroRelH("div", { style: { flex: 1, paddingBottom: 12 } },
-          antroRelH("div", { style: { fontSize: 13, fontWeight: 700, color: "#0f172a" } }, (e.final ? "Meta final" : "Etapa " + e.i) + (e.quando ? " · " + e.quando : "")),
+          antroRelH("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 } },
+            antroRelH("div", { style: { fontSize: 13, fontWeight: 700, color: "#0f172a" } }, (e.final ? "Meta final" : "Etapa " + e.i) + (e.quando ? " · " + (j.atual === e ? "até " : "") + e.quando : "")),
+            j.atual === e ? antroRelH("span", { style: { fontSize: 11, fontWeight: 700, color: "#9a3412", background: "#ffedd5", borderRadius: 6, padding: "2px 7px", whiteSpace: "nowrap" } }, "Você está aqui") : null),
           antroRelH("div", { style: { display: "grid", gridTemplateColumns: "repeat(" + (e.g != null ? (e.m != null ? 3 : 2) : 1) + ", minmax(0, 1fr))", gap: 6, marginTop: 6 } },
             tile(antroFmt(e.W, 1) + " kg", "Peso", false),
             e.g != null ? tile(antroFmt(e.g, 1) + "%", "Gordura", false) : null,
             e.m != null ? tile(antroFmt(e.m, 1) + "%", "Músculo", true) : null),
-          antroRelH("div", { style: { fontSize: 11.5, color: "#475569", marginTop: 5 } }, sg(e.W - pl.W0) + " na balança" + (e.F != null ? " · gordura " + sg(e.F - pl.F0) : "") + (e.M != null ? " · músculo " + sg(e.M - pl.M0) : ""))))));
+          antroRelH("div", { style: { fontSize: 11.5, color: "#475569", marginTop: 5 } }, sg(e.W - pl.W0) + " na balança" + (e.F != null ? " · gordura " + sg(e.F - pl.F0) : "") + (e.M != null ? " · músculo " + sg(e.M - pl.M0) : "")),
+          j.atual === e && e.deficitDia ? (bloqueado360 ? antroRelH("div", { style: { marginTop: 8, border: "1.5px dashed #cbd5e1", borderRadius: 10, padding: "10px 12px", display: "flex", gap: 10, alignItems: "center" } },
+            antroRelH("span", { style: { fontSize: 18 } }, "🔒"),
+            antroRelH("div", { style: { flex: 1, minWidth: 0 } },
+              antroRelH("div", { style: { fontSize: 12.5, fontWeight: 700, color: "#475569" } }, "O que fazer por dia nesta etapa"),
+              antroRelH("div", { style: { fontSize: 11.5, color: "#94a3b8" } }, "Calorias, proteína e acompanhamento no Longevus 360")),
+            onIrCalorias ? antroRelH("button", { type: "button", className: "no-print", onClick: onIrCalorias, style: { background: "transparent", border: "none", color: "#c2410c", fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" } }, "Liberar") : null) : antroRelH("div", { style: { marginTop: 8, border: "1.5px solid #fed7aa", background: "#fffaf6", borderRadius: 10, padding: "10px 12px" } },
+            antroRelH("div", { style: { fontSize: 12.5, fontWeight: 700, color: "#9a3412", marginBottom: 6 } }, "🔥 O que fazer por dia nesta etapa"),
+            antroRelH("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 12.5, padding: "3px 0" } }, antroRelH("span", { style: { color: "#475569" } }, "Déficit diário"), antroRelH("b", null, "cerca de " + antroFmt(Math.round(e.deficitDia / 10) * 10, 0) + " kcal")),
+            j.proteina ? antroRelH("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 12.5, padding: "3px 0" } }, antroRelH("span", { style: { color: "#475569" } }, "Proteína"), antroRelH("b", null, j.proteina + " g por dia")) : null,
+            antroRelH("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 12.5, padding: "3px 0" } }, antroRelH("span", { style: { color: "#475569" } }, "Gordura a perder na etapa"), antroRelH("b", null, antroFmt(e.dFat, 1) + " kg")),
+            antroRelH("div", { style: { fontSize: 11, color: "#9a3412", marginTop: 6, lineHeight: 1.45 } }, "Calculado a partir da sua avaliação e da sua meta. É uma estimativa: o peso oscila com água e rotina."),
+            onIrCalorias ? antroRelH("button", { type: "button", className: "no-print", onClick: onIrCalorias, style: { width: "100%", marginTop: 8, background: "#FF5603", color: "#fff", border: "none", borderRadius: 9, padding: "9px", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" } }, "Acompanhar no Calorias ›") : null)) : null))));
   };
   const AntroIdeal = ({ rec, a, mg, pl }) => {
     const { cards, linhas } = antroIdeais(rec, a, mg, pl);
@@ -919,7 +954,7 @@
           antroRelH("span", { style: { color: "#94a3b8" } }, " → " + l.meta + " "),
           l.dif > 0 ? antroRelH("b", { style: { color: laranja } }, "−" + antroFmt(l.dif, l.d)) : antroRelH("b", { style: { color: verde } }, "✓")))));
   };
-  const AntroRelatorio = ({ st, rec, anterior, Header, Footer, papel }) => {
+  const AntroRelatorio = ({ st, rec, anterior, Header, Footer, papel, onIrCalorias, bloqueado360 }) => {
     const [r0, setR0] = useState(rec);
     const [liberando, setLiberando] = useState(false);
     const aluno = papel === "aluno";
@@ -1145,7 +1180,7 @@
                 return antroRelH(AntroRelLinha, { key: b[0], rotulo: rot, valor: antroFmt(v, dec) + (b[2] === "%" ? "%" : b[2] === "nível" ? "" : " " + b[2]), cl: cl || r.cl, refTxt: r.txt });
               })))),
         antroRelH(AntroIdeal, { rec, a, mg, pl }),
-        antroRelH(AntroJornada, { rec, pl, ritmo: ritmoAtual, editados: r0.relatorio && r0.relatorio.etapasPeso }),
+        antroRelH(AntroJornada, { rec, pl, ritmo: ritmoAtual, editados: r0.relatorio && r0.relatorio.etapasPeso, onIrCalorias, bloqueado360 }),
         (rec.membros || rec.tronco) && antroRelH(AntroRelSecao, { titulo: "Perímetros" },
           rec.membros && antroRelH("table", { style: { width: "100%", borderCollapse: "collapse", marginBottom: rec.tronco ? 10 : 0 } },
             antroRelH("thead", null, antroRelH("tr", null, ["Medida", "Direito", "Esquerdo", "Diferença"].map((t, i) => antroRelH("th", { key: t, style: { ...antroTh, textAlign: i ? "right" : "left" } }, t)))),
@@ -1242,7 +1277,17 @@
     r.render(antroRelH(AntroRelatorio, { ...props, papel: "aluno" }));
     setTimeout(() => window.print(), 500);
   };
-  window.LongevusAntropometria = { Painel: AntroPainel, Relatorio: AntroRelatorio, imprimir: antroImprimir, anteriorDe: antroAnteriorDe, Seletor: AntroSeletor, textos: antroTextos, analise: antroAnalise, medidas: function(id) {
+  const antroEtapaAtual = (rec, anterior, st) => {
+    if (!rec || !st) return null;
+    const a = antroAnalise(rec, st);
+    const pl = antroPlanoMetas(rec, a, anterior);
+    if (!pl) return null;
+    const ritmo = antroRitmoDe(rec, anterior);
+    const j = antroEtapas(pl, rec, ritmo, rec.relatorio && rec.relatorio.etapasPeso);
+    if (!j || !j.atual) return null;
+    return { etapa: j.atual, n: j.n, proteina: j.proteina, pl, ritmo, avaliacao: rec };
+  };
+  window.LongevusAntropometria = { Painel: AntroPainel, etapaAtual: antroEtapaAtual, Relatorio: AntroRelatorio, imprimir: antroImprimir, anteriorDe: antroAnteriorDe, Seletor: AntroSeletor, textos: antroTextos, analise: antroAnalise, medidas: function(id) {
     return antroApi.medidas(id);
   } };
 })();
