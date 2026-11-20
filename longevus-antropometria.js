@@ -816,6 +816,66 @@
     if (a.rcest.v) linhas.push({ nome: "Cintura / estatura", atual: antroFmt(a.rcest.v, 2), meta: "abaixo de 0,50", dif: a.rcest.v >= 0.5 ? a.rcest.v - 0.49 : 0, d: 2, un: "" });
     return { cards, linhas };
   };
+  const ANTRO_RITMOS = { conservador: { rot: "Conservador", pct: 0.25, desc: "Prioridade em preservar músculo, limitação física ou rotina irregular." }, moderado: { rot: "Moderado", pct: 0.5, desc: "Ritmo padrão para a maioria." }, acelerado: { rot: "Acelerado", pct: 0.75, desc: "Com acompanhamento alimentar e boa tolerância ao treino." } };
+  const ANTRO_MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+  const antroMaisMeses = (iso, n) => {
+    const p = String(iso || "").slice(0, 10).split("-").map(Number);
+    if (p.length < 3 || !p[0]) return null;
+    const d = new Date(p[0], p[1] - 1 + n, 1);
+    return ANTRO_MESES[d.getMonth()] + "/" + String(d.getFullYear()).slice(2);
+  };
+  const antroRitmoDe = (rec, anterior) => {
+    const r = (rec && rec.relatorio && rec.relatorio.ritmo) || (anterior && anterior.relatorio && anterior.relatorio.ritmo);
+    return ANTRO_RITMOS[r] ? r : "moderado";
+  };
+  const antroEtapas = (pl, rec, ritmo, editados) => {
+    if (!pl || !pl.W0 || !pl.Wt) return null;
+    const total = pl.W0 - pl.Wt;
+    if (Math.abs(total) < 0.3) return null;
+    const kgMes = pl.W0 * ANTRO_RITMOS[ritmo].pct / 100 * 4.35;
+    const nMeses = Math.max(2, Math.ceil(Math.abs(total) / kgMes));
+    const n = Math.ceil(nMeses / 2);
+    const ed = editados && editados.n === n && Array.isArray(editados.pesos) ? editados.pesos : null;
+    const comp = !pl.semComposicao;
+    const lista = [];
+    for (let i = 1; i <= n; i++) {
+      const t = i / n;
+      const final = i === n;
+      const auto = pl.W0 - total * t;
+      const W = !final && ed && antroNum(ed[i - 1]) ? antroNum(ed[i - 1]) : final ? pl.Wt : auto;
+      const M = comp && pl.temMus ? pl.M0 + (pl.Mt - pl.M0) * t : null;
+      const F = comp ? W - pl.O - (M || 0) : null;
+      lista.push({ i, final, W, auto, M, F, g: F != null ? F / W * 100 : null, m: M != null ? M / W * 100 : null, quando: antroMaisMeses(rec.date, Math.min(i * 2, nMeses)), editado: !final && ed && antroNum(ed[i - 1]) ? true : false });
+    }
+    return { n, nMeses, kgMes, lista, ritmo };
+  };
+  const AntroJornada = ({ rec, pl, ritmo, editados }) => {
+    const j = antroEtapas(pl, rec, ritmo, editados);
+    if (!j) return null;
+    const ponto = (cor, cheio) => antroRelH("div", { style: { width: 12, height: 12, borderRadius: "50%", border: "2px solid " + cor, background: cheio ? cor : "#fff", marginTop: 3, flexShrink: 0, boxSizing: "border-box" } });
+    const linha = antroRelH("div", { style: { width: 2, flex: 1, minHeight: 28, background: "#e2e8f0" } });
+    const tile = (v, rot, bom) => antroRelH("div", { style: { background: bom ? "#ecfdf5" : "#fff7ed", borderRadius: 8, padding: "6px 2px", textAlign: "center" } },
+      antroRelH("div", { style: { fontSize: 15, fontWeight: 800, color: bom ? "#0f766e" : "#c2410c" } }, v),
+      antroRelH("div", { style: { fontSize: 11, color: "#64748b" } }, rot));
+    const sg = (v) => (Math.abs(v) < 0.05 ? "0,0" : (v > 0 ? "+" : "−") + antroFmt(Math.abs(v), 1)) + " kg";
+    return antroRelH(AntroRelSecao, { titulo: "Sua jornada" },
+      antroRelH("div", { style: { fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 2 } }, "De " + antroFmt(pl.W0, 1) + " kg até " + antroFmt(pl.Wt, 1) + " kg em cerca de " + j.nMeses + " meses"),
+      antroRelH("div", { style: { fontSize: 12, color: "#64748b", lineHeight: 1.5, marginBottom: 12 } }, "Cada etapa termina numa reavaliação. Chegar perto da meta da etapa já é sucesso. Ritmo " + ANTRO_RITMOS[ritmo].rot.toLowerCase() + ", cerca de " + antroFmt(j.kgMes, 1) + " kg por mês."),
+      antroRelH("div", { style: { display: "flex", gap: 10 } },
+        antroRelH("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", width: 14 } }, ponto("#0f766e", true), linha),
+        antroRelH("div", { style: { paddingBottom: 10 } },
+          antroRelH("div", { style: { fontSize: 13, fontWeight: 700, color: "#0f172a" } }, "Ponto de partida · " + antroData(rec.date)),
+          antroRelH("div", { style: { fontSize: 12, color: "#64748b" } }, antroFmt(pl.W0, 1) + " kg" + (pl.g0 ? " · gordura " + antroFmt(pl.g0, 1) + "%" : "") + (pl.m0 ? " · músculo " + antroFmt(pl.m0, 1) + "%" : "")))),
+      j.lista.map((e) => antroRelH("div", { key: e.i, className: "report-section", style: { display: "flex", gap: 10 } },
+        antroRelH("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", width: 14 } }, ponto(e.final ? "#FF5603" : "#fdba74", e.final), e.final ? null : linha),
+        antroRelH("div", { style: { flex: 1, paddingBottom: 12 } },
+          antroRelH("div", { style: { fontSize: 13, fontWeight: 700, color: "#0f172a" } }, (e.final ? "Meta final" : "Etapa " + e.i) + (e.quando ? " · " + e.quando : "")),
+          antroRelH("div", { style: { display: "grid", gridTemplateColumns: "repeat(" + (e.g != null ? (e.m != null ? 3 : 2) : 1) + ", minmax(0, 1fr))", gap: 6, marginTop: 6 } },
+            tile(antroFmt(e.W, 1) + " kg", "Peso", false),
+            e.g != null ? tile(antroFmt(e.g, 1) + "%", "Gordura", false) : null,
+            e.m != null ? tile(antroFmt(e.m, 1) + "%", "Músculo", true) : null),
+          antroRelH("div", { style: { fontSize: 11.5, color: "#475569", marginTop: 5 } }, sg(e.W - pl.W0) + " na balança" + (e.F != null ? " · gordura " + sg(e.F - pl.F0) : "") + (e.M != null ? " · músculo " + sg(e.M - pl.M0) : ""))))));
+  };
   const AntroIdeal = ({ rec, a, mg, pl }) => {
     const { cards, linhas } = antroIdeais(rec, a, mg, pl);
     const msgPlano = antroMensagemPlano(pl);
@@ -902,13 +962,55 @@
       setPMsg("salvando");
       const uid = await antroApi.usuarioId();
       const metas = limpar ? { modoMeta: "padrao", metaPeso: null, metaMusculoKg: null, metaGordura: null } : base && base.semComposicao ? { modoMeta: "peso", metaPeso: wNum, metaMusculoKg: null, metaGordura: null } : { modoMeta: pModo, metaPeso: Math.round(wNum * 10) / 10, metaMusculoKg: pModo === "musculo" ? Math.round((base.M0 + gNum) * 1000) / 1000 : null, metaGordura: pModo === "gordura" ? Math.round(fNum * 10) / 10 : null };
-      const novo = { ...r0, relatorio: { ...r0.relatorio || {}, ...metas, metaMusculo: null, ultimaMeta: null } };
+      const novo = { ...r0, relatorio: { ...r0.relatorio || {}, ...metas, metaMusculo: null, ultimaMeta: null, etapasPeso: null } };
       const ok = await antroApi.salvar(st.id, uid, novo);
       if (ok) {
         setR0(novo);
         if (limpar && sug) { setWTxt(fmtIn(sug.Wt)); setGTxt(fmtIn(Math.max(0, sug.Mt - sug.M0))); setFTxt(fmtIn(sug.gAlvo)); }
       }
       setPMsg(ok ? (limpar ? "limpo" : "ok") : "erro");
+    };
+    const ritmoAtual = antroRitmoDe(r0, anterior);
+    const etapasCalc = antroEtapas(pl, r0, ritmoAtual, r0.relatorio && r0.relatorio.etapasPeso);
+    const [etTxt, setEtTxt] = useState({});
+    const [jMsg, setJMsg] = useState("");
+    const salvarJornada = async (campos) => {
+      setJMsg("salvando");
+      const uid = await antroApi.usuarioId();
+      const novo = { ...r0, relatorio: { ...r0.relatorio || {}, ...campos } };
+      const ok = await antroApi.salvar(st.id, uid, novo);
+      if (ok) { setR0(novo); setEtTxt({}); }
+      setJMsg(ok ? "ok" : "erro");
+    };
+    const jornadaEditor = () => {
+      if (!etapasCalc) return null;
+      const inter = etapasCalc.lista.filter((e) => !e.final);
+      const ritmoBtn = (k) => antroRelH("button", { key: k, type: "button", onClick: () => salvarJornada({ ritmo: k, etapasPeso: null }), style: { flex: 1, height: 34, borderRadius: 9, border: "1.5px solid " + (ritmoAtual === k ? "#FF5603" : "#e2e8f0"), background: ritmoAtual === k ? "#fff4ee" : "#fff", color: ritmoAtual === k ? "#c2410c" : "#475569", fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" } }, ANTRO_RITMOS[k].rot);
+      const algumEditado = inter.some((e) => e.editado);
+      const mudou = Object.keys(etTxt).length > 0;
+      return antroRelH("div", { className: "no-print", style: { background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: 12, marginBottom: 10 } },
+        antroRelH("div", { style: { fontSize: 14, fontWeight: 800, color: "#0f172a" } }, "Jornada em etapas"),
+        antroRelH("div", { style: { fontSize: 11.5, color: "#64748b", margin: "2px 0 10px", lineHeight: 1.45 } }, "Usa as metas salvas no planejador. Etapas de 2 meses, alinhadas às reavaliações."),
+        antroRelH("div", { style: { display: "flex", gap: 6 } }, Object.keys(ANTRO_RITMOS).map(ritmoBtn)),
+        antroRelH("div", { style: { fontSize: 11.5, color: "#64748b", margin: "6px 0 10px" } }, ANTRO_RITMOS[ritmoAtual].desc + " Cerca de " + antroFmt(ANTRO_RITMOS[ritmoAtual].pct, 2) + "% do peso por semana (" + antroFmt(etapasCalc.kgMes, 1) + " kg por mês)."),
+        inter.length ? antroRelH("div", null,
+          antroRelH("div", { style: { fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 6 } }, "Peso de cada etapa"),
+          inter.map((e) => antroRelH("div", { key: e.i, style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 6 } },
+            antroRelH("span", { style: { fontSize: 12.5, color: "#0f172a", width: 116, whiteSpace: "nowrap" } }, "Etapa " + e.i + (e.quando ? " · " + e.quando : "")),
+            antroRelH("input", { type: "text", inputMode: "decimal", value: etTxt[e.i] != null ? etTxt[e.i] : String(Math.round(e.W * 10) / 10).replace(".", ","), onChange: (ev) => { setEtTxt({ ...etTxt, [e.i]: ev.target.value }); setJMsg(""); }, style: { width: 80, height: 34, border: "1.5px solid " + (e.editado ? "#fdba74" : "#e2e8f0"), borderRadius: 9, padding: "0 10px", fontSize: 14, fontWeight: 700, fontFamily: "inherit" } }),
+            antroRelH("span", { style: { fontSize: 12, color: "#64748b" } }, "kg" + (e.editado ? " · ajustado" : "")))),
+          antroRelH("div", { style: { fontSize: 12, color: "#64748b", marginBottom: 8 } }, "Meta final: " + antroFmt(pl.Wt, 1) + " kg (definida no planejador)"),
+          antroRelH("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
+            mudou ? btn(jMsg === "salvando" ? "Salvando..." : "Salvar etapas", () => {
+              const pesos = inter.map((e) => {
+                const v = etTxt[e.i] != null ? antroNum(String(etTxt[e.i]).replace(",", ".")) : e.W;
+                return v && v >= 30 && v <= 250 ? Math.round(v * 10) / 10 : Math.round(e.W * 10) / 10;
+              });
+              salvarJornada({ etapasPeso: { n: etapasCalc.n, pesos } });
+            }, true) : null,
+            algumEditado ? btn("Recalcular automático", () => salvarJornada({ etapasPeso: null })) : null)) : antroRelH("div", { style: { fontSize: 12, color: "#64748b" } }, "Com esse ritmo, a meta é atingida numa única etapa."),
+        jMsg === "ok" ? antroRelH("div", { style: { fontSize: 12, color: ANTRO_VERDE, fontWeight: 700, marginTop: 8 } }, "Jornada salva. O aluno vê as mesmas etapas.") : null,
+        jMsg === "erro" ? antroRelH("div", { style: { fontSize: 12, color: "#dc2626", fontWeight: 700, marginTop: 8 } }, "Não consegui salvar. Tente de novo.") : null);
     };
     const planejador = () => {
       if (!base) return null;
@@ -999,6 +1101,7 @@
         antroRelH("div", { style: { fontSize: 13, color: r0.liberadoAluno ? ANTRO_VERDE : "#475569", fontWeight: 700 } }, r0.liberadoAluno ? "Visível no app do aluno" : "Oculto do aluno"),
         btn(liberando ? "Salvando..." : r0.liberadoAluno ? "Ocultar do aluno" : "Liberar para o aluno", alternarLiberado, !r0.liberadoAluno)),
       !aluno && planejador(),
+      !aluno && jornadaEditor(),
       !aluno && antroRelH("div", { className: "no-print", style: { display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", margin: "0 0 12px" } },
         editando ? btn(salvo === "salvando" ? "Salvando..." : "Salvar textos", salvarTextos, true) : btn("✏️ Editar textos", () => { setEditando(true); setSalvo(""); }),
         editando ? btn("Gerar de novo", () => setTextos(antroTextos(rec, st))) : null,
@@ -1042,6 +1145,7 @@
                 return antroRelH(AntroRelLinha, { key: b[0], rotulo: rot, valor: antroFmt(v, dec) + (b[2] === "%" ? "%" : b[2] === "nível" ? "" : " " + b[2]), cl: cl || r.cl, refTxt: r.txt });
               })))),
         antroRelH(AntroIdeal, { rec, a, mg, pl }),
+        antroRelH(AntroJornada, { rec, pl, ritmo: ritmoAtual, editados: r0.relatorio && r0.relatorio.etapasPeso }),
         (rec.membros || rec.tronco) && antroRelH(AntroRelSecao, { titulo: "Perímetros" },
           rec.membros && antroRelH("table", { style: { width: "100%", borderCollapse: "collapse", marginBottom: rec.tronco ? 10 : 0 } },
             antroRelH("thead", null, antroRelH("tr", null, ["Medida", "Direito", "Esquerdo", "Diferença"].map((t, i) => antroRelH("th", { key: t, style: { ...antroTh, textAlign: i ? "right" : "left" } }, t)))),
@@ -1082,10 +1186,11 @@
       return c ? c.relatorio[campo] : null;
     };
     const modo = herda("modoMeta");
-    if (!modo) return ant;
+    const ritmo = herda("ritmo");
+    if (!modo) return ritmo ? { ...ant, relatorio: { ...ant.relatorio || {}, ritmo } } : ant;
     const fonte = ok.slice().reverse().find((x) => x.relatorio && x.relatorio.modoMeta);
     const r = fonte.relatorio;
-    return { ...ant, relatorio: { ...ant.relatorio || {}, modoMeta: r.modoMeta, metaPeso: r.metaPeso || null, metaMusculoKg: r.metaMusculoKg || null, metaGordura: r.metaGordura || null } };
+    return { ...ant, relatorio: { ...ant.relatorio || {}, modoMeta: r.modoMeta, metaPeso: r.metaPeso || null, metaMusculoKg: r.metaMusculoKg || null, metaGordura: r.metaGordura || null, ritmo } };
   };
   const AntroSeletor = ({ st, autoId, onAbrir }) => {
     const [lista, setLista] = useState(null);
