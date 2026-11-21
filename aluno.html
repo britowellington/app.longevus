@@ -1504,7 +1504,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
   const [lastSessions,setLastSessions]=useState([]);
   const [showCelebration,setShowCelebration]=useState(false);
   const [saveError,setSaveError]=useState("");
-  const [tab,setTab]=useState("inicio"); // inicio | treino | programacao | avaliacao
+  const [tab,setTab]=useState(()=>{ try{ sessionStorage.setItem("lv_ctx","aluno"); const t=new URLSearchParams(location.search).get("tab"); if(["inicio","treino","programacao","alimentacao","avaliacao"].includes(t)) return t; }catch(e){} return "inicio"; }); // inicio | treino | programacao | avaliacao
   const [abrirAtiv,setAbrirAtiv]=useState(false);
   const irAtividadeExtra = () => { setAbrirAtiv(true); setTab("alimentacao"); };
   const [atividades,setAtividades]=useState([]);

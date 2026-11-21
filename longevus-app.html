@@ -189,7 +189,7 @@ const pf = rp && rp.ok ? ((await rp.json())[0]||{}) : {};
 if(pf.l360) m.l360 = { titulo:pf.l360.nome||"Longevus 360", valor:valorBR(pf.l360.valor) };
 if(pf.mente) m.mente = { titulo:pf.mente.nome||"Mente Ativa", valor:valorBR(pf.mente.valor) };
 const itens = ri && ri.ok ? await ri.json() : [];
-(itens||[]).forEach(x=>{ const d=x.data||{}; if(d.tipo==="parceiro" || d.produto==="indique") return; if(d.produto==="mente"){ if(!m.mente.valor) m.mente.valor=valorBR(d.valor||d.preco); return; } m[x.id] = { titulo:d.titulo||"Serviço", valor:valorBR(d.valor||d.preco) }; });
+(itens||[]).forEach(x=>{ const d=x.data||{}; if(d.tipo==="parceiro" || d.produto==="indique") return; if(d.produto==="mente"){ if(!m.mente.valor) m.mente.valor=valorBR(d.valor||d.preco); return; } if(d.produto==="elo"){ m.elo = { titulo:d.titulo||"Elo 60+", valor:valorBR(d.valor||d.preco) }; return; } m[x.id] = { titulo:d.titulo||"Serviço", valor:valorBR(d.valor||d.preco) }; });
 _precosVit = m;
 setTimeout(()=>{ _precosVit=null; }, 60000);
 } catch(e) {}
@@ -1109,6 +1109,87 @@ return (
 </Card>
 );
 };
+// ---- Elo 60+: acesso por aluno, usando a matrícula do Elo (ma_jornada_matriculas) ----
+const ELO_MODELO_ID = "mente-ativa-30";
+const digElo = (t) => String(t||"").replace(/\D/g,"");
+const acharMatriculaElo = (rows, st) => {
+const email = String(st.portalEmail||st.email||"").trim().toLowerCase();
+const tel = digElo(st.whatsapp||st.phone||st.telefone).slice(-9);
+return (rows||[]).find(m=>{
+const vals = Object.values(m||{});
+if(email && vals.some(v=>typeof v==="string" && v.trim().toLowerCase()===email)) return true;
+if(tel.length>=8){ const w = digElo(m.whatsapp||m.telefone||m.phone).slice(-9); if(w && w===tel) return true; }
+return false;
+}) || null;
+};
+const eloLerMatriculas = async () => {
+const headers = await DB.authHeaders();
+const r = await fetch(SUPA_URL+"/rest/v1/ma_jornada_matriculas?select=*&modelo_id=eq."+ELO_MODELO_ID, { headers });
+return r.ok ? await r.json() : [];
+};
+const eloAcao = async (matriculaId, acao) => {
+const headers = await DB.authHeaders();
+const r = await fetch(SUPA_URL+"/rest/v1/rpc/ma_definir_pagamento", { method:"POST", headers:{ ...headers, "Content-Type":"application/json" }, body: JSON.stringify({ p_matricula:matriculaId, p_acao:acao }) });
+return r.ok;
+};
+const eloStatusDe = (m) => !m ? null : m.status==="bloqueado" ? "bloqueado" : m.pagamento_status==="isento" ? "bonus" : m.pagamento_status==="pago" ? "pago" : "aguardando";
+const eloAplicar = async (m, alvo) => {
+const atual = eloStatusDe(m);
+if(atual===alvo) return true;
+if(alvo==="bloqueado") return eloAcao(m.id||m.matricula_id, "bloquear");
+const ok = await eloAcao(m.id||m.matricula_id, alvo==="bonus" ? "isentar" : "confirmar");
+if(ok && m.status==="bloqueado") await eloAcao(m.id||m.matricula_id, "desbloquear");
+return ok;
+};
+// Aplica o que o professor deixou combinado para quem ainda não tinha entrado no Elo 60+
+const sincronizarElo = async (students, setStudents) => {
+const pend = (students||[]).filter(s=>s.eloAcesso && s.eloAcesso.pendente && s.eloAcesso.status!=="bloqueado");
+if(!pend.length) return;
+try {
+const rows = await eloLerMatriculas();
+for(const s of pend){ const m = acharMatriculaElo(rows, s); if(!m) continue; if(await eloAplicar(m, s.eloAcesso.status)) setStudents(p=>p.map(x=>x.id!==s.id?x:{ ...x, eloAcesso:{ ...(x.eloAcesso||{}), pendente:false, aplicadoEm:todayStr() } })); }
+} catch(e) {}
+};
+const EloFicha = ({ st, setStudents }) => {
+const [mat, setMat] = useState(undefined);
+const [salvando, setSalvando] = useState(false);
+const carregar = async () => { try { const rows = await eloLerMatriculas(); const m = acharMatriculaElo(rows, st); setMat(m); if(m && st.eloAcesso && st.eloAcesso.pendente && st.eloAcesso.status!=="bloqueado"){ if(await eloAplicar(m, st.eloAcesso.status)){ setStudents(p=>p.map(x=>x.id!==st.id?x:{ ...x, eloAcesso:{ ...(x.eloAcesso||{}), pendente:false, aplicadoEm:todayStr() } })); const rows2 = await eloLerMatriculas(); setMat(acharMatriculaElo(rows2, st)); } } } catch(e) { setMat(null); } };
+useEffect(()=>{ carregar(); },[st.id]);
+const pre = st.eloAcesso || {};
+const atual = mat ? eloStatusDe(mat) : (pre.status || "bloqueado");
+const escolher = async (k) => {
+if(salvando || k===atual) return;
+const pr = (await precosVitrine()).elo || { titulo:"Elo 60+", valor:19.9 };
+const titulo = pr.titulo || "Elo 60+";
+let v = null;
+if(k==="pago"){ v = pedirValorVit("o "+titulo, pr.valor); if(v===null) return; }
+setSalvando(true);
+let ok = true;
+if(mat) ok = await eloAplicar(mat, k);
+if(ok){
+setStudents(p=>p.map(x=>x.id!==st.id?x:{ ...x, eloAcesso:{ status:k, pendente:!mat, em:todayStr() } }));
+if(k==="pago") registrarVitrine(setStudents, st, "venda", "elo", titulo, v);
+if(k==="bonus") registrarVitrine(setStudents, st, "bonus", "elo", titulo, pr.valor);
+if(mat){ try { const rows = await eloLerMatriculas(); setMat(acharMatriculaElo(rows, st)); } catch(e) {} }
+} else window.alert("Não consegui mudar o acesso no Elo 60+. Tente de novo ou use o painel do Elo 60+.");
+setSalvando(false);
+};
+const sub = mat===undefined ? "Carregando..." : !mat ? (pre.status && pre.status!=="bloqueado" ? "Ainda não entrou. Fica "+(pre.status==="bonus"?"de bônus":"como pago")+" quando ele entrar." : "Ainda não entrou no Elo 60+.") : atual==="aguardando" ? "Entrou e está aguardando o pagamento."+(mat.pagamento_prazo?" Prazo: "+fmt(String(mat.pagamento_prazo).slice(0,10))+".":"") : atual==="bonus" ? "Liberado de bônus." : atual==="pago" ? "Pago." : "Acesso bloqueado.";
+return (
+<Card style={{ padding:"12px 14px",marginBottom:16 }}>
+<div style={{ display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,marginBottom:8 }}>
+<div style={{ fontSize:12,fontWeight:700,color:"#334155" }}>Elo 60+</div>
+<div style={{ fontSize:11,color:atual==="aguardando"?"#b45309":"#64748b",textAlign:"right" }}>{sub}</div>
+</div>
+<div style={{ display:"flex",gap:6,opacity:salvando?0.6:1 }}>
+{[["bloqueado","Bloqueado"],["bonus","Bônus"],["pago","Pago"]].map(([k,lb])=>(
+<button key={k} disabled={salvando||mat===undefined} onClick={()=>escolher(k)} style={{ flex:1,padding:"8px 4px",borderRadius:9,border:"1.5px solid "+(atual===k?"#FF5603":"#e2e8f0"),background:atual===k?"#fff4ee":"#fff",color:atual===k?"#c2410c":"#64748b",fontWeight:700,fontSize:12.5,cursor:"pointer",fontFamily:"inherit" }}>{lb}</button>
+))}
+</div>
+{mat && mat.inicio && <div style={{ marginTop:8,fontSize:11.5,color:"#64748b" }}>{"Começou a jornada em "+fmt(String(mat.inicio).slice(0,10))+"."}</div>}
+</Card>
+);
+};
 const MenteAtivaFicha = ({ st, setStudents }) => {
 const [res,setRes]=useState(null);
 const [aberto,setAberto]=useState(false);
@@ -1272,6 +1353,7 @@ return (
 );
 };
 const Dashboard = ({ students, setStudents, setLeads, assessments, dailyLogs, pagamentos, receitasExtras, nav, programs, pendenciasLogin, pendingQCount }) => {
+useEffect(()=>{ if(setStudents && students && students.length) sincronizarElo(students, setStudents); },[students && students.length]);
 const [turmas, setTurmas] = useState(()=>{ try { return JSON.parse(localStorage.getItem("circuito_turmas")||"[]"); } catch(e) { return []; } });
 const [bioPend, setBioPend] = useState([]);
 useEffect(()=>{ (async()=>{
@@ -2966,6 +3048,7 @@ return (
   );
 })()}
 <MenteAtivaFicha st={st} setStudents={setStudents}/>
+<EloFicha st={st} setStudents={setStudents}/>
 <ServicosVitrineFicha st={st} setStudents={setStudents}/>
 {(()=>{ const hs=[...(st.vitrineHist||[])].reverse(); if(!hs.length) return null; const tv=hs.filter(h=>h.tipo==="venda").reduce((a,h)=>a+h.valor,0), tb=hs.filter(h=>h.tipo==="bonus").reduce((a,h)=>a+h.valor,0); return (
 <Card style={{ padding:"12px 14px",marginBottom:16 }}>
@@ -10358,7 +10441,7 @@ const limpo = p.filter(pg => !(pg.agendaEntryId && pg.status==="previsto" && !id
 return limpo.length!==p.length ? limpo : p;
 });
 },[agendaEntries, dbReady]);
-const [page,setPage]=useState("dashboard");
+const [page,setPage]=useState(()=>{ try{ sessionStorage.setItem("lv_ctx","painel"); const pg=new URLSearchParams(location.search).get("page"); if(["dashboard","students","assessments"].includes(pg)) return pg; }catch(e){} return "dashboard"; });
 const [pageProps,setPageProps]=useState({});
 // Sync local
 useEffect(()=>{LS.set("longevus_students",students);},[students]);
@@ -10458,7 +10541,7 @@ const menuItems=[
 ]},
 ];
 const ALL_MENU_IDS = menuItems.flatMap(m=>m.group?m.items.map(it=>it.id):[m.id]);
-const [menuOpen, setMenuOpen] = useState(false);
+const [menuOpen, setMenuOpen] = useState(()=>{ try{ return new URLSearchParams(location.search).get("menu")==="1"; }catch(e){ return false; } });
 const [openGroup, setOpenGroup] = useState(null);
 const [showSubscribe, setShowSubscribe] = useState(false);
 const activePage=page==="studentDetail"?"students":(["dashboard","students","assessments","daily","reports","documents","program","cognitivehub","profile","questionarios","vincular","extraatividades","financeiro","agenda","leads","condominios","contrato","materiais","vitrine"].includes(page)?page:null);
