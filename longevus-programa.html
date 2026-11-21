@@ -808,6 +808,187 @@ const ExThumb = ({ ex, w=64, h=48, iconSize=20 }) => {
   return <div style={{width:w,height:h,borderRadius:8,background:"#f1f5f9",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:iconSize}}>{ex?.icone||"🏋️"}</div>;
 };
 
+// ─── PERIODIZAÇÃO AERÓBICA · CARDIO FINAL (24 semanas) ──────────────────────
+// prog.cardio = { treinos:{A:{ergo:"esteira"},B:{ergo:"bike"}}, intervalado:"A", nivel:"padrao"|"iniciante",
+//                 idade, fcRepouso, fcMax, soPSE (betabloqueador), quedas }
+// A semana de cada treino = nº de sessões já concluídas daquele treino + 1 (máx. 24).
+const CARDIO_ERGOS={
+  esteira:{nome:"Esteira",icone:"🚶",dica:{Z1:"Caminhada leve, sem inclinação.",Z2:"Caminhada confortável, inclinação de 0 a 2%.",Z3:"Mantenha a velocidade e suba a inclinação para 3 a 5%.",Z4:"Suba a inclinação para 6 a 8%, sem correr."}},
+  bike:{nome:"Bike",icone:"🚴",dica:{Z1:"Carga leve, 60 a 70 rpm.",Z2:"Carga leve a moderada, 60 a 80 rpm.",Z3:"Aumente a carga e mantenha 60 a 80 rpm.",Z4:"Carga mais alta, mantendo a rotação. Não acelere as pernas."}},
+  eliptico:{nome:"Elíptico",icone:"🏃",dica:{Z1:"Ritmo leve, resistência baixa.",Z2:"Ritmo confortável, resistência baixa a moderada.",Z3:"Aumente a resistência e mantenha o ritmo.",Z4:"Resistência alta, usando as alças móveis."}}
+};
+const CARDIO_ZONAS={
+  Z1:{nome:"Leve",pse:"2 a 3",fala:"conversa normal",fcr:[0.30,0.40],cor:"#0284c7",bg:"#f0f9ff",border:"#bae6fd"},
+  Z2:{nome:"Base",pse:"4 a 5",fala:"conversa tranquila",fcr:[0.40,0.55],cor:"#16a34a",bg:"#f0fdf4",border:"#bbf7d0"},
+  Z3:{nome:"Moderado forte",pse:"6",fala:"só frases curtas",fcr:[0.55,0.70],cor:"#d97706",bg:"#fffbeb",border:"#fde68a"},
+  Z4:{nome:"Forte",pse:"7 a 8",fala:"poucas palavras",fcr:[0.70,0.80],cor:"#dc2626",bg:"#fef2f2",border:"#fecaca"}
+};
+const CARDIO_CONT=[10,12,15,10,15,18,20,12, 20,20,20,15,20,20,20,15, 20,22,22,15,25,25,25,15];
+const CARDIO_INT={10:[4,60,120,"Z3"],11:[5,60,120,"Z3"],13:[4,120,120,"Z3"],14:[5,120,120,"Z3"],15:[5,120,90,"Z3"],17:[6,30,60,"Z4"],18:[8,30,60,"Z4"],19:[6,45,90,"Z4"],21:[8,45,90,"Z4"],22:[6,60,120,"Z4"],23:[7,60,120,"Z4"]};
+const CARDIO_DELOAD=[4,8,12,16,20];
+const CARDIO_RETESTE=[8,16,24];
+const cardioFase=s=>s<=8?"Base":(s<=16?"Desenvolvimento":"Consolidação");
+const cardioFmtSeg=s=>s<60?s+" s":(s%60===0?(s/60)+" min":Math.floor(s/60)+" min "+(s%60)+" s");
+const cardioTemErgo=cfg=>!!(cfg&&cfg.treinos&&Object.keys(cfg.treinos).some(k=>cfg.treinos[k]&&CARDIO_ERGOS[cfg.treinos[k].ergo]));
+const cardioIntervaladoKey=cfg=>{
+  if(!cfg||!cfg.treinos)return null;
+  if(cfg.intervalado&&cfg.treinos[cfg.intervalado]&&CARDIO_ERGOS[cfg.treinos[cfg.intervalado].ergo])return cfg.intervalado;
+  return Object.keys(cfg.treinos).find(k=>cfg.treinos[k]&&CARDIO_ERGOS[cfg.treinos[k].ergo])||null;
+};
+const cardioFC=(cfg,zona)=>{
+  if(!cfg||cfg.soPSE)return null;
+  const rep=parseFloat(cfg.fcRepouso),idade=parseFloat(cfg.idade);
+  const max=parseFloat(cfg.fcMax)||(idade?Math.round(208-0.7*idade):0);
+  if(!rep||!max||max<=rep)return null;
+  const z=CARDIO_ZONAS[zona];const r=max-rep;
+  return [Math.round(rep+r*z.fcr[0]),Math.round(rep+r*z.fcr[1])];
+};
+const cardioSemana=(cfg,treinoKey,semana)=>{
+  const t=cfg&&cfg.treinos&&cfg.treinos[treinoKey];
+  if(!t||!CARDIO_ERGOS[t.ergo])return null;
+  const s=Math.max(1,Math.min(24,parseInt(semana)||1));
+  const iniciante=cfg.nivel==="iniciante";
+  const base={ergo:t.ergo,semana:s,fase:cardioFase(s),deload:CARDIO_DELOAD.includes(s),reteste:CARDIO_RETESTE.includes(s)};
+  if(cardioIntervaladoKey(cfg)===treinoKey&&CARDIO_INT[s]){
+    const d=CARDIO_INT[s];const n=d[0],on=d[1],off=d[2];let zona=d[3];
+    if(zona==="Z4"&&(iniciante||(cfg.quedas&&t.ergo==="esteira")))zona="Z3";
+    const total=Math.round((180+n*on+(n-1)*off+120)/60);
+    return {...base,tipo:"intervalado",series:n,on,off,zona,total,texto:n+"x ("+cardioFmtSeg(on)+" forte / "+cardioFmtSeg(off)+" leve)"};
+  }
+  let min=CARDIO_CONT[s-1];
+  if(iniciante&&s<=8)min=Math.max(7,Math.round(min*0.7));
+  return {...base,tipo:"continuo",zona:"Z2",total:min,texto:min+" min contínuo"};
+};
+
+const CardioZonaChip=({cfg,zona,rotulo})=>{
+  const z=CARDIO_ZONAS[zona];const fc=cardioFC(cfg,zona);
+  return(
+    <div style={{flex:1,minWidth:120,background:z.bg,border:"1.5px solid "+z.border,borderRadius:9,padding:"7px 9px"}}>
+      <div style={{fontSize:10,fontWeight:800,color:z.cor,textTransform:"uppercase",letterSpacing:0.3}}>{rotulo} · {z.nome}</div>
+      <div style={{fontSize:12,fontWeight:700,color:"#0f172a",marginTop:2}}>{fc?("FC "+fc[0]+" a "+fc[1]+" bpm"):("PSE "+z.pse)}</div>
+      <div style={{fontSize:10.5,color:"#64748b",marginTop:1}}>{fc?("PSE "+z.pse+" · "):""}{z.fala}</div>
+    </div>
+  );
+};
+
+const CardioCard=({cfg,treinoKey,semana,mostrarReteste})=>{
+  const c=cardioSemana(cfg,treinoKey,semana);
+  if(!c)return null;
+  const eg=CARDIO_ERGOS[c.ergo];
+  return(
+    <div style={{background:"#fff",border:"1.5px solid #fecdd3",borderRadius:12,padding:"12px 13px",marginBottom:14}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:8}}>
+        <div style={{display:"flex",alignItems:"center",gap:7,fontSize:12,fontWeight:800,color:"#be123c",textTransform:"uppercase",letterSpacing:0.3}}>
+          <span style={{width:8,height:8,borderRadius:99,background:"#e11d48",flexShrink:0}}/>Cardio final · {eg.icone} {eg.nome}
+        </div>
+        <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",whiteSpace:"nowrap"}}>Sem. {c.semana} · {c.total} min</div>
+      </div>
+      <div style={{fontSize:15,fontWeight:800,color:"#0f172a"}}>{c.texto}</div>
+      <div style={{fontSize:11.5,color:"#64748b",marginTop:3,lineHeight:1.45}}>{c.tipo==="intervalado"?"Comece com 3 min leves e termine com 2 min leves.":"Os 3 primeiros e os 2 últimos minutos são leves."}</div>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:9}}>
+        {c.tipo==="intervalado"?(<>
+          <CardioZonaChip cfg={cfg} zona={c.zona} rotulo="Forte"/>
+          <CardioZonaChip cfg={cfg} zona="Z1" rotulo="Recuperação"/>
+        </>):(<CardioZonaChip cfg={cfg} zona="Z2" rotulo="Ritmo"/>)}
+      </div>
+      <div style={{fontSize:11.5,color:"#475569",marginTop:8,lineHeight:1.5}}><b>Como ajustar:</b> {eg.dica[c.zona]}{c.tipo==="intervalado"?(" Na parte leve: "+eg.dica.Z1.charAt(0).toLowerCase()+eg.dica.Z1.slice(1)):""}</div>
+      {cfg.quedas&&c.ergo==="esteira"&&<div style={{fontSize:11,color:"#b45309",marginTop:6}}>Segure no apoio da esteira sempre que precisar.</div>}
+      {cfg.soPSE&&<div style={{fontSize:11,color:"#64748b",marginTop:6}}>Guie-se pela sensação de esforço (PSE de 0 a 10), não pela frequência cardíaca.</div>}
+      {c.deload&&<div style={{fontSize:11,color:"#15803d",marginTop:6,fontWeight:700}}>Semana mais leve para o corpo recuperar.</div>}
+      {mostrarReteste&&c.reteste&&<div style={{fontSize:11,color:"#7e22ce",marginTop:6,fontWeight:700}}>Semana de reteste: agende a reavaliação cardio.</div>}
+    </div>
+  );
+};
+
+// Dados da última avaliação para o cardio (idade, FC de repouso, betabloqueador, quedas)
+const cardioAutoDe=(student,a)=>{
+  const ca=(a&&a.cardioAssessment)||{};const er=ca.ergo||{},pr=ca.pred||{};
+  const meds=[...(er.medications||[]),...(pr.medications||[])].map(m=>String(m).toLowerCase());
+  const idade=student&&student.dob?calcAge(student.dob):"";
+  return {idade:(idade==="?"?"":String(idade||"")),fcRepouso:String(er.fcRest||pr.fcRest||""),fcMax:String(er.fcMax||""),soPSE:meds.some(m=>m.includes("beta")),quedas:!!(a&&a.funcRisk&&(a.funcRisk.falls||a.funcRisk.balance))};
+};
+const cardioLimpo=cfg=>{
+  if(!cardioTemErgo(cfg))return null;
+  const treinos={};Object.keys(cfg.treinos).forEach(k=>{if(cfg.treinos[k]&&CARDIO_ERGOS[cfg.treinos[k].ergo])treinos[k]={ergo:cfg.treinos[k].ergo};});
+  return {...cfg,treinos,intervalado:cardioIntervaladoKey({...cfg,treinos})};
+};
+
+const CardioChipBtn=({on,onClick,children,cor})=>(
+  <button type="button" onClick={onClick} style={{border:"1.5px solid "+(on?(cor||"#e11d48"):"#e2e8f0"),background:on?"#fff1f2":"#f8fafc",color:on?(cor||"#be123c"):"#64748b",borderRadius:7,padding:"6px 10px",fontSize:11.5,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{children}</button>
+);
+
+const CardioEditor=({cfg,setCfg,treinos,nomeT,auto})=>{
+  const set=patch=>setCfg(c=>({...c,...patch}));
+  const setErgo=(t,ergo)=>setCfg(c=>{const tr={...(c.treinos||{})};if(ergo)tr[t]={ergo};else delete tr[t];const n={...c,treinos:tr};return {...n,intervalado:cardioIntervaladoKey(n)};});
+  const comErgo=treinos.filter(t=>cfg.treinos&&cfg.treinos[t]&&CARDIO_ERGOS[cfg.treinos[t].ergo]);
+  const intKey=cardioIntervaladoKey(cfg);
+  const inp={width:"100%",padding:"8px 9px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box"};
+  const lbl={fontSize:11,fontWeight:700,color:"#64748b",marginBottom:6};
+  return(
+    <Card style={{marginBottom:10,padding:"12px 14px",border:"1.5px solid #fecdd3"}}>
+      <div style={{fontSize:11,fontWeight:800,color:"#be123c",marginBottom:4,textTransform:"uppercase"}}>Cardio final · 24 semanas</div>
+      <div style={{fontSize:11,color:"#94a3b8",marginBottom:10,lineHeight:1.5}}>Escolha o ergômetro de cada treino. A progressão das 24 semanas é gerada sozinha e entra no fim do treino.</div>
+      {treinos.map(t=>{const at=cfg.treinos&&cfg.treinos[t]?cfg.treinos[t].ergo:"";return(
+        <div key={t} style={{marginBottom:9}}>
+          <div style={{fontSize:12,fontWeight:700,color:"#0f172a",marginBottom:5}}>{nomeT(t)}</div>
+          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+            <CardioChipBtn on={!at} cor="#0f172a" onClick={()=>setErgo(t,"")}>Nenhum</CardioChipBtn>
+            {Object.keys(CARDIO_ERGOS).map(k=>(<CardioChipBtn key={k} on={at===k} onClick={()=>setErgo(t,k)}>{CARDIO_ERGOS[k].icone} {CARDIO_ERGOS[k].nome}</CardioChipBtn>))}
+          </div>
+        </div>
+      );})}
+      {comErgo.length>0&&(<>
+        <div style={{...lbl,marginTop:12}}>Intervalado das semanas 9 a 24 entra no</div>
+        <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+          {comErgo.map(t=>(<CardioChipBtn key={t} on={intKey===t} onClick={()=>set({intervalado:t})}>{nomeT(t)}</CardioChipBtn>))}
+        </div>
+        <div style={{fontSize:10.5,color:"#94a3b8",marginTop:4}}>Os outros treinos seguem contínuo em ritmo base.</div>
+        <div style={{...lbl,marginTop:12}}>Nível</div>
+        <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+          <CardioChipBtn on={cfg.nivel!=="iniciante"} onClick={()=>set({nivel:"padrao"})}>Padrão</CardioChipBtn>
+          <CardioChipBtn on={cfg.nivel==="iniciante"} onClick={()=>set({nivel:"iniciante"})}>Iniciante</CardioChipBtn>
+        </div>
+        {cfg.nivel==="iniciante"&&<div style={{fontSize:10.5,color:"#94a3b8",marginTop:4}}>Bloco 1 com 30% menos tempo e intervalado do Bloco 3 em moderado forte.</div>}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:14,marginBottom:6}}>
+          <div style={{...lbl,marginBottom:0}}>Dados para a FC alvo</div>
+          {auto&&<button type="button" onClick={()=>set(auto)} style={{border:"none",background:"transparent",color:"#be123c",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",padding:0}}>Puxar da última avaliação</button>}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
+          <div><div style={{fontSize:10,color:"#94a3b8",marginBottom:3}}>Idade</div><input inputMode="numeric" value={cfg.idade||""} onChange={e=>set({idade:e.target.value})} style={inp}/></div>
+          <div><div style={{fontSize:10,color:"#94a3b8",marginBottom:3}}>FC repouso</div><input inputMode="numeric" value={cfg.fcRepouso||""} onChange={e=>set({fcRepouso:e.target.value})} style={inp}/></div>
+          <div><div style={{fontSize:10,color:"#94a3b8",marginBottom:3}}>FC máx (opc.)</div><input inputMode="numeric" value={cfg.fcMax||""} onChange={e=>set({fcMax:e.target.value})} placeholder={cfg.idade?String(Math.round(208-0.7*parseFloat(cfg.idade))):""} style={inp}/></div>
+        </div>
+        <div style={{fontSize:10.5,color:"#94a3b8",marginTop:4,lineHeight:1.5}}>Sem FC máx, usa Tanaka (208 menos 0,7 x idade). Zonas por Karvonen. Sem FC de repouso, o aluno vê só a PSE.</div>
+        <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:10}}>
+          <CardioChipBtn on={!!cfg.soPSE} onClick={()=>set({soPSE:!cfg.soPSE})}>{cfg.soPSE?"✓ ":""}Usa betabloqueador (só PSE)</CardioChipBtn>
+          <CardioChipBtn on={!!cfg.quedas} onClick={()=>set({quedas:!cfg.quedas})}>{cfg.quedas?"✓ ":""}Risco de quedas</CardioChipBtn>
+        </div>
+        {cfg.quedas&&intKey&&cfg.treinos[intKey].ergo==="esteira"&&<div style={{fontSize:11,color:"#b45309",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:7,padding:"6px 9px",marginTop:8,lineHeight:1.5}}>Risco de quedas com intervalado na esteira: o forte fica em moderado forte. Se puder, use a bike no treino do intervalado.</div>}
+      </>)}
+    </Card>
+  );
+};
+
+const CardioPrevia=({cfg,treinoKey,nomeT})=>{
+  const [sem,setSem]=useState(1);
+  if(!cardioTemErgo(cfg))return null;
+  const tem=cfg.treinos&&cfg.treinos[treinoKey]&&CARDIO_ERGOS[cfg.treinos[treinoKey].ergo];
+  const btn={width:34,height:30,border:"1.5px solid #e2e8f0",borderRadius:8,background:"#fff",cursor:"pointer",color:"#475569",fontSize:14,fontWeight:700};
+  return(
+    <div style={{marginTop:6}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+        <div style={{fontSize:11,fontWeight:700,color:"#64748b",textTransform:"uppercase"}}>Prévia do cardio · {cardioFase(sem)}</div>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <button type="button" onClick={()=>setSem(s=>Math.max(1,s-1))} style={btn}>‹</button>
+          <div style={{fontSize:12,fontWeight:800,color:"#0f172a",minWidth:52,textAlign:"center"}}>Sem. {sem}</div>
+          <button type="button" onClick={()=>setSem(s=>Math.min(24,s+1))} style={btn}>›</button>
+        </div>
+      </div>
+      {tem?<CardioCard cfg={cfg} treinoKey={treinoKey} semana={sem} mostrarReteste={true}/>:<div style={{fontSize:12,color:"#94a3b8",background:"#f8fafc",border:"1.5px dashed #e2e8f0",borderRadius:10,padding:"10px 12px",marginBottom:14}}>{nomeT(treinoKey)} está sem cardio final.</div>}
+    </div>
+  );
+};
+
 // ─── MÉTODOS DE INTENSIFICAÇÃO ───────────────────────────────────────────────
 // tipo "grupo": ocupa N exercícios seguidos da lista, ligados por grupoId (B7, Tri7, Pré-exaustão)
 // tipo "individual": marca um único exercício e explica o que fazer na última série (Drop7, Rest-pause, 21s, Cluster)
@@ -1615,7 +1796,7 @@ const TREINOS_CASA_KEYS=["A","B","C","D"];
 const nomeTreinoDe=(nomes,t)=>((nomes&&nomes[t])||"").trim()||TREINO_DEFS[t]?.label||t;
 
 // ─── TELA: VER PROGRAMA ───────────────────────────────────────────────────────
-const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEdit})=>{
+const VerPrograma=({programId,programs,setPrograms,students,assessments,bibCustom,nav,autoEdit})=>{
   const prog=programs.find(p=>p.id===programId);
   const student=students.find(s=>s.id===prog?.studentId);
   const [editMode,setEditMode]=useState(!!autoEdit);
@@ -1631,6 +1812,11 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
   const [nomesEx,setNomesEx]=useState({});
   const [tituloEd,setTituloEd]=useState("");
   const [inicioEd,setInicioEd]=useState("");
+  const ultAvalCardio=(assessments||[]).filter(a=>a&&a.studentId===prog?.studentId).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0];
+  const cardioAuto=cardioAutoDe(student,ultAvalCardio);
+  const cardioInicial=()=>prog&&prog.cardio?JSON.parse(JSON.stringify(prog.cardio)):{treinos:{},intervalado:null,nivel:"padrao",...cardioAuto};
+  const [cardioEd,setCardioEd]=useState(null);
+  useEffect(()=>{if(prog)setCardioEd(cardioInicial());},[programId]);
   useEffect(()=>{if(prog){setTituloEd(prog.titulo||"");setInicioEd(prog.dataInicio||"");setPrescricao(JSON.parse(JSON.stringify(prog.prescricao||{})));setSequencia([...(prog.divisao?.sequencia||["A"])]);setNomes({...(prog.nomesTreinos||{})});setNomesEx({...(prog.nomesExercicios||{})});}},[programId]);
   if(!prog||!prescricao)return null;
   const abrirModeloModal=()=>{setModeloNome(prog.titulo||"Periodização");setModeloFeedback("");setModeloModal(true);};
@@ -1643,7 +1829,7 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
       categoria:prog.origem==="patologia"?prog.patologiaId:null,
       origemProgramaId:prog.id,
       vezesUsada:0,
-      data:{titulo:prog.titulo,freq:prog.freq,divisao:prog.divisao,nomesTreinos:prog.nomesTreinos||null,obs:prog.obs,prescricao,origem:prog.origem,patologiaId:prog.patologiaId||null}
+      data:{titulo:prog.titulo,freq:prog.freq,divisao:prog.divisao,nomesTreinos:prog.nomesTreinos||null,obs:prog.obs,prescricao,origem:prog.origem,patologiaId:prog.patologiaId||null,cardio:prog.cardio?{treinos:prog.cardio.treinos,intervalado:prog.cardio.intervalado||null,nivel:prog.cardio.nivel||"padrao"}:null}
     };
     const ok=await ModeloDB.save(modelo);
     setModeloSalvando(false);
@@ -1740,10 +1926,10 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
       if(!Object.keys(inativaNova[bKey]||{}).length)delete inativaNova[bKey];
     });
     const nomesExLimpos={};Object.keys(nomesEx).forEach(k=>{const v=(nomesEx[k]||"").trim();if(v)nomesExLimpos[k]=v;});
-    const editedProg={...prog,titulo:(tituloEd||"").trim()||prog.titulo||"Programa",dataInicio:inicioEd||null,prescricao:prescFinal,prescricaoInativa:Object.keys(inativaNova).length?inativaNova:null,freq:seqAtual.length,divisao:divisaoNova,nomesTreinos:Object.keys(nomesLimpos).length?nomesLimpos:null,nomesExercicios:nomesExLimpos,...(prog.blocosConfig?{blocosConfig:blocosConfigNovo}:{})};
+    const editedProg={...prog,titulo:(tituloEd||"").trim()||prog.titulo||"Programa",dataInicio:inicioEd||null,prescricao:prescFinal,prescricaoInativa:Object.keys(inativaNova).length?inativaNova:null,freq:seqAtual.length,divisao:divisaoNova,nomesTreinos:Object.keys(nomesLimpos).length?nomesLimpos:null,nomesExercicios:nomesExLimpos,cardio:cardioLimpo(cardioEd),...(prog.blocosConfig?{blocosConfig:blocosConfigNovo}:{})};
     const u=fresh.map(p=>p.id===prog.id?editedProg:p);setPrograms(u);LS.set("longevus_programs",u);ProgDB.save(editedProg);setEditMode(false);
   };
-  const cancelEdit=()=>{setTituloEd(prog.titulo||"");setInicioEd(prog.dataInicio||"");setPrescricao(JSON.parse(JSON.stringify(prog.prescricao)));setSequencia([...(prog.divisao?.sequencia||["A"])]);setNomes({...(prog.nomesTreinos||{})});setNomesEx({...(prog.nomesExercicios||{})});setTreinoIdx(0);setEditMode(false);};
+  const cancelEdit=()=>{setCardioEd(cardioInicial());setTituloEd(prog.titulo||"");setInicioEd(prog.dataInicio||"");setPrescricao(JSON.parse(JSON.stringify(prog.prescricao)));setSequencia([...(prog.divisao?.sequencia||["A"])]);setNomes({...(prog.nomesTreinos||{})});setNomesEx({...(prog.nomesExercicios||{})});setTreinoIdx(0);setEditMode(false);};
   const deletePrograma=()=>{if(!window.confirm("Remover?"))return;const fresh=LS.get("longevus_programs",programs);const u=fresh.filter(p=>p.id!==prog.id);setPrograms(u);LS.set("longevus_programs",u);ProgDB.remove(prog.id);nav("lista");};
   const updateSessao=(bKey,tKey,sessao)=>setPrescricao(p=>({...p,[bKey]:{...(p[bKey]||{}),[tKey]:sessao}}));
   // Quando o professor edita exercícios num bloco (troca, exclui ou adiciona), aplica a mesma
@@ -1894,6 +2080,7 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
         )}
         {blocoAtivo?.cicloIdx===0&&ehBlocoAlternado(blocoAtivo)&&<div style={{fontSize:11,color:"#0891b2",marginTop:8}}>ℹ️ Ciclo 1 usa {blocoAtivo.treinos.includes("EMP")?"Full Body Empurrar/Puxar Alternado":"A/B/C alternado por segmento"} (padrão iniciante). A divisão acima entra a partir do Ciclo 2.</div>}
       </Card>
+      {editMode&&cardioEd&&<CardioEditor cfg={cardioEd} setCfg={setCardioEd} treinos={treinosRenomeaveis} nomeT={nomeT} auto={cardioAuto}/>}
       {prog.obs&&<Card style={{marginBottom:10,background:"#f8fafc",padding:"9px 13px"}}><div style={{fontSize:12,color:"#64748b",fontStyle:"italic"}}>📝 {prog.obs}</div></Card>}
       <div style={{display:"flex",gap:4,marginBottom:8,background:"#f1f5f9",borderRadius:10,padding:3,overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
         {blocosAtivos.map((b,i)=>(<button key={b.key} onClick={()=>{setBlocoIdx(i);setTreinoIdx(0);}} style={{flex:"0 0 auto",minWidth:44,border:"none",borderRadius:8,padding:"6px 6px",fontSize:10,fontWeight:700,cursor:"pointer",background:blocoIdx===i?b.cor.bg:"transparent",color:blocoIdx===i?b.cor.texto:"#94a3b8",lineHeight:1.3}}><div>B{i+1}</div><div style={{fontSize:8,marginTop:1,whiteSpace:"nowrap"}}>{b.semanas}</div></button>))}
@@ -1921,6 +2108,7 @@ const VerPrograma=({programId,programs,setPrograms,students,bibCustom,nav,autoEd
         onMetodoForward={(mk,patches)=>propagarMetodoCiclo(treinoAtivo,mk,patches)}
       />
       </NomesExCtx.Provider>
+      {(editMode?cardioEd:prog.cardio)&&<CardioPrevia key={treinoAtivo} cfg={editMode?cardioEd:prog.cardio} treinoKey={treinoAtivo} nomeT={nomeT}/>}
       <div style={{marginTop:16,paddingTop:14,borderTop:"1px solid #f1f5f9"}}>
         <Btn variant="danger" full onClick={deletePrograma}>🗑 Remover programa</Btn>
       </div>
@@ -3241,7 +3429,7 @@ const ListaModelos=({modelos,loading,nav}) => {
   );
 };
 
-const VerModelo=({modeloId,modelos,setModelos,bibCustom,students,programs,setPrograms,nav}) => {
+const VerModelo=({modeloId,modelos,setModelos,bibCustom,students,assessments,programs,setPrograms,nav}) => {
   const modelo=modelos.find(m=>m.id===modeloId);
   const [blocoIdx,setBlocoIdx]=useState(0);
   const [treinoIdx,setTreinoIdx]=useState(0);
@@ -3304,7 +3492,8 @@ const VerModelo=({modeloId,modelos,setModelos,bibCustom,students,programs,setPro
       ...(d.local?{local:d.local}:{}),
       criadoEm:new Date().toISOString().slice(0,10),assessmentRef:null,
       origem:d.origem||"manual",patologiaId:d.patologiaId||null,ciclo:cicloAtual,variante:1,
-      origemModeloId:modelo.id,ocultoAluno:enviarOculto===true,dataInicio:dataInicioSel||hojeISOProg()
+      origemModeloId:modelo.id,ocultoAluno:enviarOculto===true,dataInicio:dataInicioSel||hojeISOProg(),
+      cardio:cardioTemErgo(d.cardio)?{...d.cardio,...cardioAutoDe(students.find(s=>s.id===alunoSel),(assessments||[]).filter(a=>a&&a.studentId===alunoSel).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0])}:null
     };
     const fresh=LS.get("longevus_programs",programs);
     const updated=[...fresh.filter(p=>p.id!==novoProg.id),novoProg];
@@ -3644,10 +3833,10 @@ function AppInner(){
           {page==="lista"&&<Lista programs={programs} students={students} nav={nav}/>}
           {page==="modelos"&&<ListaModelos modelos={modelos} loading={modelosLoading} nav={nav}/>}
           {page==="instalarFB50"&&<InstalarModelosFB50 bibCustom={bibCustom} modelos={modelos} setModelos={setModelos} nav={nav}/>}
-          {page==="modeloVer"&&<VerModelo modeloId={pageProps.id} modelos={modelos} setModelos={setModelos} bibCustom={bibCustom} students={students} programs={programs} setPrograms={setPrograms} nav={nav}/>}
+          {page==="modeloVer"&&<VerModelo modeloId={pageProps.id} modelos={modelos} setModelos={setModelos} bibCustom={bibCustom} students={students} assessments={assessments} programs={programs} setPrograms={setPrograms} nav={nav}/>}
           {page==="novo"&&<NovoProgramaWizard students={students} assessments={assessments} programs={programs} setPrograms={setPrograms} bibCustom={bibCustom} nav={nav} prefillStudentId={pageProps.studentId}/>}
           {page==="novoConsultoria"&&<NovoPeriodizacaoConsultoria students={students} programs={programs} setPrograms={setPrograms} bibCustom={bibCustom} nav={nav} prefillStudentId={pageProps.studentId}/>}
-          {page==="ver"&&<VerPrograma programId={pageProps.id} programs={programs} setPrograms={setPrograms} students={students} bibCustom={bibCustom} nav={nav} autoEdit={pageProps.autoEdit}/>}
+          {page==="ver"&&<VerPrograma programId={pageProps.id} programs={programs} setPrograms={setPrograms} students={students} assessments={assessments} bibCustom={bibCustom} nav={nav} autoEdit={pageProps.autoEdit}/>}
         </div>
       </div>
       {/* Barra de navegação global */}
