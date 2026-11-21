@@ -324,11 +324,17 @@ function montarFases(aula){
       if(d>0) fases.push({ tipo:"descanso", s:d, est:est[0], i:0, v:v+1 });
     }
   }
+  (aula.extras || []).filter(x=>x.tipo==="dupla").forEach(x=>{
+    const e = { nome:x.nome, obs:x.obs, exercicioId:x.exercicioId };
+    const app = String(x.exercicioId||"").indexOf("app:")===0;
+    fases.push({ tipo:"troca", s:Number(aula.troca)||15, est:e, i:-1, v:voltas, dupla:true });
+    fases.push({ tipo: app ? "app" : "dupla", s: app ? 120 : (Number(x.segundos)||60), est:e, i:-1, v:voltas, dupla:true, extra:x });
+  });
   return fases;
 }
 const minutosAula = (aula) => Math.max(1, Math.round(montarFases(aula).reduce((a,f)=>a+f.s,0)/60));
 
-function Player({ aula, exs, onFim, onSair }){
+function Player({ aula, exs, onFim, onSair, salvarJogo }){
   const fases = useRef(montarFases(aula)).current;
   const [idx,setIdx] = useState(0);
   const [resta,setResta] = useState(fases.length ? fases[0].s : 0);
@@ -340,21 +346,21 @@ function Player({ aula, exs, onFim, onSair }){
   const restaRef = useRef(fases.length ? fases[0].s : 0);
   useEffect(()=>()=>{ telaAcesa(false); },[]);
   useEffect(()=>{
-    if(!rodando || fim) return;
+    if(!rodando || fim || (fases[idx] && fases[idx].tipo==="app")) return;
     const t = setInterval(()=>{
       let n = restaRef.current - 1;
       if(n>0 && n<=3) bipe(660, 0.12);
       if(n<=0){
         const prox = idxRef.current + 1;
         if(prox>=fases.length){ bipe(990, 0.6); restaRef.current = 0; setResta(0); setFim(true); setRodando(false); telaAcesa(false); return; }
-        bipe(fases[prox].tipo==="exec" ? 990 : 520, 0.35);
+        bipe(fases[prox].tipo==="exec" || fases[prox].tipo==="dupla" ? 990 : 520, 0.35);
         idxRef.current = prox; setIdx(prox); setComoFazer(false);
         n = fases[prox].s;
       }
       restaRef.current = n; setResta(n);
     }, 1000);
     return ()=>clearInterval(t);
-  },[rodando, fim]);
+  },[rodando, fim, idx]);
   const comecar = () => { somLiberar(); bipe(990,0.3); setIniciou(true); setRodando(true); telaAcesa(true); };
   const pular = () => { const prox = idxRef.current + 1; if(prox>=fases.length){ setFim(true); setRodando(false); telaAcesa(false); return; } idxRef.current = prox; restaRef.current = fases[prox].s; setIdx(prox); setResta(fases[prox].s); setComoFazer(false); };
   if(!fases.length) return <Carregando texto="Aula sem estações."/>;
@@ -369,19 +375,21 @@ function Player({ aula, exs, onFim, onSair }){
     </div>
   );
   const f = fases[idx];
+  if(f.tipo==="app") return <Extra item={f.extra} exs={exs} salvarJogo={salvarJogo} onVoltar={()=>{ telaAcesa(false); onSair(); }} onFeito={pular}/>;
   const totalEst = (aula.estacoes||[]).length;
   const ex = f.est && exs[f.est.exercicioId];
-  const rotulo = f.tipo==="prep" ? "Prepare-se" : f.tipo==="exec" ? "Agora" : f.tipo==="troca" ? "Troque de estação" : f.tipo==="descanso" ? "Descanse e beba água" : "Pausa";
-  const corTempo = f.tipo==="exec" ? "#FDBA74" : "#93C5FD";
+  const ativo = f.tipo==="exec" || f.tipo==="dupla";
+  const rotulo = f.tipo==="prep" ? "Prepare-se" : f.tipo==="exec" ? "Agora" : f.tipo==="dupla" ? "Dupla tarefa · agora" : f.tipo==="troca" ? (f.dupla ? "Última etapa" : "Troque de estação") : f.tipo==="descanso" ? "Descanse e beba água" : "Pausa";
+  const corTempo = ativo ? "#FDBA74" : "#93C5FD";
   return (
     <div style={{minHeight:"100vh",background:C.escuro,color:"#fff",padding:"14px 16px 20px",display:"flex",flexDirection:"column",gap:12}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <Voltar onClick={()=>{ telaAcesa(false); onSair(); }}/>
-        <span style={{fontSize:14,color:C.cinzaClaro,textAlign:"right"}}>{"Volta "+f.v+" de "+(aula.voltas||1)}<br/>{"Estação "+(f.i+1)+" de "+totalEst}</span>
+        <span style={{fontSize:14,color:C.cinzaClaro,textAlign:"right"}}>{f.dupla ? "Dupla tarefa" : "Volta "+f.v+" de "+(aula.voltas||1)}<br/>{f.dupla ? "corpo e mente juntos" : "Estação "+(f.i+1)+" de "+totalEst}</span>
       </div>
       <Midia ex={ex} nome={f.est && f.est.nome} altura={210}/>
       <div>
-        <div style={{fontSize:13,fontWeight:800,letterSpacing:"0.08em",color:corTempo,textTransform:"uppercase"}}>{f.tipo==="exec" ? rotulo : rotulo+" · a seguir"}</div>
+        <div style={{fontSize:13,fontWeight:800,letterSpacing:"0.08em",color:corTempo,textTransform:"uppercase"}}>{ativo ? rotulo : rotulo+" · a seguir"}</div>
         <div style={{fontSize:24,fontWeight:800,lineHeight:1.2,marginTop:4}}>{f.est ? f.est.nome : ""}</div>
         <div style={{fontSize:15.5,color:"#CBD5E1",lineHeight:1.5,marginTop:6}}>{f.est ? f.est.obs : ""}</div>
         {ex && ex.execucao && <button type="button" onClick={()=>setComoFazer(v=>!v)} style={{marginTop:8,border:"none",background:"none",color:"#FDBA74",fontSize:15,fontWeight:700,cursor:"pointer",padding:0}}>{comoFazer?"Esconder explicação":"Ver como fazer"}</button>}
@@ -666,10 +674,11 @@ function TelaDia({ j, info, aula, exs, testes, onVoltar, onAbrir, feitos, marcar
   if(!aula) return <Carregando texto="Carregando a aula do dia..."/>;
   const testeFeito = testes.some(t=>t.dia===info.dia);
   const precisaTeste = info.teste && !testeFeito;
-  const extras = aula.extras || [];
+  const extras = (aula.extras || []).filter(x=>x.tipo!=="dupla");
+  const temDupla = (aula.extras || []).some(x=>x.tipo==="dupla");
   const passos = [];
   if(info.teste) passos.push({ id:"teste", titulo:"Teste do dia "+info.dia, sub:"Força, equilíbrio e memória · cerca de 5 min", feito:testeFeito });
-  passos.push({ id:"aula", titulo:aula.nome, sub:(aula.estacoes||[]).length+" exercícios · "+(aula.voltas||1)+(Number(aula.voltas)===1?" volta":" voltas")+" · cerca de "+minutosAula(aula)+" min", feito:!!feitos.aula });
+  passos.push({ id:"aula", titulo:aula.nome, sub:(aula.estacoes||[]).length+" exercícios · "+(aula.voltas||1)+(Number(aula.voltas)===1?" volta":" voltas")+(temDupla?" + dupla tarefa":"")+" · cerca de "+minutosAula(aula)+" min", feito:!!feitos.aula });
   extras.forEach((x,k)=>{ passos.push({ id:"extra"+k, titulo:x.tipo==="desafio" ? "Desafio do dia" : x.nome, sub:x.tipo==="desafio" ? "Jogo da Mente Ativa escolhido para você" : "Dupla tarefa · corpo e mente juntos", feito:!!feitos["extra"+k], extra:x }); });
   const tudo = passos.every(p=>p.feito);
   const semana = info.semana;
@@ -835,7 +844,7 @@ function Jornada({ j, recarregar }){
   let conteudo = null;
   if(tela==="pix") conteudo = <TelaPix j={j} prof={base.prof} onVoltar={()=>{ lsSet("ma-pix-visto-"+j.matricula_id,"1"); setTela("inicio"); }} onMarcado={()=>recarregar(true)}/>;
   else if(tela==="dia") conteudo = <TelaDia j={j} info={diaAberto} aula={aula} exs={exs} testes={base.tes} feitos={feitos} marcarFeito={marcarFeito} onVoltar={()=>{ ssSet("ma-dia-aberto-"+j.matricula_id, null); setTela("inicio"); }} onAbrir={abrirPasso} onConcluir={concluir} concluindo={concluindo}/>;
-  else if(tela==="player" && aula) conteudo = <Player aula={aula} exs={exs} onSair={()=>setTela("dia")} onFim={()=>{ marcarFeito("aula"); setTela("dia"); }}/>;
+  else if(tela==="player" && aula) conteudo = <Player aula={aula} exs={exs} salvarJogo={salvarJogo} onSair={()=>setTela("dia")} onFim={()=>{ marcarFeito("aula"); setTela("dia"); }}/>;
   else if(tela==="extra" && extraAberto) conteudo = <Extra item={extraAberto.extra} exs={exs} salvarJogo={salvarJogo} onVoltar={()=>setTela("dia")} onFeito={()=>{ marcarFeito(extraAberto.id); setTela("dia"); }}/>;
   else if(tela==="teste") conteudo = <TelaTeste dia={diaAberto.dia} j={j} testes={base.tes} onVoltar={()=>setTela("dia")} onSalvo={()=>carregar()}/>;
   else conteudo = <Inicio j={j} prof={base.prof} calendario={base.cal} prog={base.prog} aulaNomes={base.nomes} onComecar={abrirDia} onPix={()=>setTela("pix")}/>;
