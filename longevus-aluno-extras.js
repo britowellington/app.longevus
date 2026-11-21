@@ -1321,7 +1321,7 @@
       add(c.date, { rotulo: (presencial ? "Treino presencial" : "Treino") + (min ? " · " + Math.round(min) + " min" : ""), kcal: energiaKcal(met, peso, min), semDuracao: !min, tipo: "treino" });
     });
     (atividades || []).forEach((a) => {
-      const def = ENERGIA_ATIVIDADES.find((x) => x[0] === a.tipo) || [a.tipo, a.rotulo || "Atividade", a.met || 4];
+      const def = (a.modalidade ? null : ENERGIA_ATIVIDADES.find((x) => x[0] === a.tipo)) || [a.tipo, a.rotulo || "Atividade", nutriNum(a.met) || 4];
       const minA = Math.round(nutriNum(a.minutos));
       const doRelogio = a.fonte === "relogio" && nutriNum(a.kcal) > 0;
       add(a.date, { id: a.id, rotulo: def[1] + (minA ? " · " + minA + " min" : "") + (doRelogio ? " · relógio" : ""), kcal: doRelogio ? Math.round(nutriNum(a.kcal)) : energiaKcal(def[2], peso, minA), tipo: "extra" });
@@ -1409,16 +1409,32 @@
     const linha = (rot, val, cor, forte, borda) => /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", gap: 10, padding: "6px 0", borderTop: borda ? "1px solid #f1f5f9" : "none", fontSize: forte ? 15 : 14 } }, /* @__PURE__ */ React.createElement("span", { style: { fontWeight: forte ? 800 : 500 } }, rot), /* @__PURE__ */ React.createElement("b", { style: { color: cor || NUTRI_ESCURO, whiteSpace: "nowrap" } }, val));
     return /* @__PURE__ */ React.createElement("div", { style: { background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 14, padding: "12px 14px", marginBottom: 14 } }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setAberto((a) => !a), "aria-expanded": aberto, style: { width: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", display: "flex", justifyContent: "space-between", alignItems: "center", color: NUTRI_ESCURO } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 14, fontWeight: 800 } }, "Como sua meta foi calculada"), /* @__PURE__ */ React.createElement("span", { "aria-hidden": "true", style: { fontSize: 12, color: "#64748b" } }, aberto ? "▲" : "▼")), aberto && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 8 } }, linha("Metabolismo em repouso", nutriFmt(e.tmb.v)), linha("Rotina do dia a dia", "+ " + nutriFmt(e.rotinaExtra)), (itens || []).map((it, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "6px 0", fontSize: 14 } }, /* @__PURE__ */ React.createElement("span", null, it.rotulo, it.semDuracao ? /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, color: "#64748b" } }, " · sem duração") : null, React.createElement("span", { style: { marginLeft: 6, fontSize: 10, fontWeight: 800, borderRadius: 10, padding: "2px 7px", whiteSpace: "nowrap", verticalAlign: "1px", background: it.tipo === "extra" ? "#FFF4EE" : "#E9F5F2", color: it.tipo === "extra" ? PR.laranjaTxt : PR.verde } }, it.tipo === "extra" ? "extra" : "automático")), /* @__PURE__ */ React.createElement("span", { style: { display: "flex", alignItems: "center", gap: 6 } }, /* @__PURE__ */ React.createElement("b", { style: { color: "#0f766e", whiteSpace: "nowrap" } }, "+ " + nutriFmt(it.kcal)), it.tipo === "extra" && onApagarAtividade && /* @__PURE__ */ React.createElement("button", { type: "button", "aria-label": "Remover " + it.rotulo, onClick: () => onApagarAtividade(it.id), style: { width: 28, height: 28, borderRadius: 14, border: "none", background: "#f1f5f9", color: "#64748b", cursor: "pointer", fontSize: 14 } }, "×")))), linha("Gasto estimado", nutriFmt(e.gasto), null, false, true), e.sinal !== 0 && linha(e.sinal < 0 ? "Déficit definido pelo seu personal" : "Superávit definido pelo seu personal", (e.sinal < 0 ? "- " : "+ ") + nutriFmt(e.ajuste), NUTRI_LARANJA_TXT), e.fixa && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b", padding: "4px 0" } }, "Sua meta foi definida pelo seu nutricionista e não muda com o exercício."), linha("Meta do dia", nutriFmt(e.meta) + " kcal", null, true, true), e.travou && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b", marginTop: 4 } }, "A meta nunca fica abaixo do seu metabolismo em repouso."), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b", marginTop: 6, lineHeight: 1.45 } }, "Nos dias com treino a meta sobe. Todos os valores são estimativas.")));
   };
+  const ENERGIA_MODALIDADES = [
+    ["caminhada", "Caminhada", [2.8, 3.5, 4.3]],
+    ["corrida", "Corrida", [7, 9, 11]],
+    ["bicicleta", "Bicicleta", [4, 6, 8]],
+    ["natacao", "Natação", [5, 6, 8]],
+    ["hidro", "Hidroginástica", [3, 4, 5.5]],
+    ["danca", "Dança", [3.5, 4.5, 6]],
+    ["pilates", "Pilates", [2.5, 3, 4]],
+    ["yoga", "Yoga / alongamento", [2, 2.5, 3.5]],
+    ["musculacao", "Musculação", [3, 3.5, 5]],
+    ["outra", "Outra atividade", [3, 4, 6]]
+  ];
+  const ENERGIA_INTENSIDADES = [["leve", "Leve", "Dá para conversar fácil"], ["moderada", "Moderada", "Fala, mas não canta"], ["intensa", "Intensa", "Fala com dificuldade"]];
   const ENERGIA_TEMPOS = [15, 20, 30, 45, 60, 90];
   const EnergiaAtividadeForm = ({ dia, peso, studentId, ownerId, onSalvo, onCancelar }) => {
     const [tipo, setTipo] = useState("caminhada");
+    const [intens, setIntens] = useState("moderada");
     const [min, setMin] = useState(30);
     const [minTxt, setMinTxt] = useState("");
     const [fonte, setFonte] = useState("estimado");
     const [kcalTxt, setKcalTxt] = useState("");
     const [salvando, setSalvando] = useState(false);
     const [erro, setErro] = useState("");
-    const def = ENERGIA_ATIVIDADES.find((x) => x[0] === tipo);
+    const modal = ENERGIA_MODALIDADES.find((x) => x[0] === tipo) || ENERGIA_MODALIDADES[0];
+    const iInt = Math.max(0, ENERGIA_INTENSIDADES.findIndex((x) => x[0] === intens));
+    const def = [tipo + "_" + intens, modal[1] + " " + ENERGIA_INTENSIDADES[iInt][1].toLowerCase(), modal[2][iInt]];
     const minutos = minTxt !== "" ? Math.round(nutriNum(minTxt)) : min;
     const relogio = fonte === "relogio";
     const kcalRel = Math.round(nutriNum(kcalTxt));
@@ -1431,7 +1447,7 @@
       }
       setSalvando(true);
       setErro("");
-      const a = { id: "at_" + nutriId(), date: dia, tipo, rotulo: def[1], minutos: minutos > 0 ? minutos : null, met: def[2], kcal, fonte, createdAt: (/* @__PURE__ */ new Date()).toISOString() };
+      const a = { id: "at_" + nutriId(), date: dia, tipo: def[0], modalidade: tipo, intensidade: intens, rotulo: def[1], minutos: minutos > 0 ? minutos : null, met: def[2], kcal, fonte, createdAt: (/* @__PURE__ */ new Date()).toISOString() };
       const ok = await energiaApi.salvarAtividade(studentId, ownerId, a);
       setSalvando(false);
       if (!ok) {
@@ -1441,7 +1457,7 @@
       onSalvo(a);
     };
     const campo = { height: 44, borderRadius: 12, border: "1.5px solid #e2e8f0", padding: "0 12px", fontSize: 16, fontWeight: 700, fontFamily: "inherit", color: NUTRI_ESCURO, boxSizing: "border-box", background: "#fff" };
-    return /* @__PURE__ */ React.createElement("div", { style: { padding: "14px 16px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 20, fontWeight: 800, marginBottom: 2 } }, "Outra atividade"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#64748b", marginBottom: 8 } }, "O que você fez fora do treino com o personal."), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6, marginBottom: 12 } }, ENERGIA_ATIVIDADES.map((a) => /* @__PURE__ */ React.createElement(EnergiaChip, { key: a[0], ativo: tipo === a[0], onClick: () => setTipo(a[0]), style: { minHeight: 40, fontSize: 12, lineHeight: 1.15, padding: "2px 4px" } }, a[0] === "outra" ? "Outra moderada" : a[1]))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, marginBottom: 6 } }, "Por quanto tempo?", relogio ? /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, fontWeight: 600, color: "#64748b" } }, " (opcional)") : null), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 6 } }, ENERGIA_TEMPOS.map((m) => /* @__PURE__ */ React.createElement(EnergiaChip, { key: m, ativo: minTxt === "" && min === m, onClick: () => {
+    return /* @__PURE__ */ React.createElement("div", { style: { padding: "14px 16px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 20, fontWeight: 800, marginBottom: 2 } }, "Outra atividade"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#64748b", marginBottom: 8 } }, "O que você fez fora do treino com o personal."), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6, marginBottom: 12 } }, ENERGIA_MODALIDADES.map((a) => /* @__PURE__ */ React.createElement(EnergiaChip, { key: a[0], ativo: tipo === a[0], onClick: () => setTipo(a[0]), style: { minHeight: 40, fontSize: 12, lineHeight: 1.15, padding: "2px 4px" } }, a[0] === "yoga" ? "Yoga / alongar" : a[0] === "outra" ? "Outra" : a[1]))), React.createElement("div", { style: { fontSize: 14, fontWeight: 700, marginBottom: 6 } }, "Qual foi a intensidade?"), React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6, marginBottom: 12 } }, ENERGIA_INTENSIDADES.map((x) => React.createElement(EnergiaChip, { key: x[0], ativo: intens === x[0], onClick: () => setIntens(x[0]), style: { minHeight: 52, padding: "4px 4px", flexDirection: "column", gap: 1 } }, React.createElement("span", { style: { display: "block", fontSize: 13.5, fontWeight: 800 } }, x[1]), React.createElement("span", { style: { display: "block", fontSize: 10.5, fontWeight: 500, opacity: 0.8, lineHeight: 1.2 } }, x[2])))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700, marginBottom: 6 } }, "Por quanto tempo?", relogio ? /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, fontWeight: 600, color: "#64748b" } }, " (opcional)") : null), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 6 } }, ENERGIA_TEMPOS.map((m) => /* @__PURE__ */ React.createElement(EnergiaChip, { key: m, ativo: minTxt === "" && min === m, onClick: () => {
       setMin(m);
       setMinTxt("");
     }, style: { flex: 1, padding: "0 2px", minHeight: 40 } }, m + " min"))), /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 12, fontSize: 13, color: "#475569" } }, "Outro tempo:", /* @__PURE__ */ React.createElement("input", { inputMode: "numeric", value: minTxt, onChange: (e) => setMinTxt(e.target.value.replace(/[^0-9]/g, "").slice(0, 3)), placeholder: "ex.: 37", "aria-label": "Outro tempo em minutos", style: { ...campo, width: 90, height: 40, border: "1.5px solid " + (minTxt !== "" ? NUTRI_ESCURO : "#e2e8f0") } }), "min"), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, background: "#f1f5f9", borderRadius: 12, padding: 3, marginBottom: 8 } }, [["estimado", "Calcular pelo tempo"], ["relogio", "Tenho do relógio"]].map((o) => /* @__PURE__ */ React.createElement("button", { key: o[0], type: "button", onClick: () => {
