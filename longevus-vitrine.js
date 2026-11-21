@@ -62,8 +62,9 @@
     return waLink(numero, montarMensagem(d, ctx));
   };
   const valorNum = (v) => { const n = parseFloat(String(v || "").replace(/[^0-9,\.]/g, "").replace(/\.(?=\d{3})/g, "").replace(",", ".")); return isFinite(n) && n > 0 ? n : 0; };
-  const valorPix = (d) => valorNum((d && d.valor) || (d && d.preco));
-  const ehPix = (d) => d && d.tipo !== "parceiro" && d.cobranca === "pix" && valorPix(d) > 0;
+  const valorPix = (d) => (d && d.cobranca === "plano" && Number(d.planoValor) > 0) ? Number(d.planoValor) : valorNum((d && d.valor) || (d && d.preco));
+  // Todo serviço próprio com valor pode ser pago no app (para si ou de presente)
+  const ehPix = (d) => d && d.tipo !== "parceiro" && d.produto !== "indique" && d.produto !== "elo" && valorPix(d) > 0;
   const fmtReal = (n) => "R$ " + n.toFixed(2).replace(".", ",");
   const fmtWhats = (v) => {
     const d = String(v || "").replace(/\D/g, "").slice(0, 11);
@@ -168,16 +169,16 @@
       avisoPersonal ? h("a", { href: avisoPersonal, target: "_blank", rel: "noopener noreferrer", style: { display: "block", marginTop: 12, textAlign: "center", fontSize: 13, color: COR.cinza, fontWeight: 600 } }, "Falar com meu personal") : null,
       h("button", { type: "button", onClick: onFechar, style: { display: "block", margin: "8px auto 0", background: "transparent", border: "none", color: COR.cinza, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", padding: 8 } }, "Concluir"));
   };
-  const PixPagamento = ({ item, ctx, ownerId, studentId }) => {
+  const PixPagamento = ({ item, ctx, ownerId, studentId, soPresente }) => {
     const qr = useRef(null);
     const [copiado, setCopiado] = useState(false);
     const [avisado, setAvisado] = useState(false);
-    const [para, setPara] = useState("mim");
+    const [para, setPara] = useState(soPresente ? "presente" : "mim");
     const [pr, setPr] = useState({ nome: "", whatsapp: "", mensagem: "" });
     const [erro, setErro] = useState("");
     const [vale, setVale] = useState(null);
     const [valeAberto, setValeAberto] = useState(false);
-    const aceita = item.aceitaPresente !== false && !item.produto;
+    const aceita = soPresente || item.cobranca === "plano" || item.aceitaPresente !== false;
     const presente = aceita && para === "presente";
     const px = window.__LV_PIX;
     const valor = valorPix(item);
@@ -197,7 +198,7 @@
       (async () => {
         try {
           const hd = { ...(await api.headers()), Prefer: "return=minimal" };
-          const corpo = { id: novoId("av"), owner_id: String(ownerId), student_id: String(studentId), servico: item.produto === "mente" ? "Mente Ativa" : (item.titulo || "Serviço") };
+          const corpo = { id: novoId("av"), owner_id: String(ownerId), student_id: String(studentId), servico: item.produto === "mente" ? "Mente Ativa" : item.produto === "l360" ? (item.titulo || "Longevus 360") : (item.titulo || "Serviço") };
           const comItem = item.produto ? corpo : { ...corpo, item_id: item.id };
           let r = await fetch(SUPA_URL + "/rest/v1/l360_avisos", { method: "POST", headers: hd, body: JSON.stringify(dadosPresente ? { ...comItem, presente: dadosPresente } : comItem) });
           if (!r.ok && !item.produto) r = await fetch(SUPA_URL + "/rest/v1/l360_avisos", { method: "POST", headers: hd, body: JSON.stringify(dadosPresente ? { ...corpo, presente: dadosPresente } : corpo) });
@@ -226,14 +227,14 @@
     const segBtn = (k, rotulo, icone) => h("button", { type: "button", onClick: () => { setPara(k); setErro(""); }, style: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 0", borderRadius: 9, border: "none", background: para === k ? "#fff" : "transparent", color: para === k ? COR.laranja : "#475569", boxShadow: para === k ? "0 1px 3px rgba(0,0,0,0.1)" : "none", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit" } }, icone, rotulo);
     return h("div", null,
       aceita ? h("div", null,
-        tit("Para quem é?"),
-        h("div", { style: { display: "flex", background: COR.borda, borderRadius: 12, padding: 4 } }, segBtn("mim", "Para mim"), segBtn("presente", "Presente", h(IcPresente, { cor: para === "presente" ? COR.laranja : "#475569" }))),
+        soPresente ? null : tit("Para quem é?"),
+        soPresente ? null : h("div", { style: { display: "flex", background: COR.borda, borderRadius: 12, padding: 4 } }, segBtn("mim", "Para mim"), segBtn("presente", "Presente", h(IcPresente, { cor: para === "presente" ? COR.laranja : "#475569" }))),
         presente ? h("div", { style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 16, padding: 14, marginTop: 12 } },
           h("div", { style: { marginBottom: 12 } }, rot("Nome de quem vai ganhar"), h("input", { value: pr.nome, onChange: (e) => setPr({ ...pr, nome: e.target.value }), placeholder: "Ex.: Maria Souza", autoComplete: "off", style: inp })),
           h("div", { style: { marginBottom: 12 } }, rot("WhatsApp dessa pessoa"), h("input", { value: pr.whatsapp, onChange: (e) => setPr({ ...pr, whatsapp: fmtWhats(e.target.value) }), placeholder: "(11) 90000-0000", inputMode: "tel", autoComplete: "off", style: inp })),
           h("div", null, rot("Mensagem no vale (opcional)"), h("textarea", { value: pr.mensagem, onChange: (e) => setPr({ ...pr, mensagem: e.target.value.slice(0, 160) }), rows: 2, placeholder: "Ex.: Feliz aniversário, mãe!", style: { ...inp, resize: "none", lineHeight: 1.4 } })),
           h("div", { style: { fontSize: 12, color: COR.cinza, lineHeight: 1.45, marginTop: 8 } }, "Depois do pagamento você recebe um vale-presente para enviar pelo WhatsApp.")) : null) : null,
-      tit(item.produto === "mente" ? "Assinatura mensal" : "Pagamento"),
+      tit(presente ? "Pagamento do presente" : item.produto === "mente" || item.cobranca === "plano" ? "Assinatura mensal" : "Pagamento"),
       h("div", { style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 16, padding: 14, textAlign: "center" } },
         h("div", { style: { fontSize: 12, color: COR.cinza } }, "Valor"),
         h("div", { style: { fontSize: 26, fontWeight: 800, color: COR.escuro, marginBottom: 10 } }, fmtReal(valor)),
@@ -450,8 +451,9 @@
           h("div", { style: { ...card, padding: "2px 14px" } }, lista.map((x, i) => { const st = ST_INDIC[x.status] || ST_INDIC.enviado; return h("div", { key: x.id, style: { display: "flex", alignItems: "center", gap: 10, padding: "11px 0", borderTop: i ? "1px solid #F1F5F9" : "none", fontSize: 14 } }, h("b", null, x.nome), h("span", { style: { marginLeft: "auto", fontSize: 11.5, fontWeight: 800, borderRadius: 10, padding: "4px 9px", whiteSpace: "nowrap", background: st[1], color: st[2] } }, st[0])); }))) : null));
   };
   const linkElo = (entrar) => window.location.origin + window.location.pathname.replace(/[^/]*$/, "") + "elo60.html" + (entrar ? "?entrar=1" : "");
-  const EloTela = ({ item, ctx, onFechar, onClique }) => {
+  const EloTela = ({ item, ctx, onFechar, onClique, ownerId, studentId }) => {
     const d = item;
+    const [eloPresente, setEloPresente] = useState(false);
     const [jornada, setJornada] = useState(undefined);
     const [linkOk, setLinkOk] = useState(false);
     useEffect(() => {
@@ -501,12 +503,14 @@
           h("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
             h("a", { href: linkElo(true) + "&ctx=aluno", onClick: onClique, style: { ...botao, background: COR.laranja, color: "#fff" } }, "Quero para mim"),
             h("div", { style: { fontSize: 12.5, color: COR.cinza, lineHeight: 1.5, textAlign: "center", marginTop: -2 } }, "Entre com o mesmo e-mail e senha do seu app. O pagamento é feito por Pix lá dentro.")),
-          h("button", { type: "button", onClick: presentear, style: { ...botao, border: "1.5px solid " + COR.borda, background: "#fff", color: COR.escuro, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, lineHeight: "normal" } }, h(IcPresente, { cor: COR.laranja, tam: 18 }), "Dar de presente para alguém"),
+          eloPresente ? null : h("button", { type: "button", onClick: () => { setEloPresente(true); if (onClique) onClique(); }, style: { ...botao, border: "1.5px solid " + COR.borda, background: "#fff", color: COR.escuro, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, lineHeight: "normal" } }, h(IcPresente, { cor: COR.laranja, tam: 18 }), "Dar de presente para alguém"),
+          eloPresente ? h("div", { style: { marginTop: -8 } }, h(PixPagamento, { item: { ...d, produto: "elo", valor: valorNum(preco), aceitaPresente: true }, ctx, ownerId, studentId, soPresente: true }),
+            h("button", { type: "button", onClick: presentear, style: { background: "transparent", border: "none", color: COR.cinza, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", padding: 8, width: "100%", textDecoration: "underline" } }, "Prefere só mandar o link para a pessoa comprar?")) : null,
           h("button", { type: "button", onClick: copiar, style: { background: "transparent", border: "none", color: COR.laranjaTxt, fontWeight: 700, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit", padding: 6 } }, linkOk ? "Link copiado" : "Copiar o link do " + (d.titulo || "Elo 60+")))));
   };
   const Detalhe = ({ item, ctx, onFechar, onClique, ownerId, studentId }) => {
     if (item && item.produto === "indique") return h(IndiqueTela, { item, ctx, ownerId, studentId, onFechar });
-    if (item && item.produto === "elo") return h(EloTela, { item, ctx, onFechar, onClique });
+    if (item && item.produto === "elo") return h(EloTela, { item, ctx, onFechar, onClique, ownerId, studentId });
     const d = item;
     const parceiro = d.tipo === "parceiro";
     const lib = liberado(ctx, d);
@@ -1077,5 +1081,5 @@
       }));
   };
 
-  window.LongevusVitrine = { Carrossel, Clube: ClubeTela, Painel, montarMensagem, linkDoItem };
+  window.LongevusVitrine = { Carrossel, Clube: ClubeTela, Painel, montarMensagem, linkDoItem, PixPagamento };
 })();

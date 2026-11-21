@@ -29,7 +29,7 @@ var __LOGO_WB__ = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAFuCAYAAAC
 <script type="text/babel" data-presets="react" src="longevus-condominios.js"></script>
 <script src="longevus-alimentacao.js?v=14"></script>
 <script src="longevus-antropometria.js?v=5"></script>
-<script src="longevus-vitrine.js?v=20"></script>
+<script src="longevus-vitrine.js?v=21"></script>
 <script src="longevus-materiais.js?v=1"></script>
 <script type="text/babel" data-presets="react">
 const SenhaInput = ({style, ...rest}) => {
@@ -1280,7 +1280,9 @@ return [...p,{ id:uid(), name:pr.nome, whatsapp:pr.whatsapp||"", instagram:"", i
 });
 };
 const confirmarServ = async (a, st) => {
-const pr = (await precosVitrine())[a.item_id] || {};
+const pmap = await precosVitrine();
+const sv = String(a.servico||"");
+const pr = pmap[a.item_id] || (sv==="Mente Ativa" ? pmap.mente : /360/.test(sv) ? pmap.l360 : /elo/i.test(sv) ? pmap.elo : null) || {};
 const titulo = a.servico || pr.titulo || "Serviço";
 const v = pedirValorVit(titulo, pr.valor); if(v===null) return false;
 if (a.item_id && !(a.presente && a.presente.nome)) {
@@ -1331,7 +1333,7 @@ return (
 <button onClick={()=>{ marcar(a); nav("studentDetail",{studentId:st.id}); }} style={{ flex:1,padding:"8px",borderRadius:9,border:"none",background:"#FF5603",color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>Abrir aluno</button>
 <button onClick={()=>marcar(a)} style={{ flex:0.7,padding:"8px",borderRadius:9,border:"1.5px solid #fed7aa",background:"#fff",color:"#9a3412",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>Dispensar</button>
 </div>
-</Card>); const ehMente=a.servico==="Mente Ativa"; const servico=ehMente?null:a.servico; const pr=a.presente&&a.presente.nome?a.presente:null; const prWa=pr&&waNum(pr.whatsapp); return (
+</Card>); const ehMente=a.servico==="Mente Ativa"; const pr=a.presente&&a.presente.nome?a.presente:null; const servico=(ehMente&&!pr)?null:a.servico; const prWa=pr&&waNum(pr.whatsapp); return (
 <Card key={a.id} style={{ padding:"10px 14px",background:"#fff7ed",border:"1.5px solid #fed7aa" }}>
 {pr && <div style={{ display:"inline-block",fontSize:10.5,fontWeight:800,letterSpacing:"0.06em",color:"#C2410C",background:"#ffedd5",borderRadius:10,padding:"3px 8px",marginBottom:5 }}>🎁 PRESENTE</div>}
 <div onClick={()=>nav("studentDetail",{id:st.id})} style={{ fontSize:13,fontWeight:700,color:"#9a3412",cursor:"pointer" }}>{servico ? st.name+" avisou que pagou: "+servico : st.name+" avisou que pagou "+(ehMente?"a Mente Ativa":"o 360")}</div>

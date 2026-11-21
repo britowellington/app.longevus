@@ -21,7 +21,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="longevus-aluno-extras.js?v=29"></script>
 <script src="longevus-antropometria.js?v=6"></script>
-<script src="longevus-vitrine.js?v=20"></script>
+<script src="longevus-vitrine.js?v=21"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -2438,6 +2438,7 @@ const Oferta360 = ({acesso, profPix, studentName, studentId, ownerId, onVoltar})
   const qrRef = useRef(null);
   const [copiado,setCopiado]=useState(false);
   const [avisado,setAvisado]=useState(false);
+  const [para360,setPara360]=useState("mim");
   const pixKey = profPix?.pix_key;
   const payload = (pixKey && valor) ? buildPixPayload({
     pixKey,
@@ -2485,6 +2486,16 @@ const Oferta360 = ({acesso, profPix, studentName, studentId, ownerId, onVoltar})
         </div>
       </div>
       <div style={{flex:"1 1 auto",minHeight:0,overflowY:"auto",padding:"12px 18px 10px",display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
+        {window.LongevusVitrine && window.LongevusVitrine.PixPagamento && valor>0 && (
+          <div style={{width:"100%",display:"flex",background:"#E2E8F0",borderRadius:12,padding:4}}>
+            {[["mim","Para mim"],["presente","Presente"]].map(([k,t])=>(
+              <button key={k} type="button" onClick={()=>setPara360(k)} style={{flex:1,padding:"10px 0",borderRadius:9,border:"none",background:para360===k?"#fff":"transparent",color:para360===k?"#FF5603":"#475569",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"inherit",boxShadow:para360===k?"0 1px 3px rgba(15,23,42,0.12)":"none"}}>{t}</button>
+            ))}
+          </div>
+        )}
+        {para360==="presente" && window.LongevusVitrine && window.LongevusVitrine.PixPagamento ? (
+          <div style={{width:"100%"}}>{React.createElement(window.LongevusVitrine.PixPagamento, { item:{ id:"__360", titulo:nome, valor, produto:"l360", aceitaPresente:true, posPagamento:"Assim que o pagamento for confirmado, seu personal cria o acesso de quem ganhou." }, ctx:{ personal: profPix?.nome || "", personalWhats: profPix?.whatsapp || "" }, ownerId, studentId, soPresente:true })}</div>
+        ) : (<>
         <div style={{width:"100%",background:"#fff",borderRadius:16,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",boxShadow:"0 1px 2px rgba(15,23,42,0.06)"}}>
           <div>
             <div style={{fontSize:11.5,color:"#64748B"}}>Mensalidade</div>
@@ -2504,6 +2515,7 @@ const Oferta360 = ({acesso, profPix, studentName, studentId, ownerId, onVoltar})
           <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" onClick={avisar} style={{display:"block",width:"100%",boxSizing:"border-box",height:44,lineHeight:"44px",textAlign:"center",borderRadius:22,background:avisado?"#f0fdf4":"#16a34a",color:avisado?"#15803d":"#fff",border:avisado?"1.5px solid #bbf7d0":"none",fontWeight:800,fontSize:14,textDecoration:"none"}}>{avisado?"Aviso enviado ao seu personal":"Avisar que já paguei"}</a>
         )}
         <div style={{fontSize:11,color:"#94A3B8",textAlign:"center",lineHeight:1.4}}>Seu personal confirma o pagamento e libera o acesso.</div>
+        </>)}
       </div>
     </div>
   );
