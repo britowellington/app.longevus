@@ -811,8 +811,7 @@
     const fixa = plano.metaFixa ? nutriNum(plano.metaFixa) : null;
     if (fixa) return { tmb: t, fator, rotina, rotinaExtra: rotina - t.v, exercicio: ex, gasto, sinal: 0, ajuste: 0, meta: Math.round(fixa), travou: false, fixa: true };
     let meta = gasto + sinal * ajuste;
-    const travou = meta < t.v;
-    if (travou) meta = t.v;
+    const travou = false;
     return { tmb: t, fator, rotina, rotinaExtra: rotina - t.v, exercicio: ex, gasto, sinal, ajuste, meta: Math.round(meta), travou };
   };
   const EnergiaChip = ({ ativo, onClick, children, style }) => /* @__PURE__ */ React.createElement("button", { type: "button", onClick, style: { minHeight: 44, padding: "0 10px", borderRadius: 12, border: "1.5px solid " + (ativo ? NUTRI_ESCURO : "#e2e8f0"), background: ativo ? NUTRI_ESCURO : "#fff", color: ativo ? "#fff" : NUTRI_ESCURO, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", ...style || {} } }, children);
