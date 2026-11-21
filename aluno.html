@@ -1953,7 +1953,35 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
           </Card>
         </div>
       )}
-      {tab==="treino" && !prog && !progFuturo && !treinoOculto && (
+      {tab==="treino" && !prog && !progFuturo && !treinoOculto && !(studentData?.billing?.ativo) && (()=>{
+        const temL360 = !!(acesso360 && acesso360.ativo && !acesso360.bloqueado);
+        const temMente = !!(acessoMente && acessoMente.carregado && !acessoMente.bloqueado);
+        const elo = studentData?.eloAcesso; const temElo = !!(elo && elo.status && elo.status!=="bloqueado");
+        const atual = temL360 ? { nome:"o Longevus 360", btn:"Continuar no Longevus 360", ir:()=>setTab("alimentacao") }
+          : temMente ? { nome:"a Mente Ativa", btn:"Continuar na Mente Ativa", href:"longevus-hub.html?aluno=1" }
+          : temElo ? { nome:"o Elo 60+", btn:"Continuar no Elo 60+", href:"elo60.html?ctx=aluno" }
+          : { nome:null, btn:"Ver minha avaliação", ir:()=>setTab("avaliacao") };
+        const nomeProf = (profPix && (profPix.nome || profPix.pix_merchant_name) || "Wellington").split(" ")[0];
+        const wa = profPix?.whatsapp ? "https://wa.me/55"+profPix.whatsapp.replace(/\D/g,"")+"?text="+encodeURIComponent("Oi, "+nomeProf+"! Vi no app e quero saber mais sobre o personal e a consultoria.") : null;
+        const ic = (d) => <span style={{width:38,height:38,borderRadius:11,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF5603" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d.map((x,i)=><path key={i} d={x}/>)}</svg></span>;
+        return (
+        <div style={{padding:"24px 18px"}}>
+          <Card style={{padding:"24px 20px"}}>
+            <div style={{width:56,height:56,borderRadius:16,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px"}}><Icon name="dumbbell" size={26} color="#FF5603"/></div>
+            <div style={{fontWeight:800,fontSize:18,marginBottom:8,textAlign:"center",color:"#0f172a"}}>Quer um treino feito para você?</div>
+            <div style={{fontSize:13.5,color:"#64748b",lineHeight:1.55,marginBottom:16,textAlign:"center"}}>{(atual.nome ? "Hoje você tem "+atual.nome+". " : "")+"Com o personal ou a consultoria, o "+nomeProf+" monta um treino só seu, a partir da sua avaliação, e acompanha a sua evolução aqui no app."}</div>
+            <div style={{border:"1px solid #f1f5f9",borderRadius:14,padding:"2px 12px",marginBottom:16}}>
+              {[["Personal presencial","Treino individual com o "+nomeProf+" ao lado.",["M6 4v16","M18 4v16","M2 8v8","M22 8v8","M6 12h12"]],["Consultoria online","Treino montado no app, com acompanhamento à distância.",["M5 2h14a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z","M12 18h.01"]]].map(([t,sub,d],i)=>(
+                <div key={t} style={{display:"flex",gap:12,alignItems:"center",padding:"11px 0",borderTop:i?"1px solid #f1f5f9":"none"}}>{ic(d)}<div><div style={{fontWeight:800,fontSize:14.5,color:"#0f172a"}}>{t}</div><div style={{fontSize:12.5,color:"#64748b",lineHeight:1.4,marginTop:1}}>{sub}</div></div></div>
+              ))}
+            </div>
+            {wa && <a href={wa} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",justifyContent:"center",height:50,borderRadius:14,background:"#FF5603",color:"#fff",fontWeight:800,fontSize:15.5,textDecoration:"none"}}>{"Quero saber mais"}</a>}
+            <div style={{marginTop:8}}>{atual.href ? <a href={atual.href} style={{display:"flex",alignItems:"center",justifyContent:"center",height:48,borderRadius:14,border:"1.5px solid #e2e8f0",background:"#fff",color:"#0f172a",fontWeight:700,fontSize:15,textDecoration:"none"}}>{atual.btn}</a> : <Btn variant="secondary" full onClick={atual.ir}>{atual.btn}</Btn>}</div>
+            <button type="button" onClick={irAtividadeExtra} style={{display:"block",margin:"12px auto 0",border:"none",background:"none",color:"#c2410c",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"inherit"}}>Registrar atividade extra</button>
+          </Card>
+        </div>);
+      })()}
+      {tab==="treino" && !prog && !progFuturo && !treinoOculto && !!(studentData?.billing?.ativo) && (
         <div style={{padding:"24px 18px"}}>
           <Card style={{padding:"28px 22px",textAlign:"center"}}>
             <div style={{width:56,height:56,borderRadius:16,background:"#fff4ee",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px"}}><Icon name="note" size={26} color="#FF5603"/></div>
