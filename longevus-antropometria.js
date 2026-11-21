@@ -632,7 +632,7 @@
     if (antroNaoOk(a.pant) || (a.mmePct.cl && a.mmePct.cl.label === "Baixo") || (a.imc.cl && a.imc.cl.label === "Baixo peso")) rec2.push("• Atenção à ingestão de proteína distribuída nas refeições, com orientação de nutricionista, para apoiar o ganho de massa muscular.");
     if (a.assim.length) rec2.push("• Incluir exercícios unilaterais para equilibrar os dois lados.");
     if (peso) rec2.push("• Hidratação: cerca de " + antroFmt(peso * 0.03, 1) + " L de água por dia (aprox. 30 ml/kg), distribuídos ao longo do dia.");
-    rec2.push("• Reavaliar em 8 a 12 semanas, no mesmo horário e com o mesmo método." + (rec.bio ? " Na bioimpedância, usar o mesmo aparelho, sem exercício nas 12 horas anteriores, bexiga vazia e sem refeição pesada nas 4 horas anteriores." : ""));
+    rec2.push("• Reavaliar em 3 meses, no mesmo horário e com o mesmo método." + (rec.bio ? " Na bioimpedância, usar o mesmo aparelho, sem exercício nas 12 horas anteriores, bexiga vazia e sem refeição pesada nas 4 horas anteriores." : ""));
     return { significado: sig.join("\n"), recomendacoes: rec2.join("\n") };
   };
   const antroMetodo = (rec) => {
@@ -845,8 +845,8 @@
     const total = pl.W0 - pl.Wt;
     if (Math.abs(total) < 0.3) return null;
     const kgMes = pl.W0 * ANTRO_RITMOS[ritmo].pct / 100 * 4.35;
-    const nMeses = Math.max(2, Math.ceil(Math.abs(total) / kgMes));
-    const n = Math.ceil(nMeses / 2);
+    const nMeses = Math.max(3, Math.ceil(Math.abs(total) / kgMes));
+    const n = Math.ceil(nMeses / 3);
     const ed = editados && editados.n === n && Array.isArray(editados.pesos) ? editados.pesos : null;
     const comp = !pl.semComposicao;
     const lista = [];
@@ -857,13 +857,13 @@
       const W = !final && ed && antroNum(ed[i - 1]) ? antroNum(ed[i - 1]) : final ? pl.Wt : auto;
       const M = comp && pl.temMus ? pl.M0 + (pl.Mt - pl.M0) * t : null;
       const F = comp ? W - pl.O - (M || 0) : null;
-      const fimISO = antroMaisMesesISO(rec.date, Math.min(i * 2, nMeses));
+      const fimISO = antroMaisMesesISO(rec.date, Math.min(i * 3, nMeses));
       const inicioISO = i === 1 ? String(rec.date || "").slice(0, 10) : lista[i - 2].fimISO;
       const Fant = i === 1 ? (comp ? pl.F0 : null) : lista[i - 2].F;
       const dias = inicioISO && fimISO ? antroDiasEntre(inicioISO, fimISO) : null;
       const dFat = F != null && Fant != null ? Fant - F : null;
       const kcalEtapa = dFat != null && dFat > 0 ? dFat * ANTRO_KCAL_KG_GORDURA : null;
-      lista.push({ i, final, W, auto, M, F, g: F != null ? F / W * 100 : null, m: M != null ? M / W * 100 : null, quando: antroMaisMeses(rec.date, Math.min(i * 2, nMeses)), editado: !final && ed && antroNum(ed[i - 1]) ? true : false, inicioISO, fimISO, dias, dFat, kcalEtapa, deficitDia: kcalEtapa && dias ? kcalEtapa / dias : null });
+      lista.push({ i, final, W, auto, M, F, g: F != null ? F / W * 100 : null, m: M != null ? M / W * 100 : null, quando: antroMaisMeses(rec.date, Math.min(i * 3, nMeses)), editado: !final && ed && antroNum(ed[i - 1]) ? true : false, inicioISO, fimISO, dias, dFat, kcalEtapa, deficitDia: kcalEtapa && dias ? kcalEtapa / dias : null });
     }
     const proteina = pl.Wt ? Math.round(1.6 * pl.Wt / 5) * 5 : null;
     const hoje = antroHojeISO();
@@ -1025,7 +1025,7 @@
       const mudou = Object.keys(etTxt).length > 0;
       return antroRelH("div", { className: "no-print", style: { background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: 12, marginBottom: 10 } },
         antroRelH("div", { style: { fontSize: 14, fontWeight: 800, color: "#0f172a" } }, "Jornada em etapas"),
-        antroRelH("div", { style: { fontSize: 11.5, color: "#64748b", margin: "2px 0 10px", lineHeight: 1.45 } }, "Usa as metas salvas no planejador. Etapas de 2 meses, alinhadas às reavaliações."),
+        antroRelH("div", { style: { fontSize: 11.5, color: "#64748b", margin: "2px 0 10px", lineHeight: 1.45 } }, "Usa as metas salvas no planejador. Etapas de 3 meses, alinhadas às reavaliações."),
         antroRelH("div", { style: { display: "flex", gap: 6 } }, Object.keys(ANTRO_RITMOS).map(ritmoBtn)),
         antroRelH("div", { style: { fontSize: 11.5, color: "#64748b", margin: "6px 0 10px" } }, ANTRO_RITMOS[ritmoAtual].desc + " Cerca de " + antroFmt(ANTRO_RITMOS[ritmoAtual].pct, 2) + "% do peso por semana (" + antroFmt(etapasCalc.kgMes, 1) + " kg por mês)."),
         inter.length ? antroRelH("div", null,
