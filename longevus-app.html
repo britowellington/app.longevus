@@ -1759,7 +1759,7 @@ const rows = r.ok ? await r.json() : []; const pf = rp && rp.ok ? ((await rp.jso
 const lista = [];
 if(pf.l360 && valorBR(pf.l360.valor)>0) lista.push({ id:"l360:"+uid, ativo: pf.l360.ativo!==false, venda:"mensal", data:{ titulo:pf.l360.nome||"Longevus 360", valor:pf.l360.valor, texto:"Treino e alimentação conversando no app." } });
 (rows||[]).forEach(x=>{ const d=x.data||{}; if(d.tipo==="parceiro" || d.cobranca==="plano" || d.produto==="indique" || d.produto==="l360") return;
-  if(d.produto==="elo") lista.push({ ...x, venda:"elo", link: window.location.origin + window.location.pathname.replace(/[^/]*$/,"") + "elo60.html" });
+  if(d.produto==="elo") lista.push({ ...x, venda:"elo" });
   else if(d.produto==="mente"){ if(valorBR(d.valor||d.preco)>0) lista.push({ ...x, venda:"mensal" }); }
   else if(!d.produto && valorBR(d.valor||d.preco)>0) lista.push({ ...x, venda:"avulso" }); });
 setItens(lista);
@@ -1781,7 +1781,6 @@ return (
 {x.ativo===false && <Badge color="#64748b" bg="#f1f5f9">Fora do app</Badge>}
 </div>
 <div style={{ fontSize:13,fontWeight:800,color:O }}>{x.venda==="elo" ? fmtR(valorBR(d.valor||d.preco)||49.9)+" · 1º mês, depois R$ 39,90" : fmtR(valorBR(d.valor||d.preco))+(x.venda==="mensal" ? "/mês" : " · avulso")}</div>
-{x.venda==="elo" && <div style={{ fontSize:11.5,color:"#64748b",marginTop:2 }}>O link abre a página do Elo, onde a pessoa cria a conta e paga.</div>}
 {d.texto && <div style={{ fontSize:12,color:"#64748b",marginTop:2 }}>{d.texto}</div>}
 {copiado===x.id && <div style={{ fontSize:12,fontWeight:700,color:"#15803d",marginTop:6 }}>✓ Link copiado. Cole no WhatsApp.</div>}
 </div>

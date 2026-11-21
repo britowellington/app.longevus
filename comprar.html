@@ -75,6 +75,7 @@ const Check = () => h("svg", { width: 17, height: 17, viewBox: "0 0 24 24", fill
 
 const App = () => {
   const id = new URLSearchParams(location.search).get("i") || "";
+  const linkElo = location.origin + location.pathname.replace(/[^/]*$/, "") + "elo60.html";
   const [st, setSt] = useState({ fase: "carregando" });
   const [para, setPara] = useState("mim");
   const [nome, setNome] = useState("");
@@ -160,6 +161,9 @@ const App = () => {
     h("div", { style: { fontSize: 20, fontWeight: 800, color: C.escuro } }, "Obrigado, " + primeiro(nome) + "!"),
     h("div", { style: { fontSize: 14, color: "#475569", marginTop: 6, lineHeight: 1.55 } }, "Seu aviso chegou para o " + primeiro(nomeProf) + ". " + (d.posPagamento ? "\u201C" + d.posPagamento + "\u201D" : "Assim que ele confirmar o pagamento, te chama no WhatsApp para combinar tudo.")),
     presente ? h("div", { style: { fontSize: 13, color: C.cinza, marginTop: 10, lineHeight: 1.5 } }, "Presente para " + pr.nome.trim() + ". Ele também vai falar com " + (pr.nome.trim().split(" ")[0]) + " para agendar.") : null,
+    d.produto === "elo" ? (presente
+      ? (soDig(pr.whatsapp).length >= 10 ? h("a", { href: "https://wa.me/55" + soDig(pr.whatsapp).replace(/^55(?=\d{10,11}$)/, "") + "?text=" + encodeURIComponent("Oi, " + primeiro(pr.nome) + "! Te dei de presente o Elo 60+, 30 dias de corpo e mente em casa. Crie sua conta por aqui: " + linkElo), target: "_blank", rel: "noopener noreferrer", style: { display: "block", marginTop: 18, padding: "14px", borderRadius: 12, background: C.laranja, color: "#fff", fontWeight: 800, fontSize: 15, textDecoration: "none" } }, "Enviar o link para " + primeiro(pr.nome)) : h("div", { style: { fontSize: 13, color: "#475569", marginTop: 14, lineHeight: 1.5, background: "#FFF4EE", borderRadius: 12, padding: "10px 12px" } }, "Mande para " + primeiro(pr.nome) + " este link para criar a conta: " + linkElo))
+      : h("a", { href: linkElo, style: { display: "block", marginTop: 18, padding: "14px", borderRadius: 12, background: C.laranja, color: "#fff", fontWeight: 800, fontSize: 15, textDecoration: "none" } }, "Criar minha conta no Elo 60+")) : null,
     waProf ? h("a", { href: waProf, target: "_blank", rel: "noopener noreferrer", style: { display: "block", marginTop: 18, padding: "14px", borderRadius: 12, background: "#25D366", color: "#fff", fontWeight: 800, fontSize: 15, textDecoration: "none" } }, "Mandar o comprovante no WhatsApp") : null), resumo);
 
   if (etapa === "pix") return wrap(resumo, card({ textAlign: "center" },
