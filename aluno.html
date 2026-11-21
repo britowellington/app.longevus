@@ -719,9 +719,10 @@ const CargaInput = ({value, onChange, lastCarga, compact}) => (
 
 // ── Métodos de intensificação (espelham as chaves gravadas pelo longevus-programa.html) ──
 // ─── PERIODIZAÇÃO AERÓBICA · CARDIO FINAL (24 semanas) ──────────────────────
-// prog.cardio = { treinos:{A:{ergo:"esteira"},B:{ergo:"bike"}}, intervalado:"A", nivel:"padrao"|"iniciante",
+// prog.cardio = { treinos:{A:{ergo:"esteira",onde:"fim"},B:{ergo:"bike",onde:"separado"}}, intervalado:"A", nivel:"padrao"|"iniciante",
 //                 idade, fcRepouso, fcMax, soPSE (betabloqueador), quedas }
-// A semana de cada treino = nº de sessões já concluídas daquele treino + 1 (máx. 24).
+// onde "fim": no fim do treino, semana = sessões de musculação daquele treino + 1.
+// onde "separado": sessão em outro horário, semana = cardios separados concluídos daquele treino + 1 (máx. 24).
 const CARDIO_ERGOS={
   esteira:{nome:"Esteira",icone:"🚶",dica:{Z1:"Caminhada leve, sem inclinação.",Z2:"Caminhada confortável, inclinação de 0 a 2%.",Z3:"Mantenha a velocidade e suba a inclinação para 3 a 5%.",Z4:"Suba a inclinação para 6 a 8%, sem correr."}},
   bike:{nome:"Bike",icone:"🚴",dica:{Z1:"Carga leve, 60 a 70 rpm.",Z2:"Carga leve a moderada, 60 a 80 rpm.",Z3:"Aumente a carga e mantenha 60 a 80 rpm.",Z4:"Carga mais alta, mantendo a rotação. Não acelere as pernas."}},
@@ -735,6 +736,10 @@ const CARDIO_ZONAS={
 };
 const CARDIO_CONT=[10,12,15,10,15,18,20,12, 20,20,20,15,20,20,20,15, 20,22,22,15,25,25,25,15];
 const CARDIO_INT={10:[4,60,120,"Z3"],11:[5,60,120,"Z3"],13:[4,120,120,"Z3"],14:[5,120,120,"Z3"],15:[5,120,90,"Z3"],17:[6,30,60,"Z4"],18:[8,30,60,"Z4"],19:[6,45,90,"Z4"],21:[8,45,90,"Z4"],22:[6,60,120,"Z4"],23:[7,60,120,"Z4"]};
+// Sessão separada (outro horário): mais volume, aquecimento e volta à calma de 5 min, teto de 40 min
+const CARDIO_SEP_CONT=[20,22,25,18,25,28,30,20, 30,30,32,25,32,35,35,25, 35,38,40,25,40,40,40,25];
+const CARDIO_SEP_INT={10:[6,60,120,"Z3"],11:[8,60,120,"Z3"],13:[5,120,120,"Z3"],14:[6,120,120,"Z3"],15:[6,180,120,"Z3"],17:[8,30,60,"Z4"],18:[10,30,60,"Z4"],19:[8,45,90,"Z4"],21:[10,45,90,"Z4"],22:[8,60,120,"Z4"],23:[9,60,120,"Z4"]};
+const cardioSeparado=(cfg,treinoKey)=>!!(cfg&&cfg.treinos&&cfg.treinos[treinoKey]&&cfg.treinos[treinoKey].onde==="separado");
 const CARDIO_DELOAD=[4,8,12,16,20];
 const CARDIO_RETESTE=[8,16,24];
 const cardioFase=s=>s<=8?"Base":(s<=16?"Desenvolvimento":"Consolidação");
@@ -758,15 +763,18 @@ const cardioSemana=(cfg,treinoKey,semana)=>{
   if(!t||!CARDIO_ERGOS[t.ergo])return null;
   const s=Math.max(1,Math.min(24,parseInt(semana)||1));
   const iniciante=cfg.nivel==="iniciante";
-  const base={ergo:t.ergo,semana:s,fase:cardioFase(s),deload:CARDIO_DELOAD.includes(s),reteste:CARDIO_RETESTE.includes(s)};
-  if(cardioIntervaladoKey(cfg)===treinoKey&&CARDIO_INT[s]){
-    const d=CARDIO_INT[s];const n=d[0],on=d[1],off=d[2];let zona=d[3];
+  const sep=t.onde==="separado";
+  const TAB_INT=sep?CARDIO_SEP_INT:CARDIO_INT,TAB_CONT=sep?CARDIO_SEP_CONT:CARDIO_CONT;
+  const aq=sep?300:180,vc=sep?300:120;
+  const base={ergo:t.ergo,separado:sep,aqMin:aq/60,vcMin:vc/60,semana:s,fase:cardioFase(s),deload:CARDIO_DELOAD.includes(s),reteste:CARDIO_RETESTE.includes(s)};
+  if(cardioIntervaladoKey(cfg)===treinoKey&&TAB_INT[s]){
+    const d=TAB_INT[s];const n=d[0],on=d[1],off=d[2];let zona=d[3];
     if(zona==="Z4"&&(iniciante||(cfg.quedas&&t.ergo==="esteira")))zona="Z3";
-    const total=Math.round((180+n*on+(n-1)*off+120)/60);
+    const total=Math.round((aq+n*on+(n-1)*off+vc)/60);
     return {...base,tipo:"intervalado",series:n,on,off,zona,total,texto:n+"x ("+cardioFmtSeg(on)+" forte / "+cardioFmtSeg(off)+" leve)"};
   }
-  let min=CARDIO_CONT[s-1];
-  if(iniciante&&s<=8)min=Math.max(7,Math.round(min*0.7));
+  let min=TAB_CONT[s-1];
+  if(iniciante&&s<=8)min=Math.max(sep?12:7,Math.round(min*0.7));
   return {...base,tipo:"continuo",zona:"Z2",total:min,texto:min+" min contínuo"};
 };
 
@@ -781,7 +789,7 @@ const CardioZonaChip=({cfg,zona,rotulo})=>{
   );
 };
 
-const CardioCard=({cfg,treinoKey,semana,mostrarReteste})=>{
+const CardioCard=({cfg,treinoKey,semana,mostrarReteste,rodape})=>{
   const c=cardioSemana(cfg,treinoKey,semana);
   if(!c)return null;
   const eg=CARDIO_ERGOS[c.ergo];
@@ -789,12 +797,12 @@ const CardioCard=({cfg,treinoKey,semana,mostrarReteste})=>{
     <div style={{background:"#fff",border:"1.5px solid #fecdd3",borderRadius:12,padding:"12px 13px",marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:8}}>
         <div style={{display:"flex",alignItems:"center",gap:7,fontSize:12,fontWeight:800,color:"#be123c",textTransform:"uppercase",letterSpacing:0.3}}>
-          <span style={{width:8,height:8,borderRadius:99,background:"#e11d48",flexShrink:0}}/>Cardio final · {eg.icone} {eg.nome}
+          <span style={{width:8,height:8,borderRadius:99,background:"#e11d48",flexShrink:0}}/>{c.separado?"Cardio em outro horário":"Cardio final"} · {eg.icone} {eg.nome}
         </div>
         <div style={{fontSize:11,fontWeight:700,color:"#94a3b8",whiteSpace:"nowrap"}}>Sem. {c.semana} · {c.total} min</div>
       </div>
       <div style={{fontSize:15,fontWeight:800,color:"#0f172a"}}>{c.texto}</div>
-      <div style={{fontSize:11.5,color:"#64748b",marginTop:3,lineHeight:1.45}}>{c.tipo==="intervalado"?"Comece com 3 min leves e termine com 2 min leves.":"Os 3 primeiros e os 2 últimos minutos são leves."}</div>
+      <div style={{fontSize:11.5,color:"#64748b",marginTop:3,lineHeight:1.45}}>{c.tipo==="intervalado"?("Comece com "+c.aqMin+" min leves e termine com "+c.vcMin+" min leves."):("Os "+c.aqMin+" primeiros e os "+c.vcMin+" últimos minutos são leves.")}{c.separado?" Pode ser em outro período do dia, longe da musculação.":""}</div>
       <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:9}}>
         {c.tipo==="intervalado"?(<>
           <CardioZonaChip cfg={cfg} zona={c.zona} rotulo="Forte"/>
@@ -806,6 +814,7 @@ const CardioCard=({cfg,treinoKey,semana,mostrarReteste})=>{
       {cfg.soPSE&&<div style={{fontSize:11,color:"#64748b",marginTop:6}}>Guie-se pela sensação de esforço (PSE de 0 a 10), não pela frequência cardíaca.</div>}
       {c.deload&&<div style={{fontSize:11,color:"#15803d",marginTop:6,fontWeight:700}}>Semana mais leve para o corpo recuperar.</div>}
       {mostrarReteste&&c.reteste&&<div style={{fontSize:11,color:"#7e22ce",marginTop:6,fontWeight:700}}>Semana de reteste: agende a reavaliação cardio.</div>}
+      {rodape||null}
     </div>
   );
 };
@@ -1612,6 +1621,8 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
   const [saving,setSaving]=useState(false);
   const [savedToday,setSavedToday]=useState(false);
   const [lastSessions,setLastSessions]=useState([]);
+  const [cardioSessoes,setCardioSessoes]=useState([]); // cardios em outro horário (source cardio_separado), fora do progresso da musculação
+  const [salvandoCardio,setSalvandoCardio]=useState(false);
   const [showCelebration,setShowCelebration]=useState(false);
   const [saveError,setSaveError]=useState("");
   const [tab,setTab]=useState(()=>{ try{ sessionStorage.setItem("lv_ctx","aluno"); localStorage.setItem("lv_ctx", JSON.stringify({ c:"aluno", t:Date.now() })); const t=new URLSearchParams(location.search).get("tab"); if(["inicio","treino","programacao","alimentacao","avaliacao"].includes(t)) return t; }catch(e){} return "inicio"; }); // inicio | treino | programacao | avaliacao
@@ -1661,7 +1672,8 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
           const rows2 = await r2.json();
           const sessList = (rows2||[]).map(x=>x.data).filter(Boolean);
           sessList.sort((a,b)=>new Date(b.createdAt||b.date||0)-new Date(a.createdAt||a.date||0));
-          setLastSessions(sessList);
+          setLastSessions(sessList.filter(x=>x.source!=="cardio_separado"));
+          setCardioSessoes(sessList.filter(x=>x.source==="cardio_separado"));
         }
       } catch(e){ setNotFound(true); }
       setLoading(false);
@@ -1894,6 +1906,19 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
   // Reseta o check-off e as cargas ao trocar de bloco ou treino manualmente
   const changeTreino = (i) => { setTreinoIdx(i); setDone(new Set()); setCargas({}); setSavedToday(false); };
   const changeBloco = (i) => { if(i>maxUnlockedIdx) return; setBlocoIdx(i); setTreinoIdx(0); setDone(new Set()); setCargas({}); setSavedToday(false); };
+
+  const concluirCardio = async (info) => {
+    setSalvandoCardio(true);
+    try{
+      const headers = await authedHeaders();
+      const data = { studentId, programId: prog.id, cardioTreinoKey: treinoAtivo, date: new Date().toISOString().slice(0,10),
+        cardio: info, source: "cardio_separado", createdAt: new Date().toISOString() };
+      const body = { id: uid2(), data, owner_id: ownerId, student_id: studentId };
+      const r = await fetch(SUPA_URL+"/rest/v1/sessions", { method:"POST", headers, body: JSON.stringify(body) });
+      if(r.ok) setCardioSessoes(prev=>[data, ...prev]);
+    } catch(e){ /* silencioso: o aluno pode tentar de novo */ }
+    setSalvandoCardio(false);
+  };
 
   const concluirTreino = async () => {
     setSaving(true);
@@ -2337,7 +2362,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
           );
         })}
 
-        {prog && prog.cardio && (()=>{
+        {prog && prog.cardio && !cardioSeparado(prog.cardio,treinoAtivo) && (()=>{
           const hojeC = new Date().toISOString().slice(0,10);
           const feitas = lastSessions.filter(x=>x && x.programId===prog.id && x.treinoKey===treinoAtivo && x.source!=="atividade_extra" && x.date!==hojeC).length;
           return <CardioCard cfg={prog.cardio} treinoKey={treinoAtivo} semana={feitas+1}/>;
@@ -2345,6 +2370,17 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
 
         {totalCount>0 && (
           <div style={{marginTop:8,marginBottom:20}}>
+            {prog && prog.cardio && cardioSeparado(prog.cardio,treinoAtivo) && (()=>{
+              const hojeC = new Date().toISOString().slice(0,10);
+              const doTreino = cardioSessoes.filter(x=>x && x.programId===prog.id && x.cardioTreinoKey===treinoAtivo);
+              const feitoHoje = doTreino.some(x=>x.date===hojeC);
+              const sem = doTreino.filter(x=>x.date!==hojeC).length+1;
+              const info = cardioSemana(prog.cardio,treinoAtivo,sem);
+              const rodape = feitoHoje
+                ? <div style={{marginTop:10,background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"9px 12px",fontSize:12.5,fontWeight:700,color:"#15803d",textAlign:"center"}}>Cardio concluído hoje. Muito bem!</div>
+                : <button type="button" disabled={salvandoCardio} onClick={()=>concluirCardio(info?{ergo:info.ergo,semana:info.semana,texto:info.texto,total:info.total}:null)} style={{marginTop:10,width:"100%",height:42,borderRadius:12,border:"1.5px solid #e11d48",background:"#fff",color:"#be123c",fontWeight:800,fontSize:13.5,cursor:salvandoCardio?"default":"pointer",fontFamily:"inherit"}}>{salvandoCardio?"Salvando...":"Concluir cardio"}</button>;
+              return <CardioCard cfg={prog.cardio} treinoKey={treinoAtivo} semana={sem} rodape={rodape}/>;
+            })()}
             {savedToday ? (
               <div style={{background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"12px 14px",textAlign:"center",fontSize:13,fontWeight:700,color:"#15803d",display:"flex",alignItems:"flex-start",gap:8}}>
                 <Icon name="check" size={16} style={{marginTop:2,flexShrink:0}}/>
