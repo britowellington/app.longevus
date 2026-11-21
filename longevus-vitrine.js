@@ -1120,5 +1120,10 @@
       }));
   };
 
-  window.LongevusVitrine = { Carrossel, Clube: ClubeTela, Painel, montarMensagem, linkDoItem, PixPagamento };
+  const ClubeAba = (p) => {
+    const itens = useItens(p.ownerId);
+    if (itens === null) return h("div", { style: { padding: 32, textAlign: "center", color: COR.cinza, fontSize: 14 } }, "Carregando o Clube...");
+    return h(ClubeTela, { ...p, itens });
+  };
+  window.LongevusVitrine = { Carrossel, Clube: ClubeTela, ClubeAba, Painel, montarMensagem, linkDoItem, PixPagamento };
 })();

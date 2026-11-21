@@ -21,7 +21,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="longevus-aluno-extras.js?v=30"></script>
 <script src="longevus-antropometria.js?v=7"></script>
-<script src="longevus-vitrine.js?v=23"></script>
+<script src="longevus-vitrine.js?v=24"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -479,6 +479,10 @@ const ICON_PATHS = {
   clock: <g><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></g>,
   dumbbell: <g><rect x="1" y="9" width="4" height="6" rx="1"/><rect x="19" y="9" width="4" height="6" rx="1"/><line x1="5" y1="12" x2="19" y2="12"/><rect x="6.5" y="7" width="2" height="10" rx="1"/><rect x="15.5" y="7" width="2" height="10" rx="1"/></g>,
   bulb: <g><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2.3h6c0-1.1.4-1.8 1-2.3A7 7 0 0 0 12 2z"/></g>,
+  evolucao: <g><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-7"/></g>,
+  presente: <g><path d="M20 12v10H4V12"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></g>,
+  mente: <g><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2z"/></g>,
+  elo: <g><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></g>,
   home: <g><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5a1 1 0 0 0 1 1H9.5a1 1 0 0 0 1-1V15h3v4.5a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1V10"/></g>,
   chevronLeft: <polyline points="15 18 9 12 15 6"/>,
   chevronRight: <polyline points="9 18 15 12 9 6"/>,
@@ -855,20 +859,33 @@ const MOMENTOS = [["inicial","Aquecimento","#22c55e"],["principal","Principal","
 // ── Meu Treino ───────────────────────────────────────────────────────────────
 // ── Navegação inferior (Início / Treino / Programação) ───────────────────────
 window.__lvAlunoNav = true;
-const BottomNav = ({tab, setTab, trava360}) => {
-  const items = [
+// Rodapé: Início, o serviço principal do aluno, Programação, Evolução e Clube.
+// Quem tem treino e Longevus 360 juntos fica com Calorias no lugar do Clube.
+const navItens = ({temTreino, tem360, temMente, temElo}) => {
+  const it = [{key:"inicio", label:"Início", icon:"home"}];
+  if(temTreino) it.push({key:"treino", label:"Treino", icon:"dumbbell"});
+  if(tem360) it.push({key:"alimentacao", label:"Calorias", icon:"food"});
+  if(!temTreino && !tem360 && temMente) it.push({key:"jogos", label:"Jogos", icon:"mente", href:HUB_URL});
+  if(!temTreino && !tem360 && !temMente && temElo) it.push({key:"elo", label:"Elo 60+", icon:"elo", href:"elo60.html?ctx=aluno"});
+  it.push({key:"programacao", label:"Programação", icon:"calendar"});
+  it.push({key:"avaliacao", label:"Evolução", icon:"evolucao"});
+  if(!(temTreino && tem360)) it.push({key:"clube", label:"Clube", icon:"presente"});
+  return it;
+};
+const BottomNav = ({tab, setTab, trava360, perfil}) => {
+  const items = perfil ? navItens(perfil) : [
     {key:"inicio", label:"Início", icon:"home"},
     {key:"treino", label:"Treino", icon:"dumbbell"},
     {key:"programacao", label:"Programação", icon:"calendar"},
     {key:"alimentacao", label:"Calorias", icon:"food"},
-    {key:"avaliacao", label:"Avaliação", icon:"clipboard"},
+    {key:"avaliacao", label:"Evolução", icon:"evolucao"},
   ];
   return (
     <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#fff",borderTop:"1.5px solid #e2e8f0",display:"flex",justifyContent:"space-around",paddingTop:8,paddingBottom:"max(8px, env(safe-area-inset-bottom))",zIndex:400,boxShadow:"0 -2px 10px rgba(15,23,42,0.05)"}}>
       {items.map(it=>{
         const active = tab===it.key;
         return (
-          <button key={it.key} onClick={()=>{ try{ window.dispatchEvent(new Event("lv-nav")); }catch(e){} setTab(it.key); }} style={{border:"none",background:"transparent",display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"4px 6px",cursor:"pointer",minWidth:0}}>
+          <button key={it.key} onClick={()=>{ if(it.href){ window.location.href = it.href; return; } try{ window.dispatchEvent(new Event("lv-nav")); }catch(e){} setTab(it.key); }} style={{border:"none",background:"transparent",display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"4px 6px",cursor:"pointer",minWidth:0}}>
             <span style={{position:"relative",display:"inline-flex"}}>
               <Icon name={it.icon} size={22} color={active?"#FF5603":"#94a3b8"}/>
               {trava360 && it.key==="alimentacao" && <span style={{position:"absolute",top:-5,right:-9,width:16,height:16,borderRadius:8,background:"#FF5603",border:"2px solid #fff",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="lock" size={9} color="#fff"/></span>}
@@ -1916,6 +1933,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
         />
       )}
 
+      {tab==="clube" && (window.LongevusVitrine && window.LongevusVitrine.ClubeAba ? <window.LongevusVitrine.ClubeAba ownerId={ownerId} studentId={studentId} studentData={studentData} l360={acesso360} mente={acessoMente} onIr={setTab} profNome={profPix && (profPix.nome || profPix.pix_merchant_name)} profWhats={profPix && profPix.whatsapp} onFechar={()=>setTab("inicio")}/> : <div style={{padding:32,textAlign:"center",color:"#94a3b8",fontSize:14}}>Carregando o Clube...</div>)}
       {tab==="programacao" && <TelaProgramacao atividades={atividades} concluidasMap={concluidasMap} onToggleAtividade={toggleConcluidaAtividade} bibCustom={bibCustom} onSalvarExercicios={salvarSessaoAtividade} getSessaoAtividade={getSessaoAtividade}/>}
       {tab==="avaliacao" && <div>{window.LongevusAlunoExtras && <window.LongevusAlunoExtras.AntroAluno studentId={studentId} ownerId={ownerId} studentData={studentData} onIrCalorias={()=>{setTab("alimentacao");window.scrollTo(0,0);}} bloqueado360={!!(acesso360 && acesso360.bloqueado)}/>}<TelaAvaliacao studentId={studentId} studentData={studentData}/></div>}
       {tab==="alimentacao" && acesso360 && acesso360.bloqueado && <Oferta360 acesso={acesso360} profPix={profPix} studentName={studentName} studentId={studentId} ownerId={ownerId} onVoltar={()=>setTab("inicio")}/>}
@@ -1929,7 +1947,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
             <div style={{fontSize:13,color:"#64748b",lineHeight:1.55,marginBottom:18}}>O Wellington já preparou o seu treino. Ele aparece aqui automaticamente na data de início. Enquanto isso, suas calorias e sua avaliação estão disponíveis.</div>
             <div style={{display:"flex",gap:8}}>
               <Btn variant="secondary" full onClick={()=>setTab("alimentacao")}>Calorias</Btn>
-              <Btn variant="secondary" full onClick={()=>setTab("avaliacao")}>Avaliação</Btn>
+              <Btn variant="secondary" full onClick={()=>setTab("avaliacao")}>Evolução</Btn>
             </div>
             <div style={{marginTop:8}}>
               <Btn full onClick={irAtividadeExtra}>Registrar atividade extra</Btn>
@@ -1945,7 +1963,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
             <div style={{fontSize:13,color:"#64748b",lineHeight:1.55,marginBottom:18}}>O Wellington acompanha cada sessão com você. Quando for a hora, ele libera o treino aqui no app. Enquanto isso, suas calorias e sua avaliação estão disponíveis.</div>
             <div style={{display:"flex",gap:8}}>
               <Btn variant="secondary" full onClick={()=>setTab("alimentacao")}>Calorias</Btn>
-              <Btn variant="secondary" full onClick={()=>setTab("avaliacao")}>Avaliação</Btn>
+              <Btn variant="secondary" full onClick={()=>setTab("avaliacao")}>Evolução</Btn>
             </div>
             <div style={{marginTop:8}}>
               <Btn full onClick={irAtividadeExtra}>Registrar atividade extra</Btn>
@@ -1989,7 +2007,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
             <div style={{fontSize:13,color:"#64748b",lineHeight:1.55,marginBottom:18}}>O Wellington está montando seu programa a partir do seu questionário. Assim que ficar pronto, ele aparece aqui. Enquanto isso, você já pode usar o app.</div>
             <div style={{display:"flex",gap:8}}>
               <Btn variant="secondary" full onClick={()=>setTab("alimentacao")}>Calorias</Btn>
-              <Btn variant="secondary" full onClick={()=>setTab("avaliacao")}>Avaliação</Btn>
+              <Btn variant="secondary" full onClick={()=>setTab("avaliacao")}>Evolução</Btn>
             </div>
             <div style={{marginTop:8}}>
               <Btn full onClick={irAtividadeExtra}>Registrar atividade extra</Btn>
@@ -2264,7 +2282,12 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
       </div>
       )}
 
-      <BottomNav tab={tab} setTab={setTab} trava360={!!(acesso360 && acesso360.bloqueado)}/>
+      <BottomNav tab={tab} setTab={setTab} trava360={!!(acesso360 && acesso360.bloqueado)} perfil={{
+        temTreino: !!prog || !!progFuturo || !!treinoOculto || !!(studentData?.billing?.ativo),
+        tem360: !!(acesso360 && acesso360.ativo && !acesso360.bloqueado),
+        temMente: !!(acessoMente && acessoMente.carregado && !acessoMente.bloqueado),
+        temElo: !!(studentData?.eloAcesso && studentData.eloAcesso.status && studentData.eloAcesso.status!=="bloqueado")
+      }}/>
 
       {showCheckin && (
         <Modal title="Como foi seu treino?" onClose={()=>{}}>
