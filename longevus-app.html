@@ -29,7 +29,7 @@ var __LOGO_WB__ = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAFuCAYAAAC
 <script type="text/babel" data-presets="react" src="longevus-condominios.js"></script>
 <script src="longevus-alimentacao.js?v=14"></script>
 <script src="longevus-antropometria.js?v=5"></script>
-<script src="longevus-vitrine.js?v=18"></script>
+<script src="longevus-vitrine.js?v=19"></script>
 <script src="longevus-materiais.js?v=1"></script>
 <script type="text/babel" data-presets="react">
 const SenhaInput = ({style, ...rest}) => {
@@ -10441,7 +10441,7 @@ const limpo = p.filter(pg => !(pg.agendaEntryId && pg.status==="previsto" && !id
 return limpo.length!==p.length ? limpo : p;
 });
 },[agendaEntries, dbReady]);
-const [page,setPage]=useState(()=>{ try{ sessionStorage.setItem("lv_ctx","painel"); const pg=new URLSearchParams(location.search).get("page"); if(["dashboard","students","assessments"].includes(pg)) return pg; }catch(e){} return "dashboard"; });
+const [page,setPage]=useState(()=>{ try{ sessionStorage.setItem("lv_ctx","painel"); localStorage.setItem("lv_ctx", JSON.stringify({ c:"painel", t:Date.now() })); const pg=new URLSearchParams(location.search).get("page"); if(["dashboard","students","assessments"].includes(pg)) return pg; }catch(e){} return "dashboard"; });
 const [pageProps,setPageProps]=useState({});
 // Sync local
 useEffect(()=>{LS.set("longevus_students",students);},[students]);

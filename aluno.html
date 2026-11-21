@@ -21,7 +21,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="longevus-aluno-extras.js?v=29"></script>
 <script src="longevus-antropometria.js?v=6"></script>
-<script src="longevus-vitrine.js?v=18"></script>
+<script src="longevus-vitrine.js?v=19"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -1504,7 +1504,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
   const [lastSessions,setLastSessions]=useState([]);
   const [showCelebration,setShowCelebration]=useState(false);
   const [saveError,setSaveError]=useState("");
-  const [tab,setTab]=useState(()=>{ try{ sessionStorage.setItem("lv_ctx","aluno"); const t=new URLSearchParams(location.search).get("tab"); if(["inicio","treino","programacao","alimentacao","avaliacao"].includes(t)) return t; }catch(e){} return "inicio"; }); // inicio | treino | programacao | avaliacao
+  const [tab,setTab]=useState(()=>{ try{ sessionStorage.setItem("lv_ctx","aluno"); localStorage.setItem("lv_ctx", JSON.stringify({ c:"aluno", t:Date.now() })); const t=new URLSearchParams(location.search).get("tab"); if(["inicio","treino","programacao","alimentacao","avaliacao"].includes(t)) return t; }catch(e){} return "inicio"; }); // inicio | treino | programacao | avaliacao
   const [abrirAtiv,setAbrirAtiv]=useState(false);
   const irAtividadeExtra = () => { setAbrirAtiv(true); setTab("alimentacao"); };
   const [atividades,setAtividades]=useState([]);

@@ -495,9 +495,9 @@
           jornada === undefined ? h("div", { style: { textAlign: "center", color: "#94A3B8", fontSize: 13.5, padding: 10 } }, "Carregando...") :
           jornada ? h("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
             h("div", { style: { background: "#F0FDF4", color: "#15803D", borderRadius: 14, padding: "12px 14px", fontSize: 14.5, fontWeight: 700, lineHeight: 1.45 } }, Number(jornada.dias_concluidos || 0) >= 30 ? "Você já concluiu os 30 dias do " + (d.titulo || "Elo 60+") + "." : "Você já está no " + (d.titulo || "Elo 60+") + ". Seu próximo é o dia " + dia + "."),
-            h("a", { href: linkElo(false), onClick: onClique, style: { ...botao, background: COR.laranja, color: "#fff" } }, "Continuar no " + (d.titulo || "Elo 60+"))) :
+            h("a", { href: linkElo(false) + "?ctx=aluno", onClick: onClique, style: { ...botao, background: COR.laranja, color: "#fff" } }, "Continuar no " + (d.titulo || "Elo 60+"))) :
           h("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
-            h("a", { href: linkElo(true), onClick: onClique, style: { ...botao, background: COR.laranja, color: "#fff" } }, "Quero para mim"),
+            h("a", { href: linkElo(true) + "&ctx=aluno", onClick: onClique, style: { ...botao, background: COR.laranja, color: "#fff" } }, "Quero para mim"),
             h("div", { style: { fontSize: 12.5, color: COR.cinza, lineHeight: 1.5, textAlign: "center", marginTop: -2 } }, "Entre com o mesmo e-mail e senha do seu app. O pagamento é feito por Pix lá dentro.")),
           h("button", { type: "button", onClick: presentear, style: { ...botao, border: "1.5px solid " + COR.borda, background: "#fff", color: COR.escuro, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, lineHeight: "normal" } }, h(IcPresente, { cor: COR.laranja, tam: 18 }), "Dar de presente para alguém"),
           h("button", { type: "button", onClick: copiar, style: { background: "transparent", border: "none", color: COR.laranjaTxt, fontWeight: 700, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit", padding: 6 } }, linkOk ? "Link copiado" : "Copiar o link do " + (d.titulo || "Elo 60+")))));
