@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Exportar dados do Elo 60+</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+body{margin:0;font-family:-apple-system,Roboto,"Segoe UI",sans-serif;background:#F4F5F7;color:#0F172A}
+.top{background:#0F172A;color:#fff;padding:22px 18px;border-radius:0 0 24px 24px}
+.box{background:#fff;border-radius:16px;margin:16px;padding:16px;box-shadow:0 6px 18px rgba(15,23,42,.06)}
+button{width:100%;height:50px;border:none;border-radius:25px;background:#FF5603;color:#fff;font-weight:800;font-size:16px;margin-top:12px;font-family:inherit}
+button.sec{background:#fff;color:#0F172A;border:1.5px solid #E2E8F0}
+#log{font-size:13px;color:#475569;line-height:1.6;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<div class="top"><div style="font-size:20px;font-weight:800">Exportar dados do Elo 60+</div><div style="font-size:13px;color:#CBD5E1;margin-top:4px">Gera um arquivo com as aulas, os dias e a biblioteca de exercícios, para montar os meses 2 a 12.</div></div>
+<div class="box">
+  <div style="font-size:14px;line-height:1.5">Abra esta página no mesmo navegador em que você usa o painel, já logado. Nada é alterado, só lido.</div>
+  <button id="gerar">Gerar arquivo</button>
+  <button id="compartilhar" class="sec" style="display:none">Compartilhar arquivo</button>
+  <div id="log" style="margin-top:12px"></div>
+</div>
+<script>
+const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
+const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
+const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+const log = (t) => { document.getElementById("log").textContent += t + "\n"; };
+let arquivo = null;
+const ler = async (headers, path) => {
+  try { const r = await fetch(SUPA_URL + "/rest/v1/" + path, { headers }); if (!r.ok) return { erro: r.status + " " + (await r.text()).slice(0, 200) }; return await r.json(); }
+  catch (e) { return { erro: String(e) }; }
+};
+document.getElementById("gerar").onclick = async () => {
+  document.getElementById("log").textContent = "";
+  const { data } = await supa.auth.getSession();
+  const token = data && data.session && data.session.access_token;
+  if (!token) { log("Você não está logado. Abra o painel, entre, e volte para esta página."); return; }
+  const headers = { apikey: SUPA_KEY, Authorization: "Bearer " + token };
+  const out = { gerado_em: new Date().toISOString() };
+  const fontes = [
+    ["modelos", "ma_jornada_modelos?select=*"],
+    ["aulas", "ma_jornada_aulas?select=*&order=semana,treino"],
+    ["dias", "ma_jornada_dias?select=*&order=dia"],
+    ["testes_exemplo", "ma_jornada_testes?select=*&limit=5"],
+    ["matriculas_exemplo", "ma_jornada_matriculas?select=*&limit=3"],
+    ["circuito_aulas", "circuito_aulas?select=*"],
+    ["exercicios", "exercises?select=id,nome,grupo,video,foto&order=nome&limit=2000"]
+  ];
+  for (const [k, p] of fontes) {
+    log("Lendo " + k + "...");
+    out[k] = await ler(headers, p);
+    log("  " + (Array.isArray(out[k]) ? out[k].length + " registros" : "não disponível"));
+  }
+  try { const ex = JSON.parse(localStorage.getItem("circuito_aulas") || "null"); if (ex) out.circuito_aulas_local = ex; } catch (e) {}
+  const txt = JSON.stringify(out);
+  arquivo = new File([txt], "elo60-dados.json", { type: "application/json" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(arquivo); a.download = "elo60-dados.json"; document.body.appendChild(a); a.click(); a.remove();
+  log("\nPronto. O arquivo elo60-dados.json foi baixado (" + Math.round(txt.length / 1024) + " KB). Envie esse arquivo na conversa.");
+  if (navigator.canShare && navigator.canShare({ files: [arquivo] })) document.getElementById("compartilhar").style.display = "block";
+};
+document.getElementById("compartilhar").onclick = async () => { try { await navigator.share({ files: [arquivo], title: "elo60-dados.json" }); } catch (e) {} };
+</script>
+</body>
+</html>
