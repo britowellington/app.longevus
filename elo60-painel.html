@@ -28,6 +28,9 @@ const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
 const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
 const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 const MODELO = "mente-ativa-30";
+const FILTRO_ELO = "or=(modelo_id.eq.mente-ativa-30,modelo_id.like.elo60-m*)";
+const mesDoModelo = (id) => id===MODELO ? 1 : (Number(String(id||"").replace("elo60-m",""))||1);
+const situacaoPag = (x) => { const hoje = hojeISO(); return x.pagamento_status==="pago" || x.pagamento_status==="isento" ? "pago" : x.status==="bloqueado" ? "bloqueado" : x.pagamento_prazo && hoje > x.pagamento_prazo ? "vencido" : "aguardando"; };
 const C = { escuro:"#0F172A", escuro2:"#18233A", laranja:"#FF5603", laranjaTxt:"#C2410C", laranjaClaro:"#FFF4EE", cinza:"#64748B", cinzaClaro:"#94A3B8", borda:"#E2E8F0", verde:"#16A34A", verdeTxt:"#15803D", verdeClaro:"#F0FDF4", vermelho:"#B91C1C", vermelhoClaro:"#FEF2F2" };
 
 async function hdrs(extra){
@@ -271,15 +274,20 @@ function EditarAula({ linha, diasTxt, onVoltar, onSalvo }){
   );
 }
 
-function AulasTab({ aulas, dias, onAbrir }){
+function AulasTab({ aulas:todas, dias:todosDias, onAbrir }){
   const [semana,setSemana] = useState(1);
+  const [mes,setMes] = useState(1);
+  const mid = mes===1 ? MODELO : "elo60-m"+String(mes).padStart(2,"0");
+  const aulas = todas.filter(a=>(a.modelo_id||MODELO)===mid);
+  const dias = todosDias.filter(d=>(d.modelo_id||MODELO)===mid);
   const ordem = { A:0, B:1, L:2 };
   const lista = aulas.filter(a=>a.semana===semana).sort((x,y)=>ordem[x.treino]-ordem[y.treino]);
   const diasDe = (id) => dias.filter(d=>d.aula_id===id).map(d=>d.dia);
   const duplas = []; lista.forEach(a=>{ (a.data.extras||[]).filter(x=>x.tipo==="dupla").forEach(x=>{ if(duplas.indexOf(x.nome)<0) duplas.push(x.nome); }); });
   return (
     <>
-      <Topo longevus titulo="Aulas do Elo 60+" sub={"Elo 60+ · 30 dias · "+aulas.length+" aulas"}>
+      <Topo longevus titulo="Aulas do Elo 60+" sub={"Mês "+mes+" de 12 · "+aulas.length+" aulas"}>
+        <div style={{display:"flex",gap:6,marginTop:8,overflowX:"auto",paddingBottom:2}}>{Array.from({length:12},(_,k)=><button key={k} type="button" onClick={()=>{ setMes(k+1); setSemana(1); }} style={{flexShrink:0,width:38,height:34,borderRadius:10,border:"none",fontSize:14,fontWeight:800,cursor:"pointer",background:mes===k+1?C.laranja:C.escuro2,color:mes===k+1?"#fff":"#CBD5E1"}}>{k+1}</button>)}</div>
         <div style={{display:"flex",gap:8,marginTop:8}}>{[1,2,3,4].map(s=><Chip key={s} escuro on={semana===s} onClick={()=>setSemana(s)}>{"Semana "+s}</Chip>)}</div>
       </Topo>
       <Corpo>
@@ -335,16 +343,16 @@ function ConfigCobranca({ modelo, onVoltar, onSalvo }){
     </div>
   );
 }
-function PagamentosTab({ modelo, lista, onAcao, onConfig }){
+function PagamentosTab({ modelo, modelos, lista, onAcao, onConfig }){
   const [filtro,setFiltro] = useState("pendentes");
   const cont = { vencido:0, aguardando:0, pago:0, bloqueado:0 };
   lista.forEach(m=>{ cont[m.situacao] = (cont[m.situacao]||0)+1; });
   const vis = lista.filter(m=> filtro==="pendentes" ? (m.situacao==="vencido" || m.situacao==="aguardando") : filtro==="pagos" ? m.situacao==="pago" : m.situacao==="bloqueado");
   const selo = (m) => m.situacao==="vencido" ? <Selo cor="vermelho">vencido</Selo> : m.situacao==="bloqueado" ? <Selo cor="cinza">bloqueado</Selo> : m.situacao==="pago" ? <Selo>{m.pagamento_status==="isento" ? "isento" : "pago"}</Selo> : m.aluno_marcou_pago ? <Selo>avisou que pagou</Selo> : <Selo cor="laranja">aguardando</Selo>;
-  const info = (m) => "Entrou "+fmtData(m.inicio)+" · "+(m.situacao==="pago" ? "pagamento confirmado" : m.situacao==="bloqueado" ? "acesso bloqueado" : m.dias_para_prazo<0 ? "prazo venceu há "+(-m.dias_para_prazo)+(m.dias_para_prazo===-1?" dia":" dias") : m.dias_para_prazo===0 ? "prazo vence hoje" : "prazo até "+fmtData(m.pagamento_prazo));
+  const info = (m) => "Mês "+mesDoModelo(m.modelo_id)+" · "+(mesDoModelo(m.modelo_id)>1 ? "começa "+fmtData(m.inicio) : "entrou "+fmtData(m.inicio))+" · "+(m.situacao==="pago" ? "pagamento confirmado" : m.situacao==="bloqueado" ? "acesso bloqueado" : m.dias_para_prazo<0 ? "prazo venceu há "+(-m.dias_para_prazo)+(m.dias_para_prazo===-1?" dia":" dias") : m.dias_para_prazo===0 ? "prazo vence hoje" : "prazo até "+fmtData(m.pagamento_prazo));
   return (
     <>
-      <Topo longevus titulo="Pagamentos" sub={"Elo 60+ · 30 dias · "+real(modelo.preco)}>
+      <Topo longevus titulo="Pagamentos" sub={"Elo 60+ · mês 1 "+real(modelo.preco)+" · renovação "+real(39.9)}>
         <div style={{display:"flex",gap:8,marginTop:8}}>
           <Chip escuro on={filtro==="pendentes"} onClick={()=>setFiltro("pendentes")}>{"Pendentes "+(cont.vencido+cont.aguardando)}</Chip>
           <Chip escuro on={filtro==="pagos"} onClick={()=>setFiltro("pagos")}>{"Pagos "+cont.pago}</Chip>
@@ -353,7 +361,7 @@ function PagamentosTab({ modelo, lista, onAcao, onConfig }){
       </Topo>
       <Corpo>
         {vis.length===0 && <div style={{color:C.cinza,fontSize:15,textAlign:"center",padding:"24px 8px"}}>{filtro==="pendentes" ? "Nenhum pagamento pendente." : "Ninguém nesta lista."}</div>}
-        {vis.map(m=>{ const wa = waLink(m.whatsapp, mensagemCobranca(modelo, m)); return (
+        {vis.map(m=>{ const wa = waLink(m.whatsapp, mensagemCobranca((modelos||[]).find(x=>x.id===m.modelo_id) || modelo, m)); return (
           <div key={m.matricula_id} style={Object.assign({}, cartao, {padding:"12px 14px",display:"flex",flexDirection:"column",gap:8,border:m.situacao==="vencido"?"1.5px solid #FECACA":"none"})}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}><b style={{fontSize:16}}>{m.nome||"Sem nome"}</b>{selo(m)}</div>
             <span style={{fontSize:13,color:C.cinza}}>{info(m)}</span>
@@ -366,7 +374,7 @@ function PagamentosTab({ modelo, lista, onAcao, onConfig }){
               </div>}
           </div>); })}
         <button type="button" onClick={onConfig} style={Object.assign({}, cartao, {marginTop:"auto",padding:"2px 14px",border:"none",textAlign:"left",cursor:"pointer",color:C.escuro})}>
-          {[["Prazo para pagar",(modelo.prazo_pagamento_dias||0)+((modelo.prazo_pagamento_dias||0)===1?" dia":" dias")],["Preço",real(modelo.preco)],["Mensagem de cobrança","editar"]].map(([r,v],i)=><div key={r} style={{display:"flex",justifyContent:"space-between",alignItems:"center",height:42,fontSize:14.5,borderTop:i?"1px solid #F1F5F9":"none"}}><span>{r}</span><b style={{color:C.laranjaTxt}}>{v}</b></div>)}
+          {[["Mês 1 · prazo para pagar",(modelo.prazo_pagamento_dias||0)+((modelo.prazo_pagamento_dias||0)===1?" dia":" dias")],["Preço",real(modelo.preco)],["Mensagem de cobrança","editar"]].map(([r,v],i)=><div key={r} style={{display:"flex",justifyContent:"space-between",alignItems:"center",height:42,fontSize:14.5,borderTop:i?"1px solid #F1F5F9":"none"}}><span>{r}</span><b style={{color:C.laranjaTxt}}>{v}</b></div>)}
         </button>
       </Corpo>
     </>
@@ -385,12 +393,13 @@ function resumoAluno(m, prog){
 }
 function AlunosTab({ dados, onAbrir }){
   const [filtro,setFiltro] = useState("ativos");
-  const itens = dados.mats.map(m=>({ m, r:resumoAluno(m, dados.prog) }));
+  const hojeA = hojeISO(); const porAluno = {}; dados.mats.forEach(m=>{ const k = m.user_id || m.id; const a = porAluno[k]; const vale = (x) => x.inicio<=hojeA; if(!a || (vale(m) && (!vale(a) || mesDoModelo(m.modelo_id) > mesDoModelo(a.modelo_id))) || (!vale(m) && !vale(a) && mesDoModelo(m.modelo_id) < mesDoModelo(a.modelo_id))) porAluno[k] = m; });
+  const itens = Object.keys(porAluno).map(k=>({ m:porAluno[k], r:resumoAluno(porAluno[k], dados.prog) }));
   const cont = { ativos:itens.filter(i=>!i.r.concluiu && i.m.status==="ativo").length, parados:itens.filter(i=>i.r.parado && i.m.status==="ativo").length, concluiram:itens.filter(i=>i.r.concluiu).length };
   const vis = itens.filter(i=> filtro==="ativos" ? (!i.r.concluiu && i.m.status==="ativo") : filtro==="parados" ? (i.r.parado && i.m.status==="ativo") : filtro==="concluiram" ? i.r.concluiu : true).sort((a,b)=>b.r.ultimo-a.r.ultimo);
   return (
     <>
-      <Topo longevus titulo="Alunos do Elo 60+" sub={dados.mats.length+(dados.mats.length===1?" aluno":" alunos")+" · "+cont.ativos+" ativos · "+cont.concluiram+" concluíram"}>
+      <Topo longevus titulo="Alunos do Elo 60+" sub={itens.length+(itens.length===1?" aluno":" alunos")+" · "+cont.ativos+" ativos · "+cont.concluiram+" concluíram"}>
         <div style={{display:"flex",gap:8,marginTop:8}}>
           <Chip escuro on={filtro==="ativos"} onClick={()=>setFiltro("ativos")}>{"Ativos "+cont.ativos}</Chip>
           <Chip escuro on={filtro==="parados"} onClick={()=>setFiltro("parados")}>{"Parados "+cont.parados}</Chip>
@@ -406,7 +415,7 @@ function AlunosTab({ dados, onAbrir }){
           return (
             <button key={m.id} type="button" onClick={()=>onAbrir(m)} style={Object.assign({}, cartao, {padding:"12px 14px",display:"flex",flexDirection:"column",gap:7,border:"none",textAlign:"left",cursor:"pointer",color:C.escuro})}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,width:"100%"}}>
-                <b style={{fontSize:16}}>{m.nome||"Sem nome"}</b>
+                <b style={{fontSize:16}}>{m.nome||"Sem nome"}<span style={{fontSize:12.5,color:C.laranjaTxt,fontWeight:800,marginLeft:6}}>{"Mês "+mesDoModelo(m.modelo_id)}</span></b>
                 <span style={{display:"flex",gap:4,flexWrap:"wrap",justifyContent:"flex-end"}}>
                   {m.status==="bloqueado" && <Selo cor="cinza">bloqueado</Selo>}
                   {parq && <Selo cor="laranja">PAR-Q: sim</Selo>}
@@ -416,7 +425,7 @@ function AlunosTab({ dados, onAbrir }){
                 </span>
               </div>
               <div style={{display:"flex",justifyContent:"space-between",fontSize:13,color:C.cinza,width:"100%"}}>
-                <span>{r.concluiu ? "Concluiu os 30 dias" : r.ultimo===0 ? "Ainda não começou" : "Concluiu o dia "+r.ultimo+" de 30"}</span>
+                <span>{r.concluiu ? (mesDoModelo(m.modelo_id)===12 ? "Concluiu os 12 meses" : "Concluiu o mês "+mesDoModelo(m.modelo_id)) : r.ultimo===0 ? "Ainda não começou" : "Concluiu o dia "+r.ultimo+" de 30"}</span>
                 <span>{r.seq>0 ? r.seq+(r.seq===1?" dia seguido":" dias seguidos") : r.ultData ? "último treino "+fmtData(r.ultData) : ""}</span>
               </div>
               <div style={{height:7,borderRadius:4,background:C.borda,width:"100%"}}><div style={{height:7,borderRadius:4,background:C.laranja,width:Math.round((r.ultimo/30)*100)+"%"}}/></div>
@@ -429,7 +438,9 @@ function AlunosTab({ dados, onAbrir }){
 }
 function FichaAluno({ m, dados, modelo, onVoltar, onAcao }){
   const r = resumoAluno(m, dados.prog);
-  const testes = dados.tes.filter(t=>t.matricula_id===m.id).sort((a,b)=>a.dia-b.dia);
+  const doAluno = dados.mats.filter(x=>m.user_id ? x.user_id===m.user_id : x.id===m.id);
+  const mesId = {}; doAluno.forEach(x=>{ mesId[x.id] = mesDoModelo(x.modelo_id); });
+  const testes = dados.tes.filter(t=>mesId[t.matricula_id]).map(t=>Object.assign({ mes:mesId[t.matricula_id] }, t)).sort((a,b)=>(a.mes-b.mes)||(a.dia-b.dia)).filter((t,i,arr)=>i===0 || i>=arr.length-3);
   const jogos = dados.jogos.filter(x=>x.matricula_id===m.id).length;
   const respostas = (m.parq && m.parq.respostas) || [];
   const sims = respostas.map((v,i)=>v===true ? PARQ[i] : null).filter(Boolean);
@@ -438,16 +449,16 @@ function FichaAluno({ m, dados, modelo, onVoltar, onAcao }){
   const pg = m.pagamento_status==="pago" ? <Selo>{"pago"+(m.pagamento_confirmado_em ? " em "+fmtData(hojeISO(m.pagamento_confirmado_em)) : "")}</Selo> : m.pagamento_status==="isento" ? <Selo>isento</Selo> : m.pagamento_status==="vencido" ? <Selo cor="vermelho">vencido</Selo> : <Selo cor="laranja">{"aguardando até "+fmtData(m.pagamento_prazo)}</Selo>;
   return (
     <div className="tela">
-      <Topo onVoltar={onVoltar} voltar="Alunos" titulo={m.nome||"Sem nome"} sub={"Entrou em "+fmtData(m.inicio)+(m.whatsapp ? " · "+m.whatsapp : "")}/>
+      <Topo onVoltar={onVoltar} voltar="Alunos" titulo={m.nome||"Sem nome"} sub={"Mês "+mesDoModelo(m.modelo_id)+" de 12 · início "+fmtData(m.inicio)+(m.whatsapp ? " · "+m.whatsapp : "")}/>
       <Corpo>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:8}}>
           {[[r.concluiu ? "30" : "Dia "+r.ultimo,"concluídos de 30"],[r.seq+(r.seq===1?" dia":" dias"),"seguidos"],[String(jogos),jogos===1?"jogo feito":"jogos feitos"]].map(([v,l])=><div key={l} style={Object.assign({}, cartao, {padding:10,textAlign:"center"})}><b style={{display:"block",fontSize:18}}>{v}</b><span style={{fontSize:12,color:C.cinza}}>{l}</span></div>)}
         </div>
         <div style={Object.assign({}, cartao, {padding:"12px 14px"})}>
           {testes.length===0 ? <div style={{fontSize:14,color:C.cinza}}>Ainda não fez o teste do dia 1.</div> : <>
-            <div style={{display:"grid",gridTemplateColumns:col,gap:6,fontSize:12.5,color:C.cinza,marginBottom:4}}><span>Testes</span>{testes.map(t=><span key={t.dia} style={{textAlign:"center"}}>{"Dia "+t.dia}</span>)}</div>
+            <div style={{display:"grid",gridTemplateColumns:col,gap:6,fontSize:12.5,color:C.cinza,marginBottom:4}}><span>Testes</span>{testes.map(t=><span key={t.mes+"-"+t.dia} style={{textAlign:"center"}}>{t.mes>1 ? "Mês "+t.mes : "Dia "+t.dia}</span>)}</div>
             {[["Força · levantar 30 s","forca_reps",""],["Equilíbrio · um pé","equilibrio_seg"," s"],["Memória · números","memoria_nivel",""],["Como se sente","percepcao",""]].map(([n,k,u])=>(
-              <div key={k} style={{display:"grid",gridTemplateColumns:col,gap:6,fontSize:14,padding:"6px 0",borderTop:"1px solid #F1F5F9"}}><span>{n}</span>{testes.map((t,i)=><b key={t.dia} style={{textAlign:"center",color:i===testes.length-1 && testes.length>1 ? C.verdeTxt : C.escuro}}>{t[k]===null || t[k]===undefined ? "-" : Number(t[k])+u}</b>)}</div>
+              <div key={k} style={{display:"grid",gridTemplateColumns:col,gap:6,fontSize:14,padding:"6px 0",borderTop:"1px solid #F1F5F9"}}><span>{n}</span>{testes.map((t,i)=><b key={t.mes+"-"+t.dia} style={{textAlign:"center",color:i===testes.length-1 && testes.length>1 ? C.verdeTxt : C.escuro}}>{t[k]===null || t[k]===undefined ? "-" : Number(t[k])+u}</b>)}</div>
             ))}
           </>}
         </div>
@@ -465,11 +476,57 @@ function FichaAluno({ m, dados, modelo, onVoltar, onAcao }){
   );
 }
 
+// ═══════════════ RESUMO DA JORNADA ═══════════════
+function ResumoTab({ dados, modelos, onAbrir }){
+  const hoje = hojeISO();
+  const porAluno = {}; dados.mats.forEach(m=>{ const k = m.user_id || m.id; (porAluno[k] = porAluno[k] || []).push(m); });
+  const alunos = Object.keys(porAluno).map(k=>{ const lista = porAluno[k].sort((a,b)=>mesDoModelo(a.modelo_id)-mesDoModelo(b.modelo_id)); const atual = lista.filter(x=>x.inicio<=hoje).pop() || lista[0]; const ultima = lista[lista.length-1]; return { lista, atual, ultima, mes:mesDoModelo(atual.modelo_id) }; });
+  const ativos = alunos.filter(a=>a.atual.status==="ativo" && !(mesDoModelo(a.ultima.modelo_id)===12 && resumoAluno(a.ultima, dados.prog).concluiu));
+  const precoDe = (m) => Number(m.preco || ((modelos||[]).find(x=>x.id===m.modelo_id)||{}).preco || 0);
+  const recorrente = ativos.reduce((t,a)=>t+(a.mes>1 ? precoDe(a.atual) : 39.9),0);
+  const porMes = Array.from({length:12},(_,k)=>ativos.filter(a=>a.mes===k+1).length);
+  const maxMes = Math.max(1, ...porMes);
+  const fim = (m) => maisDias(m.inicio, 29);
+  const renovam = alunos.map(a=>{ const u = a.ultima; const mu = mesDoModelo(u.modelo_id); const r = resumoAluno(u, dados.prog);
+    if(u.inicio > hoje){ const ant = a.lista[a.lista.length-2]; return { a, de:mu-1, vence:u.pagamento_prazo, pago:situacaoPag(u)==="pago", avisou:u.aluno_marcou_pago, m:u }; }
+    if(mu>=12 || u.status!=="ativo") return null;
+    const d = difDias(fim(u), hoje); if(d>7 && r.ultimo<24) return null;
+    return { a, de:mu, vence:fim(u), pago:false, avisou:false, m:u, semRenovar:true };
+  }).filter(Boolean).filter(x=>x.vence && difDias(x.vence, hoje)<=7).sort((x,y)=>x.vence<y.vence?-1:1);
+  const chegaram2 = alunos.filter(a=>a.lista.some(x=>mesDoModelo(x.modelo_id)===1) && resumoAluno(a.lista[0], dados.prog).ultimo>=30);
+  const renov12 = chegaram2.length ? Math.round(100*chegaram2.filter(a=>a.lista.some(x=>mesDoModelo(x.modelo_id)===2)).length/chegaram2.length) : null;
+  const caixa = Object.assign({}, cartao, {padding:"10px 12px",textAlign:"center"});
+  const lembrar = (x) => waLink(x.m.whatsapp, "Oi, "+(primeiro(x.m.nome)||"tudo bem")+"! Aqui é o Wellington. Seu mês "+x.de+" do Elo 60+ está terminando. "+(x.semRenovar ? "Quer garantir o mês "+(x.de+1)+"? É só tocar em Garantir no app." : "Consegue me enviar o comprovante do mês "+(x.de+1)+"?"));
+  return (
+    <>
+      <Topo longevus titulo="Elo 60+" sub="Jornada de 12 meses"/>
+      <Corpo>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:8}}>
+          {[[String(ativos.length),"ativos"],[real(recorrente).replace(",00",""),"recorrente/mês"],[String(renovam.filter(x=>!x.pago).length),"renovam em 7 dias"]].map(([v,l])=><div key={l} style={caixa}><b style={{display:"block",fontSize:19}}>{v}</b><span style={{fontSize:11.5,color:C.cinza}}>{l}</span></div>)}
+        </div>
+        <div style={Object.assign({}, cartao, {padding:"12px 14px"})}>
+          <div style={{fontSize:13,fontWeight:700,color:C.cinza,marginBottom:8}}>Alunos por mês</div>
+          <div style={{display:"flex",alignItems:"flex-end",gap:4,height:70}}>{porMes.map((n,k)=><div key={k} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3,height:"100%",justifyContent:"flex-end"}}><span style={{fontSize:10.5,color:C.cinza}}>{n||""}</span><div style={{width:"100%",height:Math.max(3,Math.round(48*n/maxMes)),borderRadius:4,background:n?C.laranja:C.borda}}/></div>)}</div>
+          <div style={{display:"flex",gap:4,marginTop:4}}>{porMes.map((_,k)=><span key={k} style={{flex:1,textAlign:"center",fontSize:10.5,color:C.cinzaClaro}}>{k+1}</span>)}</div>
+          <div style={{fontSize:13.5,marginTop:10,color:"#334155"}}>{"Renovação do mês 1 para o 2: "}<b style={{color:C.laranjaTxt}}>{renov12===null ? "ainda sem dados" : renov12+"%"}</b></div>
+        </div>
+        <div style={{fontSize:11.5,fontWeight:700,letterSpacing:"0.08em",color:C.cinza,textTransform:"uppercase",margin:"6px 2px 0"}}>Renovam esta semana</div>
+        {renovam.length===0 && <div style={{color:C.cinza,fontSize:14.5,textAlign:"center",padding:"14px 8px"}}>Ninguém renova nos próximos 7 dias.</div>}
+        {renovam.map(x=>{ const wa = lembrar(x); return (
+          <div key={x.m.id} style={Object.assign({}, cartao, {padding:"10px 14px",display:"flex",alignItems:"center",gap:10})}>
+            <button type="button" onClick={()=>onAbrir(x.m)} style={{flex:1,border:"none",background:"none",textAlign:"left",cursor:"pointer",padding:0,color:C.escuro}}><b style={{display:"block",fontSize:15.5}}>{x.m.nome||"Sem nome"}</b><span style={{fontSize:13,color:C.cinza}}>{"Mês "+x.de+" → "+(x.de+1)+" · vence "+fmtData(x.vence)}</span></button>
+            {x.pago ? <Selo>pagou</Selo> : x.avisou ? <Selo>avisou que pagou</Selo> : wa ? <a href={wa} target="_blank" rel="noopener noreferrer" style={{fontSize:14,fontWeight:800,color:C.laranjaTxt,textDecoration:"none",whiteSpace:"nowrap"}}>Lembrar ›</a> : null}
+          </div>); })}
+      </Corpo>
+    </>
+  );
+}
+
 // ═══════════════ PAINEL ═══════════════
 function Nav({ aba, setAba, pend }){
-  const itens = [["aulas","Aulas",<path key="a" d="M4 6h16M4 12h16M4 18h10"/>],["pagamentos","Pagamentos",<g key="p"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/></g>],["alunos","Alunos",<g key="u"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></g>]];
+  const itens = [["resumo","Resumo",<path key="r" d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>],["aulas","Aulas",<path key="a" d="M4 6h16M4 12h16M4 18h10"/>],["pagamentos","Pagamentos",<g key="p"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/></g>],["alunos","Alunos",<g key="u"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></g>]];
   return (
-    <nav aria-label="Menu do painel" style={{height:68,flexShrink:0,display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",background:"#fff",borderTop:"1px solid "+C.borda}}>
+    <nav aria-label="Menu do painel" style={{height:68,flexShrink:0,display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",background:"#fff",borderTop:"1px solid "+C.borda}}>
       {itens.map(([id,rot,ic])=>{ const on = aba===id; return (
         <button key={id} type="button" onClick={()=>setAba(id)} style={{position:"relative",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,border:"none",background:"none",cursor:"pointer",fontSize:12.5,fontWeight:on?700:500,color:on?C.laranjaTxt:C.cinza}}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={on?C.laranja:C.cinza} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{ic}</svg>{rot}
@@ -480,7 +537,8 @@ function Nav({ aba, setAba, pend }){
 }
 function Painel({ modeloInicial }){
   const [modelo,setModelo] = useState(modeloInicial);
-  const [aba,setAba] = useState("pagamentos");
+  const [aba,setAba] = useState("resumo");
+  const [modelos,setModelos] = useState([]);
   const [aulas,setAulas] = useState(null);
   const [dias,setDias] = useState([]);
   const [pags,setPags] = useState([]);
@@ -488,17 +546,21 @@ function Painel({ modeloInicial }){
   const [tela,setTela] = useState(null);
   const [aviso,setAviso] = useState("");
   const carregar = async () => {
-    const [a, d, p, mats, prog, tes, jogos, mod] = await Promise.all([
-      api.get("ma_jornada_aulas?select=id,semana,treino,data&modelo_id=eq."+MODELO+"&order=semana,treino"),
-      api.get("ma_jornada_dias?select=dia,aula_id&modelo_id=eq."+MODELO+"&order=dia"),
-      api.rpc("ma_pagamentos_a_conferir", { p_modelo:MODELO }),
-      api.get("ma_jornada_matriculas?select=*&modelo_id=eq."+MODELO+"&order=created_at.desc"),
+    const [a, d, p, mats, prog, tes, jogos] = await Promise.all([
+      api.get("ma_jornada_aulas?select=id,modelo_id,semana,treino,data&"+FILTRO_ELO+"&order=semana,treino"),
+      api.get("ma_jornada_dias?select=modelo_id,dia,aula_id&"+FILTRO_ELO+"&order=dia"),
+      api.get("ma_jornada_modelos?select=*&or=(id.eq.mente-ativa-30,id.like.elo60-m*)"),
+      api.get("ma_jornada_matriculas?select=*&"+FILTRO_ELO+"&order=created_at.desc"),
       api.get("ma_jornada_progresso?select=matricula_id,dia,concluido_em"),
       api.get("ma_jornada_testes?select=*"),
       api.get("ma_jornada_jogos?select=matricula_id"),
-      api.get("ma_jornada_modelos?select=*&id=eq."+MODELO)
     ]);
-    setAulas(a||[]); setDias(d||[]); setPags(Array.isArray(p) ? p : []);
+    const mods = Array.isArray(p) ? p : []; setModelos(mods);
+    const hoje = hojeISO();
+    const ordem = { vencido:0, aguardando:1, bloqueado:2, pago:3 };
+    setAulas(a||[]); setDias(d||[]);
+    setPags((mats||[]).map(x=>({ matricula_id:x.id, modelo_id:x.modelo_id, nome:x.nome, whatsapp:x.whatsapp, inicio:x.inicio, pagamento_prazo:x.pagamento_prazo, aluno_marcou_pago:x.aluno_marcou_pago, pagamento_status:x.pagamento_status, status:x.status, situacao:situacaoPag(x), dias_para_prazo:x.pagamento_prazo ? difDias(x.pagamento_prazo, hoje) : 0 })).sort((u,v)=>(ordem[u.situacao]-ordem[v.situacao]) || String(u.pagamento_prazo||"").localeCompare(String(v.pagamento_prazo||""))));
+    const mod = mods.filter(x=>x.id===MODELO);
     setDados({ mats:mats||[], prog:prog||[], tes:tes||[], jogos:jogos||[] });
     if(mod && mod[0]) setModelo(mod[0]);
   };
@@ -519,7 +581,8 @@ function Painel({ modeloInicial }){
   return (
     <div className="tela">
       {aba==="aulas" && <AulasTab aulas={aulas} dias={dias} onAbrir={(linha, ds)=>setTela({ tipo:"aula", linha, diasTxt: ds.length ? "Dias "+ds.join(", ") : "" })}/>}
-      {aba==="pagamentos" && <PagamentosTab modelo={modelo} lista={pags} onAcao={acao} onConfig={()=>setTela({ tipo:"config" })}/>}
+      {aba==="resumo" && <ResumoTab dados={dados} modelos={modelos} onAbrir={(m)=>setTela({ tipo:"aluno", m })}/>}
+      {aba==="pagamentos" && <PagamentosTab modelo={modelo} modelos={modelos} lista={pags} onAcao={acao} onConfig={()=>setTela({ tipo:"config" })}/>}
       {aba==="alunos" && <AlunosTab dados={dados} onAbrir={(m)=>setTela({ tipo:"aluno", m })}/>}
       <Nav aba={aba} setAba={(a)=>{ setAba(a); carregar(); }} pend={pend}/>
       <Aviso texto={aviso} limpar={()=>setAviso("")}/>

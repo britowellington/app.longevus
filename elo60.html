@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0F172A"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-title" content="Elo 60+"/>
-<title>Elo 60+ · 30 dias</title>
+<title>Elo 60+</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -32,7 +32,18 @@ const { useState, useEffect, useRef } = React;
 const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
 const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
 const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY, { auth: { storageKey: "lv-mente-auth", persistSession: true, autoRefreshToken: true } });
-const MODELO = "mente-ativa-30";
+let MODELO = "mente-ativa-30";
+const CREF = "CREF 089836-G/SP";
+const CAPS = [
+  [1,"Base","Força de pernas, equilíbrio e mobilidade"],[2,"Força para o dia a dia","Levantar, sentar e carregar compras"],
+  [3,"Equilíbrio firme","Base estreita, giros e olhos em movimento"],[4,"Do chão para cima","Descer e levantar do chão com apoio"],
+  [5,"Caminhar melhor","Passada, ritmo e escadas"],[6,"Mãos e braços fortes","Pegada, empurrar, puxar e alcançar"],
+  [7,"Reação rápida","Reflexo, passo de proteção e atenção"],[8,"Mente e corpo juntos","Mais dupla tarefa em cada aula"],
+  [9,"Prevenção de quedas","Equilíbrio dinâmico e superfícies"],[10,"Fôlego","Resistência leve e circuitos mais longos"],
+  [11,"Coordenação","Ritmo, sequências e dança leve"],[12,"Vitalidade","Tudo junto, teste final e certificado"]
+];
+const capitulo = (j, mes) => { const c = (j && j.capitulos || []).find(x=>Number(x.mes)===Number(mes)); const f = CAPS[mes-1] || [mes,"",""]; return { mes, tema:(c && c.tema) || f[1], frase:(c && c.frase) || f[2], prox:(c && c.prox) || "", preco:c ? Number(c.preco) : (mes===1 ? 49.9 : 39.9), modelo_id:c ? c.modelo_id : null }; };
+const pagoOk = (m) => m && (m.pagamento_status==="pago" || m.pagamento_status==="isento");
 const JOGOS_URL = "elo60-jogos.html?jornada=1";
 
 const C = { escuro:"#0F172A", escuro2:"#18233A", laranja:"#FF5603", laranjaTxt:"#C2410C", laranjaClaro:"#FFF4EE", cinza:"#64748B", cinzaClaro:"#94A3B8", borda:"#E2E8F0", fundo:"#F4F5F7", verde:"#16A34A", verdeClaro:"#F0FDF4", vermelho:"#B91C1C", vermelhoClaro:"#FEF2F2" };
@@ -95,6 +106,8 @@ const telaAcesa = async (ligar) => {
 const IcoSeta = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>;
 const IcoCheck = ({ cor, tam }) => <svg width={tam||18} height={tam||18} viewBox="0 0 24 24" fill="none" stroke={cor||"currentColor"} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l4 4 10-10"/></svg>;
 const IcoPlay = ({ cor }) => <svg width="18" height="18" viewBox="0 0 24 24" fill={cor||"currentColor"} aria-hidden="true"><path d="M7 4v16l13-8z"/></svg>;
+const IcoSelo = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C2410C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="6"/><path d="M8.5 14l-1.5 7 5-3 5 3-1.5-7"/></svg>;
+const IcoMapa = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4338CA" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>;
 const IcoCadeado = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>;
 
 const Voltar = ({ onClick, rotulo, claro }) => (
@@ -264,23 +277,26 @@ function ParQ({ onFeito }){
 }
 
 // ═══════════════ PIX ═══════════════
-function PixBox({ j, prof, onMarcado }){
+function PixBox({ j, prof, onMarcado, valor, rotulo, modelo, txid, compartilhar }){
   const qr = useRef(null);
   const [copiado,setCopiado] = useState(false);
   const [marcado,setMarcado] = useState(!!j.aluno_marcou_pago);
-  const payload = prof && prof.pix_key ? pixPayload({ pixKey:prof.pix_key, merchantName:prof.pix_merchant_name||prof.nome, merchantCity:prof.pix_merchant_city, amount:j.preco, txid:"ELO60" }) : null;
+  const preco = valor || j.preco;
+  const payload = prof && prof.pix_key ? pixPayload({ pixKey:prof.pix_key, merchantName:prof.pix_merchant_name||prof.nome, merchantCity:prof.pix_merchant_city, amount:preco, txid:txid||"ELO60" }) : null;
   useEffect(()=>{ if(payload && qr.current && window.QRCode){ qr.current.innerHTML=""; new window.QRCode(qr.current,{ text:payload, width:150, height:150, colorDark:"#0f172a", colorLight:"#ffffff" }); } },[payload]);
   const copiar = () => { try{ navigator.clipboard.writeText(payload).then(()=>{ setCopiado(true); setTimeout(()=>setCopiado(false),2500); }); }catch(e){} };
   const pers = primeiro(prof && (prof.nome || prof.pix_merchant_name)) || "Wellington";
-  const wa = waLink(prof && prof.whatsapp, "Oi, "+pers+"! Acabei de pagar o Elo 60+ ("+real(j.preco)+"). Segue o comprovante.");
-  const marcar = async () => { setMarcado(true); await api.rpc("ma_aluno_marcar_pago", {}); if(onMarcado) onMarcado(); };
+  const wa = waLink(prof && prof.whatsapp, "Oi, "+pers+"! Acabei de pagar o "+(rotulo||"Elo 60+")+" ("+real(preco)+"). Segue o comprovante.");
+  const marcar = async () => { setMarcado(true); await api.rpc("ma_aluno_marcar_pago", { p_modelo: modelo || MODELO }); if(onMarcado) onMarcado(); };
+  const presente = compartilhar && payload ? "https://wa.me/?text="+encodeURIComponent(compartilhar+"\n\nValor: "+real(preco)+" no Pix. Código copia e cola:\n"+payload) : null;
   return (
     <div style={{background:"#fff",borderRadius:18,padding:14,boxShadow:"0 1px 3px rgba(15,23,42,0.07)",textAlign:"center",display:"flex",flexDirection:"column",gap:10}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}><span style={{fontSize:14.5,color:C.cinza}}>Elo 60+ · 30 dias</span><span style={{fontSize:26,fontWeight:800}}>{real(j.preco)}</span></div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}><span style={{fontSize:14.5,color:C.cinza}}>{rotulo || (j.mes>1 ? "Elo 60+ · mês "+j.mes : "Elo 60+ · 30 dias")}</span><span style={{fontSize:26,fontWeight:800}}>{real(preco)}</span></div>
       {payload ? <div ref={qr} role="img" aria-label="QR Code do Pix" style={{display:"flex",justifyContent:"center"}}/> : <div style={{fontSize:14,color:C.cinza,lineHeight:1.5}}>O Pix ainda não está configurado. Fale com o Wellington pelo WhatsApp.</div>}
-      {payload && <Botao onClick={copiar} tipo={copiado?"verde":undefined}>{copiado?"Código copiado":"Copiar código Pix"}</Botao>}
+      {payload && !presente && <Botao onClick={copiar} tipo={copiado?"verde":undefined}>{copiado?"Código copiado":"Copiar código Pix"}</Botao>}
+      {presente && <BotaoLink href={presente}>Enviar o Pix no WhatsApp</BotaoLink>}
       <div style={{display:"flex",gap:8}}>
-        {marcado ? <div style={{flex:1,background:C.verdeClaro,color:"#15803D",borderRadius:16,padding:"8px 10px",fontSize:14,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",minHeight:54}}>Aviso enviado</div> : <Botao tipo="verde" onClick={marcar} style={{flex:1}}>Já paguei</Botao>}
+        {marcado ? <div style={{flex:1,background:C.verdeClaro,color:"#15803D",borderRadius:16,padding:"8px 10px",fontSize:14,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",minHeight:54}}>Aviso enviado</div> : <Botao tipo="verde" onClick={marcar} style={{flex:1}}>{compartilhar ? "Já pagaram" : "Já paguei"}</Botao>}
         {wa && <div style={{flex:1}}><BotaoLink href={wa} tipo="sec">Comprovante</BotaoLink></div>}
       </div>
     </div>
@@ -618,7 +634,7 @@ function MemoriaNumeros({ onNivel }){
   return <div style={{display:"flex",flexDirection:"column",gap:12,flex:1}}><Campo rotulo="Digite os números na ordem"><input style={Object.assign({}, estInput, { height:60, fontSize:28, letterSpacing:6, textAlign:"center" })} inputMode="numeric" value={resposta} onChange={e=>setResposta(e.target.value)} autoFocus/></Campo><div style={{marginTop:"auto"}}><Botao onClick={conferir} disabled={!resposta}>Conferir</Botao></div></div>;
 }
 
-function TelaTeste({ dia, j, testes, onVoltar, onSalvo }){
+function TelaTeste({ dia, j, testes, todos, onVoltar, onSalvo }){
   const [passo,setPasso] = useState(0);
   const [forca,setForca] = useState(0); const [forcaOk,setForcaOk] = useState(false);
   const [eq1,setEq1] = useState(null); const [eq2,setEq2] = useState(null);
@@ -634,6 +650,10 @@ function TelaTeste({ dia, j, testes, onVoltar, onSalvo }){
   };
   const caixa = {flex:1,minHeight:0,background:"#fff",borderRadius:18,padding:16,boxShadow:"0 1px 3px rgba(15,23,42,0.07)",display:"flex",flexDirection:"column",gap:12};
   const texto = {fontSize:16,lineHeight:1.5};
+  if(salvo && j.mes>1){
+    const lista = (todos||[]).filter(t=>!(t.matricula_id===j.matricula_id && t.dia===dia)).concat([{ matricula_id:j.matricula_id, dia:dia, forca_reps:forca, equilibrio_seg:eq, memoria_nivel:mem, percepcao:perc }]);
+    return <TelaEvolucao j={j} todos={lista} onVoltar={onVoltar} voltar="Dia" botao="Continuar o dia"/>;
+  }
   if(salvo){
     const todos = [1,15,30].map(d=>d===dia ? { dia:d, forca_reps:forca, equilibrio_seg:eq, memoria_nivel:mem, percepcao:perc } : testes.find(t=>t.dia===d)).filter(Boolean);
     const col = "1.6fr repeat("+todos.length+",1fr)";
@@ -655,7 +675,7 @@ function TelaTeste({ dia, j, testes, onVoltar, onSalvo }){
   const titulos = ["Força","Equilíbrio","Memória","Como você se sente"];
   return (
     <div className="tela">
-      <Topo compacto onVoltar={onVoltar} voltar="Dia" titulo={"Teste do dia "+dia} sub={"Etapa "+(passo+1)+" de 4 · "+titulos[passo]}/>
+      <Topo compacto onVoltar={onVoltar} voltar="Dia" titulo={j.mes>1 ? "Teste do mês "+j.mes : "Teste do dia "+dia} sub={"Etapa "+(passo+1)+" de 4 · "+titulos[passo]}/>
       <Corpo>
         <div style={caixa}>
           {passo===0 && (!forcaOk ? <>
@@ -701,7 +721,7 @@ function TelaDia({ j, info, aula, exs, testes, onVoltar, onAbrir, feitos, marcar
   const extras = (aula.extras || []).filter(x=>x.tipo!=="dupla");
   const temDupla = (aula.extras || []).some(x=>x.tipo==="dupla");
   const passos = [];
-  if(info.teste) passos.push({ id:"teste", titulo:"Teste do dia "+info.dia, sub:"Força, equilíbrio e memória · cerca de 5 min", feito:testeFeito });
+  if(info.teste) passos.push({ id:"teste", titulo:j.mes>1 ? "Teste do mês "+j.mes : "Teste do dia "+info.dia, sub:j.mes>1 ? "Compare com o seu primeiro dia · cerca de 5 min" : "Força, equilíbrio e memória · cerca de 5 min", feito:testeFeito });
   passos.push({ id:"aula", titulo:aula.nome, sub:(aula.estacoes||[]).length+" exercícios"+(temDupla?" + dupla tarefa":"")+" · cerca de "+minutosAula(aula)+" min", feito:!!feitos.aula });
   extras.forEach((x,k)=>{ passos.push({ id:"extra"+k, titulo:x.tipo==="desafio" ? "Desafio do dia" : x.nome, sub:x.tipo==="desafio" ? "Jogo da Mente Ativa escolhido para você" : "Dupla tarefa", feito:!!feitos["extra"+k], extra:x }); });
   const tudo = passos.every(p=>p.feito);
@@ -738,7 +758,7 @@ function calcSequencia(prog){
   while(dias[cur]){ n++; cur = maisDias(cur,-1); }
   return n;
 }
-function Inicio({ j, prof, calendario, prog, onComecar, onPix, aulaNomes }){
+function Inicio({ j, prof, calendario, prog, onComecar, onPix, aulaNomes, onTela }){
   const [dica,setDica] = useState(!lsGet("ma-dica-instalar"));
   const ultimo = prog.reduce((m,p)=>Math.max(m,p.dia),0);
   const total = j.total_dias || 30;
@@ -749,7 +769,12 @@ function Inicio({ j, prof, calendario, prog, onComecar, onPix, aulaNomes }){
   const seq = calcSequencia(prog);
   const pendente = j.pagamento_status==="aguardando" || j.pagamento_status==="vencido";
   const vencido = pendente && j.pagamento_prazo && hojeISO() > j.pagamento_prazo;
-  const marcoOferta = [30,20,7].find(d=>ultimo>=d);
+  const trilha = j.trilha;
+  const cap = capitulo(j, j.mes||1);
+  const prox = trilha && j.mes<12 ? trilha.find(m=>Number(m.mes)===j.mes+1) : null;
+  const capProx = trilha && j.mes<12 ? capitulo(j, j.mes+1) : null;
+  const mostrarRenovar = trilha && j.mes<12 && (ultimo>=24 || prox);
+  const marcoOferta = (!trilha || j.mes===1) ? [30,20,7].filter(d=>!(trilha && d===30)).find(d=>ultimo>=d) : null;
   const oferta = marcoOferta ? OFERTAS[marcoOferta] : null;
   const pers = primeiro(prof && prof.nome) || "Wellington";
   const ehIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -760,7 +785,7 @@ function Inicio({ j, prof, calendario, prog, onComecar, onPix, aulaNomes }){
     <div className="tela">
       <div style={{background:C.escuro,color:"#F8FAFC",padding:"10px 16px 14px",borderRadius:"0 0 24px 24px",flexShrink:0}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
-          <div><div style={{fontSize:22,fontWeight:800,lineHeight:1.2}}>{"Olá, "+(primeiro(j.nome) || "aluno")}</div><div style={{fontSize:13,color:"#FDBA74",marginTop:2}}>Plano Elo 60+ · 30 dias</div></div>
+          <div><div style={{fontSize:22,fontWeight:800,lineHeight:1.2}}>{"Olá, "+(primeiro(j.nome) || "aluno")}</div><div style={{fontSize:13,color:"#FDBA74",marginTop:2}}>{trilha ? "Mês "+(j.mes||1)+" de 12 · "+cap.tema : "Plano Elo 60+ · 30 dias"}</div></div>
           <button type="button" onClick={()=>supa.auth.signOut()} style={{border:"1.5px solid rgba(255,255,255,0.25)",background:"transparent",color:"#CBD5E1",borderRadius:20,height:38,padding:"0 14px",fontSize:14,cursor:"pointer"}}>Sair</button>
         </div>
         <div style={{background:C.escuro2,borderRadius:20,padding:14,marginTop:12}}>
@@ -769,8 +794,9 @@ function Inicio({ j, prof, calendario, prog, onComecar, onPix, aulaNomes }){
             <span style={{fontSize:13.5,color:"#FDBA74"}}>{seq>0 ? "Sequência: "+seq+(seq===1?" dia":" dias") : ""}</span>
           </div>
           <div style={{height:9,borderRadius:5,background:"#2A3854",margin:"10px 0"}}><div style={{height:9,borderRadius:5,background:C.laranja,width:Math.round((ultimo/total)*100)+"%"}}/></div>
+          {trilha && <button type="button" onClick={()=>onTela("trilha")} aria-label="Ver os 12 meses da jornada" style={{display:"flex",gap:3,width:"100%",border:"none",background:"none",padding:"0 0 10px",cursor:"pointer"}}>{Array.from({length:12},(_,k)=><span key={k} style={{flex:1,height:5,borderRadius:3,background:k+1<(j.mes||1) ? C.laranja : k+1===(j.mes||1) ? "#FDBA74" : "#2A3854"}}/>)}</button>}
           {!terminou && info && <div style={{fontSize:14.5,color:"#CBD5E1",marginBottom:12}}>{"Semana "+info.semana+(info.treino==="L"?" · dia leve":"")+(aulaNomes[info.aula_id] ? " · "+aulaNomes[info.aula_id] : "")+(info.teste?" · dia de teste":"")}</div>}
-          {terminou ? <div style={{fontSize:15,color:"#CBD5E1",lineHeight:1.5}}>Parabéns! Você completou os 30 dias.</div> :
+          {terminou ? <div style={{fontSize:15,color:"#CBD5E1",lineHeight:1.5}}>{trilha && j.mes===12 ? "Parabéns! Você completou os 12 meses." : trilha ? "Parabéns! Você fechou o mês "+j.mes+"." : "Parabéns! Você completou os 30 dias."}</div> :
             feitoHoje ? <div style={{background:"#13332A",borderRadius:14,padding:12,fontSize:15,color:"#BBF7D0",lineHeight:1.45}}>{"Dia "+ultimo+" concluído hoje. Volte amanhã para o dia "+proximo+"."}</div> :
             <Botao onClick={()=>onComecar(proximo)}>{"Começar o dia "+proximo}</Botao>}
         </div>
@@ -780,11 +806,32 @@ function Inicio({ j, prof, calendario, prog, onComecar, onPix, aulaNomes }){
           <div style={{flex:1,fontSize:14.5,lineHeight:1.4,fontWeight:700,color:vencido?C.vermelho:C.escuro}}>{j.aluno_marcou_pago ? "Você avisou que pagou. O "+pers+" vai confirmar." : vencido ? "O prazo do pagamento venceu." : "Pague até "+fmtData(j.pagamento_prazo)+" para manter o acesso."}</div>
           {!j.aluno_marcou_pago && <button type="button" onClick={onPix} style={{height:48,padding:"0 16px",borderRadius:14,border:"none",background:vencido?C.laranja:C.escuro,color:"#fff",fontSize:15.5,fontWeight:800,cursor:"pointer",flexShrink:0}}>Pagar</button>}
         </div>}
+        {mostrarRenovar && (!prox ? <div style={Object.assign({}, cartao, {border:"2px solid "+C.laranja})}>
+          <div style={{fontSize:12,fontWeight:800,letterSpacing:"0.08em",color:C.laranjaTxt,textTransform:"uppercase"}}>Seu próximo capítulo</div>
+          <div style={{fontSize:18,fontWeight:800,marginTop:3}}>{"Mês "+(j.mes+1)+" · "+capProx.tema}</div>
+          <div style={{fontSize:14,color:"#334155",lineHeight:1.45,margin:"4px 0 8px"}}>{capProx.prox || capProx.frase}</div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>{["30 aulas novas","Jogos da Mente Ativa","Teste do mês"].map(x=><span key={x} style={{fontSize:12.5,fontWeight:700,background:C.laranjaClaro,color:C.laranjaTxt,borderRadius:10,padding:"4px 9px"}}>{x}</span>)}</div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:10}}><span style={{fontSize:13.5,color:C.cinza}}>Renovação mensal</span><b style={{fontSize:22}}>{real(capProx.preco)}</b></div>
+          <Botao onClick={()=>onTela("renovar")}>{"Garantir o mês "+(j.mes+1)}</Botao>
+          {!terminou && <div style={{fontSize:13,color:C.cinza,textAlign:"center",marginTop:6}}>{"Seu mês "+j.mes+" continua até o dia 30."}</div>}
+        </div> : <div style={Object.assign({}, cartao, {display:"flex",gap:10,alignItems:"center",background:pagoOk(prox)?C.verdeClaro:"#fff"})}>
+          <div style={{flex:1,fontSize:14.5,lineHeight:1.4,fontWeight:700,color:pagoOk(prox)?"#15803D":C.escuro}}>{pagoOk(prox) ? "Mês "+(j.mes+1)+" garantido. Começa logo depois do dia 30." : prox.aluno_marcou_pago ? "Você avisou o pagamento do mês "+(j.mes+1)+". O "+pers+" vai confirmar." : "Mês "+(j.mes+1)+" reservado. Pague "+real(prox.preco)+" para garantir."}</div>
+          {!pagoOk(prox) && !prox.aluno_marcou_pago && <button type="button" onClick={()=>onTela("renovar")} style={{height:48,padding:"0 16px",borderRadius:14,border:"none",background:C.laranja,color:"#fff",fontSize:15.5,fontWeight:800,cursor:"pointer",flexShrink:0}}>Pagar</button>}
+        </div>)}
+        {trilha && j.mes===12 && terminou && <button type="button" onClick={()=>onTela("certificado")} style={Object.assign({}, cartao, {display:"flex",gap:12,alignItems:"center",border:"2px solid "+C.laranja,textAlign:"left",cursor:"pointer",color:C.escuro})}>
+          <span aria-hidden="true" style={{width:48,height:48,borderRadius:15,background:C.laranjaClaro,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><IcoSelo/></span>
+          <span style={{flex:1}}><span style={{display:"block",fontSize:17,fontWeight:800}}>Seu certificado</span><span style={{display:"block",fontSize:13.5,color:C.cinza}}>12 meses de Elo 60+</span></span>
+        </button>}
         <a href={JOGOS_URL} style={Object.assign({}, cartao, {display:"flex",gap:12,alignItems:"center",textDecoration:"none",color:C.escuro})}>
           <span aria-hidden="true" style={{width:48,height:48,borderRadius:15,background:"linear-gradient(145deg,#FFB37A,#FF5603)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0,boxShadow:"0 6px 14px rgba(255,86,3,0.3), inset 0 2px 0 rgba(255,255,255,0.5)"}}>🧠</span>
           <span style={{flex:1}}><span style={{display:"block",fontSize:17,fontWeight:800}}>Jogos da Mente Ativa</span><span style={{display:"block",fontSize:13.5,color:C.cinza}}>Memória, atenção e linguagem</span></span>
           <span style={{width:40,height:40,borderRadius:"50%",background:C.laranjaClaro,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><IcoPlay cor={C.laranja}/></span>
         </a>
+        {trilha && <button type="button" onClick={()=>onTela("trilha")} style={Object.assign({}, cartao, {display:"flex",gap:12,alignItems:"center",border:"none",textAlign:"left",cursor:"pointer",color:C.escuro})}>
+          <span aria-hidden="true" style={{width:48,height:48,borderRadius:15,background:"#EEF2FF",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><IcoMapa/></span>
+          <span style={{flex:1}}><span style={{display:"block",fontSize:17,fontWeight:800}}>Minha jornada</span><span style={{display:"block",fontSize:13.5,color:C.cinza}}>Veja os 12 capítulos e a sua evolução</span></span>
+          <span style={{fontSize:22,color:C.cinzaClaro}} aria-hidden="true">›</span>
+        </button>}
         {oferta ? <div style={cartao}>
           <div style={{fontSize:16.5,fontWeight:800}}>{oferta.titulo}</div>
           <div className="limite3" style={{fontSize:14,color:C.cinza,lineHeight:1.45,margin:"4px 0 10px"}}>{oferta.texto}</div>
@@ -794,6 +841,149 @@ function Inicio({ j, prof, calendario, prog, onComecar, onPix, aulaNomes }){
           <div style={{fontSize:14,color:"#334155",lineHeight:1.45,marginTop:4}}>{ehIOS ? "No Safari: botão Compartilhar e depois Adicionar à Tela de Início." : "No Chrome: três pontinhos no canto de cima e depois Adicionar à tela inicial."}</div>
           <button type="button" onClick={()=>{ lsSet("ma-dica-instalar","1"); setDica(false); }} style={{marginTop:6,border:"none",background:"none",color:C.laranjaTxt,fontWeight:700,fontSize:15,cursor:"pointer",padding:"4px 0"}}>Entendi</button>
         </div> : null)}
+      </Corpo>
+    </div>
+  );
+}
+
+// ═══════════════ JORNADA DE 12 MESES ═══════════════
+function TelaTrilha({ j, todos, onVoltar, onEvolucao }){
+  const temTeste = (todos||[]).length>0;
+  return (
+    <div className="tela">
+      <Topo compacto onVoltar={onVoltar} voltar="Início" titulo="Minha jornada" sub="12 meses para viver com mais autonomia"/>
+      <Corpo>
+        {CAPS.map(([mes])=>{
+          const c = capitulo(j, mes);
+          const m = (j.trilha||[]).find(x=>Number(x.mes)===mes);
+          const feito = m && Number(m.dias_concluidos)>=30;
+          const agora = mes===j.mes && !feito;
+          const reservado = m && !feito && !agora;
+          return (
+            <div key={mes} style={{display:"flex",gap:12,alignItems:"center",background:"#fff",borderRadius:16,padding:"10px 12px",boxShadow:"0 1px 3px rgba(15,23,42,0.07)",border:agora?"2px solid "+C.laranja:"1.5px solid transparent",opacity:!m && !agora ? 0.72 : 1,flexShrink:0}}>
+              <span style={{width:36,height:36,borderRadius:"50%",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:15,background:feito?C.verdeClaro:agora?C.laranja:"#F1F5F9",color:feito?C.verde:agora?"#fff":C.cinza}}>{feito ? <IcoCheck/> : mes}</span>
+              <span style={{flex:1,minWidth:0}}><span style={{display:"block",fontSize:15.5,fontWeight:800,lineHeight:1.25}}>{"Mês "+mes+" · "+c.tema}</span><span style={{display:"block",fontSize:13,color:C.cinza,marginTop:1,lineHeight:1.3}}>{c.frase}</span></span>
+              {agora && <span style={{fontSize:12,fontWeight:800,color:C.laranjaTxt,flexShrink:0}}>agora</span>}
+              {reservado && <span style={{fontSize:12,fontWeight:800,color:pagoOk(m)?C.verde:C.cinza,flexShrink:0}}>{pagoOk(m) ? "garantido" : "reservado"}</span>}
+            </div>
+          );
+        })}
+        {temTeste && <div style={{marginTop:6,flexShrink:0}}><Botao tipo="escuro" onClick={onEvolucao}>Ver minha evolução</Botao></div>}
+      </Corpo>
+    </div>
+  );
+}
+
+const ITENS_TESTE = [["Sentar e levantar","forca_reps","",""],["Equilíbrio num pé só","equilibrio_seg","s"," s"],["Memória (números)","memoria_nivel","",""],["Como se sente","percepcao","",""]];
+function compararTestes(j, todos){
+  const mesDe = {}; (j.trilha||[]).forEach(m=>{ mesDe[m.matricula_id] = Number(m.mes); });
+  if(!j.trilha) mesDe[j.matricula_id] = j.mes||1;
+  const lista = (todos||[]).map(t=>Object.assign({ mes: mesDe[t.matricula_id]||1 }, t)).sort((a,b)=>(a.mes-b.mes)||(a.dia-b.dia));
+  const base = lista.find(t=>t.mes===1 && t.dia===1) || lista[0] || null;
+  const agora = lista.length ? lista[lista.length-1] : null;
+  const linhas = ITENS_TESTE.map(([n,k,u])=>{ const a = base && base[k]!=null ? Number(base[k]) : null; const b = agora && agora[k]!=null ? Number(agora[k]) : null; const dif = a!=null && b!=null ? Math.round((b-a)*10)/10 : null; return { n, k, u, a, b, dif }; });
+  const melhorou = linhas.filter(l=>l.dif!=null && l.dif>0).length;
+  return { base, agora, linhas, melhorou, mesmo: base && agora && base===agora };
+}
+const numBR = (v) => String(v).replace(".",",");
+function TelaEvolucao({ j, todos, onVoltar, voltar, botao }){
+  const r = compararTestes(j, todos);
+  const cap = capitulo(j, j.mes||1);
+  const nome = primeiro(j.nome) || "Eu";
+  const dias = Math.min(30, Number(j.dias_concluidos)||0);
+  const forca = r.linhas[0], equi = r.linhas[1];
+  const txt = "Elo 60+ · Mês "+(j.mes||1)+" · "+cap.tema+"\n"+nome+" está "+(r.melhorou>0 ? "mais forte" : "firme no treino")+" 💪\n"
+    +(forca.a!=null && forca.b!=null ? "Sentar e levantar: "+forca.a+" → "+forca.b+"\n" : "")
+    +(equi.a!=null && equi.b!=null ? "Equilíbrio num pé: "+numBR(equi.a)+"s → "+numBR(equi.b)+"s\n" : "")
+    +(dias ? dias+" de 30 dias de treino neste mês\n" : "")
+    +"Acompanhamento: Wellington Brito · "+CREF;
+  const cel = {textAlign:"center"};
+  return (
+    <div className="tela">
+      <Topo compacto onVoltar={onVoltar} voltar={voltar||"Início"} titulo={"Teste do mês "+(j.mes||1)} sub="Comparado com o seu primeiro dia"/>
+      <Corpo>
+        {!r.base ? <div style={{fontSize:15,color:C.cinza,textAlign:"center",padding:"24px 8px"}}>Ainda não há testes para comparar.</div> : <>
+          <div style={{background:r.melhorou>0?C.verdeClaro:C.laranjaClaro,borderRadius:16,padding:"12px 14px",flexShrink:0}}>
+            <div style={{fontSize:18,fontWeight:800,color:r.melhorou>0?"#15803D":C.laranjaTxt}}>{r.mesmo ? "Seu ponto de partida está salvo" : r.melhorou>=2 ? "Você está mais forte e mais firme" : r.melhorou===1 ? "Você já está evoluindo" : "Continue firme, o resultado vem"}</div>
+            {!r.mesmo && <div style={{fontSize:14,color:"#334155",marginTop:2}}>{"Melhorou em "+r.melhorou+" dos 4 testes."}</div>}
+          </div>
+          <div style={{background:"#fff",borderRadius:18,padding:"10px 14px",boxShadow:"0 1px 3px rgba(15,23,42,0.07)",flexShrink:0}}>
+            <div style={{display:"grid",gridTemplateColumns:"1.7fr 1fr 0.8fr",gap:6,fontSize:12,color:C.cinza,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.04em",paddingBottom:4}}><span>Teste</span><span style={cel}>Dia 1 → agora</span><span style={cel}></span></div>
+            {r.linhas.map(l=><div key={l.k} style={{display:"grid",gridTemplateColumns:"1.7fr 1fr 0.8fr",gap:6,alignItems:"center",fontSize:14.5,padding:"9px 0",borderTop:"1px solid #F1F5F9"}}>
+              <span>{l.n}</span>
+              <span style={cel}>{l.a==null ? "-" : numBR(l.a)+l.u}{" → "}<b>{l.b==null ? "-" : numBR(l.b)+l.u}</b></span>
+              <b style={Object.assign({}, cel, {color:l.dif>0?C.verde:l.dif<0?C.vermelho:C.cinza})}>{l.dif==null || r.mesmo ? "" : l.dif>0 ? "+"+numBR(l.dif)+l.u : l.dif<0 ? numBR(l.dif)+l.u : "="}</b>
+            </div>)}
+          </div>
+          <div style={{display:"flex",gap:12,alignItems:"center",background:C.escuro,color:"#fff",borderRadius:18,padding:"12px 14px",flexShrink:0}}>
+            <span style={{width:52,height:52,borderRadius:"50%",border:"3px solid #FDBA74",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:800,color:"#FDBA74",flexShrink:0}}>{j.mes||1}</span>
+            <span><span style={{display:"block",fontSize:12,color:C.cinzaClaro,textTransform:"uppercase",letterSpacing:"0.06em"}}>Selo do mês</span><span style={{display:"block",fontSize:16.5,fontWeight:800}}>{cap.tema}</span>{dias>0 && <span style={{display:"block",fontSize:13,color:"#CBD5E1"}}>{"Concluído em "+dias+" de 30 dias"}</span>}</span>
+          </div>
+          <div style={{flexShrink:0}}><BotaoLink href={"https://wa.me/?text="+encodeURIComponent(txt)} tipo="verde">Mandar para a família no WhatsApp</BotaoLink></div>
+        </>}
+        <div style={{marginTop:"auto",flexShrink:0}}><Botao tipo="sec" onClick={onVoltar}>{botao||"Voltar"}</Botao></div>
+      </Corpo>
+    </div>
+  );
+}
+
+function TelaRenovar({ j, prof, onVoltar }){
+  const cap = capitulo(j, j.mes+1);
+  const existente = (j.trilha||[]).find(m=>Number(m.mes)===j.mes+1);
+  const [prox,setProx] = useState(existente || null);
+  const [erro,setErro] = useState("");
+  const [modo,setModo] = useState("mim");
+  useEffect(()=>{ if(prox) return; (async ()=>{ const r = await api.rpc("elo_renovar", { p_de: j.mes }); if(r && r.matricula_id) setProx(Object.assign({ aluno_marcou_pago:false }, r)); else setErro("Não foi possível reservar o próximo mês. Verifique sua internet e tente de novo."); })(); },[]);
+  const pago = pagoOk(prox);
+  const nome = primeiro(j.nome) || "eu";
+  return (
+    <div className="tela">
+      <Topo compacto onVoltar={onVoltar} voltar="Início" titulo={"Mês "+(j.mes+1)+" · "+cap.tema} sub="Elo 60+ · renovação mensal"/>
+      <Corpo>
+        {erro ? <div role="alert" style={{background:C.vermelhoClaro,color:C.vermelho,borderRadius:12,padding:"10px 12px",fontSize:14.5}}>{erro}</div> :
+         !prox ? <div style={{color:C.cinza,fontSize:15,textAlign:"center",padding:24}}>Reservando o seu próximo mês...</div> :
+         pago ? <div style={{background:C.verdeClaro,color:"#15803D",borderRadius:16,padding:"14px 16px",fontSize:16,fontWeight:700,lineHeight:1.45}}>{"Tudo certo! O mês "+(j.mes+1)+" está garantido."}</div> : <>
+          <div style={{fontSize:14,fontWeight:700,color:"#334155",flexShrink:0}}>Quem vai pagar?</div>
+          <div style={{display:"flex",gap:8,flexShrink:0}}>
+            {[["mim","Eu mesmo"],["presente","Alguém da família"]].map(([v,l])=>{ const on = modo===v; return <button key={v} type="button" onClick={()=>setModo(v)} style={{flex:1,height:50,borderRadius:14,fontSize:15.5,fontWeight:800,cursor:"pointer",border:on?"2px solid "+C.laranja:"1.5px solid "+C.borda,background:on?C.laranjaClaro:"#fff",color:on?C.laranjaTxt:C.escuro}}>{l}</button>; })}
+          </div>
+          {modo==="presente" && <div style={{fontSize:14.5,color:"#334155",lineHeight:1.45,flexShrink:0}}>Envie o Pix no WhatsApp para um filho, neto ou amigo pagar o seu próximo mês de presente.</div>}
+          <PixBox key={modo} j={{ aluno_marcou_pago: prox.aluno_marcou_pago, preco: prox.preco, mes: j.mes+1 }} prof={prof} valor={Number(prox.preco)||cap.preco} modelo={prox.modelo_id} txid={"ELO60M"+(j.mes+1)} rotulo={"Elo 60+ · mês "+(j.mes+1)}
+            compartilhar={modo==="presente" ? "Oi! Estou no Elo 60+ e quero continuar no mês "+(j.mes+1)+" ("+cap.tema+"). Você me dá de presente? Assim que pagar, me avisa. Beijo, "+nome+"." : null}/>
+          <div style={{fontSize:13.5,color:C.cinza,lineHeight:1.45,flexShrink:0}}>{"O mês "+(j.mes+1)+" começa logo depois do dia 30 do mês "+j.mes+". Se pagar antes, nada se perde."}</div>
+        </>}
+        <div style={{marginTop:"auto",flexShrink:0}}><Botao tipo="sec" onClick={onVoltar}>Voltar para a jornada</Botao></div>
+      </Corpo>
+    </div>
+  );
+}
+
+function TelaCertificado({ j, prof, onVoltar }){
+  const total = (j.trilha||[]).reduce((a,m)=>a+Math.min(30, Number(m.dias_concluidos)||0), 0);
+  const pers = primeiro(prof && prof.nome) || "Wellington";
+  const txt = "Concluí os 12 meses do Elo 60+! Foram "+total+" dias de treino de corpo e mente, com acompanhamento do Wellington Brito · "+CREF+".";
+  const wa = waLink(prof && prof.whatsapp, "Oi, "+pers+"! Concluí os 12 meses do Elo 60+ e quero a minha avaliação funcional com desconto.");
+  return (
+    <div className="tela">
+      <Topo compacto onVoltar={onVoltar} voltar="Início" titulo="Jornada completa!" sub="12 meses de Elo 60+"/>
+      <Corpo>
+        <div style={{background:"#fff",borderRadius:20,padding:"20px 18px",border:"2px solid #FDBA74",textAlign:"center",boxShadow:"0 6px 18px rgba(15,23,42,0.08)",flexShrink:0}}>
+          <div style={{display:"flex",justifyContent:"center"}}><IcoSelo/></div>
+          <div style={{fontSize:12,fontWeight:800,letterSpacing:"0.12em",color:C.laranjaTxt,textTransform:"uppercase",marginTop:6}}>Certificado</div>
+          <div style={{fontSize:14,color:C.cinza,marginTop:10}}>Certificamos que</div>
+          <div style={{fontSize:24,fontWeight:800,margin:"4px 0 8px",lineHeight:1.2}}>{j.nome || "Aluno Elo 60+"}</div>
+          <div style={{fontSize:15,color:"#334155",lineHeight:1.5}}>{"concluiu os 12 capítulos do Elo 60+, com "+total+" dias de treino de corpo e mente."}</div>
+          <div style={{height:1,background:C.borda,margin:"14px 30px 10px"}}/>
+          <div style={{fontSize:13.5,fontWeight:700}}>{"Wellington Brito · "+CREF}</div>
+          <div style={{fontSize:12.5,color:C.cinza,marginTop:2}}>{"Em "+fmtData(hojeISO())+"/"+hojeISO().slice(0,4)}</div>
+        </div>
+        <div style={{flexShrink:0}}><BotaoLink href={"https://wa.me/?text="+encodeURIComponent(txt)} tipo="verde">Compartilhar o certificado</BotaoLink></div>
+        <div style={{background:"#fff",borderRadius:18,padding:14,boxShadow:"0 1px 3px rgba(15,23,42,0.07)",flexShrink:0}}>
+          <div style={{fontSize:12,fontWeight:800,letterSpacing:"0.08em",color:C.cinza,textTransform:"uppercase"}}>Seu próximo passo</div>
+          <div style={{fontSize:17,fontWeight:800,marginTop:3}}>Avaliação funcional com 20% off</div>
+          <div style={{fontSize:14,color:C.cinza,lineHeight:1.45,margin:"4px 0 10px"}}>Para comparar com o seu começo e montar o ano 2.</div>
+          {wa && <BotaoLink href={wa}>Quero minha avaliação</BotaoLink>}
+        </div>
       </Corpo>
     </div>
   );
@@ -814,12 +1004,13 @@ function Jornada({ j, recarregar }){
     const [cal, prog, tes, p, aulas] = await Promise.all([
       api.get("ma_jornada_dias?select=dia,semana,treino,teste,oferta,aula_id&modelo_id=eq."+MODELO+"&order=dia"),
       api.get("ma_jornada_progresso?select=dia,concluido_em&matricula_id=eq."+j.matricula_id+"&order=dia"),
-      api.get("ma_jornada_testes?select=*&matricula_id=eq."+j.matricula_id),
+      api.get("ma_jornada_testes?select=*&matricula_id=in.("+(j.trilha ? j.trilha.map(m=>m.matricula_id) : [j.matricula_id]).join(",")+")"),
       api.rpc("get_professional_pix_config", { prof_id:j.owner_id }),
       api.get("ma_jornada_aulas?select=id,data->>nome&modelo_id=eq."+MODELO)
     ]);
     const nomes = {}; (aulas||[]).forEach(a=>{ nomes[a.id] = a.nome; });
-    setBase({ cal:cal||[], prog:prog||[], tes:tes||[], prof:Array.isArray(p) ? (p[0]||null) : p, nomes });
+    const todos = tes||[];
+    setBase({ cal:cal||[], prog:prog||[], tes:todos.filter(x=>x.matricula_id===j.matricula_id), todos, prof:Array.isArray(p) ? (p[0]||null) : p, nomes });
   };
   useEffect(()=>{ carregar(); },[]);
   useEffect(()=>{ if(tela===null && j.pagamento_status==="aguardando" && !j.aluno_marcou_pago && !lsGet("ma-pix-visto-"+j.matricula_id)) setTela("pix"); else if(tela===null) setTela("inicio"); },[]);
@@ -864,8 +1055,12 @@ function Jornada({ j, recarregar }){
   else if(tela==="dia") conteudo = <TelaDia j={j} info={diaAberto} aula={aula} exs={exs} testes={base.tes} feitos={feitos} marcarFeito={marcarFeito} onVoltar={()=>{ ssSet("ma-dia-aberto-"+j.matricula_id, null); setTela("inicio"); }} onAbrir={abrirPasso} onConcluir={concluir} concluindo={concluindo}/>;
   else if(tela==="player" && aula) conteudo = <Player aula={aula} exs={exs} salvarJogo={salvarJogo} onSair={()=>setTela("dia")} onFim={()=>{ marcarFeito("aula"); setTela("dia"); }}/>;
   else if(tela==="extra" && extraAberto) conteudo = <Extra item={extraAberto.extra} exs={exs} salvarJogo={salvarJogo} onVoltar={()=>setTela("dia")} onFeito={()=>{ marcarFeito(extraAberto.id); setTela("dia"); }}/>;
-  else if(tela==="teste") conteudo = <TelaTeste dia={diaAberto.dia} j={j} testes={base.tes} onVoltar={()=>setTela("dia")} onSalvo={()=>carregar()}/>;
-  else conteudo = <Inicio j={j} prof={base.prof} calendario={base.cal} prog={base.prog} aulaNomes={base.nomes} onComecar={abrirDia} onPix={()=>setTela("pix")}/>;
+  else if(tela==="teste") conteudo = <TelaTeste dia={diaAberto.dia} j={j} testes={base.tes} todos={base.todos} onVoltar={()=>setTela("dia")} onSalvo={()=>carregar()}/>;
+  else if(tela==="trilha") conteudo = <TelaTrilha j={j} todos={base.todos} onVoltar={()=>setTela("inicio")} onEvolucao={()=>setTela("evolucao")}/>;
+  else if(tela==="evolucao") conteudo = <TelaEvolucao j={j} todos={base.todos} prog={base.prog} onVoltar={()=>setTela("inicio")}/>;
+  else if(tela==="renovar") conteudo = <TelaRenovar j={j} prof={base.prof} onVoltar={()=>{ setTela("inicio"); recarregar(true); }}/>;
+  else if(tela==="certificado") conteudo = <TelaCertificado j={j} prof={base.prof} onVoltar={()=>setTela("inicio")}/>;
+  else conteudo = <Inicio j={j} prof={base.prof} calendario={base.cal} prog={base.prog} aulaNomes={base.nomes} onComecar={abrirDia} onPix={()=>setTela("pix")} onTela={setTela}/>;
   return (
     <div>
       {conteudo}
@@ -889,12 +1084,24 @@ function App(){
   },[]);
   const carregar = async (silencioso) => {
     if(!silencioso) setJ(undefined);
-    let r = await api.rpc("ma_minha_jornada", {});
+    let t = await api.rpc("elo_minhas_matriculas", {});
+    let mats = t && Array.isArray(t.matriculas) ? t.matriculas : null;
+    let atual = mats && mats.length ? (mats.find(m=>Number(m.dias_concluidos)<30) || mats[mats.length-1]) : null;
+    MODELO = atual ? atual.modelo_id : "mente-ativa-30";
+    let r = await api.rpc("ma_minha_jornada", { p_modelo: MODELO });
     if(!r || !r.matricula_id){
       const meta = (sessao && sessao.user && sessao.user.user_metadata) || {};
       let salvo = {}; try { salvo = JSON.parse(lsGet("ma-cadastro")||"{}"); } catch(e){}
       await api.rpc("ma_entrar_jornada", { p_nome: meta.nome || salvo.nome || "", p_whatsapp: meta.whatsapp || salvo.whatsapp || "" });
       r = await api.rpc("ma_minha_jornada", {});
+      t = await api.rpc("elo_minhas_matriculas", {});
+      mats = t && Array.isArray(t.matriculas) ? t.matriculas : null;
+    }
+    if(r && r.matricula_id){
+      r.modelo_id = r.modelo_id || MODELO;
+      r.mes = Number(r.mes || (atual && atual.mes) || 1);
+      r.trilha = mats && mats.length ? mats : null;
+      r.capitulos = t && Array.isArray(t.capitulos) ? t.capitulos : [];
     }
     setJ(r && r.matricula_id ? r : false);
   };
