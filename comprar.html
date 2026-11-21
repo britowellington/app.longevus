@@ -147,7 +147,7 @@ const App = () => {
     h("div", { style: { fontSize: 22, fontWeight: 800, color: C.escuro, lineHeight: 1.2, marginTop: 3 } }, d.titulo || "Serviço"),
     d.texto ? h("div", { style: { fontSize: 14, color: C.cinza, marginTop: 4, lineHeight: 1.45 } }, d.texto) : null,
     h("div", { style: { display: "flex", alignItems: "baseline", gap: 10, marginTop: 12, flexWrap: "wrap" } },
-      valor > 0 ? h("div", { style: { fontSize: 26, fontWeight: 800, color: C.escuro } }, brl(valor)) : null,
+      valor > 0 ? h("div", { style: { fontSize: 26, fontWeight: 800, color: C.escuro } }, brl(valor), (d.produto === "mente" || String(id || "").indexOf("l360:") === 0) ? h("span", { style: { fontSize: 15, fontWeight: 700, color: C.cinza } }, "/mês") : null) : null,
       d.beneficio && typeof d.beneficio === "string" ? h("span", { style: { fontSize: 12, fontWeight: 800, color: C.verdeEsc, background: "#E9F5F2", borderRadius: 99, padding: "4px 10px" } }, d.beneficio) : null),
     etapa === "dados" && inclui.length ? h("div", { style: { marginTop: 14, paddingTop: 14, borderTop: "1px solid #F1F5F9" } },
       h("div", { style: { fontSize: 12, fontWeight: 800, color: "#475569", marginBottom: 8 } }, "O que está incluso"),
