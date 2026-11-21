@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="theme-color" content="#0F172A"/>
+<title>Painel · Mente Ativa 30 dias</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background: #F4F5F7; color: #0F172A; }
+  #root { max-width: 480px; margin: 0 auto; }
+  button, input, textarea { font-family: inherit; }
+  input::placeholder, textarea::placeholder { color: #94A3B8; }
+  .tela { height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; background: #F4F5F7; }
+  .corpo { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef } = React;
+
+const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
+const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
+const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+const MODELO = "mente-ativa-30";
+const C = { escuro:"#0F172A", escuro2:"#18233A", laranja:"#FF5603", laranjaTxt:"#C2410C", laranjaClaro:"#FFF4EE", cinza:"#64748B", cinzaClaro:"#94A3B8", borda:"#E2E8F0", verde:"#16A34A", verdeTxt:"#15803D", verdeClaro:"#F0FDF4", vermelho:"#B91C1C", vermelhoClaro:"#FEF2F2" };
+
+async function hdrs(extra){
+  const { data } = await supa.auth.getSession();
+  const token = (data && data.session && data.session.access_token) || SUPA_KEY;
+  return Object.assign({ "apikey": SUPA_KEY, "Authorization": "Bearer "+token, "Content-Type": "application/json" }, extra||{});
+}
+const api = {
+  async rpc(nome, body){ try{ const r = await fetch(SUPA_URL+"/rest/v1/rpc/"+nome, { method:"POST", headers: await hdrs(), body: JSON.stringify(body||{}) }); if(!r.ok) return null; const t = await r.text(); return t ? JSON.parse(t) : true; } catch(e){ return null; } },
+  async get(path){ try{ const r = await fetch(SUPA_URL+"/rest/v1/"+path, { headers: await hdrs() }); if(!r.ok) return []; return await r.json(); } catch(e){ return []; } },
+  async patch(path, body){ try{ const r = await fetch(SUPA_URL+"/rest/v1/"+path, { method:"PATCH", headers: await hdrs({ "Prefer":"return=representation" }), body: JSON.stringify(body) }); if(!r.ok) return false; const rows = await r.json(); return Array.isArray(rows) && rows.length>0; } catch(e){ return false; } }
+};
+
+const hojeISO = (d) => { const x = d ? new Date(d) : new Date(); return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0"); };
+const maisDias = (iso, n) => { const d = new Date(iso+"T12:00:00"); d.setDate(d.getDate()+n); return hojeISO(d); };
+const difDias = (a, b) => Math.round((new Date(a+"T12:00:00") - new Date(b+"T12:00:00"))/86400000);
+const fmtData = (iso) => iso ? String(iso).slice(8,10)+"/"+String(iso).slice(5,7) : "";
+const primeiro = (n) => String(n||"").trim().split(/\s+/)[0] || "";
+const real = (v) => "R$ "+Number(v||0).toFixed(2).replace(".",",");
+const waLink = (numero, texto) => { let d = String(numero||"").replace(/\D/g,""); if(!d) return null; if(!(d.length>=12 && d.indexOf("55")===0)) d = "55"+d; return "https://wa.me/"+d+(texto ? "?text="+encodeURIComponent(texto) : ""); };
+const copia = (o) => JSON.parse(JSON.stringify(o));
+const fmtSeg = (s) => { s = Number(s)||0; if(s>=60 && s%60===0) return (s/60)+" min"; if(s>60) return Math.floor(s/60)+" min "+(s%60)+" s"; return s+" s"; };
+const PARQ = [
+  "Problema no coração e atividade só com orientação médica",
+  "Dor no peito durante atividade física",
+  "Dor no peito no último mês, mesmo parado",
+  "Perde o equilíbrio por tontura ou já desmaiou",
+  "Problema nos ossos ou articulações que pode piorar",
+  "Toma remédio para pressão ou para o coração",
+  "Outra razão para não fazer atividade física"
+];
+
+function minutosAula(a){
+  const est = (a.estacoes||[]).length;
+  const exec = ((a.sequencia||[])[0] || {}).s || 40;
+  const v = Number(a.voltas)||1;
+  let s = Number(a.preparacao)||0;
+  s += v * (est*exec + Math.max(0,est-1)*(Number(a.troca)||0));
+  s += (v-1) * (Number(a.descansoVolta) || Number(a.troca) || 0);
+  (a.extras||[]).filter(x=>x.tipo==="dupla").forEach(x=>{ s += (Number(a.troca)||15) + (String(x.exercicioId||"").indexOf("app:")===0 ? 120 : (Number(x.segundos)||60)); });
+  return Math.max(1, Math.round(s/60));
+}
+
+const IcoSeta = ({ cor }) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={cor||"currentColor"} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>;
+const IcoDir = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>;
+
+const Voltar = ({ onClick, rotulo }) => <button type="button" onClick={onClick} style={{alignSelf:"flex-start",display:"inline-flex",alignItems:"center",gap:6,height:40,padding:"0 14px 0 10px",borderRadius:20,border:"1.5px solid rgba(255,255,255,0.28)",background:"rgba(255,255,255,0.10)",color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer"}}><IcoSeta/>{rotulo||"Voltar"}</button>;
+const Topo = ({ onVoltar, voltar, titulo, sub, children, longevus }) => (
+  <div style={{background:C.escuro,color:"#F8FAFC",padding:"12px 16px 14px",borderRadius:"0 0 22px 22px",display:"flex",flexDirection:"column",gap:6,flexShrink:0}}>
+    {onVoltar && <Voltar onClick={onVoltar} rotulo={voltar}/>}
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
+      <div style={{fontSize:22,fontWeight:800,lineHeight:1.2}}>{titulo}</div>
+      {longevus && <a href="longevus-app.html" style={{display:"inline-flex",alignItems:"center",gap:4,height:36,padding:"0 12px 0 6px",borderRadius:18,border:"1.5px solid rgba(255,255,255,0.28)",background:"rgba(255,255,255,0.10)",color:"#fff",fontSize:13.5,fontWeight:700,textDecoration:"none",flexShrink:0}}><IcoSeta/>Longevus</a>}
+    </div>
+    {sub && <div style={{fontSize:13.5,color:C.cinzaClaro}}>{sub}</div>}
+    {children}
+  </div>
+);
+const Corpo = ({ children }) => <div className="corpo" style={{padding:"12px 16px 14px",gap:10}}>{children}</div>;
+const cartao = {background:"#fff",borderRadius:16,boxShadow:"0 1px 3px rgba(15,23,42,0.07)"};
+const Botao = ({ onClick, children, tipo, disabled, style }) => {
+  const t = { sec:{background:"#fff",color:C.escuro,border:"1.5px solid "+C.borda}, verde:{background:C.verde,color:"#fff",border:"none"}, escuro:{background:C.escuro,color:"#fff",border:"none"}, perigo:{background:"#fff",color:C.vermelho,border:"1.5px solid #FECACA"} }[tipo] || {background:C.laranja,color:"#fff",border:"none"};
+  return <button type="button" onClick={disabled?undefined:onClick} style={Object.assign({minHeight:50,borderRadius:14,fontSize:15.5,fontWeight:700,cursor:disabled?"default":"pointer",opacity:disabled?0.55:1,padding:"0 12px",width:"100%"}, t, style||{})}>{children}</button>;
+};
+const BotaoLink = ({ href, children, tipo, style }) => {
+  const t = tipo==="sec" ? {background:"#fff",color:C.escuro,border:"1.5px solid "+C.borda} : {background:C.verde,color:"#fff"};
+  return <a href={href} target="_blank" rel="noopener noreferrer" style={Object.assign({display:"flex",alignItems:"center",justifyContent:"center",minHeight:50,borderRadius:14,fontSize:15.5,fontWeight:700,textDecoration:"none",padding:"0 12px"}, t, style||{})}>{children}</a>;
+};
+const Selo = ({ cor, children }) => { const c = { verde:[C.verdeClaro,C.verdeTxt], cinza:["#F1F5F9","#475569"], laranja:[C.laranjaClaro,C.laranjaTxt], vermelho:[C.vermelhoClaro,C.vermelho] }[cor||"verde"]; return <span style={{fontSize:12,fontWeight:700,padding:"3px 8px",borderRadius:999,background:c[0],color:c[1],whiteSpace:"nowrap"}}>{children}</span>; };
+const Chip = ({ on, onClick, children, escuro }) => <button type="button" onClick={onClick} style={{flex:1,whiteSpace:"nowrap",padding:"8px 6px",borderRadius:999,fontSize:13.5,fontWeight:700,cursor:"pointer",border:on?"none":(escuro?"none":"1px solid "+C.borda),background:on?C.laranja:(escuro?C.escuro2:"#fff"),color:on?"#fff":(escuro?"#CBD5E1":"#334155")}}>{children}</button>;
+const Carregando = ({ texto }) => <div className="tela" style={{alignItems:"center",justifyContent:"center",color:C.cinzaClaro,fontSize:15}}>{texto||"Carregando..."}</div>;
+const Aviso = ({ texto, limpar }) => { useEffect(()=>{ if(!texto) return; const t = setTimeout(limpar, 3000); return ()=>clearTimeout(t); },[texto]); return texto ? <div role="status" onClick={limpar} style={{position:"fixed",left:16,right:16,bottom:86,zIndex:60,maxWidth:448,margin:"0 auto",background:C.escuro,color:"#fff",borderRadius:14,padding:"12px 14px",fontSize:15,textAlign:"center",boxShadow:"0 10px 24px rgba(15,23,42,0.35)"}}>{texto}</div> : null; };
+const estInput = {width:"100%",height:48,padding:"0 14px",borderRadius:14,border:"1.5px solid "+C.borda,fontSize:16,background:"#fff",color:C.escuro};
+const Rotulo = ({ texto, children }) => <label style={{display:"flex",flexDirection:"column",gap:6,fontSize:13.5,fontWeight:700,color:"#334155"}}>{texto}{children}</label>;
+
+function Passo({ rotulo, valor, menos, mais }){
+  return (
+    <div style={Object.assign({}, cartao, {padding:"6px 4px",display:"flex",flexDirection:"column",alignItems:"center",gap:2})}>
+      <span style={{fontSize:11.5,color:C.cinza}}>{rotulo}</span>
+      <span style={{display:"flex",alignItems:"center",gap:4}}>
+        <button type="button" aria-label={"Diminuir "+rotulo} onClick={menos} style={{width:30,height:30,borderRadius:15,border:"1px solid "+C.borda,background:"#fff",fontSize:17,fontWeight:800,cursor:"pointer"}}>−</button>
+        <b style={{fontSize:14,minWidth:40,textAlign:"center",whiteSpace:"nowrap"}}>{valor}</b>
+        <button type="button" aria-label={"Aumentar "+rotulo} onClick={mais} style={{width:30,height:30,borderRadius:15,border:"1px solid "+C.borda,background:"#fff",fontSize:17,fontWeight:800,cursor:"pointer"}}>+</button>
+      </span>
+    </div>
+  );
+}
+
+// ═══════════════ AULAS ═══════════════
+function TrocarExercicio({ atualId, onEscolher, onVoltar }){
+  const [busca,setBusca] = useState("");
+  const [filtro,setFiltro] = useState("video");
+  const [lista,setLista] = useState(null);
+  useEffect(()=>{
+    const termo = busca.trim();
+    if(termo.length<2){ setLista([]); return; }
+    setLista(null);
+    const t = setTimeout(async ()=>{
+      const r = await api.get("exercises?select=id,nome,grupo,foto,video&nome=ilike.*"+encodeURIComponent(termo)+"*&order=nome&limit=80");
+      setLista(r||[]);
+    }, 350);
+    return ()=>clearTimeout(t);
+  },[busca]);
+  const academia = (id) => /^(acad|gf|hi)/.test(String(id||""));
+  const filtrada = (lista||[]).filter(e=> filtro==="video" ? (e.foto || e.video) : filtro==="casa" ? !academia(e.id) : true);
+  return (
+    <div className="tela">
+      <Topo onVoltar={onVoltar} voltar="Estação" titulo="Trocar exercício" sub="Busque na sua biblioteca"/>
+      <Corpo>
+        <input type="search" autoFocus value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Digite pelo menos 2 letras" aria-label="Buscar exercício" style={estInput}/>
+        <div style={{display:"flex",gap:8}}>
+          <Chip on={filtro==="video"} onClick={()=>setFiltro("video")}>Só com vídeo</Chip>
+          <Chip on={filtro==="casa"} onClick={()=>setFiltro("casa")}>Em casa</Chip>
+          <Chip on={filtro==="todos"} onClick={()=>setFiltro("todos")}>Todos</Chip>
+        </div>
+        {lista===null ? <div style={{color:C.cinza,fontSize:14,textAlign:"center",padding:16}}>Buscando...</div> :
+          busca.trim().length<2 ? <div style={{color:C.cinza,fontSize:14,textAlign:"center",padding:16}}>Digite o nome do exercício, por exemplo "remada" ou "equilíbrio".</div> :
+          filtrada.length===0 ? <div style={{color:C.cinza,fontSize:14,textAlign:"center",padding:16}}>Nenhum exercício encontrado com esse filtro.</div> :
+          <div style={Object.assign({}, cartao, {padding:"2px 12px"})}>
+            {filtrada.map((e,i)=>(
+              <button key={e.id} type="button" onClick={()=>onEscolher(e)} style={{display:"flex",alignItems:"center",gap:10,width:"100%",minHeight:60,textAlign:"left",background:"none",border:"none",borderTop:i?"1px solid #F1F5F9":"none",cursor:"pointer",color:C.escuro,padding:"6px 0"}}>
+                {e.foto ? <img src={e.foto} alt="" style={{width:52,height:40,borderRadius:10,objectFit:"cover",background:C.escuro2,flexShrink:0}}/> : <span style={{width:52,height:40,borderRadius:10,background:C.escuro2,flexShrink:0}}/>}
+                <span style={{flex:1}}><b style={{display:"block",fontSize:14.5,lineHeight:1.25}}>{e.nome}</b><span style={{fontSize:12.5,color:C.cinza}}>{(e.grupo||"")+" · "+e.id}</span></span>
+                {e.id===atualId ? <Selo cor="laranja">atual</Selo> : (e.foto || e.video) ? <Selo>vídeo</Selo> : <Selo cor="cinza">sem vídeo</Selo>}
+              </button>
+            ))}
+          </div>}
+      </Corpo>
+    </div>
+  );
+}
+
+function EditarEstacao({ item, titulo, ex, dupla, onCancelar, onAplicar }){
+  const [nome,setNome] = useState(item.nome||"");
+  const [obs,setObs] = useState(item.obs||"");
+  const [exId,setExId] = useState(item.exercicioId||"");
+  const [exAtual,setExAtual] = useState(ex||null);
+  const [seg,setSeg] = useState(Number(item.segundos)||60);
+  const [trocando,setTrocando] = useState(false);
+  const ehApp = String(exId).indexOf("app:")===0;
+  if(trocando) return <TrocarExercicio atualId={exId} onVoltar={()=>setTrocando(false)} onEscolher={(e)=>{ setExId(e.id); setExAtual(e); setTrocando(false); }}/>;
+  const aplicar = () => { const n = Object.assign({}, item, { nome:nome.trim()||item.nome, obs:obs, exercicioId:exId }); if(dupla && !ehApp) n.segundos = seg; onAplicar(n); };
+  return (
+    <div className="tela">
+      <Topo onVoltar={onCancelar} voltar="Aula" titulo={titulo} sub={dupla ? "Dupla tarefa · corpo e mente juntos" : (item.origemNome ? "Original do circuito: "+item.origemNome : "")}/>
+      <Corpo>
+        {ehApp ? <div style={Object.assign({}, cartao, {padding:14,fontSize:14.5,lineHeight:1.5,color:"#334155"})}>Esta dupla tarefa abre uma tela própria do app ({exId.replace("app:","")}). Você pode editar o nome e a orientação.</div> :
+          <div style={Object.assign({}, cartao, {padding:"12px 14px",display:"flex",alignItems:"center",gap:10})}>
+            {exAtual && exAtual.foto ? <img src={exAtual.foto} alt="" style={{width:64,height:48,borderRadius:10,objectFit:"cover",background:C.escuro2,flexShrink:0}}/> : <span style={{width:64,height:48,borderRadius:10,background:C.escuro2,flexShrink:0}}/>}
+            <span style={{flex:1}}><span style={{display:"block",fontSize:12.5,color:C.cinza}}>Exercício da biblioteca (vídeo)</span><b style={{display:"block",fontSize:15,lineHeight:1.25}}>{exAtual ? exAtual.nome : (exId || "Nenhum")}</b>{exAtual && !(exAtual.foto || exAtual.video) && <span style={{fontSize:12.5,color:C.vermelho}}>sem vídeo cadastrado</span>}</span>
+            <button type="button" onClick={()=>setTrocando(true)} style={{height:42,padding:"0 14px",borderRadius:12,border:"none",background:C.escuro,color:"#fff",fontSize:14.5,fontWeight:700,cursor:"pointer",flexShrink:0}}>Trocar</button>
+          </div>}
+        <Rotulo texto="Nome que o aluno vê"><input style={estInput} value={nome} onChange={e=>setNome(e.target.value)}/></Rotulo>
+        <Rotulo texto="Orientação para o aluno"><textarea rows={5} value={obs} onChange={e=>setObs(e.target.value)} style={{padding:"12px 14px",borderRadius:14,border:"1.5px solid "+C.borda,fontSize:15,lineHeight:1.45,color:C.escuro,resize:"none"}}/></Rotulo>
+        {dupla && !ehApp && <div style={{display:"grid",gridTemplateColumns:"1fr",maxWidth:180}}><Passo rotulo="Duração" valor={fmtSeg(seg)} menos={()=>setSeg(Math.max(15,seg-15))} mais={()=>setSeg(seg+15)}/></div>}
+        <div style={{marginTop:"auto",display:"flex",gap:10}}>
+          <Botao tipo="sec" onClick={onCancelar}>Cancelar</Botao>
+          <Botao onClick={aplicar}>Aplicar</Botao>
+        </div>
+      </Corpo>
+    </div>
+  );
+}
+
+function EditarAula({ linha, diasTxt, onVoltar, onSalvo }){
+  const [orig] = useState(copia(linha.data));
+  const [d,setD] = useState(copia(linha.data));
+  const [exs,setExs] = useState({});
+  const [editando,setEditando] = useState(null);
+  const [salvando,setSalvando] = useState(false);
+  const [erro,setErro] = useState("");
+  const [sair,setSair] = useState(false);
+  useEffect(()=>{ carregarExs(d); },[]);
+  async function carregarExs(dados){
+    const ids = []; (dados.estacoes||[]).concat(dados.extras||[]).forEach(e=>{ if(e.exercicioId && String(e.exercicioId).indexOf("app:")!==0 && ids.indexOf(e.exercicioId)<0) ids.push(e.exercicioId); });
+    if(!ids.length) return;
+    const r = await api.get("exercises?select=id,nome,grupo,foto,video&id=in.("+ids.map(encodeURIComponent).join(",")+")");
+    setExs(prev=>{ const m = Object.assign({}, prev); (r||[]).forEach(x=>{ m[x.id] = x; }); return m; });
+  }
+  const mudou = JSON.stringify(d)!==JSON.stringify(orig);
+  const exec = ((d.sequencia||[])[0] || {}).s || 40;
+  const setCampo = (k, v) => { const n = copia(d); n[k] = v; setD(n); };
+  const setExec = (v) => { const n = copia(d); if(!n.sequencia || !n.sequencia.length) n.sequencia = [{ t:"exec", s:40 }]; n.sequencia[0].s = v; setD(n); };
+  const salvar = async () => {
+    setSalvando(true); setErro("");
+    const ok = await api.patch("ma_jornada_aulas?id=eq."+encodeURIComponent(linha.id), { data:d, updated_at:new Date().toISOString() });
+    setSalvando(false);
+    if(!ok){ setErro("Não foi possível salvar. Verifique sua internet e tente de novo."); return; }
+    onSalvo(Object.assign({}, linha, { data:d }));
+  };
+  if(editando){
+    const e = editando;
+    const item = e.tipo==="est" ? d.estacoes[e.i] : d.extras[e.i];
+    return <EditarEstacao item={item} dupla={e.tipo==="extra"} ex={exs[item.exercicioId]} titulo={e.tipo==="est" ? "Estação "+(e.i+1)+" de "+d.estacoes.length : "Dupla tarefa"}
+      onCancelar={()=>setEditando(null)}
+      onAplicar={(novo)=>{ const n = copia(d); if(e.tipo==="est") n.estacoes[e.i] = novo; else n.extras[e.i] = novo; setD(n); setEditando(null); carregarExs(n); }}/>;
+  }
+  const duplas = (d.extras||[]).map((x,i)=>({ x, i })).filter(o=>o.x.tipo==="dupla");
+  return (
+    <div className="tela">
+      <Topo onVoltar={()=>{ if(mudou) setSair(true); else onVoltar(); }} voltar="Aulas" titulo={d.nome} sub={"Semana "+linha.semana+" · "+(linha.treino==="L" ? "Dia leve" : "Treino "+linha.treino)+(diasTxt ? " · "+diasTxt : "")}/>
+      <Corpo>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8}}>
+          <Passo rotulo="Voltas" valor={String(d.voltas||1)} menos={()=>setCampo("voltas", Math.max(1,(Number(d.voltas)||1)-1))} mais={()=>setCampo("voltas", Math.min(4,(Number(d.voltas)||1)+1))}/>
+          <Passo rotulo="Execução" valor={exec+" s"} menos={()=>setExec(Math.max(15,exec-5))} mais={()=>setExec(Math.min(120,exec+5))}/>
+          <Passo rotulo="Troca" valor={(Number(d.troca)||0)+" s"} menos={()=>setCampo("troca", Math.max(5,(Number(d.troca)||0)-5))} mais={()=>setCampo("troca", Math.min(60,(Number(d.troca)||0)+5))}/>
+          <Passo rotulo="Descanso" valor={fmtSeg(d.descansoVolta||0)} menos={()=>setCampo("descansoVolta", Math.max(0,(Number(d.descansoVolta)||0)-30))} mais={()=>setCampo("descansoVolta", Math.min(300,(Number(d.descansoVolta)||0)+30))}/>
+        </div>
+        <div style={{fontSize:13.5,color:C.cinza}}>Duração estimada: <b style={{color:C.escuro}}>{"cerca de "+minutosAula(d)+" minutos"}</b></div>
+        <div style={Object.assign({}, cartao, {padding:"2px 12px"})}>
+          {(d.estacoes||[]).map((e,i)=>{ const ex = exs[e.exercicioId]; const temVideo = ex && (ex.foto || ex.video); return (
+            <button key={i} type="button" onClick={()=>setEditando({ tipo:"est", i })} style={{display:"flex",alignItems:"center",gap:10,width:"100%",minHeight:39,textAlign:"left",background:"none",border:"none",borderTop:i?"1px solid #F1F5F9":"none",cursor:"pointer",color:C.escuro}}>
+              <span style={{width:22,fontSize:13,color:C.cinzaClaro,fontWeight:700}}>{i+1}</span>
+              <span style={{flex:1,fontSize:14.5,fontWeight:500,lineHeight:1.3}}>{e.nome}</span>
+              {ex ? (temVideo ? <Selo>vídeo</Selo> : <Selo cor="cinza">sem vídeo</Selo>) : <Selo cor="cinza">...</Selo>}
+            </button>); })}
+        </div>
+        {duplas.map(o=>(
+          <button key={o.i} type="button" onClick={()=>setEditando({ tipo:"extra", i:o.i })} style={Object.assign({}, cartao, {padding:"10px 12px",display:"flex",alignItems:"center",gap:10,border:"none",textAlign:"left",cursor:"pointer",color:C.escuro})}>
+            <span style={{fontSize:12,fontWeight:800,color:C.laranjaTxt,background:C.laranjaClaro,borderRadius:8,padding:"4px 8px"}}>DUPLA</span>
+            <span style={{flex:1,fontSize:14.5,fontWeight:500}}>{o.x.nome}</span>
+            <span style={{fontSize:13,color:C.cinza}}>{String(o.x.exercicioId||"").indexOf("app:")===0 ? "tela do app" : fmtSeg(o.x.segundos||60)}</span>
+          </button>
+        ))}
+        {erro && <div role="alert" style={{background:C.vermelhoClaro,color:C.vermelho,borderRadius:12,padding:"9px 12px",fontSize:14}}>{erro}</div>}
+        <div style={{marginTop:"auto",display:"flex",gap:10}}>
+          <Botao tipo="sec" onClick={()=>setD(copia(orig))} disabled={!mudou}>Desfazer</Botao>
+          <Botao onClick={salvar} disabled={!mudou || salvando}>{salvando ? "Salvando..." : "Salvar aula"}</Botao>
+        </div>
+      </Corpo>
+      {sair && <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,0.55)",zIndex:70,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+        <div style={{background:"#fff",borderRadius:"22px 22px 0 0",padding:20,width:"100%",maxWidth:480,display:"flex",flexDirection:"column",gap:10}}>
+          <div style={{fontSize:18,fontWeight:800}}>Sair sem salvar?</div>
+          <div style={{fontSize:15,color:C.cinza,lineHeight:1.45}}>As alterações desta aula ainda não foram salvas.</div>
+          <Botao onClick={async ()=>{ setSair(false); await salvar(); }}>Salvar e sair</Botao>
+          <Botao tipo="perigo" onClick={()=>{ setSair(false); onVoltar(); }}>Sair sem salvar</Botao>
+          <Botao tipo="sec" onClick={()=>setSair(false)}>Continuar editando</Botao>
+        </div>
+      </div>}
+    </div>
+  );
+}
+
+function AulasTab({ aulas, dias, onAbrir }){
+  const [semana,setSemana] = useState(1);
+  const ordem = { A:0, B:1, L:2 };
+  const lista = aulas.filter(a=>a.semana===semana).sort((x,y)=>ordem[x.treino]-ordem[y.treino]);
+  const diasDe = (id) => dias.filter(d=>d.aula_id===id).map(d=>d.dia);
+  const duplas = []; lista.forEach(a=>{ (a.data.extras||[]).filter(x=>x.tipo==="dupla").forEach(x=>{ if(duplas.indexOf(x.nome)<0) duplas.push(x.nome); }); });
+  return (
+    <>
+      <Topo longevus titulo="Aulas da jornada" sub={"Mente Ativa · 30 dias · "+aulas.length+" aulas"}>
+        <div style={{display:"flex",gap:8,marginTop:8}}>{[1,2,3,4].map(s=><Chip key={s} escuro on={semana===s} onClick={()=>setSemana(s)}>{"Semana "+s}</Chip>)}</div>
+      </Topo>
+      <Corpo>
+        {lista.map(a=>{ const ds = diasDe(a.id); return (
+          <button key={a.id} type="button" onClick={()=>onAbrir(a, ds)} style={Object.assign({}, cartao, {padding:14,display:"flex",gap:12,alignItems:"center",border:"none",textAlign:"left",cursor:"pointer",color:C.escuro})}>
+            <span style={{width:44,height:44,borderRadius:14,background:C.laranjaClaro,color:C.laranjaTxt,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:18,flexShrink:0}}>{a.treino}</span>
+            <span style={{flex:1}}>
+              <b style={{display:"block",fontSize:16.5,lineHeight:1.25}}>{a.data.nome}</b>
+              <span style={{display:"block",fontSize:13.5,color:C.cinza,marginTop:2}}>{(a.data.estacoes||[]).length+" estações · "+(a.data.voltas||1)+(Number(a.data.voltas)===1?" volta":" voltas")+" · cerca de "+minutosAula(a.data)+" min"}</span>
+              <span style={{display:"block",fontSize:12.5,color:C.cinzaClaro,marginTop:1}}>{(ds.length ? "Dias "+ds.join(", ") : "Sem dias")+(a.treino==="L" ? " · dia leve" : "")}</span>
+            </span>
+            <IcoDir/>
+          </button>); })}
+        {duplas.length>0 && <div style={Object.assign({}, cartao, {padding:"12px 14px",fontSize:13.5,lineHeight:1.5,color:"#334155"})}>{"Dupla tarefa da semana "+semana+": "}<b>{duplas.join(" e ")}</b>{", no fim das aulas A e B."}</div>}
+        <div style={{marginTop:"auto",background:C.laranjaClaro,color:C.laranjaTxt,borderRadius:14,padding:"10px 12px",fontSize:13.5,lineHeight:1.45}}>As alterações valem para todos os alunos a partir da próxima aula que eles abrirem.</div>
+      </Corpo>
+    </>
+  );
+}
+
+// ═══════════════ PAGAMENTOS ═══════════════
+function mensagemCobranca(modelo, m){
+  const base = modelo.mensagem_cobranca || "Oi, {nome}! Aqui é o Wellington. Ainda não identifiquei o seu Pix da jornada Mente Ativa. Consegue me enviar o comprovante até {prazo}?";
+  return base.split("{nome}").join(primeiro(m.nome)||"tudo bem").split("{prazo}").join(fmtData(m.pagamento_prazo));
+}
+function ConfigCobranca({ modelo, onVoltar, onSalvo }){
+  const [prazo,setPrazo] = useState(Number(modelo.prazo_pagamento_dias)||2);
+  const [preco,setPreco] = useState(String(modelo.preco||"19.90").replace(".",","));
+  const [msg,setMsg] = useState(modelo.mensagem_cobranca||"");
+  const [env,setEnv] = useState(false); const [erro,setErro] = useState("");
+  const salvar = async () => {
+    const p = Number(String(preco).replace(",","."));
+    if(!(p>0)){ setErro("Digite um preço válido, por exemplo 19,90."); return; }
+    setEnv(true);
+    const ok = await api.patch("ma_jornada_modelos?id=eq."+MODELO, { prazo_pagamento_dias:prazo, preco:p, mensagem_cobranca:msg });
+    setEnv(false);
+    if(!ok){ setErro("Não foi possível salvar."); return; }
+    onSalvo();
+  };
+  return (
+    <div className="tela">
+      <Topo onVoltar={onVoltar} voltar="Pagamentos" titulo="Cobrança da jornada" sub="Vale para os próximos cadastros"/>
+      <Corpo>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          <Passo rotulo="Prazo para pagar" valor={prazo+(prazo===1?" dia":" dias")} menos={()=>setPrazo(Math.max(0,prazo-1))} mais={()=>setPrazo(Math.min(15,prazo+1))}/>
+          <div style={Object.assign({}, cartao, {padding:"8px 10px",display:"flex",flexDirection:"column",gap:4,alignItems:"center"})}><span style={{fontSize:11.5,color:C.cinza}}>Preço (R$)</span><input inputMode="decimal" value={preco} onChange={e=>{setPreco(e.target.value);setErro("");}} aria-label="Preço em reais" style={{width:"100%",height:34,textAlign:"center",border:"1px solid "+C.borda,borderRadius:10,fontSize:16,fontWeight:700}}/></div>
+        </div>
+        <Rotulo texto="Mensagem de cobrança no WhatsApp"><textarea rows={6} value={msg} onChange={e=>setMsg(e.target.value)} style={{padding:"12px 14px",borderRadius:14,border:"1.5px solid "+C.borda,fontSize:15,lineHeight:1.45,resize:"none"}}/></Rotulo>
+        <div style={{fontSize:13,color:C.cinza,lineHeight:1.45}}>Use {"{nome}"} para o primeiro nome do aluno e {"{prazo}"} para a data limite.</div>
+        {erro && <div role="alert" style={{color:C.vermelho,fontSize:14}}>{erro}</div>}
+        <div style={{marginTop:"auto"}}><Botao onClick={salvar} disabled={env}>{env?"Salvando...":"Salvar"}</Botao></div>
+      </Corpo>
+    </div>
+  );
+}
+function PagamentosTab({ modelo, lista, onAcao, onConfig }){
+  const [filtro,setFiltro] = useState("pendentes");
+  const cont = { vencido:0, aguardando:0, pago:0, bloqueado:0 };
+  lista.forEach(m=>{ cont[m.situacao] = (cont[m.situacao]||0)+1; });
+  const vis = lista.filter(m=> filtro==="pendentes" ? (m.situacao==="vencido" || m.situacao==="aguardando") : filtro==="pagos" ? m.situacao==="pago" : m.situacao==="bloqueado");
+  const selo = (m) => m.situacao==="vencido" ? <Selo cor="vermelho">vencido</Selo> : m.situacao==="bloqueado" ? <Selo cor="cinza">bloqueado</Selo> : m.situacao==="pago" ? <Selo>{m.pagamento_status==="isento" ? "isento" : "pago"}</Selo> : m.aluno_marcou_pago ? <Selo>avisou que pagou</Selo> : <Selo cor="laranja">aguardando</Selo>;
+  const info = (m) => "Entrou "+fmtData(m.inicio)+" · "+(m.situacao==="pago" ? "pagamento confirmado" : m.situacao==="bloqueado" ? "acesso bloqueado" : m.dias_para_prazo<0 ? "prazo venceu há "+(-m.dias_para_prazo)+(m.dias_para_prazo===-1?" dia":" dias") : m.dias_para_prazo===0 ? "prazo vence hoje" : "prazo até "+fmtData(m.pagamento_prazo));
+  return (
+    <>
+      <Topo longevus titulo="Pagamentos" sub={"Mente Ativa · 30 dias · "+real(modelo.preco)}>
+        <div style={{display:"flex",gap:8,marginTop:8}}>
+          <Chip escuro on={filtro==="pendentes"} onClick={()=>setFiltro("pendentes")}>{"Pendentes "+(cont.vencido+cont.aguardando)}</Chip>
+          <Chip escuro on={filtro==="pagos"} onClick={()=>setFiltro("pagos")}>{"Pagos "+cont.pago}</Chip>
+          <Chip escuro on={filtro==="bloqueados"} onClick={()=>setFiltro("bloqueados")}>{"Bloqueados "+cont.bloqueado}</Chip>
+        </div>
+      </Topo>
+      <Corpo>
+        {vis.length===0 && <div style={{color:C.cinza,fontSize:15,textAlign:"center",padding:"24px 8px"}}>{filtro==="pendentes" ? "Nenhum pagamento pendente." : "Ninguém nesta lista."}</div>}
+        {vis.map(m=>{ const wa = waLink(m.whatsapp, mensagemCobranca(modelo, m)); return (
+          <div key={m.matricula_id} style={Object.assign({}, cartao, {padding:"12px 14px",display:"flex",flexDirection:"column",gap:8,border:m.situacao==="vencido"?"1.5px solid #FECACA":"none"})}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}><b style={{fontSize:16}}>{m.nome||"Sem nome"}</b>{selo(m)}</div>
+            <span style={{fontSize:13,color:C.cinza}}>{info(m)}</span>
+            {m.situacao==="pago" ? null : m.situacao==="bloqueado" ?
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}><Botao tipo="verde" onClick={()=>onAcao(m,"confirmar")}>Confirmar</Botao><Botao tipo="sec" onClick={()=>onAcao(m,"desbloquear")}>Desbloquear</Botao></div> :
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:8}}>
+                <Botao tipo="verde" onClick={()=>onAcao(m,"confirmar")}>Confirmar</Botao>
+                {wa ? <BotaoLink href={wa} tipo="sec">WhatsApp</BotaoLink> : <Botao tipo="sec" disabled>WhatsApp</Botao>}
+                <Botao tipo={m.situacao==="vencido"?"escuro":"perigo"} onClick={()=>onAcao(m,"bloquear")}>Bloquear</Botao>
+              </div>}
+          </div>); })}
+        <button type="button" onClick={onConfig} style={Object.assign({}, cartao, {marginTop:"auto",padding:"2px 14px",border:"none",textAlign:"left",cursor:"pointer",color:C.escuro})}>
+          {[["Prazo para pagar",(modelo.prazo_pagamento_dias||0)+((modelo.prazo_pagamento_dias||0)===1?" dia":" dias")],["Preço",real(modelo.preco)],["Mensagem de cobrança","editar"]].map(([r,v],i)=><div key={r} style={{display:"flex",justifyContent:"space-between",alignItems:"center",height:42,fontSize:14.5,borderTop:i?"1px solid #F1F5F9":"none"}}><span>{r}</span><b style={{color:C.laranjaTxt}}>{v}</b></div>)}
+        </button>
+      </Corpo>
+    </>
+  );
+}
+
+// ═══════════════ ALUNOS ═══════════════
+function resumoAluno(m, prog){
+  const meus = prog.filter(p=>p.matricula_id===m.id);
+  const ultimo = meus.reduce((x,p)=>Math.max(x,p.dia),0);
+  const datas = {}; meus.forEach(p=>{ datas[hojeISO(p.concluido_em)] = true; });
+  const hoje = hojeISO(); let cur = datas[hoje] ? hoje : maisDias(hoje,-1); let seq = 0; while(datas[cur]){ seq++; cur = maisDias(cur,-1); }
+  const ultData = meus.reduce((x,p)=>{ const d = hojeISO(p.concluido_em); return d>x ? d : x; }, "");
+  const parado = ultimo<30 && difDias(hoje, ultData || hojeISO(m.created_at)) >= 3;
+  return { ultimo, seq, parado, concluiu: ultimo>=30, ultData };
+}
+function AlunosTab({ dados, onAbrir }){
+  const [filtro,setFiltro] = useState("ativos");
+  const itens = dados.mats.map(m=>({ m, r:resumoAluno(m, dados.prog) }));
+  const cont = { ativos:itens.filter(i=>!i.r.concluiu && i.m.status==="ativo").length, parados:itens.filter(i=>i.r.parado && i.m.status==="ativo").length, concluiram:itens.filter(i=>i.r.concluiu).length };
+  const vis = itens.filter(i=> filtro==="ativos" ? (!i.r.concluiu && i.m.status==="ativo") : filtro==="parados" ? (i.r.parado && i.m.status==="ativo") : filtro==="concluiram" ? i.r.concluiu : true).sort((a,b)=>b.r.ultimo-a.r.ultimo);
+  return (
+    <>
+      <Topo longevus titulo="Alunos da jornada" sub={dados.mats.length+(dados.mats.length===1?" aluno":" alunos")+" · "+cont.ativos+" ativos · "+cont.concluiram+" concluíram"}>
+        <div style={{display:"flex",gap:8,marginTop:8}}>
+          <Chip escuro on={filtro==="ativos"} onClick={()=>setFiltro("ativos")}>{"Ativos "+cont.ativos}</Chip>
+          <Chip escuro on={filtro==="parados"} onClick={()=>setFiltro("parados")}>{"Parados "+cont.parados}</Chip>
+          <Chip escuro on={filtro==="concluiram"} onClick={()=>setFiltro("concluiram")}>{"Concluíram "+cont.concluiram}</Chip>
+          <Chip escuro on={filtro==="todos"} onClick={()=>setFiltro("todos")}>Todos</Chip>
+        </div>
+      </Topo>
+      <Corpo>
+        {vis.length===0 && <div style={{color:C.cinza,fontSize:15,textAlign:"center",padding:"24px 8px"}}>Ninguém nesta lista.</div>}
+        {vis.map(({ m, r })=>{
+          const parq = m.parq && m.parq.algum_sim;
+          const pend = m.pagamento_status==="aguardando" || m.pagamento_status==="vencido";
+          return (
+            <button key={m.id} type="button" onClick={()=>onAbrir(m)} style={Object.assign({}, cartao, {padding:"12px 14px",display:"flex",flexDirection:"column",gap:7,border:"none",textAlign:"left",cursor:"pointer",color:C.escuro})}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,width:"100%"}}>
+                <b style={{fontSize:16}}>{m.nome||"Sem nome"}</b>
+                <span style={{display:"flex",gap:4,flexWrap:"wrap",justifyContent:"flex-end"}}>
+                  {m.status==="bloqueado" && <Selo cor="cinza">bloqueado</Selo>}
+                  {parq && <Selo cor="laranja">PAR-Q: sim</Selo>}
+                  {pend && m.status!=="bloqueado" && <Selo cor="vermelho">pagamento pendente</Selo>}
+                  {r.parado && <Selo cor="cinza">sem treinar</Selo>}
+                  {r.concluiu && <Selo>concluiu</Selo>}
+                </span>
+              </div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:13,color:C.cinza,width:"100%"}}>
+                <span>{r.concluiu ? "Concluiu os 30 dias" : r.ultimo===0 ? "Ainda não começou" : "Concluiu o dia "+r.ultimo+" de 30"}</span>
+                <span>{r.seq>0 ? r.seq+(r.seq===1?" dia seguido":" dias seguidos") : r.ultData ? "último treino "+fmtData(r.ultData) : ""}</span>
+              </div>
+              <div style={{height:7,borderRadius:4,background:C.borda,width:"100%"}}><div style={{height:7,borderRadius:4,background:C.laranja,width:Math.round((r.ultimo/30)*100)+"%"}}/></div>
+            </button>
+          );
+        })}
+      </Corpo>
+    </>
+  );
+}
+function FichaAluno({ m, dados, modelo, onVoltar, onAcao }){
+  const r = resumoAluno(m, dados.prog);
+  const testes = dados.tes.filter(t=>t.matricula_id===m.id).sort((a,b)=>a.dia-b.dia);
+  const jogos = dados.jogos.filter(x=>x.matricula_id===m.id).length;
+  const respostas = (m.parq && m.parq.respostas) || [];
+  const sims = respostas.map((v,i)=>v===true ? PARQ[i] : null).filter(Boolean);
+  const wa = waLink(m.whatsapp, "Oi, "+(primeiro(m.nome)||"tudo bem")+"! Aqui é o Wellington. Tudo certo com a jornada Mente Ativa?");
+  const col = "1.6fr repeat("+Math.max(1,testes.length)+",minmax(0,1fr))";
+  const pg = m.pagamento_status==="pago" ? <Selo>{"pago"+(m.pagamento_confirmado_em ? " em "+fmtData(hojeISO(m.pagamento_confirmado_em)) : "")}</Selo> : m.pagamento_status==="isento" ? <Selo>isento</Selo> : m.pagamento_status==="vencido" ? <Selo cor="vermelho">vencido</Selo> : <Selo cor="laranja">{"aguardando até "+fmtData(m.pagamento_prazo)}</Selo>;
+  return (
+    <div className="tela">
+      <Topo onVoltar={onVoltar} voltar="Alunos" titulo={m.nome||"Sem nome"} sub={"Entrou em "+fmtData(m.inicio)+(m.whatsapp ? " · "+m.whatsapp : "")}/>
+      <Corpo>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:8}}>
+          {[[r.concluiu ? "30" : "Dia "+r.ultimo,"concluídos de 30"],[r.seq+(r.seq===1?" dia":" dias"),"seguidos"],[String(jogos),jogos===1?"jogo feito":"jogos feitos"]].map(([v,l])=><div key={l} style={Object.assign({}, cartao, {padding:10,textAlign:"center"})}><b style={{display:"block",fontSize:18}}>{v}</b><span style={{fontSize:12,color:C.cinza}}>{l}</span></div>)}
+        </div>
+        <div style={Object.assign({}, cartao, {padding:"12px 14px"})}>
+          {testes.length===0 ? <div style={{fontSize:14,color:C.cinza}}>Ainda não fez o teste do dia 1.</div> : <>
+            <div style={{display:"grid",gridTemplateColumns:col,gap:6,fontSize:12.5,color:C.cinza,marginBottom:4}}><span>Testes</span>{testes.map(t=><span key={t.dia} style={{textAlign:"center"}}>{"Dia "+t.dia}</span>)}</div>
+            {[["Força · levantar 30 s","forca_reps",""],["Equilíbrio · um pé","equilibrio_seg"," s"],["Memória · números","memoria_nivel",""],["Como se sente","percepcao",""]].map(([n,k,u])=>(
+              <div key={k} style={{display:"grid",gridTemplateColumns:col,gap:6,fontSize:14,padding:"6px 0",borderTop:"1px solid #F1F5F9"}}><span>{n}</span>{testes.map((t,i)=><b key={t.dia} style={{textAlign:"center",color:i===testes.length-1 && testes.length>1 ? C.verdeTxt : C.escuro}}>{t[k]===null || t[k]===undefined ? "-" : Number(t[k])+u}</b>)}</div>
+            ))}
+          </>}
+        </div>
+        {m.parq ? (sims.length ? <div style={{background:C.laranjaClaro,borderRadius:14,padding:"10px 12px",fontSize:13.5,lineHeight:1.45,color:C.laranjaTxt}}><b>PAR-Q: respondeu sim em</b>{" "+sims.join("; ")+"."}{m.parq.liberado_medico ? " Confirmou liberação médica." : ""}</div> : <div style={{background:C.verdeClaro,borderRadius:14,padding:"10px 12px",fontSize:13.5,color:C.verdeTxt}}>PAR-Q: respondeu não em todas as perguntas.</div>) : <div style={{background:"#F1F5F9",borderRadius:14,padding:"10px 12px",fontSize:13.5,color:"#475569"}}>Ainda não respondeu o PAR-Q.</div>}
+        <div style={Object.assign({}, cartao, {padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:14.5})}><span>Pagamento</span>{pg}</div>
+        <div style={{marginTop:"auto",display:"flex",flexDirection:"column",gap:8}}>
+          {wa && <BotaoLink href={wa}>Chamar no WhatsApp</BotaoLink>}
+          <div style={{display:"flex",gap:8}}>
+            {m.pagamento_status!=="pago" && m.pagamento_status!=="isento" ? <Botao tipo="sec" onClick={()=>onAcao(m,"isentar")}>Isentar</Botao> : null}
+            {m.status==="bloqueado" ? <Botao tipo="sec" onClick={()=>onAcao(m,"desbloquear")}>Desbloquear</Botao> : <Botao tipo="perigo" onClick={()=>onAcao(m,"bloquear")}>Bloquear</Botao>}
+          </div>
+        </div>
+      </Corpo>
+    </div>
+  );
+}
+
+// ═══════════════ PAINEL ═══════════════
+function Nav({ aba, setAba, pend }){
+  const itens = [["aulas","Aulas",<path key="a" d="M4 6h16M4 12h16M4 18h10"/>],["pagamentos","Pagamentos",<g key="p"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/></g>],["alunos","Alunos",<g key="u"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></g>]];
+  return (
+    <nav aria-label="Menu do painel" style={{height:68,flexShrink:0,display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",background:"#fff",borderTop:"1px solid "+C.borda}}>
+      {itens.map(([id,rot,ic])=>{ const on = aba===id; return (
+        <button key={id} type="button" onClick={()=>setAba(id)} style={{position:"relative",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,border:"none",background:"none",cursor:"pointer",fontSize:12.5,fontWeight:on?700:500,color:on?C.laranjaTxt:C.cinza}}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={on?C.laranja:C.cinza} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{ic}</svg>{rot}
+          {id==="pagamentos" && pend>0 && <span style={{position:"absolute",top:8,left:"58%",minWidth:18,height:18,borderRadius:9,background:C.vermelho,color:"#fff",fontSize:11,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 5px"}}>{pend}</span>}
+        </button>); })}
+    </nav>
+  );
+}
+function Painel({ modeloInicial }){
+  const [modelo,setModelo] = useState(modeloInicial);
+  const [aba,setAba] = useState("pagamentos");
+  const [aulas,setAulas] = useState(null);
+  const [dias,setDias] = useState([]);
+  const [pags,setPags] = useState([]);
+  const [dados,setDados] = useState({ mats:[], prog:[], tes:[], jogos:[] });
+  const [tela,setTela] = useState(null);
+  const [aviso,setAviso] = useState("");
+  const carregar = async () => {
+    const [a, d, p, mats, prog, tes, jogos, mod] = await Promise.all([
+      api.get("ma_jornada_aulas?select=id,semana,treino,data&modelo_id=eq."+MODELO+"&order=semana,treino"),
+      api.get("ma_jornada_dias?select=dia,aula_id&modelo_id=eq."+MODELO+"&order=dia"),
+      api.rpc("ma_pagamentos_a_conferir", { p_modelo:MODELO }),
+      api.get("ma_jornada_matriculas?select=*&modelo_id=eq."+MODELO+"&order=created_at.desc"),
+      api.get("ma_jornada_progresso?select=matricula_id,dia,concluido_em"),
+      api.get("ma_jornada_testes?select=*"),
+      api.get("ma_jornada_jogos?select=matricula_id"),
+      api.get("ma_jornada_modelos?select=*&id=eq."+MODELO)
+    ]);
+    setAulas(a||[]); setDias(d||[]); setPags(Array.isArray(p) ? p : []);
+    setDados({ mats:mats||[], prog:prog||[], tes:tes||[], jogos:jogos||[] });
+    if(mod && mod[0]) setModelo(mod[0]);
+  };
+  useEffect(()=>{ carregar(); },[]);
+  const acao = async (m, tipo) => {
+    const id = m.matricula_id || m.id;
+    const r = await api.rpc("ma_definir_pagamento", { p_matricula:id, p_acao:tipo });
+    if(!r){ setAviso("Não foi possível concluir. Tente de novo."); return; }
+    setAviso({ confirmar:"Pagamento confirmado.", bloquear:"Acesso bloqueado.", desbloquear:"Acesso liberado.", isentar:"Aluno isento do pagamento." }[tipo]);
+    await carregar();
+    if(tela && tela.tipo==="aluno"){ const atual = (await api.get("ma_jornada_matriculas?select=*&id=eq."+id))[0]; if(atual) setTela({ tipo:"aluno", m:atual }); }
+  };
+  if(!aulas) return <Carregando/>;
+  if(tela && tela.tipo==="aula") return <><EditarAula linha={tela.linha} diasTxt={tela.diasTxt} onVoltar={()=>setTela(null)} onSalvo={(nova)=>{ setAulas(aulas.map(x=>x.id===nova.id ? nova : x)); setTela(null); setAviso("Aula salva. Os alunos já recebem a nova versão."); }}/><Aviso texto={aviso} limpar={()=>setAviso("")}/></>;
+  if(tela && tela.tipo==="config") return <ConfigCobranca modelo={modelo} onVoltar={()=>setTela(null)} onSalvo={async ()=>{ setTela(null); setAviso("Cobrança atualizada."); await carregar(); }}/>;
+  if(tela && tela.tipo==="aluno") return <><FichaAluno m={tela.m} dados={dados} modelo={modelo} onVoltar={()=>setTela(null)} onAcao={acao}/><Aviso texto={aviso} limpar={()=>setAviso("")}/></>;
+  const pend = pags.filter(x=>x.situacao==="vencido" || x.situacao==="aguardando").length;
+  return (
+    <div className="tela">
+      {aba==="aulas" && <AulasTab aulas={aulas} dias={dias} onAbrir={(linha, ds)=>setTela({ tipo:"aula", linha, diasTxt: ds.length ? "Dias "+ds.join(", ") : "" })}/>}
+      {aba==="pagamentos" && <PagamentosTab modelo={modelo} lista={pags} onAcao={acao} onConfig={()=>setTela({ tipo:"config" })}/>}
+      {aba==="alunos" && <AlunosTab dados={dados} onAbrir={(m)=>setTela({ tipo:"aluno", m })}/>}
+      <Nav aba={aba} setAba={(a)=>{ setAba(a); carregar(); }} pend={pend}/>
+      <Aviso texto={aviso} limpar={()=>setAviso("")}/>
+    </div>
+  );
+}
+
+// ═══════════════ APP ═══════════════
+function Login(){
+  const [email,setEmail] = useState(""); const [senha,setSenha] = useState(""); const [erro,setErro] = useState(""); const [env,setEnv] = useState(false);
+  const entrar = async () => { setErro(""); if(!email || !senha){ setErro("Digite e-mail e senha."); return; } setEnv(true); const { error } = await supa.auth.signInWithPassword({ email:email.trim(), password:senha }); setEnv(false); if(error) setErro("E-mail ou senha incorretos."); };
+  return (
+    <div className="tela">
+      <Topo titulo="Painel Mente Ativa" sub="Entre com o seu login de professor"/>
+      <Corpo>
+        <Rotulo texto="E-mail"><input style={estInput} type="email" value={email} onChange={e=>setEmail(e.target.value)} autoCapitalize="none" autoComplete="email"/></Rotulo>
+        <Rotulo texto="Senha"><input style={estInput} type="password" value={senha} onChange={e=>setSenha(e.target.value)} autoComplete="current-password"/></Rotulo>
+        {erro && <div role="alert" style={{color:C.vermelho,fontSize:14}}>{erro}</div>}
+        <div style={{marginTop:"auto"}}><Botao onClick={entrar} disabled={env}>{env?"Entrando...":"Entrar"}</Botao></div>
+      </Corpo>
+    </div>
+  );
+}
+function App(){
+  const [sessao,setSessao] = useState(undefined);
+  const [modelo,setModelo] = useState(undefined);
+  useEffect(()=>{
+    supa.auth.getSession().then(({ data })=>setSessao((data && data.session) || null));
+    const { data: l } = supa.auth.onAuthStateChange((ev, s)=>setSessao(s));
+    return ()=>{ if(l && l.subscription) l.subscription.unsubscribe(); };
+  },[]);
+  const uid = sessao && sessao.user ? sessao.user.id : null;
+  useEffect(()=>{ if(!uid){ setModelo(undefined); return; } (async ()=>{ const r = await api.get("ma_jornada_modelos?select=*&id=eq."+MODELO); setModelo(r && r[0] && r[0].owner_id===uid ? r[0] : null); })(); },[uid]);
+  if(sessao===undefined) return <Carregando/>;
+  if(!sessao) return <Login/>;
+  if(modelo===undefined) return <Carregando/>;
+  if(modelo===null) return (
+    <div className="tela">
+      <Topo titulo="Acesso do professor" sub="Esta conta não é a dona da jornada Mente Ativa."/>
+      <Corpo><div style={{marginTop:"auto"}}><Botao tipo="sec" onClick={()=>supa.auth.signOut()}>Sair e entrar com outra conta</Botao></div></Corpo>
+    </div>
+  );
+  return <Painel modeloInicial={modelo}/>;
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App/>);
+</script>
+</body>
+</html>

@@ -10442,6 +10442,7 @@ const menuItems=[
 ]},
 {group:"Treino e Conteúdo",icon:"zap",items:[
 {id:"cognitivehub",label:"Mente Ativa"},
+{id:"extmenteativa",label:"Mente Ativa · Jornada 30 dias"},
 {id:"extprograma",label:"Gerador de Programa"},
 {id:"extbiblioteca",label:"Biblioteca"},
 {id:"extcircuito",label:"Aulas em Circuito"},
@@ -10646,6 +10647,7 @@ return (
   if(it.id==="extprograma"){window.open("longevus-programa.html","_self");return;}
   if(it.id==="extbiblioteca"){window.open("longevus-biblioteca.html","_self");return;}
   if(it.id==="extcircuito"){window.open("longevus-circuito.html","_self");return;}
+  if(it.id==="extmenteativa"){window.open("mente-ativa-painel.html","_self");return;}
   nav(it.id);setMenuOpen(false);
 }} style={{ width:"100%",display:"flex",alignItems:"center",gap:12,padding:"12px 18px 12px 48px",border:"none",background:isActive?"#fff4ee":"#fafbfc",cursor:"pointer",borderBottom:"1px solid #f1f5f9" }}>
 <span style={{ fontSize:13,fontWeight:isActive?700:500,color:isActive?"#FF5603":"#334155" }}>{it.label}</span>
