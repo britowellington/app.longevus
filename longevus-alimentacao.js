@@ -1285,6 +1285,7 @@
     }, [st.id, desde]);
     if (!e || !e.deficitDia || !e.kcalEtapa) return null;
     const card = (filhos) => /* @__PURE__ */ React.createElement(NutriCard, { style: { padding: 14, marginBottom: 12, border: "1.5px solid #FED7AA" } }, filhos);
+    if (e.inicioISO && e.inicioISO > hoje) return card([React.createElement("div", { key: "t", style: { fontSize: 14, fontWeight: 800, color: "#0F172A" } }, "Jornada · começa em " + e.inicioISO.slice(8, 10) + "/" + e.inicioISO.slice(5, 7)), React.createElement("div", { key: "s", style: { fontSize: 12.5, color: "#64748B", marginTop: 4, lineHeight: 1.45 } }, "Até lá, nenhum dia entra na conta do déficit. Para mudar, ajuste o início da jornada no relatório da avaliação.")]);
     const cab = /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 } },
       /* @__PURE__ */ React.createElement("div", null,
         /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 800, color: "#0F172A" } }, "Jornada · " + (e.final ? "meta final" : "etapa " + e.i + " de " + info.n)),

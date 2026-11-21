@@ -513,6 +513,9 @@
       return () => { vivo = false; };
     }, [studentId, inicio, hoje]);
     if (!e || !e.deficitDia || !e.kcalEtapa) return null;
+    if (e.inicioISO && e.inicioISO > hoje) return React.createElement("div", { style: { background: "#FFF4EE", border: "1.5px solid #FED7AA", borderRadius: 16, padding: 14, marginBottom: 12, color: PR.escuro } },
+      React.createElement("div", { style: { fontSize: 14.5, fontWeight: 800 } }, "Sua jornada começa em " + e.inicioISO.slice(8, 10) + "/" + e.inicioISO.slice(5, 7)),
+      React.createElement("div", { style: { fontSize: 12.5, color: PR.cinza, marginTop: 4, lineHeight: 1.45 } }, "Até lá, use o app à vontade. A contagem do seu déficit começa nesse dia."));
     const plano = metas && metas.energia;
     const nDias = inicio ? Math.round((new Date(hoje + "T12:00:00") - new Date(inicio + "T12:00:00")) / 864e5) + 1 : 0;
     const todos = Array.from({ length: Math.max(0, nDias) }, (_, i) => nutriDiaMais(inicio, i));
@@ -1600,7 +1603,7 @@
         }
         const ultBio = comBio.length ? comBio[comBio.length - 1] : null;
         const ultFunc = (fontes.aval || []).filter((a) => a && a.date).sort((a, b) => String(a.date).localeCompare(String(b.date))).pop() || null;
-        const aval = ultBio && (!ultFunc || String(ultBio.date) >= String(ultFunc.date)) ? { tipo: "bio", date: ultBio.date, gordura: antroNum(ultBio.bio.gordura), musculo: antroNum(ultBio.bio.mmePct) } : ultFunc ? { tipo: "funcional", date: ultFunc.date } : null;
+        const aval = ultBio && (!ultFunc || String(ultBio.date) >= String(ultFunc.date)) ? { tipo: "bio", date: ultBio.date, base: (ultBio.relatorio && ultBio.relatorio.inicioJornada) || ultBio.date, gordura: antroNum(ultBio.bio.gordura), musculo: antroNum(ultBio.bio.mmePct) } : ultFunc ? { tipo: "funcional", date: ultFunc.date } : null;
         setInfo({ dia, feitos, comp, temMeta: !!dia.meta, obj: prObjetivo(m), aval });
       })();
       return () => {
@@ -1625,7 +1628,7 @@
       : (eloSt && eloSt.status && eloSt.status !== "bloqueado") ? "elo"
       : (info && info.aval) ? "avaliacao" : "treino";
     const av = info && info.aval;
-    const avDias = av ? Math.round((dHoje - prData(String(av.date).slice(0, 10))) / 86400000) : 0;
+    const avDias = av ? Math.round((dHoje - prData(String(av.base || av.date).slice(0, 10))) / 86400000) : 0;
     const avFalta = 90 - avDias;
     const nTreinos = info ? semana.filter((d2) => info.feitos[d2]).length : 0;
     const d = info && info.dia;

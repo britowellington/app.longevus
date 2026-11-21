@@ -836,6 +836,8 @@
     return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   };
   const ANTRO_KCAL_KG_GORDURA = 7700;
+  // Início da jornada: por padrão é a data da avaliação; o professor pode adiar ou recomeçar.
+  const antroInicio = (rec) => String((rec && rec.relatorio && rec.relatorio.inicioJornada) || (rec && rec.date) || "").slice(0, 10);
   const antroRitmoDe = (rec, anterior) => {
     const r = (rec && rec.relatorio && rec.relatorio.ritmo) || (anterior && anterior.relatorio && anterior.relatorio.ritmo);
     return ANTRO_RITMOS[r] ? r : "moderado";
@@ -857,17 +859,17 @@
       const W = !final && ed && antroNum(ed[i - 1]) ? antroNum(ed[i - 1]) : final ? pl.Wt : auto;
       const M = comp && pl.temMus ? pl.M0 + (pl.Mt - pl.M0) * t : null;
       const F = comp ? W - pl.O - (M || 0) : null;
-      const fimISO = antroMaisMesesISO(rec.date, Math.min(i * 3, nMeses));
-      const inicioISO = i === 1 ? String(rec.date || "").slice(0, 10) : lista[i - 2].fimISO;
+      const fimISO = antroMaisMesesISO(antroInicio(rec), Math.min(i * 3, nMeses));
+      const inicioISO = i === 1 ? antroInicio(rec) : lista[i - 2].fimISO;
       const Fant = i === 1 ? (comp ? pl.F0 : null) : lista[i - 2].F;
       const dias = inicioISO && fimISO ? antroDiasEntre(inicioISO, fimISO) : null;
       const dFat = F != null && Fant != null ? Fant - F : null;
       const kcalEtapa = dFat != null && dFat > 0 ? dFat * ANTRO_KCAL_KG_GORDURA : null;
-      lista.push({ i, final, W, auto, M, F, g: F != null ? F / W * 100 : null, m: M != null ? M / W * 100 : null, quando: antroMaisMeses(rec.date, Math.min(i * 3, nMeses)), editado: !final && ed && antroNum(ed[i - 1]) ? true : false, inicioISO, fimISO, dias, dFat, kcalEtapa, deficitDia: kcalEtapa && dias ? kcalEtapa / dias : null });
+      lista.push({ i, final, W, auto, M, F, g: F != null ? F / W * 100 : null, m: M != null ? M / W * 100 : null, quando: antroMaisMeses(antroInicio(rec), Math.min(i * 3, nMeses)), editado: !final && ed && antroNum(ed[i - 1]) ? true : false, inicioISO, fimISO, dias, dFat, kcalEtapa, deficitDia: kcalEtapa && dias ? kcalEtapa / dias : null });
     }
     const proteina = pl.Wt ? Math.round(1.6 * pl.Wt / 5) * 5 : null;
     const hoje = antroHojeISO();
-    const atual = hoje >= String(rec.date || "").slice(0, 10) ? lista.find((e) => e.fimISO && e.fimISO >= hoje) || null : lista[0];
+    const atual = hoje >= antroInicio(rec) ? lista.find((e) => e.fimISO && e.fimISO >= hoje) || null : lista[0];
     return { n, nMeses, kgMes, lista, ritmo, proteina, atual };
   };
   const AntroJornada = ({ rec, pl, ritmo, editados, onIrCalorias, bloqueado360 }) => {
@@ -886,7 +888,8 @@
         antroRelH("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", width: 14 } }, ponto("#0f766e", true), linha),
         antroRelH("div", { style: { paddingBottom: 10 } },
           antroRelH("div", { style: { fontSize: 13, fontWeight: 700, color: "#0f172a" } }, "Ponto de partida · " + antroData(rec.date)),
-          antroRelH("div", { style: { fontSize: 12, color: "#64748b" } }, antroFmt(pl.W0, 1) + " kg" + (pl.g0 ? " · gordura " + antroFmt(pl.g0, 1) + "%" : "") + (pl.m0 ? " · músculo " + antroFmt(pl.m0, 1) + "%" : "")))),
+          antroRelH("div", { style: { fontSize: 12, color: "#64748b" } }, antroFmt(pl.W0, 1) + " kg" + (pl.g0 ? " · gordura " + antroFmt(pl.g0, 1) + "%" : "") + (pl.m0 ? " · músculo " + antroFmt(pl.m0, 1) + "%" : "")),
+          antroInicio(rec) !== String(rec.date || "").slice(0, 10) ? antroRelH("div", { style: { fontSize: 12, color: "#c2410c", fontWeight: 700, marginTop: 2 } }, (antroInicio(rec) > antroHojeISO() ? "A jornada começa em " : "Jornada começou em ") + antroData(antroInicio(rec))) : null)),
       j.lista.map((e) => antroRelH("div", { key: e.i, className: "report-section", style: { display: "flex", gap: 10 } },
         antroRelH("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", width: 14 } }, ponto(e.final ? "#FF5603" : "#fdba74", e.final), e.final ? null : linha),
         antroRelH("div", { style: { flex: 1, paddingBottom: 12 } },
@@ -1026,6 +1029,17 @@
       return antroRelH("div", { className: "no-print", style: { background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: 12, marginBottom: 10 } },
         antroRelH("div", { style: { fontSize: 14, fontWeight: 800, color: "#0f172a" } }, "Jornada em etapas"),
         antroRelH("div", { style: { fontSize: 11.5, color: "#64748b", margin: "2px 0 10px", lineHeight: 1.45 } }, "Usa as metas salvas no planejador. Etapas de 3 meses, alinhadas às reavaliações."),
+        (() => {
+          const ini = antroInicio(r0), dataAv = String(r0.date || "").slice(0, 10), hj = antroHojeISO();
+          return antroRelH("div", { style: { background: "#f8fafc", borderRadius: 10, padding: "10px 11px", marginBottom: 10 } },
+            antroRelH("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 } },
+              antroRelH("span", { style: { fontSize: 12.5, fontWeight: 700, color: "#0f172a" } }, "Início da jornada"),
+              antroRelH("input", { type: "date", value: ini, onChange: (ev) => { if (ev.target.value) salvarJornada({ inicioJornada: ev.target.value === dataAv ? null : ev.target.value }); }, style: { height: 34, borderRadius: 8, border: "1.5px solid #e2e8f0", padding: "0 8px", fontSize: 13, fontFamily: "inherit" } })),
+            antroRelH("div", { style: { fontSize: 11.5, color: "#64748b", marginTop: 6, lineHeight: 1.45 } }, ini > hj ? "Começa em " + antroData(ini) + ". Até lá, nenhum dia entra na conta do déficit." : ini === dataAv ? "Conta a partir do dia da avaliação." : "Conta a partir de " + antroData(ini) + ". Os dias antes disso não entram na conta."),
+            antroRelH("div", { style: { display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" } },
+              ini !== hj ? btn("Começar hoje", () => salvarJornada({ inicioJornada: hj === dataAv ? null : hj })) : null,
+              ini !== dataAv ? btn("Voltar para a data da avaliação", () => salvarJornada({ inicioJornada: null })) : null));
+        })(),
         antroRelH("div", { style: { display: "flex", gap: 6 } }, Object.keys(ANTRO_RITMOS).map(ritmoBtn)),
         antroRelH("div", { style: { fontSize: 11.5, color: "#64748b", margin: "6px 0 10px" } }, ANTRO_RITMOS[ritmoAtual].desc + " Cerca de " + antroFmt(ANTRO_RITMOS[ritmoAtual].pct, 2) + "% do peso por semana (" + antroFmt(etapasCalc.kgMes, 1) + " kg por mês)."),
         inter.length ? antroRelH("div", null,
