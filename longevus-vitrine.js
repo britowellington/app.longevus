@@ -447,8 +447,64 @@
         lista && lista.length ? h("div", null, sec("Suas indicações"),
           h("div", { style: { ...card, padding: "2px 14px" } }, lista.map((x, i) => { const st = ST_INDIC[x.status] || ST_INDIC.enviado; return h("div", { key: x.id, style: { display: "flex", alignItems: "center", gap: 10, padding: "11px 0", borderTop: i ? "1px solid #F1F5F9" : "none", fontSize: 14 } }, h("b", null, x.nome), h("span", { style: { marginLeft: "auto", fontSize: 11.5, fontWeight: 800, borderRadius: 10, padding: "4px 9px", whiteSpace: "nowrap", background: st[1], color: st[2] } }, st[0])); }))) : null));
   };
+  const linkElo = (entrar) => window.location.origin + window.location.pathname.replace(/[^/]*$/, "") + "elo60.html" + (entrar ? "?entrar=1" : "");
+  const EloTela = ({ item, ctx, onFechar, onClique }) => {
+    const d = item;
+    const [jornada, setJornada] = useState(undefined);
+    const [linkOk, setLinkOk] = useState(false);
+    useEffect(() => {
+      let vivo = true;
+      (async () => {
+        try {
+          const r = await fetch(SUPA_URL + "/rest/v1/rpc/ma_minha_jornada", { method: "POST", headers: await api.headers(), body: "{}" });
+          const j = r.ok ? await r.json() : null;
+          if (vivo) setJornada(j && j.matricula_id ? j : null);
+        } catch (e) { if (vivo) setJornada(null); }
+      })();
+      return () => { vivo = false; };
+    }, []);
+    const lista = String(d.inclui || "").split("\n").map((x) => x.trim()).filter(Boolean);
+    const preco = d.preco || "R$ 19,90";
+    const pers = primeiroNome(ctx.personal) || "Wellington";
+    const textoPresente = "Olha que legal! O " + (d.titulo || "Elo 60+") + " do " + pers + ", meu personal: 30 dias de exercícios e jogos para a mente, em casa, 15 minutos por dia, por " + preco + ". Começa por aqui: " + linkElo(false);
+    const presentear = async () => {
+      if (onClique) onClique();
+      try { if (navigator.share) { await navigator.share({ title: d.titulo || "Elo 60+", text: textoPresente }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
+      window.location.href = "https://wa.me/?text=" + encodeURIComponent(textoPresente);
+    };
+    const copiar = async () => { try { await navigator.clipboard.writeText(linkElo(false)); setLinkOk(true); setTimeout(() => setLinkOk(false), 2500); } catch (e) { window.prompt("Copie o link:", linkElo(false)); } };
+    const secao = (t) => h("div", { style: { fontSize: 11.5, fontWeight: 700, letterSpacing: "0.08em", color: COR.cinza, textTransform: "uppercase", margin: "18px 0 8px" } }, t);
+    const botao = { display: "block", width: "100%", boxSizing: "border-box", height: 50, lineHeight: "50px", textAlign: "center", borderRadius: 25, fontWeight: 800, fontSize: 15, textDecoration: "none", cursor: "pointer", fontFamily: "inherit" };
+    const dia = jornada ? Math.min(30, Number(jornada.dias_concluidos || 0) + 1) : null;
+    return h("div", { style: { position: "fixed", inset: 0, zIndex: 310, background: COR.fundo, overflowY: "auto", WebkitOverflowScrolling: "touch", color: COR.escuro } },
+      h("div", { style: { background: COR.escuro, color: "#F8FAFC", padding: "calc(14px + env(safe-area-inset-top)) 18px 20px", borderRadius: "0 0 26px 26px" } },
+        h(BotaoVoltar, { onClick: onFechar }),
+        h("div", { style: { display: "flex", alignItems: "center", gap: 14, marginTop: 10 } },
+          h(Icone, { item: d, tam: 64 }),
+          h("div", { style: { minWidth: 0 } },
+            h(Selo, { tipo: "proprio" }),
+            h("div", { style: { fontSize: 22, fontWeight: 800, lineHeight: 1.2, marginTop: 6 } }, d.titulo || "Elo 60+"),
+            h("div", { style: { fontSize: 13, color: "#CBD5E1", marginTop: 2 } }, d.texto || "Corpo e mente em casa, 15 minutos por dia."))),
+        h("div", { style: { marginTop: 14, background: COR.escuro2, border: "1.5px solid " + COR.laranja, borderRadius: 14, padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 } },
+          h("div", null, h("div", { style: { fontSize: 11, color: "#94A3B8" } }, "Jornada completa"), h("div", { style: { fontSize: 18, fontWeight: 800, color: "#FDBA74" } }, "30 dias")),
+          h("div", { style: { fontSize: 20, fontWeight: 800 } }, preco))),
+      h("div", { style: { padding: "2px 18px calc(30px + env(safe-area-inset-bottom))" } },
+        d.sobre ? h("div", null, secao("Sobre"), h("div", { style: { fontSize: 14.5, lineHeight: 1.6, color: "#334155", whiteSpace: "pre-wrap" } }, d.sobre)) : null,
+        lista.length ? h("div", null, secao("O que está incluso"), lista.map((x, i) => h("div", { key: i, style: { display: "flex", gap: 9, alignItems: "flex-start", fontSize: 14.5, lineHeight: 1.45, marginBottom: 7 } }, h("span", { "aria-hidden": "true", style: { color: COR.laranja, fontWeight: 800 } }, "✓"), h("span", null, x)))) : null,
+        h("div", { style: { marginTop: 18, display: "flex", flexDirection: "column", gap: 10 } },
+          jornada === undefined ? h("div", { style: { textAlign: "center", color: "#94A3B8", fontSize: 13.5, padding: 10 } }, "Carregando...") :
+          jornada ? h("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
+            h("div", { style: { background: "#F0FDF4", color: "#15803D", borderRadius: 14, padding: "12px 14px", fontSize: 14.5, fontWeight: 700, lineHeight: 1.45 } }, Number(jornada.dias_concluidos || 0) >= 30 ? "Você já concluiu os 30 dias do " + (d.titulo || "Elo 60+") + "." : "Você já está no " + (d.titulo || "Elo 60+") + ". Seu próximo é o dia " + dia + "."),
+            h("a", { href: linkElo(false), onClick: onClique, style: { ...botao, background: COR.laranja, color: "#fff" } }, "Continuar no " + (d.titulo || "Elo 60+"))) :
+          h("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
+            h("a", { href: linkElo(true), onClick: onClique, style: { ...botao, background: COR.laranja, color: "#fff" } }, "Quero para mim"),
+            h("div", { style: { fontSize: 12.5, color: COR.cinza, lineHeight: 1.5, textAlign: "center", marginTop: -2 } }, "Entre com o mesmo e-mail e senha do seu app. O pagamento é feito por Pix lá dentro.")),
+          h("button", { type: "button", onClick: presentear, style: { ...botao, border: "1.5px solid " + COR.borda, background: "#fff", color: COR.escuro, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, lineHeight: "normal" } }, h(IcPresente, { cor: COR.laranja, tam: 18 }), "Dar de presente para alguém"),
+          h("button", { type: "button", onClick: copiar, style: { background: "transparent", border: "none", color: COR.laranjaTxt, fontWeight: 700, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit", padding: 6 } }, linkOk ? "Link copiado" : "Copiar o link do " + (d.titulo || "Elo 60+")))));
+  };
   const Detalhe = ({ item, ctx, onFechar, onClique, ownerId, studentId }) => {
     if (item && item.produto === "indique") return h(IndiqueTela, { item, ctx, ownerId, studentId, onFechar });
+    if (item && item.produto === "elo") return h(EloTela, { item, ctx, onFechar, onClique });
     const d = item;
     const parceiro = d.tipo === "parceiro";
     const lib = liberado(ctx, d);
@@ -564,7 +620,8 @@
           d.beneficio ? h("span", { style: { fontSize: 12, fontWeight: 800, color: d.tipo === "parceiro" ? COR.verde : COR.laranjaTxt, whiteSpace: "nowrap" } }, txtBenef(d.beneficio)) : null),
         h("div", { style: { display: "flex", gap: 8, marginTop: 10 } },
           d.cupom ? h("button", { type: "button", onClick: () => copiar(d), style: { flex: 1, height: 38, borderRadius: 10, border: "1.5px dashed #FDBA74", background: "#FFF7ED", color: COR.laranjaTxt, fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" } }, copiado === d.id ? "Cupom copiado" : "Cupom " + d.cupom) : null,
-          ehPix(d) ? h("button", { type: "button", onClick: () => { setDetalhe(d); api.registrar(p.ownerId, d.id, p.studentId, "abriu"); }, style: { flex: 1, height: 38, borderRadius: 10, border: "none", background: COR.laranja, color: "#fff", fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" } }, "Ver e pagar · " + fmtReal(valorPix(d)))
+          d.produto === "elo" ? h("button", { type: "button", onClick: () => { setDetalhe(d); api.registrar(p.ownerId, d.id, p.studentId, "abriu"); }, style: { flex: 1, height: 38, borderRadius: 10, border: "none", background: COR.laranja, color: "#fff", fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" } }, "Conhecer o " + (d.titulo || "Elo 60+"))
+          : ehPix(d) ? h("button", { type: "button", onClick: () => { setDetalhe(d); api.registrar(p.ownerId, d.id, p.studentId, "abriu"); }, style: { flex: 1, height: 38, borderRadius: 10, border: "none", background: COR.laranja, color: "#fff", fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" } }, "Ver e pagar · " + fmtReal(valorPix(d)))
           : href ? h("a", { href, target: "_blank", rel: "noopener noreferrer", onClick: () => api.registrar(p.ownerId, d.id, p.studentId, "clique"), style: { flex: 1, height: 38, lineHeight: "38px", textAlign: "center", borderRadius: 10, background: COR.laranja, color: "#fff", fontWeight: 800, fontSize: 12.5, textDecoration: "none" } }, d.botao || (d.tipo === "parceiro" ? "Chamar no WhatsApp" : "Quero saber mais")) : null));
     };
     const secao = (t) => h("div", { style: { fontSize: 11.5, fontWeight: 700, letterSpacing: "0.08em", color: COR.cinza, textTransform: "uppercase", margin: "16px 2px 8px" } }, t);
@@ -702,6 +759,9 @@
           h(Campo, { rotulo: "Nome do parceiro na mensagem", dica: "Ex.: Dra. Paula" }, h("input", { value: d.parceiro || "", onChange: (e) => set("parceiro")(e.target.value), style: estiloInput })),
           h(Campo, { rotulo: "WhatsApp do parceiro" }, h("input", { inputMode: "tel", value: d.whatsapp || "", onChange: (e) => set("whatsapp")(e.target.value), placeholder: "(11) 90000-0000", style: estiloInput })),
           h(Campo, { rotulo: "Serviço que o aluno vai pedir", dica: "Ex.: o acompanhamento nutricional" }, h("input", { value: d.servico || "", onChange: (e) => set("servico")(e.target.value), style: estiloInput })))
+          : d.produto === "elo" ? h("div", { style: { background: "#FFF7ED", border: "1.5px solid #FDE7D3", borderRadius: 14, padding: "12px 14px", marginBottom: 12, fontSize: 12.5, color: "#7C2D12", lineHeight: 1.5 } },
+            h("div", { style: { fontWeight: 800, fontSize: 14, color: COR.escuro, marginBottom: 3 } }, "Elo 60+ · jornada de 30 dias"),
+            "O aluno toca em \"Quero para mim\" e entra no Elo 60+ com o mesmo login do app. O Pix e a confirmação ficam no painel do Elo 60+. Quem já está na jornada vê em que dia está. O campo Valor abaixo é só o preço exibido no card.")
           : h("div", null,
             h(Campo, { rotulo: "Como o aluno paga" }, h(Pilulas, { opcoes: [["whatsapp", "Combina comigo no WhatsApp"], ["pix", "Paga pelo app (Pix)"]].concat(d.produto ? [] : [["plano", "É um dos meus planos"]]), valor: d.cobranca || "whatsapp", onChange: set("cobranca") })),
             d.cobranca === "plano" ? h(Campo, { rotulo: "Vincular a um plano", dica: "O card usa o valor e o link de contratação do plano: o cliente cria a conta e paga a mensalidade. Assim não fica duplicado." },
@@ -731,7 +791,7 @@
         h(Campo, { rotulo: "Texto do botão", dica: parceiro ? "Padrão: Quero o desconto" : "Padrão: Quero saber mais" }, h("input", { value: d.botao || "", onChange: (e) => set("botao")(e.target.value), style: estiloInput })),
         h(Campo, { rotulo: "Mostrar para" }, h(Pilulas, { opcoes: PUBLICOS, valor: d.publico || "todos", onChange: set("publico") })),
         h(Campo, { rotulo: "Válido até", dica: "Opcional. Depois dessa data, some do app sozinho." }, h("input", { type: "date", value: d.validade || "", onChange: (e) => set("validade")(e.target.value), style: estiloInput }))),
-      (parceiro || (d.cobranca !== "pix" && d.destino !== "link")) ? h("div", { style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 16, padding: "14px 16px", marginTop: 12 } },
+      (parceiro || (d.cobranca !== "pix" && d.destino !== "link" && d.produto !== "elo")) ? h("div", { style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 16, padding: "14px 16px", marginTop: 12 } },
         h(Campo, { rotulo: "Mensagem do WhatsApp", dica: "Pode editar. Códigos que o app troca sozinho: {aluno}, {aluno_a}, {personal}, {personal_nome}, {parceiro}, {servico}, {cupom}, {cupom_frase}." }, h("textarea", { rows: 6, value: d.mensagem || (parceiro ? MSG_PARCEIRO : MSG_PROPRIO), onChange: (e) => set("mensagem")(e.target.value), style: { ...estiloInput, resize: "vertical", lineHeight: 1.45 } })),
         h("div", { style: { fontSize: 11.5, fontWeight: 700, color: COR.cinza, margin: "2px 0 6px" } }, "Prévia com uma aluna de exemplo"),
         h("div", { style: { background: "#ECE5DD", borderRadius: 12, padding: 10 } }, h("div", { style: { background: "#DCF8C6", borderRadius: "12px 12px 2px 12px", padding: "9px 11px", fontSize: 13, lineHeight: 1.5, whiteSpace: "pre-wrap", color: "#111827" } }, montarMensagem(d, exemplo)))) : null,
@@ -747,6 +807,11 @@
     sobre: "O corpo você treina comigo. A mente, você treina em casa. São jogos rápidos de memória, atenção e linguagem, pensados para quem tem 50 anos ou mais, com um desafio novo a cada dia e a sua evolução registrada.",
     inclui: "8 jogos de memória, atenção e linguagem\nDesafio do dia, sem precisar escolher\nSua evolução em cada jogo\nSeu personal acompanha os resultados",
     atendimento: "online", local: "No app, quando quiser", posPagamento: "Assim que eu confirmar o pagamento, todos os jogos são liberados por 30 dias." };
+  const ELO_MODELO = { produto: "elo", tipo: "proprio", categoria: "outro", ativo: true, publico: "todos", cobranca: "elo",
+    titulo: "Elo 60+", texto: "Corpo e mente em casa, 15 minutos por dia.", beneficio: "30 dias", preco: "R$ 19,90", profissional: "Wellington Brito", registro: "CREF 089836-G/SP", especialidade: "Especialista em Gerontologia",
+    sobre: "30 dias para ligar o corpo e a mente. Todo dia, uma aula guiada em casa, com vídeo e cronômetro, um exercício de dupla tarefa e um desafio de memória e atenção. Nos dias 1, 15 e 30 você faz testes rápidos e vê a sua evolução.",
+    inclui: "Aula do dia guiada, com vídeo e cronômetro\nExercícios de corpo e mente juntos\nJogos da Mente Ativa liberados\nTestes de força, equilíbrio e memória nos dias 1, 15 e 30\nTudo em casa, cerca de 15 minutos por dia",
+    atendimento: "online", local: "Em casa, pelo app" };
   const PRODUTOS = [
     { col: "l360", nome: "Longevus 360", sigla: "360", met: "__360", aviso: null, quem: "Quem não tem o 360", nBenef: 5,
       ph: "Registro da refeição por foto\nMetas diárias para o seu objetivo\nDéficit dividido entre alimentação e treino\nCardápios práticos com o que tem em casa\nAcompanhamento direto do seu personal",
@@ -985,6 +1050,10 @@
       cfgs.mente && !(itens || []).some((x) => x.produto === "mente") ? h("button", { type: "button", onClick: () => setEditando({ ...MENTE_MODELO, valor: cfgs.mente.valor ? String(cfgs.mente.valor).replace(".", ",") : "" }), style: { width: "100%", textAlign: "left", fontFamily: "inherit", cursor: "pointer", background: "#fff", border: "1.5px dashed #FDBA74", borderRadius: 14, padding: "12px 14px", marginBottom: 8, display: "flex", alignItems: "center", gap: 11 } },
         h("span", { style: { width: 36, height: 36, borderRadius: 12, background: COR.escuro, color: "#FDBA74", fontWeight: 800, fontSize: 11.5, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, "MA"),
         h("span", { style: { flex: 1 } }, h("span", { style: { display: "block", fontSize: 14, fontWeight: 800, color: COR.escuro } }, "Adicionar a Mente Ativa à vitrine"), h("span", { style: { display: "block", fontSize: 12, color: COR.cinza } }, "Já vem preenchida. Você só confere e salva.")),
+        h("span", { style: { color: "#C2410C", fontWeight: 800, fontSize: 13 } }, "+")) : null,
+      itens && !itens.some((x) => x.produto === "elo") ? h("button", { type: "button", onClick: () => setEditando({ ...ELO_MODELO }), style: { width: "100%", textAlign: "left", fontFamily: "inherit", cursor: "pointer", background: "#fff", border: "1.5px dashed #FDBA74", borderRadius: 14, padding: "12px 14px", marginBottom: 8, display: "flex", alignItems: "center", gap: 11 } },
+        h("span", { style: { width: 36, height: 36, borderRadius: 12, background: COR.escuro, color: "#FDBA74", fontWeight: 800, fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, "60+"),
+        h("span", { style: { flex: 1 } }, h("span", { style: { display: "block", fontSize: 14, fontWeight: 800, color: COR.escuro } }, "Adicionar o Elo 60+ à vitrine"), h("span", { style: { display: "block", fontSize: 12, color: COR.cinza } }, "Já vem preenchido. Você só confere e salva.")),
         h("span", { style: { color: "#C2410C", fontWeight: 800, fontSize: 13 } }, "+")) : null,
       PRODUTOS.filter((pr) => pr.col === "l360").map((pr) => cfgs[pr.col] ? h(Cartao360, { key: pr.col, prod: pr, cfg: cfgs[pr.col], cont: contarAcesso(students, pr.col), m: met[pr.met] || { viram: 0, abriram: 0 }, pagaram: contarPagaram(avisos, pr), onAbrir: () => setVerProd(pr.col), onAnunciar: () => anunciarProd(pr.col) }) : null),
       itens.length === 0 ? h("div", { style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 14, padding: 24, textAlign: "center", color: "#94A3B8", fontSize: 13, lineHeight: 1.5 } }, "Nenhuma oferta ainda. Cadastre um parceiro ou um serviço seu para aparecer no app.") : null,
