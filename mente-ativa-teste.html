@@ -18,6 +18,10 @@
   #root { max-width: 480px; margin: 0 auto; min-height: 100vh; }
   button, input { font-family: inherit; }
   input::placeholder { color: #94A3B8; }
+  .tela { height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; background: #F4F5F7; }
+  .tela-escura { background: #0F172A; color: #fff; }
+  .corpo { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; }
+  .limite3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 </style>
 </head>
 <body>
@@ -96,11 +100,11 @@ const IcoCadeado = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="n
 const Voltar = ({ onClick, rotulo, claro }) => (
   <button type="button" onClick={onClick} style={{display:"inline-flex",alignItems:"center",gap:6,height:42,padding:"0 16px 0 10px",borderRadius:21,border:claro?"1.5px solid "+C.borda:"1.5px solid rgba(255,255,255,0.28)",background:claro?"#fff":"rgba(255,255,255,0.10)",color:claro?C.escuro:"#fff",fontSize:15,fontWeight:700,cursor:"pointer"}}><IcoSeta/>{rotulo||"Voltar"}</button>
 );
-const Topo = ({ onVoltar, voltar, titulo, sub, children }) => (
-  <div style={{background:C.escuro,color:"#F8FAFC",padding:"14px 16px 18px",borderRadius:"0 0 24px 24px"}}>
+const Topo = ({ onVoltar, voltar, titulo, sub, children, compacto }) => (
+  <div style={{background:C.escuro,color:"#F8FAFC",padding:compacto?"10px 16px 12px":"14px 16px 18px",borderRadius:"0 0 22px 22px",flexShrink:0}}>
     {onVoltar && <Voltar onClick={onVoltar} rotulo={voltar}/>}
-    {titulo && <div style={{fontSize:23,fontWeight:800,marginTop:onVoltar?12:4,lineHeight:1.2}}>{titulo}</div>}
-    {sub && <div style={{fontSize:13.5,color:C.cinzaClaro,marginTop:4,lineHeight:1.45}}>{sub}</div>}
+    {titulo && <div style={{fontSize:compacto?21:23,fontWeight:800,marginTop:onVoltar?(compacto?8:12):4,lineHeight:1.2}}>{titulo}</div>}
+    {sub && <div style={{fontSize:13.5,color:C.cinzaClaro,marginTop:3,lineHeight:1.4}}>{sub}</div>}
     {children}
   </div>
 );
@@ -115,16 +119,17 @@ const BotaoLink = ({ href, children, tipo }) => {
   const t = tipo==="sec" ? {background:"#fff",color:C.escuro,border:"1.5px solid "+C.borda} : tipo==="verde" ? {background:C.verde,color:"#fff"} : {background:C.laranja,color:"#fff"};
   return <a href={href} target={href && href.indexOf("http")===0 ? "_blank" : undefined} rel="noopener noreferrer" style={Object.assign({display:"flex",alignItems:"center",justifyContent:"center",minHeight:54,borderRadius:16,fontSize:16.5,fontWeight:800,textDecoration:"none",padding:"0 16px",textAlign:"center"}, t)}>{children}</a>;
 };
-const Carregando = ({ texto }) => <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:C.cinzaClaro,fontSize:15}}>{texto||"Carregando..."}</div>;
-const Campo = ({ rotulo, children }) => <label style={{display:"block",marginBottom:14}}><span style={{display:"block",fontSize:14,fontWeight:700,color:"#334155",marginBottom:6}}>{rotulo}</span>{children}</label>;
-const estInput = {width:"100%",height:52,padding:"0 14px",borderRadius:14,border:"1.5px solid "+C.borda,fontSize:17,background:"#fff",color:C.escuro};
+const Carregando = ({ texto }) => <div className="tela" style={{alignItems:"center",justifyContent:"center",color:C.cinzaClaro,fontSize:15}}>{texto||"Carregando..."}</div>;
+const Corpo = ({ children, style }) => <div className="corpo" style={Object.assign({padding:"12px 16px 14px",gap:10}, style||{})}>{children}</div>;
+const Campo = ({ rotulo, children }) => <label style={{display:"block"}}><span style={{display:"block",fontSize:14,fontWeight:700,color:"#334155",marginBottom:5}}>{rotulo}</span>{children}</label>;
+const estInput = {width:"100%",height:50,padding:"0 14px",borderRadius:14,border:"1.5px solid "+C.borda,fontSize:17,background:"#fff",color:C.escuro};
 
 function Midia({ ex, nome, altura }){
-  const h = altura || 220;
+  const caixa = altura==="flex" ? {flex:1,minHeight:120,width:"100%"} : {width:"100%",height:altura||200};
   const id = ex && ytId(ex.video);
-  if(id) return <div style={{position:"relative",width:"100%",height:h,borderRadius:18,overflow:"hidden",background:"#000"}}><iframe title={nome||"Vídeo do exercício"} src={"https://www.youtube.com/embed/"+id+"?autoplay=1&mute=1&loop=1&playlist="+id+"&controls=0&modestbranding=1&playsinline=1&rel=0"} allow="autoplay; encrypted-media" style={{position:"absolute",inset:0,width:"100%",height:"100%",border:"none"}}/></div>;
-  if(ex && ex.foto) return <img src={ex.foto} alt={nome||ex.nome||"Exercício"} style={{width:"100%",height:h,objectFit:"contain",background:C.escuro2,borderRadius:18,display:"block"}}/>;
-  return <div style={{width:"100%",height:h,borderRadius:18,background:C.escuro2,display:"flex",alignItems:"center",justifyContent:"center",color:C.cinzaClaro,fontSize:14,textAlign:"center",padding:20}}>Vídeo em breve. Siga a explicação abaixo.</div>;
+  if(id) return <div style={Object.assign({position:"relative",borderRadius:18,overflow:"hidden",background:"#000"}, caixa)}><iframe title={nome||"Vídeo do exercício"} src={"https://www.youtube.com/embed/"+id+"?autoplay=1&mute=1&loop=1&playlist="+id+"&controls=0&modestbranding=1&playsinline=1&rel=0"} allow="autoplay; encrypted-media" style={{position:"absolute",inset:0,width:"100%",height:"100%",border:"none"}}/></div>;
+  if(ex && ex.foto) return <div style={Object.assign({borderRadius:18,overflow:"hidden",background:C.escuro2,position:"relative"}, caixa)}><img src={ex.foto} alt={nome||ex.nome||"Exercício"} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"contain"}}/></div>;
+  return <div style={Object.assign({borderRadius:18,background:C.escuro2,display:"flex",alignItems:"center",justifyContent:"center",color:C.cinzaClaro,fontSize:14,textAlign:"center",padding:16}, caixa)}>Vídeo em breve. Siga a explicação abaixo.</div>;
 }
 
 // ═══════════════ ENTRADA ═══════════════
@@ -135,6 +140,7 @@ function Entrada(){
   const [termos,setTermos] = useState(false);
   const [erro,setErro] = useState(""); const [info,setInfo] = useState(""); const [env,setEnv] = useState(false);
   const traduz = (m) => { const s = String(m||""); if(s.indexOf("Invalid login")>=0) return "E-mail ou senha incorretos."; if(s.indexOf("already registered")>=0) return "Este e-mail já tem conta. Toque em Entrar."; if(s.indexOf("Password should")>=0) return "A senha precisa ter pelo menos 6 caracteres."; if(s.indexOf("Email not confirmed")>=0) return "Confirme seu e-mail pelo link que enviamos e tente de novo."; return s || "Não foi possível continuar. Tente de novo."; };
+  const trocar = (m) => { setModo(m); setErro(""); setInfo(""); };
   const enviar = async () => {
     setErro(""); setInfo("");
     if(modo==="criar"){
@@ -149,7 +155,7 @@ function Entrada(){
         lsSet("ma-cadastro", JSON.stringify({ nome:nome.trim(), whatsapp:whats.trim() }));
         const { data, error } = await supa.auth.signUp({ email:email.trim(), password:senha, options:{ data:{ nome:nome.trim(), whatsapp:whats.trim() }, emailRedirectTo: window.location.href.split("?")[0].split("#")[0] } });
         if(error) throw error;
-        if(!data.session){ setInfo("Enviamos um e-mail de confirmação para "+email.trim()+". Toque no link do e-mail e depois entre aqui com a sua senha."); setModo("entrar"); }
+        if(!data.session){ setInfo("Enviamos um e-mail de confirmação para "+email.trim()+". Toque no link e depois entre aqui."); setModo("entrar"); }
       } else if(modo==="esqueci"){
         const { error } = await supa.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.href.split("?")[0].split("#")[0] });
         if(error) throw error;
@@ -162,24 +168,27 @@ function Entrada(){
     setEnv(false);
   };
   const titulo = modo==="criar" ? "Crie sua conta" : modo==="esqueci" ? "Nova senha" : "Entrar";
+  const linkSt = {border:"none",background:"none",color:C.laranjaTxt,fontWeight:700,fontSize:15,cursor:"pointer",padding:"6px 4px"};
   return (
-    <div style={{minHeight:"100vh",background:C.fundo,paddingBottom:30}}>
-      <Topo titulo={titulo} sub={modo==="criar" ? "Mente Ativa · 30 dias de corpo e mente, 15 minutos por dia, em casa." : modo==="esqueci" ? "Digite o e-mail da sua conta e enviaremos um link." : "Use o e-mail e a senha que você cadastrou."}/>
-      <div style={{padding:"18px 16px 0"}}>
+    <div className="tela">
+      <Topo compacto titulo={titulo} sub={modo==="criar" ? "Mente Ativa · 30 dias de corpo e mente em casa" : modo==="esqueci" ? "Enviaremos um link para o seu e-mail" : "Use o e-mail e a senha que você cadastrou"}/>
+      <Corpo>
         {modo==="criar" && <Campo rotulo="Seu nome"><input style={estInput} value={nome} onChange={e=>setNome(e.target.value)} placeholder="Como quer ser chamado" autoComplete="name"/></Campo>}
         {modo==="criar" && <Campo rotulo="WhatsApp com DDD"><input style={estInput} type="tel" value={whats} onChange={e=>setWhats(e.target.value)} placeholder="(11) 90000-0000" autoComplete="tel"/></Campo>}
         <Campo rotulo="E-mail"><input style={estInput} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="seu@email.com" autoComplete="email" autoCapitalize="none"/></Campo>
         {modo!=="esqueci" && <Campo rotulo={modo==="criar" ? "Crie uma senha" : "Senha"}><input style={estInput} type="password" value={senha} onChange={e=>setSenha(e.target.value)} placeholder="Mínimo 6 caracteres" autoComplete={modo==="criar"?"new-password":"current-password"}/></Campo>}
-        {modo==="criar" && <label style={{display:"flex",gap:10,alignItems:"center",fontSize:15,color:"#334155",marginBottom:16}}><input type="checkbox" checked={termos} onChange={e=>setTermos(e.target.checked)} style={{width:24,height:24,accentColor:C.laranja}}/>Li e aceito os termos de uso</label>}
-        {erro && <div role="alert" style={{background:C.vermelhoClaro,color:C.vermelho,borderRadius:12,padding:"10px 12px",fontSize:14,marginBottom:12,lineHeight:1.45}}>{erro}</div>}
-        {info && <div style={{background:C.verdeClaro,color:"#15803D",borderRadius:12,padding:"10px 12px",fontSize:14,marginBottom:12,lineHeight:1.45}}>{info}</div>}
-        <Botao onClick={enviar} disabled={env}>{env ? "Aguarde..." : modo==="criar" ? "Criar conta e começar" : modo==="esqueci" ? "Enviar link" : "Entrar"}</Botao>
-        <div style={{textAlign:"center",marginTop:16,fontSize:15,lineHeight:2}}>
-          {modo!=="criar" && <div><button type="button" onClick={()=>{setModo("criar");setErro("");setInfo("");}} style={{border:"none",background:"none",color:C.laranjaTxt,fontWeight:700,fontSize:15,cursor:"pointer"}}>Ainda não tenho conta</button></div>}
-          {modo!=="entrar" && <div><button type="button" onClick={()=>{setModo("entrar");setErro("");setInfo("");}} style={{border:"none",background:"none",color:C.laranjaTxt,fontWeight:700,fontSize:15,cursor:"pointer"}}>Já tenho conta, quero entrar</button></div>}
-          {modo==="entrar" && <div><button type="button" onClick={()=>{setModo("esqueci");setErro("");setInfo("");}} style={{border:"none",background:"none",color:C.cinza,fontSize:14,cursor:"pointer",textDecoration:"underline"}}>Esqueci minha senha</button></div>}
+        {modo==="criar" && <label style={{display:"flex",gap:10,alignItems:"center",fontSize:15,color:"#334155"}}><input type="checkbox" checked={termos} onChange={e=>setTermos(e.target.checked)} style={{width:24,height:24,accentColor:C.laranja}}/>Li e aceito os termos de uso</label>}
+        {erro && <div role="alert" style={{background:C.vermelhoClaro,color:C.vermelho,borderRadius:12,padding:"9px 12px",fontSize:14,lineHeight:1.4}}>{erro}</div>}
+        {info && <div style={{background:C.verdeClaro,color:"#15803D",borderRadius:12,padding:"9px 12px",fontSize:14,lineHeight:1.4}}>{info}</div>}
+        <div style={{marginTop:"auto"}}>
+          <Botao onClick={enviar} disabled={env}>{env ? "Aguarde..." : modo==="criar" ? "Criar conta e começar" : modo==="esqueci" ? "Enviar link" : "Entrar"}</Botao>
+          <div style={{display:"flex",justifyContent:"center",flexWrap:"wrap",gap:8,marginTop:6}}>
+            {modo!=="entrar" && <button type="button" onClick={()=>trocar("entrar")} style={linkSt}>{modo==="criar" ? "Já tenho conta" : "Voltar para entrar"}</button>}
+            {modo==="entrar" && <button type="button" onClick={()=>trocar("criar")} style={linkSt}>Criar conta</button>}
+            {modo==="entrar" && <button type="button" onClick={()=>trocar("esqueci")} style={Object.assign({}, linkSt, {color:C.cinza,fontWeight:600})}>Esqueci a senha</button>}
+          </div>
         </div>
-      </div>
+      </Corpo>
     </div>
   );
 }
@@ -188,13 +197,13 @@ function NovaSenha({ onFeito }){
   const [s1,setS1] = useState(""); const [erro,setErro] = useState(""); const [env,setEnv] = useState(false);
   const salvar = async () => { if(s1.length<6){ setErro("A senha precisa ter pelo menos 6 caracteres."); return; } setEnv(true); const { error } = await supa.auth.updateUser({ password:s1 }); setEnv(false); if(error){ setErro("Não foi possível salvar. Tente de novo."); return; } onFeito(); };
   return (
-    <div style={{minHeight:"100vh",background:C.fundo}}>
-      <Topo titulo="Crie sua nova senha"/>
-      <div style={{padding:"18px 16px"}}>
+    <div className="tela">
+      <Topo compacto titulo="Crie sua nova senha"/>
+      <Corpo>
         <Campo rotulo="Nova senha"><input style={estInput} type="password" value={s1} onChange={e=>{setS1(e.target.value);setErro("");}} placeholder="Mínimo 6 caracteres"/></Campo>
-        {erro && <div role="alert" style={{color:C.vermelho,fontSize:14,marginBottom:12}}>{erro}</div>}
-        <Botao onClick={salvar} disabled={env}>{env?"Salvando...":"Salvar e entrar"}</Botao>
-      </div>
+        {erro && <div role="alert" style={{color:C.vermelho,fontSize:14}}>{erro}</div>}
+        <div style={{marginTop:"auto"}}><Botao onClick={salvar} disabled={env}>{env?"Salvando...":"Salvar e entrar"}</Botao></div>
+      </Corpo>
     </div>
   );
 }
@@ -211,13 +220,12 @@ const PARQ = [
 ];
 function ParQ({ onFeito }){
   const [resp,setResp] = useState(PARQ.map(()=>null));
+  const [i,setI] = useState(0);
   const [liberado,setLiberado] = useState(false);
   const [erro,setErro] = useState(""); const [env,setEnv] = useState(false);
   const algumSim = resp.some(r=>r===true);
-  const completo = resp.every(r=>r!==null);
-  const marcar = (i, v) => { const n = resp.slice(); n[i] = v; setResp(n); setErro(""); };
+  const responder = (v) => { const n = resp.slice(); n[i] = v; setResp(n); setI(i+1); };
   const salvar = async () => {
-    if(!completo){ setErro("Responda todas as perguntas para continuar."); return; }
     if(algumSim && !liberado){ setErro("Marque a confirmação de liberação médica para continuar."); return; }
     setEnv(true);
     const ok = await api.rpc("ma_salvar_parq", { p_respostas:{ respostas:resp, algum_sim:algumSim, liberado_medico:liberado } });
@@ -225,27 +233,32 @@ function ParQ({ onFeito }){
     if(!ok){ setErro("Não foi possível salvar. Verifique sua internet e tente de novo."); return; }
     onFeito();
   };
+  const final = i>=PARQ.length;
   return (
-    <div style={{minHeight:"100vh",background:C.fundo,paddingBottom:30}}>
-      <Topo titulo="Antes de começar" sub="Responda com sinceridade. São 7 perguntas rápidas para a sua segurança."/>
-      <div style={{padding:"6px 0 0"}}>
-        {PARQ.map((p,i)=>(
-          <Cartao key={i} style={{marginTop:12}}>
-            <div style={{fontSize:16,lineHeight:1.45,fontWeight:600}}>{(i+1)+". "+p}</div>
-            <div style={{display:"flex",gap:10,marginTop:12}}>
-              {[[true,"Sim"],[false,"Não"]].map(([v,l])=>{ const on = resp[i]===v; return <button key={l} type="button" onClick={()=>marcar(i,v)} style={{flex:1,height:50,borderRadius:14,fontSize:16,fontWeight:800,cursor:"pointer",border:on?"2px solid "+C.laranja:"1.5px solid "+C.borda,background:on?C.laranjaClaro:"#fff",color:on?C.laranjaTxt:C.escuro}}>{l}</button>; })}
-            </div>
-          </Cartao>
-        ))}
-        {algumSim && <Cartao style={{marginTop:12,background:C.laranjaClaro,boxShadow:"none"}}>
-          <div style={{fontSize:15.5,lineHeight:1.5,color:C.laranjaTxt,fontWeight:600}}>Você respondeu "sim" em alguma pergunta. Antes de começar os exercícios, converse com o seu médico e conte que vai fazer uma rotina leve de exercícios em casa.</div>
-          <label style={{display:"flex",gap:10,alignItems:"flex-start",marginTop:12,fontSize:15,lineHeight:1.45}}><input type="checkbox" checked={liberado} onChange={e=>{setLiberado(e.target.checked);setErro("");}} style={{width:24,height:24,flexShrink:0,accentColor:C.laranja}}/>Já conversei com meu médico e estou liberado para fazer exercícios.</label>
-        </Cartao>}
-        <div style={{padding:"16px 16px 0"}}>
-          {erro && <div role="alert" style={{background:C.vermelhoClaro,color:C.vermelho,borderRadius:12,padding:"10px 12px",fontSize:14,marginBottom:12}}>{erro}</div>}
-          <Botao onClick={salvar} disabled={env}>{env?"Salvando...":"Continuar"}</Botao>
+    <div className="tela">
+      <Topo compacto onVoltar={i>0 ? ()=>setI(i-1) : null} voltar="Anterior" titulo="Antes de começar" sub={final ? "Respostas concluídas" : "Pergunta "+(i+1)+" de "+PARQ.length+" · para a sua segurança"}>
+        <div style={{height:6,borderRadius:3,background:C.escuro2,marginTop:10}}><div style={{height:6,borderRadius:3,background:C.laranja,width:Math.round((Math.min(i,PARQ.length)/PARQ.length)*100)+"%"}}/></div>
+      </Topo>
+      {!final ? <Corpo>
+        <div style={{flex:1,display:"flex",alignItems:"center"}}><div style={{fontSize:21,lineHeight:1.45,fontWeight:700}}>{PARQ[i]}</div></div>
+        <div style={{display:"flex",gap:12}}>
+          {[[true,"Sim"],[false,"Não"]].map(([v,l])=>{ const on = resp[i]===v; return <button key={l} type="button" onClick={()=>responder(v)} style={{flex:1,height:66,borderRadius:18,fontSize:20,fontWeight:800,cursor:"pointer",border:on?"2px solid "+C.laranja:"1.5px solid "+C.borda,background:on?C.laranjaClaro:"#fff",color:on?C.laranjaTxt:C.escuro}}>{l}</button>; })}
         </div>
-      </div>
+      </Corpo> : <Corpo>
+        {algumSim ? <div style={{background:C.laranjaClaro,borderRadius:18,padding:16}}>
+          <div style={{fontSize:16.5,lineHeight:1.5,color:C.laranjaTxt,fontWeight:600}}>Você respondeu "sim" em alguma pergunta. Antes de começar, converse com o seu médico e conte que vai fazer uma rotina leve de exercícios em casa.</div>
+          <label style={{display:"flex",gap:10,alignItems:"flex-start",marginTop:14,fontSize:16,lineHeight:1.45}}><input type="checkbox" checked={liberado} onChange={e=>{setLiberado(e.target.checked);setErro("");}} style={{width:26,height:26,flexShrink:0,accentColor:C.laranja}}/>Já conversei com meu médico e estou liberado para fazer exercícios.</label>
+        </div> : <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",gap:10}}>
+          <div style={{width:72,height:72,borderRadius:"50%",background:C.verdeClaro,display:"flex",alignItems:"center",justifyContent:"center"}}><IcoCheck cor={C.verde} tam={36}/></div>
+          <div style={{fontSize:22,fontWeight:800}}>Tudo certo!</div>
+          <div style={{fontSize:16,color:C.cinza,lineHeight:1.5}}>Você pode começar a sua jornada.</div>
+        </div>}
+        {erro && <div role="alert" style={{background:C.vermelhoClaro,color:C.vermelho,borderRadius:12,padding:"9px 12px",fontSize:14}}>{erro}</div>}
+        <div style={{marginTop:"auto"}}>
+          <Botao onClick={salvar} disabled={env}>{env?"Salvando...":"Continuar"}</Botao>
+          <button type="button" onClick={()=>setI(0)} style={{display:"block",margin:"8px auto 0",border:"none",background:"none",color:C.cinza,fontSize:14.5,cursor:"pointer",textDecoration:"underline"}}>Revisar respostas</button>
+        </div>
+      </Corpo>}
     </div>
   );
 }
@@ -256,38 +269,34 @@ function PixBox({ j, prof, onMarcado }){
   const [copiado,setCopiado] = useState(false);
   const [marcado,setMarcado] = useState(!!j.aluno_marcou_pago);
   const payload = prof && prof.pix_key ? pixPayload({ pixKey:prof.pix_key, merchantName:prof.pix_merchant_name||prof.nome, merchantCity:prof.pix_merchant_city, amount:j.preco, txid:"MENTEATIVA30" }) : null;
-  useEffect(()=>{ if(payload && qr.current && window.QRCode){ qr.current.innerHTML=""; new window.QRCode(qr.current,{ text:payload, width:180, height:180, colorDark:"#0f172a", colorLight:"#ffffff" }); } },[payload]);
+  useEffect(()=>{ if(payload && qr.current && window.QRCode){ qr.current.innerHTML=""; new window.QRCode(qr.current,{ text:payload, width:150, height:150, colorDark:"#0f172a", colorLight:"#ffffff" }); } },[payload]);
   const copiar = () => { try{ navigator.clipboard.writeText(payload).then(()=>{ setCopiado(true); setTimeout(()=>setCopiado(false),2500); }); }catch(e){} };
   const pers = primeiro(prof && (prof.nome || prof.pix_merchant_name)) || "Wellington";
   const wa = waLink(prof && prof.whatsapp, "Oi, "+pers+"! Acabei de pagar a jornada Mente Ativa ("+real(j.preco)+"). Segue o comprovante.");
   const marcar = async () => { setMarcado(true); await api.rpc("ma_aluno_marcar_pago", {}); if(onMarcado) onMarcado(); };
   return (
-    <Cartao style={{textAlign:"center"}}>
-      <div style={{fontSize:14,color:C.cinza}}>Mente Ativa · 30 dias</div>
-      <div style={{fontSize:30,fontWeight:800,marginBottom:12}}>{real(j.preco)}</div>
-      {payload ? <div>
-        <div ref={qr} role="img" aria-label="QR Code do Pix" style={{display:"flex",justifyContent:"center",marginBottom:12}}/>
-        <Botao onClick={copiar} tipo={copiado?"verde":undefined}>{copiado?"Código copiado":"Copiar código Pix"}</Botao>
-        <div style={{fontSize:13,color:C.cinza,marginTop:8,lineHeight:1.45}}>Abra o app do seu banco, escolha Pix e escaneie o QR Code ou cole o código.</div>
-      </div> : <div style={{fontSize:14,color:C.cinza,lineHeight:1.5}}>O Pix ainda não está configurado. Fale com o Wellington pelo WhatsApp.</div>}
-      <div style={{height:12}}/>
-      {marcado ? <div style={{background:C.verdeClaro,color:"#15803D",borderRadius:14,padding:"12px",fontSize:15,fontWeight:700}}>Aviso registrado. O Wellington vai confirmar o seu pagamento.</div> : <Botao tipo="verde" onClick={marcar}>Já paguei</Botao>}
-      {wa && <div style={{marginTop:10}}><BotaoLink href={wa} tipo="sec">Enviar comprovante no WhatsApp</BotaoLink></div>}
-    </Cartao>
+    <div style={{background:"#fff",borderRadius:18,padding:14,boxShadow:"0 1px 3px rgba(15,23,42,0.07)",textAlign:"center",display:"flex",flexDirection:"column",gap:10}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}><span style={{fontSize:14.5,color:C.cinza}}>Mente Ativa · 30 dias</span><span style={{fontSize:26,fontWeight:800}}>{real(j.preco)}</span></div>
+      {payload ? <div ref={qr} role="img" aria-label="QR Code do Pix" style={{display:"flex",justifyContent:"center"}}/> : <div style={{fontSize:14,color:C.cinza,lineHeight:1.5}}>O Pix ainda não está configurado. Fale com o Wellington pelo WhatsApp.</div>}
+      {payload && <Botao onClick={copiar} tipo={copiado?"verde":undefined}>{copiado?"Código copiado":"Copiar código Pix"}</Botao>}
+      <div style={{display:"flex",gap:8}}>
+        {marcado ? <div style={{flex:1,background:C.verdeClaro,color:"#15803D",borderRadius:16,padding:"8px 10px",fontSize:14,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",minHeight:54}}>Aviso enviado</div> : <Botao tipo="verde" onClick={marcar} style={{flex:1}}>Já paguei</Botao>}
+        {wa && <div style={{flex:1}}><BotaoLink href={wa} tipo="sec">Comprovante</BotaoLink></div>}
+      </div>
+    </div>
   );
 }
 
 function TelaPix({ j, prof, onVoltar, onMarcado }){
   const vencido = j.pagamento_prazo && hojeISO() > j.pagamento_prazo;
   return (
-    <div style={{minHeight:"100vh",background:C.fundo,paddingBottom:30}}>
-      <Topo onVoltar={onVoltar} voltar="Início" titulo="Pagamento da jornada"/>
-      <Cartao style={{marginTop:14,background:vencido?C.vermelhoClaro:C.verdeClaro,boxShadow:"none"}}>
-        <div style={{fontSize:15.5,lineHeight:1.5,color:vencido?C.vermelho:"#15803D",fontWeight:700}}>{vencido ? "O prazo do pagamento venceu em "+fmtData(j.pagamento_prazo)+". Pague agora para não perder o acesso." : "Seu acesso já está liberado. Pague até "+fmtData(j.pagamento_prazo)+" para manter."}</div>
-      </Cartao>
-      <div style={{height:12}}/>
-      <PixBox j={j} prof={prof} onMarcado={onMarcado}/>
-      <div style={{padding:"14px 16px 0"}}><Botao tipo="sec" onClick={onVoltar}>{j.dias_concluidos>0 ? "Voltar para a jornada" : "Pagar depois e começar agora"}</Botao></div>
+    <div className="tela">
+      <Topo compacto onVoltar={onVoltar} voltar="Início" titulo="Pagamento da jornada"/>
+      <Corpo>
+        <div style={{background:vencido?C.vermelhoClaro:C.verdeClaro,borderRadius:14,padding:"10px 12px",fontSize:15,lineHeight:1.45,color:vencido?C.vermelho:"#15803D",fontWeight:700}}>{vencido ? "O prazo venceu em "+fmtData(j.pagamento_prazo)+". Pague para não perder o acesso." : "Seu acesso já está liberado. Pague até "+fmtData(j.pagamento_prazo)+" para manter."}</div>
+        <PixBox j={j} prof={prof} onMarcado={onMarcado}/>
+        <div style={{marginTop:"auto"}}><Botao tipo="sec" onClick={onVoltar}>{j.dias_concluidos>0 ? "Voltar para a jornada" : "Pagar depois e começar agora"}</Botao></div>
+      </Corpo>
     </div>
   );
 }
@@ -296,12 +305,15 @@ function Bloqueado({ j, prof }){
   const pers = primeiro(prof && prof.nome) || "Wellington";
   const wa = waLink(prof && prof.whatsapp, "Oi, "+pers+"! Meu acesso à jornada Mente Ativa foi bloqueado. Quero regularizar.");
   return (
-    <div style={{minHeight:"100vh",background:C.fundo,paddingBottom:30}}>
-      <Topo titulo="Seu acesso está pausado" sub="O pagamento da jornada não foi identificado. Assim que for confirmado, você continua de onde parou."/>
-      <div style={{height:14}}/>
-      <PixBox j={j} prof={prof}/>
-      {wa && <div style={{padding:"12px 16px 0"}}><BotaoLink href={wa} tipo="sec">Falar com o {pers}</BotaoLink></div>}
-      <div style={{textAlign:"center",marginTop:18}}><button type="button" onClick={()=>supa.auth.signOut()} style={{border:"none",background:"none",color:C.cinza,fontSize:14,textDecoration:"underline",cursor:"pointer"}}>Sair</button></div>
+    <div className="tela">
+      <Topo compacto titulo="Seu acesso está pausado" sub="Assim que o pagamento for confirmado, você continua de onde parou."/>
+      <Corpo>
+        <PixBox j={j} prof={prof}/>
+        <div style={{marginTop:"auto",display:"flex",flexDirection:"column",gap:8}}>
+          {wa && <BotaoLink href={wa} tipo="sec">{"Falar com o "+pers}</BotaoLink>}
+          <button type="button" onClick={()=>supa.auth.signOut()} style={{border:"none",background:"none",color:C.cinza,fontSize:14,textDecoration:"underline",cursor:"pointer"}}>Sair</button>
+        </div>
+      </Corpo>
     </div>
   );
 }
@@ -365,7 +377,7 @@ function Player({ aula, exs, onFim, onSair, salvarJogo }){
   const pular = () => { const prox = idxRef.current + 1; if(prox>=fases.length){ setFim(true); setRodando(false); telaAcesa(false); return; } idxRef.current = prox; restaRef.current = fases[prox].s; setIdx(prox); setResta(fases[prox].s); setComoFazer(false); };
   if(!fases.length) return <Carregando texto="Aula sem estações."/>;
   if(fim) return (
-    <div style={{minHeight:"100vh",background:C.escuro,color:"#fff",padding:"20px 16px",display:"flex",flexDirection:"column"}}>
+    <div className="tela tela-escura" style={{padding:"20px 16px"}}>
       <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",gap:12}}>
         <div style={{width:84,height:84,borderRadius:"50%",background:C.verde,display:"flex",alignItems:"center",justifyContent:"center"}}><IcoCheck cor="#fff" tam={44}/></div>
         <div style={{fontSize:28,fontWeight:800}}>Aula concluída!</div>
@@ -382,22 +394,21 @@ function Player({ aula, exs, onFim, onSair, salvarJogo }){
   const rotulo = f.tipo==="prep" ? "Prepare-se" : f.tipo==="exec" ? "Agora" : f.tipo==="dupla" ? "Dupla tarefa · agora" : f.tipo==="troca" ? (f.dupla ? "Última etapa" : "Troque de estação") : f.tipo==="descanso" ? "Descanse e beba água" : "Pausa";
   const corTempo = ativo ? "#FDBA74" : "#93C5FD";
   return (
-    <div style={{minHeight:"100vh",background:C.escuro,color:"#fff",padding:"14px 16px 20px",display:"flex",flexDirection:"column",gap:12}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+    <div className="tela tela-escura" style={{padding:"12px 16px 14px",gap:10}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
         <Voltar onClick={()=>{ telaAcesa(false); onSair(); }}/>
-        <span style={{fontSize:14,color:C.cinzaClaro,textAlign:"right"}}>{f.dupla ? "Dupla tarefa" : "Volta "+f.v+" de "+(aula.voltas||1)}<br/>{f.dupla ? "corpo e mente juntos" : "Estação "+(f.i+1)+" de "+totalEst}</span>
+        <span style={{fontSize:13.5,color:C.cinzaClaro,textAlign:"right",lineHeight:1.35}}>{f.dupla ? "Dupla tarefa" : "Volta "+f.v+" de "+(aula.voltas||1)}<br/>{f.dupla ? "corpo e mente juntos" : "Estação "+(f.i+1)+" de "+totalEst}</span>
       </div>
-      <Midia ex={ex} nome={f.est && f.est.nome} altura={210}/>
-      <div>
-        <div style={{fontSize:13,fontWeight:800,letterSpacing:"0.08em",color:corTempo,textTransform:"uppercase"}}>{ativo ? rotulo : rotulo+" · a seguir"}</div>
-        <div style={{fontSize:24,fontWeight:800,lineHeight:1.2,marginTop:4}}>{f.est ? f.est.nome : ""}</div>
-        <div style={{fontSize:15.5,color:"#CBD5E1",lineHeight:1.5,marginTop:6}}>{f.est ? f.est.obs : ""}</div>
-        {ex && ex.execucao && <button type="button" onClick={()=>setComoFazer(v=>!v)} style={{marginTop:8,border:"none",background:"none",color:"#FDBA74",fontSize:15,fontWeight:700,cursor:"pointer",padding:0}}>{comoFazer?"Esconder explicação":"Ver como fazer"}</button>}
-        {comoFazer && ex && <div style={{fontSize:14.5,color:"#CBD5E1",lineHeight:1.55,marginTop:6,whiteSpace:"pre-line"}}>{ex.execucao}</div>}
+      {comoFazer && ex ? <div style={{flex:1,minHeight:120,background:C.escuro2,borderRadius:18,padding:14,fontSize:15.5,color:"#E2E8F0",lineHeight:1.55,whiteSpace:"pre-line",overflowY:"auto"}}>{ex.execucao}</div> : <Midia ex={ex} nome={f.est && f.est.nome} altura="flex"/>}
+      <div style={{flexShrink:0}}>
+        <div style={{fontSize:12.5,fontWeight:800,letterSpacing:"0.08em",color:corTempo,textTransform:"uppercase"}}>{ativo ? rotulo : rotulo+" · a seguir"}</div>
+        <div style={{fontSize:21,fontWeight:800,lineHeight:1.2,marginTop:3}}>{f.est ? f.est.nome : ""}</div>
+        <div className="limite3" style={{fontSize:15,color:"#CBD5E1",lineHeight:1.45,marginTop:4}}>{f.est ? f.est.obs : ""}</div>
+        {ex && ex.execucao && <button type="button" onClick={()=>setComoFazer(v=>!v)} style={{marginTop:6,border:"none",background:"none",color:"#FDBA74",fontSize:15,fontWeight:700,cursor:"pointer",padding:0}}>{comoFazer?"Ver o vídeo":"Ver como fazer"}</button>}
       </div>
-      <div style={{marginTop:"auto",textAlign:"center"}}>
-        <div aria-live="polite" style={{fontSize:76,fontWeight:800,lineHeight:1,color:corTempo,fontVariantNumeric:"tabular-nums"}}>{Math.floor(resta/60)+":"+String(resta%60).padStart(2,"0")}</div>
-        <div style={{height:8,borderRadius:4,background:"#26344F",margin:"14px 0"}}><div style={{height:8,borderRadius:4,background:C.laranja,width:Math.round((idx/fases.length)*100)+"%"}}/></div>
+      <div style={{flexShrink:0,textAlign:"center"}}>
+        <div aria-live="polite" style={{fontSize:"min(68px, 9.5vh)",fontWeight:800,lineHeight:1,color:corTempo,fontVariantNumeric:"tabular-nums"}}>{Math.floor(resta/60)+":"+String(resta%60).padStart(2,"0")}</div>
+        <div style={{height:7,borderRadius:4,background:"#26344F",margin:"10px 0"}}><div style={{height:7,borderRadius:4,background:C.laranja,width:Math.round((idx/fases.length)*100)+"%"}}/></div>
         {!iniciou ? <Botao onClick={comecar}>Começar a aula</Botao> :
           <div style={{display:"flex",gap:10}}>
             <Botao tipo="sec" onClick={()=>setRodando(r=>!r)} style={{flex:1}}>{rodando?"Pausar":"Continuar"}</Botao>
@@ -419,20 +430,23 @@ function TimerSimples({ segundos, onFeito }){
     return ()=>clearInterval(t);
   },[rodando]);
   return (
-    <div style={{textAlign:"center"}}>
-      <div aria-live="polite" style={{fontSize:72,fontWeight:800,color:"#FDBA74",fontVariantNumeric:"tabular-nums"}}>{Math.floor(resta/60)+":"+String(resta%60).padStart(2,"0")}</div>
-      {acabou ? <Botao tipo="verde" onClick={onFeito}>Feito</Botao> : <Botao onClick={()=>{ somLiberar(); bipe(990,0.3); setRodando(r=>!r); }}>{rodando?"Pausar":"Começar"}</Botao>}
-      {!acabou && <button type="button" onClick={onFeito} style={{marginTop:12,border:"none",background:"none",color:C.cinzaClaro,fontSize:14,cursor:"pointer",textDecoration:"underline"}}>Já fiz, marcar como feito</button>}
+    <div style={{textAlign:"center",flexShrink:0}}>
+      <div aria-live="polite" style={{fontSize:"min(64px, 9vh)",fontWeight:800,color:"#FDBA74",fontVariantNumeric:"tabular-nums",lineHeight:1.1,marginBottom:8}}>{Math.floor(resta/60)+":"+String(resta%60).padStart(2,"0")}</div>
+      {acabou ? <Botao tipo="verde" onClick={onFeito}>Feito</Botao> :
+        <div style={{display:"flex",gap:10}}>
+          <Botao onClick={()=>{ somLiberar(); bipe(990,0.3); setRodando(r=>!r); }} style={{flex:2}}>{rodando?"Pausar":"Começar"}</Botao>
+          <Botao tipo="sec" onClick={onFeito} style={{flex:1}}>Já fiz</Botao>
+        </div>}
     </div>
   );
 }
 
 function TelaEscura({ onVoltar, titulo, sub, children }){
   return (
-    <div style={{minHeight:"100vh",background:C.escuro,color:"#fff",padding:"14px 16px 22px",display:"flex",flexDirection:"column",gap:14}}>
-      <div><Voltar onClick={onVoltar}/></div>
-      <div><div style={{fontSize:26,fontWeight:800,lineHeight:1.2}}>{titulo}</div>{sub && <div style={{fontSize:16,color:"#CBD5E1",lineHeight:1.5,marginTop:6}}>{sub}</div>}</div>
-      {children}
+    <div className="tela tela-escura" style={{padding:"12px 16px 14px",gap:10}}>
+      <div style={{flexShrink:0}}><Voltar onClick={onVoltar}/></div>
+      <div style={{flexShrink:0}}><div style={{fontSize:23,fontWeight:800,lineHeight:1.2}}>{titulo}</div>{sub && <div style={{fontSize:15.5,color:"#CBD5E1",lineHeight:1.45,marginTop:4}}>{sub}</div>}</div>
+      <div className="corpo" style={{gap:10}}>{children}</div>
     </div>
   );
 }
@@ -454,16 +468,16 @@ function CorMovimento({ onVoltar, onFeito }){
   const c = CORES[seq[i]];
   return (
     <TelaEscura onVoltar={onVoltar} titulo="Cor e movimento" sub="Veja a cor e faça o movimento dela.">
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-        {CORES.map(k=><div key={k.nome} style={{display:"flex",gap:10,alignItems:"center",background:C.escuro2,borderRadius:12,padding:10}}><span style={{width:24,height:24,borderRadius:6,background:k.bg,flexShrink:0}}/><span style={{fontSize:14,lineHeight:1.3}}>{k.mov}</span></div>)}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,flexShrink:0}}>
+        {CORES.map(k=><div key={k.nome} style={{display:"flex",gap:8,alignItems:"center",background:C.escuro2,borderRadius:12,padding:"8px 10px"}}><span style={{width:22,height:22,borderRadius:6,background:k.bg,flexShrink:0}}/><span style={{fontSize:13.5,lineHeight:1.25}}>{k.mov}</span></div>)}
       </div>
       {acabou ? <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10,textAlign:"center"}}><div style={{fontSize:26,fontWeight:800}}>Muito bem!</div><div style={{fontSize:16,color:"#CBD5E1"}}>Você completou as 20 cores.</div></div> :
-        <div style={{flex:1,minHeight:240,borderRadius:24,background:rodando?c.bg:C.escuro2,color:rodando?c.fg:"#fff",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10,padding:20,textAlign:"center"}}>
+        <div style={{flex:1,minHeight:0,borderRadius:24,background:rodando?c.bg:C.escuro2,color:rodando?c.fg:"#fff",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8,padding:16,textAlign:"center"}}>
           {rodando ? <span style={{fontSize:17,opacity:0.9}}>{c.nome}</span> : null}
-          <span style={{fontSize:32,fontWeight:800,lineHeight:1.2}}>{rodando ? c.mov : "Toque em Começar"}</span>
+          <span style={{fontSize:30,fontWeight:800,lineHeight:1.2}}>{rodando ? c.mov : "Toque em Começar"}</span>
         </div>}
-      <div style={{fontSize:14,color:C.cinzaClaro,textAlign:"center"}}>{"Cor "+(i+1)+" de 20 · nova cor a cada 3 segundos"}</div>
-      {acabou ? <Botao tipo="verde" onClick={onFeito}>Feito</Botao> : <Botao onClick={()=>{ somLiberar(); setRodando(r=>!r); }}>{rodando?"Pausar":"Começar"}</Botao>}
+      <div style={{fontSize:14,color:C.cinzaClaro,textAlign:"center",flexShrink:0}}>{"Cor "+(i+1)+" de 20 · nova cor a cada 3 segundos"}</div>
+      <div style={{flexShrink:0}}>{acabou ? <Botao tipo="verde" onClick={onFeito}>Feito</Botao> : <Botao onClick={()=>{ somLiberar(); setRodando(r=>!r); }}>{rodando?"Pausar":"Começar"}</Botao>}</div>
     </TelaEscura>
   );
 }
@@ -471,40 +485,39 @@ function CorMovimento({ onVoltar, onFeito }){
 const PALAVRAS = ["Casa","Laranja","Sapato","Mesa","Chapéu","Banana","Janela","Livro","Cadeira","Flor","Relógio","Copo","Bolsa","Panela","Escova","Chave"];
 const embaralhar = (a) => { const b = a.slice(); for(let i=b.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); const t = b[i]; b[i] = b[j]; b[j] = t; } return b; };
 function Circuito({ onVoltar, onFeito, salvarJogo }){
-  const dados = useRef((()=>{ const p = embaralhar(PALAVRAS); const certas = p.slice(0,3); const opcoes = embaralhar(p.slice(0,6)); return { certas, opcoes }; })()).current;
+  const dados = useRef((()=>{ const p = embaralhar(PALAVRAS); return { certas:p.slice(0,3), opcoes:embaralhar(p.slice(0,6)) }; })()).current;
   const [passo,setPasso] = useState(0); const [sel,setSel] = useState([]); const [feitos,setFeitos] = useState([false,false,false]);
-  const exercicios = ["Senta e levanta · 10 vezes","Marcha no lugar · 40 segundos","Transferência de peso · 10 para cada lado"];
+  const exercicios = ["Senta e levanta · 10 vezes","Marcha no lugar · 40 segundos","Transferência de peso · 10 de cada lado"];
   const acertos = sel.filter(w=>dados.certas.indexOf(w)>=0).length;
   const alternar = (w) => { const s = sel.slice(); const k = s.indexOf(w); if(k>=0) s.splice(k,1); else if(s.length<3) s.push(w); setSel(s); };
-  const pontos = ["Corpo e memória juntos", "Guarde as palavras", "Agora o corpo trabalha", "Quais eram as palavras?", "Resultado"];
+  const subs = ["Guarde estas 3 palavras. No fim vamos perguntar quais eram.", "Faça os 3 exercícios e toque em cada um ao terminar.", "Quais eram as 3 palavras? Toque nelas.", "Resultado"];
   return (
-    <TelaEscura onVoltar={onVoltar} titulo="Circuito mente e corpo" sub={pontos[passo+1]}>
-      {passo===0 && <div style={{display:"flex",flexDirection:"column",gap:10,flex:1}}>
-        <div style={{fontSize:16,color:"#CBD5E1",lineHeight:1.5}}>Guarde estas 3 palavras. No fim do circuito vamos perguntar quais eram.</div>
-        {dados.certas.map(w=><div key={w} style={{height:74,borderRadius:18,background:C.escuro2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,fontWeight:800}}>{w}</div>)}
-        <div style={{fontSize:14.5,color:C.cinzaClaro,lineHeight:1.5}}>Dica: imagine uma cena com as 3 palavras juntas.</div>
-        <div style={{marginTop:"auto"}}><Botao onClick={()=>setPasso(1)}>Guardei, começar</Botao></div>
-      </div>}
-      {passo===1 && <div style={{display:"flex",flexDirection:"column",gap:10,flex:1}}>
-        <div style={{fontSize:16,color:"#CBD5E1",lineHeight:1.5}}>Faça os 3 exercícios e toque em cada um ao terminar. Continue lembrando das palavras.</div>
-        {exercicios.map((e,k)=><button key={e} type="button" onClick={()=>{ const n = feitos.slice(); n[k] = !n[k]; setFeitos(n); }} style={{display:"flex",gap:12,alignItems:"center",minHeight:64,borderRadius:16,border:feitos[k]?"2px solid "+C.verde:"1.5px solid #2A3854",background:C.escuro2,color:"#fff",padding:"0 14px",fontSize:16.5,fontWeight:700,textAlign:"left",cursor:"pointer"}}><span style={{width:30,height:30,borderRadius:"50%",background:feitos[k]?C.verde:"#2A3854",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{feitos[k] ? <IcoCheck cor="#fff"/> : (k+1)}</span>{e}</button>)}
-        <div style={{marginTop:"auto"}}><Botao onClick={()=>setPasso(2)} disabled={!feitos.every(Boolean)}>Terminei os exercícios</Botao></div>
-      </div>}
-      {passo===2 && <div style={{display:"flex",flexDirection:"column",gap:12,flex:1}}>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          {dados.opcoes.map(w=>{ const on = sel.indexOf(w)>=0; return <button key={w} type="button" onClick={()=>alternar(w)} style={{height:64,borderRadius:16,fontSize:19,fontWeight:800,cursor:"pointer",border:on?"2px solid "+C.laranja:"1.5px solid #2A3854",background:on?"#3A2216":C.escuro2,color:"#fff"}}>{w}</button>; })}
+    <TelaEscura onVoltar={onVoltar} titulo="Circuito mente e corpo" sub={subs[passo]}>
+      {passo===0 && <>
+        {dados.certas.map(w=><div key={w} style={{flex:1,minHeight:56,maxHeight:96,borderRadius:18,background:C.escuro2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,fontWeight:800}}>{w}</div>)}
+        <div style={{fontSize:14.5,color:C.cinzaClaro,lineHeight:1.45,flexShrink:0}}>Dica: imagine uma cena com as 3 palavras juntas.</div>
+        <div style={{marginTop:"auto",flexShrink:0}}><Botao onClick={()=>setPasso(1)}>Guardei, começar</Botao></div>
+      </>}
+      {passo===1 && <>
+        {exercicios.map((e,k)=><button key={e} type="button" onClick={()=>{ const n = feitos.slice(); n[k] = !n[k]; setFeitos(n); }} style={{display:"flex",gap:12,alignItems:"center",minHeight:62,borderRadius:16,border:feitos[k]?"2px solid "+C.verde:"1.5px solid #2A3854",background:C.escuro2,color:"#fff",padding:"0 14px",fontSize:16.5,fontWeight:700,textAlign:"left",cursor:"pointer",flexShrink:0}}><span style={{width:30,height:30,borderRadius:"50%",background:feitos[k]?C.verde:"#2A3854",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{feitos[k] ? <IcoCheck cor="#fff"/> : (k+1)}</span>{e}</button>)}
+        <div style={{fontSize:14.5,color:C.cinzaClaro,flexShrink:0}}>Continue lembrando das palavras.</div>
+        <div style={{marginTop:"auto",flexShrink:0}}><Botao onClick={()=>setPasso(2)} disabled={!feitos.every(Boolean)}>Terminei os exercícios</Botao></div>
+      </>}
+      {passo===2 && <>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,flexShrink:0}}>
+          {dados.opcoes.map(w=>{ const on = sel.indexOf(w)>=0; return <button key={w} type="button" onClick={()=>alternar(w)} style={{height:60,borderRadius:16,fontSize:19,fontWeight:800,cursor:"pointer",border:on?"2px solid "+C.laranja:"1.5px solid #2A3854",background:on?"#3A2216":C.escuro2,color:"#fff"}}>{w}</button>; })}
         </div>
-        <div style={{fontSize:14.5,color:C.cinzaClaro}}>{sel.length+" de 3 escolhidas"}</div>
-        <div style={{marginTop:"auto"}}><Botao onClick={()=>{ setPasso(3); if(salvarJogo) salvarJogo("jornada-circuito", acertos, { rotulo: acertos+" de 3" }); }} disabled={sel.length<3}>Conferir</Botao></div>
-      </div>}
-      {passo===3 && <div style={{display:"flex",flexDirection:"column",gap:12,flex:1}}>
-        <div style={{flex:1,borderRadius:24,background:C.escuro2,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10,padding:24,textAlign:"center"}}>
+        <div style={{fontSize:14.5,color:C.cinzaClaro,flexShrink:0}}>{sel.length+" de 3 escolhidas"}</div>
+        <div style={{marginTop:"auto",flexShrink:0}}><Botao onClick={()=>{ setPasso(3); if(salvarJogo) salvarJogo("jornada-circuito", acertos, { rotulo: acertos+" de 3" }); }} disabled={sel.length<3}>Conferir</Botao></div>
+      </>}
+      {passo===3 && <>
+        <div style={{flex:1,minHeight:0,borderRadius:24,background:C.escuro2,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8,padding:20,textAlign:"center"}}>
           <span style={{fontSize:16,color:C.cinzaClaro}}>Você lembrou</span>
-          <span style={{fontSize:58,fontWeight:800,color:"#6FD3A8"}}>{acertos+" de 3"}</span>
-          <span style={{fontSize:16,color:"#CBD5E1",lineHeight:1.5}}>{"As palavras eram: "+dados.certas.join(", ")+"."}</span>
+          <span style={{fontSize:52,fontWeight:800,color:"#6FD3A8"}}>{acertos+" de 3"}</span>
+          <span style={{fontSize:16,color:"#CBD5E1",lineHeight:1.45}}>{"As palavras eram: "+dados.certas.join(", ")+"."}</span>
         </div>
-        <Botao tipo="verde" onClick={onFeito}>Feito</Botao>
-      </div>}
+        <div style={{flexShrink:0}}><Botao tipo="verde" onClick={onFeito}>Feito</Botao></div>
+      </>}
     </TelaEscura>
   );
 }
@@ -520,38 +533,38 @@ function Memoria({ onVoltar, onFeito, salvarJogo }){
   },[passo]);
   const acertos = sel.filter(n=>dados.certas.indexOf(n)>=0).length;
   const alternar = (n) => { const s = sel.slice(); const k = s.indexOf(n); if(k>=0) s.splice(k,1); else if(s.length<4) s.push(n); setSel(s); };
-  const subs = ["Guarde as 4 figuras.","Agora marche no lugar, sem olhar a tela.","Quais figuras apareceram? Toque em 4.","Resultado do desafio de hoje."];
+  const subs = ["Guarde as 4 figuras.","Agora marche no lugar, sem olhar a tela.","Quais figuras apareceram? Toque em 4.","Resultado"];
   return (
     <TelaEscura onVoltar={onVoltar} titulo="Memória imediata" sub={subs[passo]}>
-      {passo===0 && <div style={{display:"flex",flexDirection:"column",gap:12,flex:1}}>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          {dados.certas.map(n=>{ const f = FIGURAS.find(x=>x[1]===n); return <div key={n} style={{height:140,borderRadius:18,background:C.escuro2,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6}}><span style={{fontSize:56}} aria-hidden="true">{f[0]}</span><span style={{fontSize:16}}>{n}</span></div>; })}
+      {passo===0 && <>
+        <div style={{flex:1,minHeight:0,display:"grid",gridTemplateColumns:"1fr 1fr",gridTemplateRows:"1fr 1fr",gap:10}}>
+          {dados.certas.map(n=>{ const f = FIGURAS.find(x=>x[1]===n); return <div key={n} style={{borderRadius:18,background:C.escuro2,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,minHeight:0}}><span style={{fontSize:"min(52px, 7vh)"}} aria-hidden="true">{f[0]}</span><span style={{fontSize:16}}>{n}</span></div>; })}
         </div>
-        <div style={{textAlign:"center",fontSize:44,fontWeight:800,color:"#FDBA74"}}>{resta+" s"}</div>
-        <div style={{marginTop:"auto"}}><Botao onClick={()=>{ setPasso(1); setResta(30); }}>Já guardei</Botao></div>
-      </div>}
-      {passo===1 && <div style={{display:"flex",flexDirection:"column",gap:12,flex:1}}>
-        <div style={{flex:1,borderRadius:24,background:C.escuro2,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12,padding:24,textAlign:"center"}}>
-          <span style={{fontSize:64,fontWeight:800,color:"#FDBA74"}}>{"0:"+String(resta).padStart(2,"0")}</span>
-          <span style={{fontSize:17,color:"#CBD5E1",lineHeight:1.5}}>Marche no lugar e tente lembrar das 4 figuras.</span>
+        <div style={{textAlign:"center",fontSize:34,fontWeight:800,color:"#FDBA74",flexShrink:0}}>{resta+" s"}</div>
+        <div style={{flexShrink:0}}><Botao onClick={()=>{ setPasso(1); setResta(30); }}>Já guardei</Botao></div>
+      </>}
+      {passo===1 && <>
+        <div style={{flex:1,minHeight:0,borderRadius:24,background:C.escuro2,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10,padding:20,textAlign:"center"}}>
+          <span style={{fontSize:60,fontWeight:800,color:"#FDBA74"}}>{"0:"+String(resta).padStart(2,"0")}</span>
+          <span style={{fontSize:17,color:"#CBD5E1",lineHeight:1.45}}>Marche no lugar e tente lembrar das 4 figuras.</span>
         </div>
-        <Botao onClick={()=>{ setPasso(2); setResta(0); }}>Terminei a marcha</Botao>
-      </div>}
-      {passo===2 && <div style={{display:"flex",flexDirection:"column",gap:12,flex:1}}>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-          {dados.opcoes.map(f=>{ const on = sel.indexOf(f[1])>=0; return <button key={f[1]} type="button" aria-label={f[1]} onClick={()=>alternar(f[1])} style={{height:96,borderRadius:16,cursor:"pointer",border:on?"2px solid "+C.laranja:"1.5px solid #2A3854",background:on?"#3A2216":C.escuro2,color:"#fff",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4}}><span style={{fontSize:34}} aria-hidden="true">{f[0]}</span><span style={{fontSize:12.5}}>{f[1]}</span></button>; })}
+        <div style={{flexShrink:0}}><Botao onClick={()=>{ setPasso(2); setResta(0); }}>Terminei a marcha</Botao></div>
+      </>}
+      {passo===2 && <>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,flexShrink:0}}>
+          {dados.opcoes.map(f=>{ const on = sel.indexOf(f[1])>=0; return <button key={f[1]} type="button" aria-label={f[1]} onClick={()=>alternar(f[1])} style={{height:88,borderRadius:16,cursor:"pointer",border:on?"2px solid "+C.laranja:"1.5px solid #2A3854",background:on?"#3A2216":C.escuro2,color:"#fff",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3}}><span style={{fontSize:32}} aria-hidden="true">{f[0]}</span><span style={{fontSize:12.5}}>{f[1]}</span></button>; })}
         </div>
-        <div style={{fontSize:14.5,color:C.cinzaClaro}}>{sel.length+" de 4 escolhidas"}</div>
-        <div style={{marginTop:"auto"}}><Botao onClick={()=>{ setPasso(3); if(salvarJogo) salvarJogo("jornada-memoria", acertos, { rotulo: acertos+" de 4" }); }} disabled={sel.length<4}>Conferir</Botao></div>
-      </div>}
-      {passo===3 && <div style={{display:"flex",flexDirection:"column",gap:12,flex:1}}>
-        <div style={{flex:1,borderRadius:24,background:C.escuro2,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10,padding:24,textAlign:"center"}}>
+        <div style={{fontSize:14.5,color:C.cinzaClaro,flexShrink:0}}>{sel.length+" de 4 escolhidas"}</div>
+        <div style={{marginTop:"auto",flexShrink:0}}><Botao onClick={()=>{ setPasso(3); if(salvarJogo) salvarJogo("jornada-memoria", acertos, { rotulo: acertos+" de 4" }); }} disabled={sel.length<4}>Conferir</Botao></div>
+      </>}
+      {passo===3 && <>
+        <div style={{flex:1,minHeight:0,borderRadius:24,background:C.escuro2,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8,padding:20,textAlign:"center"}}>
           <span style={{fontSize:16,color:C.cinzaClaro}}>Você acertou</span>
-          <span style={{fontSize:58,fontWeight:800,color:"#6FD3A8"}}>{acertos+" de 4"}</span>
-          <span style={{fontSize:16,color:"#CBD5E1"}}>{"As figuras eram: "+dados.certas.join(", ")+"."}</span>
+          <span style={{fontSize:52,fontWeight:800,color:"#6FD3A8"}}>{acertos+" de 4"}</span>
+          <span style={{fontSize:16,color:"#CBD5E1",lineHeight:1.45}}>{"As figuras eram: "+dados.certas.join(", ")+"."}</span>
         </div>
-        <Botao tipo="verde" onClick={onFeito}>Feito</Botao>
-      </div>}
+        <div style={{flexShrink:0}}><Botao tipo="verde" onClick={onFeito}>Feito</Botao></div>
+      </>}
     </TelaEscura>
   );
 }
@@ -563,9 +576,9 @@ function Extra({ item, exs, onVoltar, onFeito, salvarJogo }){
   const ex = exs[item.exercicioId];
   return (
     <TelaEscura onVoltar={onVoltar} titulo={item.nome} sub="Dupla tarefa: corpo e mente ao mesmo tempo">
-      <Midia ex={ex} nome={item.nome} altura={200}/>
-      <div style={{background:C.escuro2,borderRadius:16,padding:14,fontSize:17,lineHeight:1.55}}>{item.obs}</div>
-      <div style={{marginTop:"auto"}}><TimerSimples segundos={item.segundos||60} onFeito={onFeito}/></div>
+      <Midia ex={ex} nome={item.nome} altura="flex"/>
+      <div style={{background:C.escuro2,borderRadius:16,padding:12,fontSize:16,lineHeight:1.5,flexShrink:0}}>{item.obs}</div>
+      <TimerSimples segundos={item.segundos||60} onFeito={onFeito}/>
     </TelaEscura>
   );
 }
@@ -573,37 +586,36 @@ function Extra({ item, exs, onVoltar, onFeito, salvarJogo }){
 // ═══════════════ TESTES ═══════════════
 function Contador({ valor, setValor, rotulo }){
   return (
-    <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:16,margin:"8px 0"}}>
-      <button type="button" aria-label="Diminuir" onClick={()=>setValor(Math.max(0,valor-1))} style={{width:56,height:56,borderRadius:28,border:"1.5px solid "+C.borda,background:"#fff",fontSize:28,fontWeight:800,cursor:"pointer"}}>−</button>
-      <div style={{textAlign:"center",minWidth:90}}><div style={{fontSize:44,fontWeight:800}}>{valor}</div><div style={{fontSize:13,color:C.cinza}}>{rotulo}</div></div>
-      <button type="button" aria-label="Aumentar" onClick={()=>setValor(valor+1)} style={{width:56,height:56,borderRadius:28,border:"1.5px solid "+C.borda,background:"#fff",fontSize:28,fontWeight:800,cursor:"pointer"}}>+</button>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:16}}>
+      <button type="button" aria-label="Diminuir" onClick={()=>setValor(Math.max(0,valor-1))} style={{width:60,height:60,borderRadius:30,border:"1.5px solid "+C.borda,background:"#fff",fontSize:28,fontWeight:800,cursor:"pointer"}}>−</button>
+      <div style={{textAlign:"center",minWidth:90}}><div style={{fontSize:48,fontWeight:800,lineHeight:1.1}}>{valor}</div><div style={{fontSize:13,color:C.cinza}}>{rotulo}</div></div>
+      <button type="button" aria-label="Aumentar" onClick={()=>setValor(valor+1)} style={{width:60,height:60,borderRadius:30,border:"1.5px solid "+C.borda,background:"#fff",fontSize:28,fontWeight:800,cursor:"pointer"}}>+</button>
     </div>
   );
 }
 function Cronometro30({ onFim }){
-  const [resta,setResta] = useState(30); const [rodando,setRodando] = useState(false); const [acabou,setAcabou] = useState(false);
-  useEffect(()=>{ if(!rodando) return; const t = setInterval(()=>{ setResta(r=>{ if(r<=1){ bipe(990,0.7); setRodando(false); setAcabou(true); if(onFim) onFim(); return 0; } if(r<=4) bipe(660,0.12); return r-1; }); },1000); return ()=>clearInterval(t); },[rodando]);
-  return <div style={{textAlign:"center"}}><div aria-live="polite" style={{fontSize:64,fontWeight:800,color:acabou?C.verde:C.laranjaTxt}}>{"0:"+String(resta).padStart(2,"0")}</div>{!acabou && <Botao onClick={()=>{ somLiberar(); bipe(990,0.3); setRodando(true); }} disabled={rodando}>{rodando?"Contando...":"Começar 30 segundos"}</Botao>}</div>;
+  const [resta,setResta] = useState(30); const [rodando,setRodando] = useState(false);
+  useEffect(()=>{ if(!rodando) return; const t = setInterval(()=>{ setResta(r=>{ if(r<=1){ bipe(990,0.7); setRodando(false); if(onFim) onFim(); return 0; } if(r<=4) bipe(660,0.12); return r-1; }); },1000); return ()=>clearInterval(t); },[rodando]);
+  return <div style={{textAlign:"center"}}><div aria-live="polite" style={{fontSize:64,fontWeight:800,color:C.laranjaTxt,lineHeight:1.15,marginBottom:10}}>{"0:"+String(resta).padStart(2,"0")}</div><Botao onClick={()=>{ somLiberar(); bipe(990,0.3); setRodando(true); }} disabled={rodando}>{rodando?"Contando...":"Começar 30 segundos"}</Botao></div>;
 }
 function CronometroEquilibrio({ onTempo }){
   const [seg,setSeg] = useState(0); const [rodando,setRodando] = useState(false);
   const ini = useRef(0);
   useEffect(()=>{ if(!rodando) return; const t = setInterval(()=>{ const s = Math.min(30, Math.floor((Date.now()-ini.current)/100)/10); setSeg(s); if(s>=30){ bipe(990,0.6); setRodando(false); onTempo(30); } },100); return ()=>clearInterval(t); },[rodando]);
-  return <div style={{textAlign:"center"}}><div aria-live="polite" style={{fontSize:56,fontWeight:800,color:C.laranjaTxt}}>{seg.toFixed(1)+" s"}</div>{rodando ? <Botao tipo="escuro" onClick={()=>{ setRodando(false); bipe(520,0.3); onTempo(seg); }}>Parar (apoiou o pé)</Botao> : <Botao onClick={()=>{ somLiberar(); bipe(990,0.3); ini.current = Date.now(); setSeg(0); setRodando(true); }}>Começar</Botao>}</div>;
+  return <div style={{textAlign:"center"}}><div aria-live="polite" style={{fontSize:56,fontWeight:800,color:C.laranjaTxt,lineHeight:1.15,marginBottom:10}}>{seg.toFixed(1)+" s"}</div>{rodando ? <Botao tipo="escuro" onClick={()=>{ setRodando(false); bipe(520,0.3); onTempo(seg); }}>Parar (apoiou o pé)</Botao> : <Botao onClick={()=>{ somLiberar(); bipe(990,0.3); ini.current = Date.now(); setSeg(0); setRodando(true); }}>Começar</Botao>}</div>;
 }
 function MemoriaNumeros({ onNivel }){
   const [tam,setTam] = useState(3); const [seq,setSeq] = useState(""); const [mostrando,setMostrando] = useState(-1);
-  const [resposta,setResposta] = useState(""); const [erros,setErros] = useState(0); const [melhor,setMelhor] = useState(0); const [fim,setFim] = useState(false);
+  const [resposta,setResposta] = useState(""); const [erros,setErros] = useState(0); const [melhor,setMelhor] = useState(0);
   const iniciar = (t) => { let s = ""; for(let i=0;i<t;i++) s += String(Math.floor(Math.random()*10)); setSeq(s); setResposta(""); setMostrando(0); };
   useEffect(()=>{ if(mostrando<0) return; if(mostrando>=seq.length){ const t = setTimeout(()=>setMostrando(-2),700); return ()=>clearTimeout(t); } const t = setTimeout(()=>setMostrando(m=>m+1),1100); return ()=>clearTimeout(t); },[mostrando, seq]);
   const conferir = () => {
-    if(resposta.replace(/\D/g,"")===seq){ const m = tam; setMelhor(m); if(tam>=9){ setFim(true); onNivel(m); return; } setErros(0); setTam(tam+1); setMostrando(-1); setSeq(""); }
-    else { const e = erros+1; setErros(e); if(e>=2){ setFim(true); onNivel(melhor); return; } setMostrando(-1); setSeq(""); }
+    if(resposta.replace(/\D/g,"")===seq){ const m = tam; setMelhor(m); if(tam>=9){ onNivel(m); return; } setErros(0); setTam(tam+1); setMostrando(-1); setSeq(""); }
+    else { const e = erros+1; setErros(e); if(e>=2){ onNivel(melhor); return; } setMostrando(-1); setSeq(""); }
   };
-  if(fim) return <div style={{textAlign:"center",fontSize:18,fontWeight:700,padding:"10px 0"}}>{"Seu nível: "+melhor+" números"}</div>;
-  if(mostrando===-1) return <div style={{textAlign:"center"}}><div style={{fontSize:16,color:C.cinza,marginBottom:10,lineHeight:1.5}}>{"Vão aparecer "+tam+" números, um de cada vez. Depois digite na mesma ordem."+(erros>0?" Vamos tentar de novo com o mesmo tamanho.":"")}</div><Botao onClick={()=>iniciar(tam)}>Mostrar números</Botao></div>;
-  if(mostrando>=0) return <div style={{height:150,borderRadius:18,background:C.escuro,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:80,fontWeight:800}}>{mostrando<seq.length ? seq[mostrando] : ""}</div>;
-  return <div><Campo rotulo="Digite os números na ordem"><input style={Object.assign({}, estInput, { fontSize:26, letterSpacing:6, textAlign:"center" })} inputMode="numeric" value={resposta} onChange={e=>setResposta(e.target.value)} autoFocus/></Campo><Botao onClick={conferir} disabled={!resposta}>Conferir</Botao></div>;
+  if(mostrando===-1) return <div style={{display:"flex",flexDirection:"column",gap:12,flex:1}}><div style={{fontSize:16.5,lineHeight:1.5}}>{"Vão aparecer "+tam+" números, um de cada vez. Depois digite na mesma ordem."+(erros>0?" Vamos tentar de novo com o mesmo tamanho.":"")}</div><div style={{marginTop:"auto"}}><Botao onClick={()=>iniciar(tam)}>Mostrar números</Botao></div></div>;
+  if(mostrando>=0) return <div style={{flex:1,borderRadius:18,background:C.escuro,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:96,fontWeight:800}}>{mostrando<seq.length ? seq[mostrando] : ""}</div>;
+  return <div style={{display:"flex",flexDirection:"column",gap:12,flex:1}}><Campo rotulo="Digite os números na ordem"><input style={Object.assign({}, estInput, { height:60, fontSize:28, letterSpacing:6, textAlign:"center" })} inputMode="numeric" value={resposta} onChange={e=>setResposta(e.target.value)} autoFocus/></Campo><div style={{marginTop:"auto"}}><Botao onClick={conferir} disabled={!resposta}>Conferir</Botao></div></div>;
 }
 
 function TelaTeste({ dia, j, testes, onVoltar, onSalvo }){
@@ -620,51 +632,63 @@ function TelaTeste({ dia, j, testes, onVoltar, onSalvo }){
     if(!ok){ setErro("Não foi possível salvar. Verifique sua internet e tente de novo."); return; }
     setSalvo(true); onSalvo();
   };
-  const titulos = ["Força","Equilíbrio","Memória","Como você se sente"];
+  const caixa = {flex:1,minHeight:0,background:"#fff",borderRadius:18,padding:16,boxShadow:"0 1px 3px rgba(15,23,42,0.07)",display:"flex",flexDirection:"column",gap:12};
+  const texto = {fontSize:16,lineHeight:1.5};
   if(salvo){
     const todos = [1,15,30].map(d=>d===dia ? { dia:d, forca_reps:forca, equilibrio_seg:eq, memoria_nivel:mem, percepcao:perc } : testes.find(t=>t.dia===d)).filter(Boolean);
+    const col = "1.6fr repeat("+todos.length+",1fr)";
     return (
-      <div style={{minHeight:"100vh",background:C.fundo,paddingBottom:30}}>
-        <Topo onVoltar={onVoltar} voltar="Dia" titulo={dia===1 ? "Seu ponto de partida" : "Veja a sua evolução"} sub={dia===1 ? "Guardamos seus resultados. Nos dias 15 e 30 você refaz os testes e compara." : "Compare com os testes anteriores."}/>
-        <Cartao style={{marginTop:14}}>
-          <div style={{display:"grid",gridTemplateColumns:"1.6fr repeat("+todos.length+",1fr)",gap:8,fontSize:13,color:C.cinza,marginBottom:8}}><span>Teste</span>{todos.map(t=><span key={t.dia} style={{textAlign:"center"}}>{"Dia "+t.dia}</span>)}</div>
-          {[["Força · levantar 30 s","forca_reps",""],["Equilíbrio · um pé","equilibrio_seg"," s"],["Memória · números","memoria_nivel",""],["Como se sente","percepcao",""]].map(([n,k,u])=>(
-            <div key={k} style={{display:"grid",gridTemplateColumns:"1.6fr repeat("+todos.length+",1fr)",gap:8,fontSize:15,padding:"9px 0",borderTop:"1px solid #F1F5F9",alignItems:"center"}}><span>{n}</span>{todos.map((t,i)=><b key={t.dia} style={{textAlign:"center",color:i===todos.length-1 && todos.length>1 ? C.verde : C.escuro}}>{t[k]===null || t[k]===undefined ? "-" : (Number(t[k])+u)}</b>)}</div>
-          ))}
-        </Cartao>
-        <div style={{padding:"14px 16px 0"}}><Botao onClick={onVoltar}>Continuar o dia</Botao></div>
+      <div className="tela">
+        <Topo compacto onVoltar={onVoltar} voltar="Dia" titulo={dia===1 ? "Seu ponto de partida" : "Veja a sua evolução"} sub={dia===1 ? "Nos dias 15 e 30 você refaz os testes e compara." : "Compare com os testes anteriores."}/>
+        <Corpo>
+          <div style={{background:"#fff",borderRadius:18,padding:14,boxShadow:"0 1px 3px rgba(15,23,42,0.07)"}}>
+            <div style={{display:"grid",gridTemplateColumns:col,gap:8,fontSize:13,color:C.cinza,marginBottom:6}}><span>Teste</span>{todos.map(t=><span key={t.dia} style={{textAlign:"center"}}>{"Dia "+t.dia}</span>)}</div>
+            {[["Força · levantar 30 s","forca_reps",""],["Equilíbrio · um pé","equilibrio_seg"," s"],["Memória · números","memoria_nivel",""],["Como se sente","percepcao",""]].map(([n,k,u])=>(
+              <div key={k} style={{display:"grid",gridTemplateColumns:col,gap:8,fontSize:15,padding:"9px 0",borderTop:"1px solid #F1F5F9",alignItems:"center"}}><span>{n}</span>{todos.map((t,i)=><b key={t.dia} style={{textAlign:"center",color:i===todos.length-1 && todos.length>1 ? C.verde : C.escuro}}>{t[k]===null || t[k]===undefined ? "-" : (Number(t[k])+u)}</b>)}</div>
+            ))}
+          </div>
+          <div style={{marginTop:"auto"}}><Botao onClick={onVoltar}>Continuar o dia</Botao></div>
+        </Corpo>
       </div>
     );
   }
+  const titulos = ["Força","Equilíbrio","Memória","Como você se sente"];
   return (
-    <div style={{minHeight:"100vh",background:C.fundo,paddingBottom:30}}>
-      <Topo onVoltar={onVoltar} voltar="Dia" titulo={"Teste do dia "+dia} sub={"Etapa "+(passo+1)+" de 4 · "+titulos[passo]}/>
-      <Cartao style={{marginTop:14}}>
-        {passo===0 && <div>
-          <div style={{fontSize:16,lineHeight:1.55,marginBottom:12}}>Sente numa cadeira sem braço, encostada na parede, com os braços cruzados no peito. Quando começar, levante e sente o máximo de vezes que conseguir em 30 segundos, sem pressa e com segurança.</div>
-          <Cronometro30 onFim={()=>setForcaOk(true)}/>
-          {forcaOk && <div><div style={{fontSize:15,fontWeight:700,textAlign:"center",marginTop:12}}>Quantas vezes você levantou?</div><Contador valor={forca} setValor={setForca} rotulo="vezes"/><Botao onClick={()=>setPasso(1)}>Próximo teste</Botao></div>}
-        </div>}
-        {passo===1 && <div>
-          <div style={{fontSize:16,lineHeight:1.55,marginBottom:12}}>Fique de pé ao lado de uma cadeira, com a mão pronta para apoiar. Tire um pé do chão e toque em Começar. Quando apoiar o pé, toque em Parar. São 2 tentativas e vale a melhor, até 30 segundos.</div>
-          {eq1===null ? <div><div style={{fontSize:15,fontWeight:700,textAlign:"center",marginBottom:8}}>1ª tentativa</div><CronometroEquilibrio key="t1" onTempo={(s)=>setEq1(s)}/></div> :
-            eq2===null ? <div><div style={{fontSize:15,fontWeight:700,textAlign:"center",marginBottom:8}}>{"1ª tentativa: "+eq1.toFixed(1)+" s · agora a 2ª"}</div><CronometroEquilibrio key="t2" onTempo={(s)=>setEq2(s)}/></div> :
-            <div style={{textAlign:"center"}}><div style={{fontSize:17,fontWeight:700,marginBottom:12}}>{"Melhor tempo: "+eq.toFixed(1)+" s"}</div><Botao onClick={()=>setPasso(2)}>Próximo teste</Botao></div>}
-        </div>}
-        {passo===2 && <div>
-          <div style={{fontSize:16,lineHeight:1.55,marginBottom:12}}>Agora a memória. A cada acerto aumenta um número. O teste termina quando você errar duas vezes seguidas.</div>
-          {mem===null ? <MemoriaNumeros onNivel={(n)=>setMem(n)}/> : <div style={{textAlign:"center"}}><div style={{fontSize:17,fontWeight:700,marginBottom:12}}>{"Você lembrou até "+mem+" números"}</div><Botao onClick={()=>setPasso(3)}>Próximo</Botao></div>}
-        </div>}
-        {passo===3 && <div>
-          <div style={{fontSize:16,lineHeight:1.55,marginBottom:12}}>De 0 a 10, como você se sente hoje nas tarefas do dia a dia, como subir escada, carregar sacolas e lembrar de compromissos?</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:8}}>
-            {[0,1,2,3,4,5,6,7,8,9,10].map(n=><button key={n} type="button" onClick={()=>setPerc(n)} style={{height:52,borderRadius:14,fontSize:18,fontWeight:800,cursor:"pointer",border:perc===n?"2px solid "+C.laranja:"1.5px solid "+C.borda,background:perc===n?C.laranjaClaro:"#fff",color:perc===n?C.laranjaTxt:C.escuro}}>{n}</button>)}
-          </div>
-          <div style={{display:"flex",justifyContent:"space-between",fontSize:12.5,color:C.cinza,margin:"6px 2px 14px"}}><span>Muita dificuldade</span><span>Muito bem</span></div>
-          {erro && <div role="alert" style={{color:C.vermelho,fontSize:14,marginBottom:10}}>{erro}</div>}
-          <Botao onClick={salvar} disabled={perc===null || env}>{env?"Salvando...":"Salvar resultados"}</Botao>
-        </div>}
-      </Cartao>
+    <div className="tela">
+      <Topo compacto onVoltar={onVoltar} voltar="Dia" titulo={"Teste do dia "+dia} sub={"Etapa "+(passo+1)+" de 4 · "+titulos[passo]}/>
+      <Corpo>
+        <div style={caixa}>
+          {passo===0 && (!forcaOk ? <>
+            <div style={texto}>Sente numa cadeira sem braço, encostada na parede, com os braços cruzados no peito. Levante e sente o máximo de vezes que conseguir em 30 segundos, sem pressa e com segurança.</div>
+            <div style={{marginTop:"auto"}}><Cronometro30 onFim={()=>setForcaOk(true)}/></div>
+          </> : <>
+            <div style={Object.assign({}, texto, {fontWeight:700,textAlign:"center"})}>Quantas vezes você levantou?</div>
+            <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}><Contador valor={forca} setValor={setForca} rotulo="vezes"/></div>
+            <Botao onClick={()=>setPasso(1)}>Próximo teste</Botao>
+          </>)}
+          {passo===1 && <>
+            <div style={texto}>Fique de pé ao lado de uma cadeira, com a mão pronta para apoiar. Tire um pé do chão e toque em Começar. Quando apoiar o pé, toque em Parar. Vale a melhor de 2 tentativas.</div>
+            <div style={{marginTop:"auto"}}>
+              {eq1===null ? <div><div style={{fontSize:15,fontWeight:700,textAlign:"center",marginBottom:4}}>1ª tentativa</div><CronometroEquilibrio key="t1" onTempo={(s)=>setEq1(s)}/></div> :
+                eq2===null ? <div><div style={{fontSize:15,fontWeight:700,textAlign:"center",marginBottom:4}}>{"1ª: "+eq1.toFixed(1)+" s · agora a 2ª tentativa"}</div><CronometroEquilibrio key="t2" onTempo={(s)=>setEq2(s)}/></div> :
+                <div style={{textAlign:"center"}}><div style={{fontSize:19,fontWeight:800,marginBottom:12}}>{"Melhor tempo: "+eq.toFixed(1)+" s"}</div><Botao onClick={()=>setPasso(2)}>Próximo teste</Botao></div>}
+            </div>
+          </>}
+          {passo===2 && (mem===null ? <MemoriaNumeros onNivel={(n)=>setMem(n)}/> : <>
+            <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:800,textAlign:"center"}}>{"Você lembrou até "+mem+" números"}</div>
+            <Botao onClick={()=>setPasso(3)}>Próximo</Botao>
+          </>)}
+          {passo===3 && <>
+            <div style={texto}>De 0 a 10, como você se sente nas tarefas do dia a dia, como subir escada, carregar sacolas e lembrar de compromissos?</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:8}}>
+              {[0,1,2,3,4,5,6,7,8,9,10].map(n=><button key={n} type="button" onClick={()=>setPerc(n)} style={{height:50,borderRadius:14,fontSize:18,fontWeight:800,cursor:"pointer",border:perc===n?"2px solid "+C.laranja:"1.5px solid "+C.borda,background:perc===n?C.laranjaClaro:"#fff",color:perc===n?C.laranjaTxt:C.escuro}}>{n}</button>)}
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:12.5,color:C.cinza}}><span>0: muita dificuldade</span><span>10: muito bem</span></div>
+            {erro && <div role="alert" style={{color:C.vermelho,fontSize:14}}>{erro}</div>}
+            <div style={{marginTop:"auto"}}><Botao onClick={salvar} disabled={perc===null || env}>{env?"Salvando...":"Salvar resultados"}</Botao></div>
+          </>}
+        </div>
+      </Corpo>
     </div>
   );
 }
@@ -678,27 +702,26 @@ function TelaDia({ j, info, aula, exs, testes, onVoltar, onAbrir, feitos, marcar
   const temDupla = (aula.extras || []).some(x=>x.tipo==="dupla");
   const passos = [];
   if(info.teste) passos.push({ id:"teste", titulo:"Teste do dia "+info.dia, sub:"Força, equilíbrio e memória · cerca de 5 min", feito:testeFeito });
-  passos.push({ id:"aula", titulo:aula.nome, sub:(aula.estacoes||[]).length+" exercícios · "+(aula.voltas||1)+(Number(aula.voltas)===1?" volta":" voltas")+(temDupla?" + dupla tarefa":"")+" · cerca de "+minutosAula(aula)+" min", feito:!!feitos.aula });
-  extras.forEach((x,k)=>{ passos.push({ id:"extra"+k, titulo:x.tipo==="desafio" ? "Desafio do dia" : x.nome, sub:x.tipo==="desafio" ? "Jogo da Mente Ativa escolhido para você" : "Dupla tarefa · corpo e mente juntos", feito:!!feitos["extra"+k], extra:x }); });
+  passos.push({ id:"aula", titulo:aula.nome, sub:(aula.estacoes||[]).length+" exercícios"+(temDupla?" + dupla tarefa":"")+" · cerca de "+minutosAula(aula)+" min", feito:!!feitos.aula });
+  extras.forEach((x,k)=>{ passos.push({ id:"extra"+k, titulo:x.tipo==="desafio" ? "Desafio do dia" : x.nome, sub:x.tipo==="desafio" ? "Jogo da Mente Ativa escolhido para você" : "Dupla tarefa", feito:!!feitos["extra"+k], extra:x }); });
   const tudo = passos.every(p=>p.feito);
-  const semana = info.semana;
+  const atual = passos.findIndex(x=>!x.feito);
   return (
-    <div style={{minHeight:"100vh",background:C.fundo,paddingBottom:30}}>
-      <Topo onVoltar={onVoltar} voltar="Início" titulo={"Dia "+info.dia} sub={"Semana "+semana+(info.treino==="L" ? " · dia leve" : "")+" · "+aula.nome}/>
-      <div style={{height:8}}/>
-      {passos.map((p,k)=>{
-        const bloqueado = precisaTeste && p.id!=="teste";
-        return (
-          <button key={p.id} type="button" onClick={()=>{ if(!bloqueado) onAbrir(p); }} style={{display:"flex",gap:14,alignItems:"center",width:"calc(100% - 32px)",margin:"10px 16px 0",textAlign:"left",background:"#fff",border:!p.feito && !bloqueado && passos.findIndex(x=>!x.feito)===k ? "2px solid "+C.laranja : "1.5px solid transparent",borderRadius:18,padding:14,boxShadow:"0 1px 3px rgba(15,23,42,0.07)",cursor:bloqueado?"default":"pointer",opacity:bloqueado?0.55:1,color:C.escuro}}>
-            <span style={{width:40,height:40,borderRadius:"50%",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:17,background:p.feito?C.verdeClaro:bloqueado?"#F1F5F9":C.laranjaClaro,color:p.feito?C.verde:bloqueado?C.cinza:C.laranjaTxt}}>{p.feito ? <IcoCheck/> : bloqueado ? <IcoCadeado/> : (k+1)}</span>
-            <span style={{flex:1}}><span style={{display:"block",fontSize:17,fontWeight:800,lineHeight:1.3}}>{p.titulo}</span><span style={{display:"block",fontSize:13.5,color:C.cinza,marginTop:2,lineHeight:1.4}}>{bloqueado ? "Faça o teste primeiro" : p.sub}</span></span>
-          </button>
-        );
-      })}
-      <Cartao style={{marginTop:14,background:C.laranjaClaro,boxShadow:"none"}}><div style={{fontSize:14.5,lineHeight:1.5,color:C.laranjaTxt}}>Sentiu dor, falta de ar ou tontura? Pare, sente e descanse. Respeite o seu limite em todos os exercícios.</div></Cartao>
-      <div style={{padding:"14px 16px 0"}}>
-        <Botao tipo={tudo?"verde":"sec"} onClick={onConcluir} disabled={concluindo}>{concluindo ? "Salvando..." : tudo ? "Concluir o dia "+info.dia : "Concluir o dia mesmo assim"}</Botao>
-      </div>
+    <div className="tela">
+      <Topo compacto onVoltar={onVoltar} voltar="Início" titulo={"Dia "+info.dia} sub={"Semana "+info.semana+(info.treino==="L" ? " · dia leve" : "")+" · "+aula.nome}/>
+      <Corpo>
+        {passos.map((p,k)=>{
+          const bloqueado = precisaTeste && p.id!=="teste";
+          return (
+            <button key={p.id} type="button" onClick={()=>{ if(!bloqueado) onAbrir(p); }} style={{display:"flex",gap:12,alignItems:"center",width:"100%",textAlign:"left",background:"#fff",border:!p.feito && !bloqueado && atual===k ? "2px solid "+C.laranja : "1.5px solid transparent",borderRadius:18,padding:"12px 14px",boxShadow:"0 1px 3px rgba(15,23,42,0.07)",cursor:bloqueado?"default":"pointer",opacity:bloqueado?0.55:1,color:C.escuro,flexShrink:0}}>
+              <span style={{width:38,height:38,borderRadius:"50%",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:17,background:p.feito?C.verdeClaro:bloqueado?"#F1F5F9":C.laranjaClaro,color:p.feito?C.verde:bloqueado?C.cinza:C.laranjaTxt}}>{p.feito ? <IcoCheck/> : bloqueado ? <IcoCadeado/> : (k+1)}</span>
+              <span style={{flex:1}}><span style={{display:"block",fontSize:17,fontWeight:800,lineHeight:1.25}}>{p.titulo}</span><span style={{display:"block",fontSize:13.5,color:C.cinza,marginTop:2,lineHeight:1.35}}>{bloqueado ? "Faça o teste primeiro" : p.sub}</span></span>
+            </button>
+          );
+        })}
+        <div style={{background:C.laranjaClaro,borderRadius:14,padding:"10px 12px",fontSize:14,lineHeight:1.45,color:C.laranjaTxt,flexShrink:0}}>Sentiu dor, falta de ar ou tontura? Pare, sente e descanse.</div>
+        <div style={{marginTop:"auto"}}><Botao tipo={tudo?"verde":"sec"} onClick={onConcluir} disabled={concluindo}>{concluindo ? "Salvando..." : tudo ? "Concluir o dia "+info.dia : "Concluir o dia mesmo assim"}</Botao></div>
+      </Corpo>
     </div>
   );
 }
@@ -731,52 +754,47 @@ function Inicio({ j, prof, calendario, prog, onComecar, onPix, aulaNomes }){
   const pers = primeiro(prof && prof.nome) || "Wellington";
   const ehIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const instalado = window.matchMedia && window.matchMedia("(display-mode: standalone)").matches;
+  const waOferta = oferta ? waLink(prof && prof.whatsapp, oferta.msg) : null;
+  const cartao = {background:"#fff",borderRadius:18,padding:"12px 14px",boxShadow:"0 1px 3px rgba(15,23,42,0.07)",flexShrink:0};
   return (
-    <div style={{minHeight:"100vh",background:C.fundo,paddingBottom:34}}>
-      <div style={{background:C.escuro,color:"#F8FAFC",padding:"18px 16px 20px",borderRadius:"0 0 26px 26px"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
-          <div><div style={{fontSize:14,color:C.cinzaClaro}}>Olá,</div><div style={{fontSize:25,fontWeight:800}}>{primeiro(j.nome) || "aluno"}</div></div>
-          <span style={{fontSize:12,padding:"7px 11px",borderRadius:999,background:C.escuro2,color:"#CBD5E1",textAlign:"right"}}>Meu plano<br/><b style={{color:"#FDBA74"}}>Mente Ativa 30 dias</b></span>
+    <div className="tela">
+      <div style={{background:C.escuro,color:"#F8FAFC",padding:"10px 16px 14px",borderRadius:"0 0 24px 24px",flexShrink:0}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+          <div><div style={{fontSize:22,fontWeight:800,lineHeight:1.2}}>{"Olá, "+(primeiro(j.nome) || "aluno")}</div><div style={{fontSize:13,color:"#FDBA74",marginTop:2}}>Plano Mente Ativa · 30 dias</div></div>
+          <button type="button" onClick={()=>supa.auth.signOut()} style={{border:"1.5px solid rgba(255,255,255,0.25)",background:"transparent",color:"#CBD5E1",borderRadius:20,height:38,padding:"0 14px",fontSize:14,cursor:"pointer"}}>Sair</button>
         </div>
-        <div style={{background:C.escuro2,borderRadius:20,padding:16,marginTop:16}}>
+        <div style={{background:C.escuro2,borderRadius:20,padding:14,marginTop:12}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-            <span style={{fontSize:30,fontWeight:800}}>{terminou ? "Jornada concluída" : "Dia "+proximo}<span style={{fontSize:16,color:C.cinzaClaro,fontWeight:400}}>{terminou ? "" : " de "+total}</span></span>
+            <span style={{fontSize:28,fontWeight:800}}>{terminou ? "Concluída" : "Dia "+proximo}<span style={{fontSize:16,color:C.cinzaClaro,fontWeight:400}}>{terminou ? "" : " de "+total}</span></span>
             <span style={{fontSize:13.5,color:"#FDBA74"}}>{seq>0 ? "Sequência: "+seq+(seq===1?" dia":" dias") : ""}</span>
           </div>
-          <div style={{height:10,borderRadius:5,background:"#2A3854",margin:"12px 0"}}><div style={{height:10,borderRadius:5,background:C.laranja,width:Math.round((ultimo/total)*100)+"%"}}/></div>
-          {!terminou && info && <div style={{fontSize:15,color:"#CBD5E1",marginBottom:14}}>{"Semana "+info.semana+(info.treino==="L"?" · dia leve":"")+(aulaNomes[info.aula_id] ? " · "+aulaNomes[info.aula_id] : "")+(info.teste?" · dia de teste":"")}</div>}
-          {terminou ? <div style={{fontSize:15,color:"#CBD5E1",lineHeight:1.5}}>Parabéns! Você completou os 30 dias. Veja abaixo como continuar.</div> :
+          <div style={{height:9,borderRadius:5,background:"#2A3854",margin:"10px 0"}}><div style={{height:9,borderRadius:5,background:C.laranja,width:Math.round((ultimo/total)*100)+"%"}}/></div>
+          {!terminou && info && <div style={{fontSize:14.5,color:"#CBD5E1",marginBottom:12}}>{"Semana "+info.semana+(info.treino==="L"?" · dia leve":"")+(aulaNomes[info.aula_id] ? " · "+aulaNomes[info.aula_id] : "")+(info.teste?" · dia de teste":"")}</div>}
+          {terminou ? <div style={{fontSize:15,color:"#CBD5E1",lineHeight:1.5}}>Parabéns! Você completou os 30 dias.</div> :
             feitoHoje ? <div style={{background:"#13332A",borderRadius:14,padding:12,fontSize:15,color:"#BBF7D0",lineHeight:1.45}}>{"Dia "+ultimo+" concluído hoje. Volte amanhã para o dia "+proximo+"."}</div> :
             <Botao onClick={()=>onComecar(proximo)}>{"Começar o dia "+proximo}</Botao>}
         </div>
       </div>
-      {pendente && <Cartao style={{marginTop:14,background:vencido?C.vermelhoClaro:"#fff"}}>
-        <div style={{fontSize:15.5,lineHeight:1.5,fontWeight:700,color:vencido?C.vermelho:C.escuro}}>{j.aluno_marcou_pago ? "Você avisou que pagou. O "+pers+" vai confirmar em breve." : vencido ? "O prazo do pagamento venceu. Pague agora para não perder o acesso." : "Seu acesso está liberado. Pague até "+fmtData(j.pagamento_prazo)+" para manter."}</div>
-        {!j.aluno_marcou_pago && <div style={{marginTop:12}}><Botao onClick={onPix} tipo={vencido?undefined:"escuro"}>Pagar com Pix</Botao></div>}
-      </Cartao>}
-      <Secao>Mente Ativa</Secao>
-      <a href={JOGOS_URL} style={{display:"flex",gap:14,alignItems:"center",margin:"0 16px",background:"#fff",borderRadius:18,padding:14,boxShadow:"0 1px 3px rgba(15,23,42,0.07)",textDecoration:"none",color:C.escuro}}>
-        <span aria-hidden="true" style={{width:52,height:52,borderRadius:16,background:"linear-gradient(145deg,#FFB37A,#FF5603)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,flexShrink:0,boxShadow:"0 6px 14px rgba(255,86,3,0.3), inset 0 2px 0 rgba(255,255,255,0.5)"}}>🧠</span>
-        <span style={{flex:1}}><span style={{display:"block",fontSize:17,fontWeight:800}}>Todos os jogos</span><span style={{display:"block",fontSize:13.5,color:C.cinza}}>Memória, atenção e linguagem</span></span>
-        <span style={{width:40,height:40,borderRadius:"50%",background:C.laranjaClaro,display:"flex",alignItems:"center",justifyContent:"center"}}><IcoPlay cor={C.laranja}/></span>
-      </a>
-      {oferta && <div>
-        <Secao>Para você</Secao>
-        <Cartao>
-          <div style={{fontSize:18,fontWeight:800}}>{oferta.titulo}</div>
-          <div style={{fontSize:14.5,color:C.cinza,lineHeight:1.5,margin:"6px 0 12px"}}>{oferta.texto}</div>
-          {waLink(prof && prof.whatsapp, oferta.msg) && <BotaoLink href={waLink(prof && prof.whatsapp, oferta.msg)}>{"Falar com o "+pers}</BotaoLink>}
-        </Cartao>
-      </div>}
-      {dica && !instalado && <div>
-        <Secao>Dica</Secao>
-        <Cartao>
-          <div style={{fontSize:17,fontWeight:800}}>Coloque o app na tela do celular</div>
-          <div style={{fontSize:15,color:"#334155",lineHeight:1.55,marginTop:6}}>{ehIOS ? "No Safari, toque no botão Compartilhar (o quadrado com a seta para cima) e depois em Adicionar à Tela de Início." : "No Chrome, toque nos três pontinhos no canto de cima e depois em Adicionar à tela inicial ou Instalar app."}</div>
-          <button type="button" onClick={()=>{ lsSet("ma-dica-instalar","1"); setDica(false); }} style={{marginTop:10,border:"none",background:"none",color:C.laranjaTxt,fontWeight:700,fontSize:15,cursor:"pointer",padding:0}}>Entendi</button>
-        </Cartao>
-      </div>}
-      <div style={{textAlign:"center",marginTop:22}}><button type="button" onClick={()=>supa.auth.signOut()} style={{border:"none",background:"none",color:C.cinza,fontSize:14,textDecoration:"underline",cursor:"pointer"}}>Sair da conta</button></div>
+      <Corpo>
+        {pendente && <div style={Object.assign({}, cartao, {display:"flex",gap:10,alignItems:"center",background:vencido?C.vermelhoClaro:"#fff"})}>
+          <div style={{flex:1,fontSize:14.5,lineHeight:1.4,fontWeight:700,color:vencido?C.vermelho:C.escuro}}>{j.aluno_marcou_pago ? "Você avisou que pagou. O "+pers+" vai confirmar." : vencido ? "O prazo do pagamento venceu." : "Pague até "+fmtData(j.pagamento_prazo)+" para manter o acesso."}</div>
+          {!j.aluno_marcou_pago && <button type="button" onClick={onPix} style={{height:48,padding:"0 16px",borderRadius:14,border:"none",background:vencido?C.laranja:C.escuro,color:"#fff",fontSize:15.5,fontWeight:800,cursor:"pointer",flexShrink:0}}>Pagar</button>}
+        </div>}
+        <a href={JOGOS_URL} style={Object.assign({}, cartao, {display:"flex",gap:12,alignItems:"center",textDecoration:"none",color:C.escuro})}>
+          <span aria-hidden="true" style={{width:48,height:48,borderRadius:15,background:"linear-gradient(145deg,#FFB37A,#FF5603)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0,boxShadow:"0 6px 14px rgba(255,86,3,0.3), inset 0 2px 0 rgba(255,255,255,0.5)"}}>🧠</span>
+          <span style={{flex:1}}><span style={{display:"block",fontSize:17,fontWeight:800}}>Jogos da Mente Ativa</span><span style={{display:"block",fontSize:13.5,color:C.cinza}}>Memória, atenção e linguagem</span></span>
+          <span style={{width:40,height:40,borderRadius:"50%",background:C.laranjaClaro,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><IcoPlay cor={C.laranja}/></span>
+        </a>
+        {oferta ? <div style={cartao}>
+          <div style={{fontSize:16.5,fontWeight:800}}>{oferta.titulo}</div>
+          <div className="limite3" style={{fontSize:14,color:C.cinza,lineHeight:1.45,margin:"4px 0 10px"}}>{oferta.texto}</div>
+          {waOferta && <BotaoLink href={waOferta}>{"Falar com o "+pers}</BotaoLink>}
+        </div> : (dica && !instalado ? <div style={cartao}>
+          <div style={{fontSize:16,fontWeight:800}}>Coloque o app na tela do celular</div>
+          <div style={{fontSize:14,color:"#334155",lineHeight:1.45,marginTop:4}}>{ehIOS ? "No Safari: botão Compartilhar e depois Adicionar à Tela de Início." : "No Chrome: três pontinhos no canto de cima e depois Adicionar à tela inicial."}</div>
+          <button type="button" onClick={()=>{ lsSet("ma-dica-instalar","1"); setDica(false); }} style={{marginTop:6,border:"none",background:"none",color:C.laranjaTxt,fontWeight:700,fontSize:15,cursor:"pointer",padding:"4px 0"}}>Entendi</button>
+        </div> : null)}
+      </Corpo>
     </div>
   );
 }
