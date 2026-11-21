@@ -1,6 +1,8 @@
 (function () {
   const { useState, useEffect, useRef } = React;
   const h = React.createElement;
+  // No app do aluno o rodapé fica por cima das telas da vitrine; as telas terminam logo acima dele.
+  const navAluno = () => (window.__lvAlunoNav ? "calc(64px + env(safe-area-inset-bottom))" : 0);
   const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
   const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
   const supa = () => window.__LV_SUPA;
@@ -145,7 +147,7 @@
         }, "image/png");
       } catch (e) {}
     };
-    return h("div", { style: { position: "fixed", inset: 0, zIndex: 320, background: COR.fundo, overflowY: "auto", WebkitOverflowScrolling: "touch", color: COR.escuro, padding: "calc(22px + env(safe-area-inset-top)) 18px calc(26px + env(safe-area-inset-bottom))" } },
+    return h("div", { style: { position: "fixed", inset: 0, bottom: navAluno(), zIndex: 320, background: COR.fundo, overflowY: "auto", WebkitOverflowScrolling: "touch", color: COR.escuro, padding: "calc(22px + env(safe-area-inset-top)) 18px calc(26px + env(safe-area-inset-bottom))" } },
       h("div", { style: { textAlign: "center", marginBottom: 16 } },
         h("div", { style: { width: 52, height: 52, borderRadius: "50%", background: "#DCFCE7", margin: "0 auto 10px", display: "flex", alignItems: "center", justifyContent: "center" } }, h("svg", { width: 26, height: 26, viewBox: "0 0 24 24", fill: "none", stroke: "#16A34A", strokeWidth: 3, strokeLinecap: "round", strokeLinejoin: "round" }, h("path", { d: "M5 12l5 5L20 7" }))),
         h("div", { style: { fontSize: 19, fontWeight: 800 } }, "Pronto, " + (primeiroNome(ctx.aluno) || "tudo certo") + "!"),
@@ -422,7 +424,7 @@
     const sec = (t) => h("div", { style: { fontSize: 11.5, fontWeight: 700, letterSpacing: "0.08em", color: COR.cinza, textTransform: "uppercase", margin: "18px 0 8px" } }, t);
     const card = { background: "#fff", borderRadius: 16, padding: 14, boxShadow: "0 1px 3px rgba(15,23,42,0.08)" };
     const passo = (n, t) => h("div", { style: { display: "flex", gap: 11, alignItems: "flex-start", padding: "7px 0", fontSize: 13.5, lineHeight: 1.45, color: "#334155" } }, h("b", { style: { width: 26, height: 26, borderRadius: 13, background: "#FFF4EE", color: COR.laranja, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 } }, n), h("span", null, t));
-    return h("div", { style: { position: "fixed", inset: 0, zIndex: 310, background: COR.fundo, overflowY: "auto", WebkitOverflowScrolling: "touch", color: COR.escuro } },
+    return h("div", { style: { position: "fixed", inset: 0, bottom: navAluno(), zIndex: 310, background: COR.fundo, overflowY: "auto", WebkitOverflowScrolling: "touch", color: COR.escuro } },
       h("div", { style: { background: COR.escuro, color: "#F8FAFC", padding: "calc(14px + env(safe-area-inset-top)) 18px 20px", borderRadius: "0 0 26px 26px" } },
         h(BotaoVoltar, { onClick: onFechar }),
         h("div", { style: { display: "flex", gap: 12, alignItems: "center", marginTop: 14 } },
@@ -476,7 +478,7 @@
     const secao = (t) => h("div", { style: { fontSize: 11.5, fontWeight: 700, letterSpacing: "0.08em", color: COR.cinza, textTransform: "uppercase", margin: "18px 0 8px" } }, t);
     const botao = { display: "block", width: "100%", boxSizing: "border-box", height: 50, lineHeight: "50px", textAlign: "center", borderRadius: 25, fontWeight: 800, fontSize: 15, textDecoration: "none", cursor: "pointer", fontFamily: "inherit" };
     const dia = jornada ? Math.min(30, Number(jornada.dias_concluidos || 0) + 1) : null;
-    return h("div", { style: { position: "fixed", inset: 0, zIndex: 310, background: COR.fundo, overflowY: "auto", WebkitOverflowScrolling: "touch", color: COR.escuro } },
+    return h("div", { style: { position: "fixed", inset: 0, bottom: navAluno(), zIndex: 310, background: COR.fundo, overflowY: "auto", WebkitOverflowScrolling: "touch", color: COR.escuro } },
       h("div", { style: { background: COR.escuro, color: "#F8FAFC", padding: "calc(14px + env(safe-area-inset-top)) 18px 20px", borderRadius: "0 0 26px 26px" } },
         h(BotaoVoltar, { onClick: onFechar }),
         h("div", { style: { display: "flex", alignItems: "center", gap: 14, marginTop: 10 } },
@@ -523,7 +525,7 @@
     const at = (ATENDIMENTO.find((a) => a[0] === d.atendimento) || [null, null])[1];
     const secao = (t) => h("div", { style: { fontSize: 11.5, fontWeight: 700, letterSpacing: "0.08em", color: COR.cinza, textTransform: "uppercase", margin: "18px 0 8px" } }, t);
     const copiar = () => { try { navigator.clipboard.writeText(d.cupom).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 2000); }); } catch (e) {} };
-    return h("div", { style: { position: "fixed", inset: 0, zIndex: 310, background: COR.fundo, overflowY: "auto", WebkitOverflowScrolling: "touch", color: COR.escuro } },
+    return h("div", { style: { position: "fixed", inset: 0, bottom: navAluno(), zIndex: 310, background: COR.fundo, overflowY: "auto", WebkitOverflowScrolling: "touch", color: COR.escuro } },
       h("div", { style: { background: COR.escuro, color: "#F8FAFC", padding: "calc(14px + env(safe-area-inset-top)) 18px 20px", borderRadius: "0 0 26px 26px" } },
         h(BotaoVoltar, { onClick: onFechar }),
         h("div", { style: { display: "flex", alignItems: "center", gap: 14, marginTop: 10 } },
@@ -549,7 +551,7 @@
           h("button", { type: "button", onClick: enviarAmigo, style: { width: "100%", marginTop: 8, height: 46, borderRadius: 23, border: "1.5px solid " + COR.borda, background: "#fff", color: COR.escuro, fontWeight: 800, fontSize: 14, cursor: "pointer", fontFamily: "inherit" } }, linkOk ? "Link copiado" : "Enviar para um amigo"),
           h("div", { style: { fontSize: 12, color: COR.cinza, marginTop: 8, lineHeight: 1.5 } }, "O amigo recebe o link para criar a conta e pagar o plano pelo Pix.")) : null,
         parceiro ? h("div", { style: { fontSize: 11.5, color: "#94A3B8", lineHeight: 1.5, marginTop: 16 } }, "Parceiro indicado pelo seu personal. O atendimento é feito diretamente com o parceiro.") : null),
-      href ? h("div", { style: { position: "fixed", left: 0, right: 0, bottom: 0, padding: "12px 18px calc(12px + env(safe-area-inset-bottom))", background: "linear-gradient(rgba(244,245,247,0), " + COR.fundo + " 30%)" } },
+      href ? h("div", { style: { position: "fixed", left: 0, right: 0, bottom: navAluno(), padding: "12px 18px calc(12px + env(safe-area-inset-bottom))", background: "linear-gradient(rgba(244,245,247,0), " + COR.fundo + " 30%)" } },
         h("a", { href, target: "_blank", rel: "noopener noreferrer", onClick: onClique, style: { display: "block", height: 50, lineHeight: "50px", textAlign: "center", borderRadius: 25, background: COR.laranja, color: "#fff", fontWeight: 800, fontSize: 15, textDecoration: "none" } }, d.botao || (parceiro ? "Chamar no WhatsApp" : "Quero saber mais"))) : null);
   };
   const svgIc = (d, cor, tam) => h("svg", { width: tam || 20, height: tam || 20, viewBox: "0 0 24 24", fill: "none", stroke: cor || "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true" }, d.map((x, k) => h("path", { key: k, d: x })));
@@ -625,7 +627,7 @@
           : href ? h("a", { href, target: "_blank", rel: "noopener noreferrer", onClick: () => api.registrar(p.ownerId, d.id, p.studentId, "clique"), style: { flex: 1, height: 38, lineHeight: "38px", textAlign: "center", borderRadius: 10, background: COR.laranja, color: "#fff", fontWeight: 800, fontSize: 12.5, textDecoration: "none" } }, d.botao || (d.tipo === "parceiro" ? "Chamar no WhatsApp" : "Quero saber mais")) : null));
     };
     const secao = (t) => h("div", { style: { fontSize: 11.5, fontWeight: 700, letterSpacing: "0.08em", color: COR.cinza, textTransform: "uppercase", margin: "16px 2px 8px" } }, t);
-    return h("div", { style: { position: "fixed", inset: 0, zIndex: 300, background: COR.fundo, overflowY: "auto", WebkitOverflowScrolling: "touch" } },
+    return h("div", { style: { position: "fixed", inset: 0, bottom: navAluno(), zIndex: 300, background: COR.fundo, overflowY: "auto", WebkitOverflowScrolling: "touch" } },
       h("div", { style: { background: COR.escuro, color: "#F8FAFC", padding: "calc(14px + env(safe-area-inset-top)) 18px 18px", borderRadius: "0 0 24px 24px" } },
         h(BotaoVoltar, { onClick: p.onFechar }),
         h("div", { style: { fontSize: 21, fontWeight: 800, marginTop: 6 } }, "Clube Longevus"),
@@ -681,6 +683,7 @@
     const ctx = contexto(p);
     const [clube, setClube] = useState(false);
     const [detalhe, setDetalhe] = useState(null);
+    useEffect(() => { const fechar = () => { setDetalhe(null); setClube(false); }; window.addEventListener("lv-nav", fechar); return () => window.removeEventListener("lv-nav", fechar); }, []);
     const abrir = (d) => { setDetalhe(d); api.registrar(p.ownerId, d.id, p.studentId, "abriu"); };
     const lista = (itens || []).filter((d) => publicoOk(d, ctx));
     const cards = lista.filter((d) => d.produto === "indique");

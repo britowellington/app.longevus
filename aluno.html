@@ -21,7 +21,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="longevus-aluno-extras.js?v=29"></script>
 <script src="longevus-antropometria.js?v=6"></script>
-<script src="longevus-vitrine.js?v=19"></script>
+<script src="longevus-vitrine.js?v=20"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -854,6 +854,7 @@ const MOMENTOS = [["inicial","Aquecimento","#22c55e"],["principal","Principal","
 
 // ── Meu Treino ───────────────────────────────────────────────────────────────
 // ── Navegação inferior (Início / Treino / Programação) ───────────────────────
+window.__lvAlunoNav = true;
 const BottomNav = ({tab, setTab, trava360}) => {
   const items = [
     {key:"inicio", label:"Início", icon:"home"},
@@ -863,11 +864,11 @@ const BottomNav = ({tab, setTab, trava360}) => {
     {key:"avaliacao", label:"Avaliação", icon:"clipboard"},
   ];
   return (
-    <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#fff",borderTop:"1.5px solid #e2e8f0",display:"flex",justifyContent:"space-around",paddingTop:8,paddingBottom:"max(8px, env(safe-area-inset-bottom))",zIndex:200,boxShadow:"0 -2px 10px rgba(15,23,42,0.05)"}}>
+    <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#fff",borderTop:"1.5px solid #e2e8f0",display:"flex",justifyContent:"space-around",paddingTop:8,paddingBottom:"max(8px, env(safe-area-inset-bottom))",zIndex:400,boxShadow:"0 -2px 10px rgba(15,23,42,0.05)"}}>
       {items.map(it=>{
         const active = tab===it.key;
         return (
-          <button key={it.key} onClick={()=>setTab(it.key)} style={{border:"none",background:"transparent",display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"4px 6px",cursor:"pointer",minWidth:0}}>
+          <button key={it.key} onClick={()=>{ try{ window.dispatchEvent(new Event("lv-nav")); }catch(e){} setTab(it.key); }} style={{border:"none",background:"transparent",display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"4px 6px",cursor:"pointer",minWidth:0}}>
             <span style={{position:"relative",display:"inline-flex"}}>
               <Icon name={it.icon} size={22} color={active?"#FF5603":"#94a3b8"}/>
               {trava360 && it.key==="alimentacao" && <span style={{position:"absolute",top:-5,right:-9,width:16,height:16,borderRadius:8,background:"#FF5603",border:"2px solid #fff",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="lock" size={9} color="#fff"/></span>}
