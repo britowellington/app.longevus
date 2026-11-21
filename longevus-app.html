@@ -29,7 +29,7 @@ var __LOGO_WB__ = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAFuCAYAAAC
 <script type="text/babel" data-presets="react" src="longevus-condominios.js"></script>
 <script src="longevus-alimentacao.js?v=14"></script>
 <script src="longevus-antropometria.js?v=5"></script>
-<script src="longevus-vitrine.js?v=21"></script>
+<script src="longevus-vitrine.js?v=22"></script>
 <script src="longevus-materiais.js?v=1"></script>
 <script type="text/babel" data-presets="react">
 const SenhaInput = ({style, ...rest}) => {
@@ -1290,6 +1290,11 @@ const hojeM = todayStr();
 setStudents(p=>p.map(x=>String(x.id)!==String(a.student_id)?x:{ ...x, servicos:{ ...(x.servicos||{}), [a.item_id]:{ status:"pago", em:hojeM, titulo:a.servico||"" } } }));
 }
 registrarVitrine(setStudents, st, "venda", a.item_id || titulo, (a.presente && a.presente.nome) ? titulo+" (presente)" : titulo, v);
+if(/elo/i.test(sv) && !(a.presente && a.presente.nome) && st){
+const ea = { status:"pago", pendente:true, em:todayStr() };
+setStudents(p=>p.map(x=>String(x.id)!==String(st.id)?x:{ ...x, eloAcesso:ea }));
+sincronizarElo([{ ...st, eloAcesso:ea }], setStudents);
+}
 marcar(a);
 };
 const marcar = async (a) => {

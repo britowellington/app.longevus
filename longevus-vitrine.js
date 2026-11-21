@@ -500,12 +500,11 @@
           jornada ? h("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
             h("div", { style: { background: "#F0FDF4", color: "#15803D", borderRadius: 14, padding: "12px 14px", fontSize: 14.5, fontWeight: 700, lineHeight: 1.45 } }, Number(jornada.dias_concluidos || 0) >= 30 ? "Você já concluiu os 30 dias do " + (d.titulo || "Elo 60+") + "." : "Você já está no " + (d.titulo || "Elo 60+") + ". Seu próximo é o dia " + dia + "."),
             h("a", { href: linkElo(false) + "?ctx=aluno", onClick: onClique, style: { ...botao, background: COR.laranja, color: "#fff" } }, "Continuar no " + (d.titulo || "Elo 60+"))) :
-          h("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
-            h("a", { href: linkElo(true) + "&ctx=aluno", onClick: onClique, style: { ...botao, background: COR.laranja, color: "#fff" } }, "Quero para mim"),
-            h("div", { style: { fontSize: 12.5, color: COR.cinza, lineHeight: 1.5, textAlign: "center", marginTop: -2 } }, "Entre com o mesmo e-mail e senha do seu app. O pagamento é feito por Pix lá dentro.")),
-          eloPresente ? null : h("button", { type: "button", onClick: () => { setEloPresente(true); if (onClique) onClique(); }, style: { ...botao, border: "1.5px solid " + COR.borda, background: "#fff", color: COR.escuro, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, lineHeight: "normal" } }, h(IcPresente, { cor: COR.laranja, tam: 18 }), "Dar de presente para alguém"),
-          eloPresente ? h("div", { style: { marginTop: -8 } }, h(PixPagamento, { item: { ...d, produto: "elo", valor: valorNum(preco), aceitaPresente: true }, ctx, ownerId, studentId, soPresente: true }),
-            h("button", { type: "button", onClick: presentear, style: { background: "transparent", border: "none", color: COR.cinza, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", padding: 8, width: "100%", textDecoration: "underline" } }, "Prefere só mandar o link para a pessoa comprar?")) : null,
+          h("div", { style: { marginTop: -18 } },
+            h(PixPagamento, { item: { ...d, produto: "elo", valor: valorNum(preco), aceitaPresente: true, posPagamento: d.posPagamento || "Assim que eu confirmar o pagamento, o seu acesso ao Elo 60+ é liberado. Depois é só tocar em Entrar no Elo 60+." }, ctx, ownerId, studentId }),
+            h("a", { href: linkElo(true) + "&ctx=aluno", onClick: onClique, style: { ...botao, marginTop: 10, border: "1.5px solid " + COR.borda, background: "#fff", color: COR.escuro } }, "Entrar no " + (d.titulo || "Elo 60+")),
+            h("div", { style: { fontSize: 12, color: COR.cinza, lineHeight: 1.5, textAlign: "center", marginTop: 6 } }, "Use o mesmo e-mail e senha do seu app."),
+            h("button", { type: "button", onClick: presentear, style: { background: "transparent", border: "none", color: COR.cinza, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", padding: 8, width: "100%", textDecoration: "underline" } }, "Prefere mandar o link para a pessoa comprar?")),
           h("button", { type: "button", onClick: copiar, style: { background: "transparent", border: "none", color: COR.laranjaTxt, fontWeight: 700, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit", padding: 6 } }, linkOk ? "Link copiado" : "Copiar o link do " + (d.titulo || "Elo 60+")))));
   };
   const Detalhe = ({ item, ctx, onFechar, onClique, ownerId, studentId }) => {
