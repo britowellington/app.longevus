@@ -91,7 +91,7 @@ const App = () => {
     if (!id) { setSt({ fase: "erro" }); return; }
     rpc("rpc_vitrine_publico", { p_item_id: id }).then((r) => {
       if (r && r.data && r.data.produto === "elo") { location.replace(location.pathname.replace(/[^/]*$/, "") + "elo60-venda.html" + location.search); return; }
-      if (r && r.data && (r.data.produto === "mente" || r.data.produto === "l360" || id.indexOf("l360:") === 0 || (!r.data.produto && r.data.tipo !== "parceiro" && /avalia/i.test(r.data.titulo || "") && !/bioimped/i.test(r.data.titulo || "")))) { location.replace(location.pathname.replace(/[^/]*$/, "") + "venda.html" + location.search); return; }
+      if (r && r.data && (r.data.produto === "mente" || r.data.produto === "l360" || id.indexOf("l360:") === 0 || (!r.data.produto && r.data.tipo !== "parceiro" && /avalia|bioimped/i.test(r.data.titulo || "")))) { location.replace(location.pathname.replace(/[^/]*$/, "") + "venda.html" + location.search); return; }
       if (r && r.data && r.data.cobranca === "plano" && r.data.planoSlug) { location.replace(location.pathname.replace(/[^/]*$/, "") + "aluno.html?cadastro=1&plano=" + encodeURIComponent(r.data.planoSlug)); return; }
       setSt(r && r.data ? { fase: "ok", d: r.data, pix: r.pix || {} } : { fase: "erro" });
     }).catch(() => setSt({ fase: "erro" }));

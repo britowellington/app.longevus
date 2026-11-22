@@ -285,6 +285,29 @@ function DemoSinais({ onComprar }) {
 }
 const AVALIADO = [["💪", "Força", "Preensão manual e sentar e levantar", ["#FFB37A", "#FF5603"]], ["⚖️", "Equilíbrio", "Testes de equilíbrio em pé", ["#6EE7B7", "#059669"]], ["🚶", "Marcha e agilidade", "Velocidade e levantar e caminhar", ["#7DD3FC", "#0284C7"]], ["🧘", "Mobilidade", "Flexibilidade e amplitude", ["#5EEAD4", "#0F766E"]], ["🧠", "Memória e atenção", "Testes cognitivos rápidos", ["#C4B5FD", "#7C3AED"]], ["❤️", "Coração", "Fatores de risco cardiovascular", ["#F9A8D4", "#DB2777"]]];
 
+// ── Bioimpedância: mesma balança, corpos diferentes ──
+function DemoBio({ onComprar }) {
+  const [q, setQ] = useState(0);
+  const P2 = [["Pessoa A", 80, 22, 38, "Mais músculo, menos gordura"], ["Pessoa B", 80, 36, 27, "Menos músculo, mais gordura"]];
+  const [nome, peso, gord, musc, frase] = P2[q];
+  const barra = (rot, v, cor) => h("div", { style: { marginTop: 10 } },
+    h("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 13.5, fontWeight: 700, color: "#334155" } }, h("span", null, rot), h("span", null, v + "%")),
+    h("div", { style: { height: 12, borderRadius: 99, background: "#F1F5F9", marginTop: 5, overflow: "hidden" } }, h("div", { style: { width: Math.min(100, v * 2) + "%", height: "100%", borderRadius: 99, background: cor, transition: "width .5s" } })));
+  return h("div", { style: { ...cartao, padding: 16 } },
+    h("div", { style: { fontSize: 16, fontWeight: 800 } }, "Mesma balança, corpos diferentes"),
+    h("div", { style: { fontSize: 12.5, color: C.cinza, marginTop: 2, marginBottom: 12 } }, "Exemplo com números ilustrativos. Toque para comparar."),
+    h("div", { style: { display: "flex", gap: 4, background: "#F1F5F9", borderRadius: 14, padding: 4 } }, P2.map((p, i) => h("button", { key: i, type: "button", onClick: () => setQ(i), style: { flex: 1, height: 42, borderRadius: 11, border: "none", fontWeight: 800, fontSize: 14.5, cursor: "pointer", background: q === i ? C.escuro : "transparent", color: q === i ? "#fff" : "#475569" } }, p[0]))),
+    h("div", { style: { display: "flex", alignItems: "center", gap: 12, marginTop: 14, background: C.fundo, borderRadius: 14, padding: "10px 12px" } },
+      h("span", { style: { fontSize: 26 } }, "⚖️"),
+      h("span", null, h("b", { style: { display: "block", fontSize: 18 } }, peso + " kg"), h("span", { style: { display: "block", fontSize: 12.5, color: C.cinza } }, "A balança comum mostra só isso"))),
+    barra("Gordura corporal", gord, C.laranja),
+    barra("Músculo esquelético", musc, "#0284C7"),
+    h("div", { style: { marginTop: 12, fontSize: 14, fontWeight: 800, color: q ? C.laranjaTxt : C.verde } }, frase),
+    h("div", { style: { fontSize: 13.5, color: "#475569", lineHeight: 1.5, marginTop: 4 } }, "As duas pesam o mesmo, mas a saúde e o treino de cada uma são bem diferentes. A bioimpedância mostra qual é o seu caso."),
+    h("button", { type: "button", onClick: onComprar, style: { ...botaoPri, height: 50, fontSize: 16, marginTop: 14 } }, "Quero descobrir o meu"));
+}
+const MEDIDO = [["⚖️", "Peso e IMC", "O ponto de partida", ["#FFB37A", "#FF5603"]], ["🔥", "% de gordura", "Quanto do peso é gordura", ["#FDBA74", "#EA580C"]], ["💪", "% de músculo", "Músculo esquelético", ["#7DD3FC", "#0284C7"]], ["🎯", "Gordura visceral", "A gordura entre os órgãos", ["#F9A8D4", "#DB2777"]], ["⚡", "Metabolismo de repouso", "Calorias gastas parado", ["#6EE7B7", "#059669"]], ["🕒", "Idade corporal", "Comparada à sua idade real", ["#C4B5FD", "#7C3AED"]]];
+
 // ═══ CONTEÚDO DE CADA PRODUTO ═══
 const CONTEUDO = {
   mente: (pers) => ({
@@ -329,6 +352,29 @@ const CONTEUDO = {
     pos: "Seu aviso chegou para o " + pers + ". Assim que ele confirmar o pagamento, te chama no WhatsApp para marcar a sua avaliação.",
     final: ["Saiba hoje como está o seu corpo", "Avaliação completa por "], aviso: "A avaliação funcional não substitui consulta médica.", padrao: 0
   }),
+  bio: (pers, d) => ({
+    nome: "Bioimpedância", img: "bioimpedancia.jpg", foto: "foto-sindicos-1.jpg", fotoPos: "center 30%", selo: "PRESENCIAL", rotulo: "BIOIMPEDÂNCIA", mensal: false,
+    tiles: MEDIDO.slice(1, 5).map((a) => [a[0], a[3]]),
+    titulo: "Descubra o que a balança não mostra",
+    sub: "Gordura, músculo, gordura visceral e metabolismo medidos por bioimpedância, com metas claras para chegar no seu objetivo.",
+    precoRot: "AVALIAÇÃO DO CORPO", pagSub: "pagamento único", cta: "Quero fazer a bioimpedância", ctaSec: "⚖️  Ver um exemplo", resumoSub: "Presencial, com relatório no app", barRot: "Bioimpedância",
+    para: [[I.grafico, "Quer emagrecer do jeito certo", "Perder gordura, não músculo"], [I.estrela, "Treina e quer ver resultado", "Músculo medido de verdade"], [I.ideia, "Quer saber o seu metabolismo", "Quanto gasta em repouso"], [I.check, "Quer metas claras", "Etapas até o objetivo"]],
+    demoTit: ["Veja um exemplo", "O peso sozinho engana"], Demo: DemoBio,
+    extra: () => h("div", null, Secao("O que é medido", "Seis números sobre o seu corpo"),
+      h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 } }, MEDIDO.map(([ic, n, desc, g]) => h("div", { key: n, style: { ...cartao, padding: 12, display: "flex", gap: 10, alignItems: "center" } },
+        h("span", { style: { width: 42, height: 42, borderRadius: 12, background: "linear-gradient(135deg," + g[0] + "," + g[1] + ")", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 21, flexShrink: 0, boxShadow: "inset 0 -3px 0 rgba(0,0,0,0.15)" } }, ic),
+        h("span", { style: { minWidth: 0 } }, h("b", { style: { display: "block", fontSize: 13.5, lineHeight: 1.2 } }, n), h("span", { style: { display: "block", fontSize: 11.5, color: C.cinza, marginTop: 2, lineHeight: 1.3 } }, desc))))),
+      Secao("O que você recebe", "Números com direção"),
+      h("div", { style: cartao }, ["Relatório no seu app: seu resultado lado a lado com o ideal", "Metas em etapas até o objetivo, sempre sem perder músculo", "Explicação simples do que fazer a partir dos números", "Reavaliação a cada 3 meses para ver a evolução"].map((t, i) => h("div", { key: i, style: { display: "flex", gap: 10, alignItems: "flex-start", fontSize: 15, lineHeight: 1.45, color: "#1E293B", marginTop: i ? 10 : 0 } },
+        h("span", { style: { width: 24, height: 24, borderRadius: 99, background: C.verdeClaro, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 } }, h(Ico, { d: I.check, cor: C.verde, tam: 15, larg: 2.8 })), h("span", null, t))))),
+    passos: [["Pague pelo Pix", "Leva um minuto, direto aqui na página."], ["O " + pers + " te chama no WhatsApp", "Para marcar o dia e passar as orientações de preparo."], ["Faça a medição", "É rápida, sem dor e sem tirar a roupa. Você sobe na balança e segura as alças."], ["Receba o resultado no app", "Com o ideal para você e as metas até o objetivo."]],
+    evolucao: "A cada 3 meses você mede de novo e vê, lado a lado, quanto de gordura perdeu e quanto de músculo ganhou.",
+    sobre: "Há mais de 15 anos trabalho com treino e saúde. A balança comum não diz se você perdeu gordura ou músculo, e isso muda tudo no treino. Com a bioimpedância a gente acompanha o que importa de verdade.",
+    cruz: { href: "venda.html?p=l360", img: "Longevus-360.jpg", t: "Quer chegar nas metas mais rápido?", s: "Conheça o Longevus 360: alimentação e treino somados no app, todos os dias." },
+    faq: [["Precisa de algum preparo?", "Sim, simples: evite treinar e tomar café nas horas antes, beba água normalmente e vá ao banheiro antes da medição. O " + pers + " manda tudo certinho no agendamento."], ["Alguém não pode fazer?", "Quem usa marcapasso ou outro aparelho eletrônico implantado não deve fazer. Gestantes também devem evitar."], ["Onde é feita?", (d.local ? d.local + ". " : "") + "É presencial, com o " + pers + ". O local e o horário são combinados pelo WhatsApp."], ["Serve para qualquer idade?", "Serve. A bioimpedância e as metas valem para qualquer idade e qualquer objetivo."], ["Como recebo o resultado?", "O relatório fica no seu app, com o seu resultado e o ideal lado a lado. As próximas medições aparecem ali também."]],
+    pos: "Seu aviso chegou para o " + pers + ". Assim que ele confirmar o pagamento, te chama no WhatsApp para marcar a sua bioimpedância e passar as orientações de preparo.",
+    final: ["Descubra do que o seu peso é feito", "Bioimpedância por "], aviso: "A bioimpedância não substitui consulta médica ou nutricional.", padrao: 0
+  }),
   l360: (pers) => ({
     nome: "Longevus 360", img: "Longevus-360.jpg", foto: "foto-academia.jpg", fotoPos: "center 25%", selo: "TREINO + ALIMENTAÇÃO", rotulo: "LONGEVUS 360",
     tiles: [["📷", ["#FFB37A", "#FF5603"]], ["🥗", ["#6EE7B7", "#059669"]], ["🏋️", ["#7DD3FC", "#0284C7"]], ["📊", ["#C4B5FD", "#7C3AED"]]],
@@ -350,7 +396,7 @@ const CONTEUDO = {
     final: ["Comece a enxergar o seu dia inteiro", "Longevus 360 por "], aviso: "O Longevus 360 não substitui acompanhamento nutricional.", padrao: 0
   })
 };
-const tipoProduto = (d, id) => (d.produto === "l360" || String(id).indexOf("l360:") === 0 || Q.get("p") === "l360") ? "l360" : (d.produto === "mente" || Q.get("p") === "mente") ? "mente" : ((/avalia/i.test(d.titulo || "") && !/bioimped/i.test(d.titulo || "")) || Q.get("p") === "avaliacao") ? "avaliacao" : "mente";
+const tipoProduto = (d, id) => (d.produto === "l360" || String(id).indexOf("l360:") === 0 || Q.get("p") === "l360") ? "l360" : (d.produto === "mente" || Q.get("p") === "mente") ? "mente" : (/bioimped/i.test(d.titulo || "") || Q.get("p") === "bio") ? "bio" : ((/avalia/i.test(d.titulo || "") && !/bioimped/i.test(d.titulo || "")) || Q.get("p") === "avaliacao") ? "avaliacao" : "mente";
 
 // ═══ PÁGINA ═══
 function App() {
