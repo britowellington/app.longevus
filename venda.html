@@ -265,6 +265,26 @@ function Demo360({ onComprar }) {
         h("button", { type: "button", onClick: onComprar, style: { ...botaoPri, height: 50, fontSize: 16 } }, "Quero o Longevus 360")) : null));
 }
 
+// ── Avaliação Funcional: checagem rápida (não é diagnóstico) ──
+const SINAIS = ["Preciso das mãos para levantar da cadeira", "Caí ou quase caí no último ano", "Sinto que caminho mais devagar", "Ando esquecendo recados e compromissos", "Canso fácil em tarefas do dia a dia"];
+function DemoSinais({ onComprar }) {
+  const [marc, setMarc] = useState([]);
+  const [ver, setVer] = useState(false);
+  const alterna = (i) => { setVer(false); setMarc(marc.indexOf(i) >= 0 ? marc.filter((x) => x !== i) : marc.concat([i])); };
+  const n = marc.length;
+  return h("div", { style: { ...cartao, padding: 16 } },
+    h("div", { style: { fontSize: 16, fontWeight: 800 } }, "Algum destes acontece com você?"),
+    h("div", { style: { fontSize: 12.5, color: C.cinza, marginTop: 2, marginBottom: 12 } }, "Toque nos que se encaixam. Não é diagnóstico, é só um ponto de partida."),
+    SINAIS.map((t, i) => { const on = marc.indexOf(i) >= 0; return h("button", { key: i, type: "button", onClick: () => alterna(i), style: { width: "100%", display: "flex", alignItems: "center", gap: 10, textAlign: "left", padding: "12px 12px", marginBottom: 8, borderRadius: 14, cursor: "pointer", fontSize: 14.5, fontWeight: 700, color: C.escuro, border: on ? "2px solid " + C.laranja : "1.5px solid " + C.borda, background: on ? C.laranjaClaro : "#fff" } },
+      h("span", { style: { width: 24, height: 24, borderRadius: 8, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: on ? C.laranja : "#fff", border: on ? "none" : "1.5px solid " + C.borda } }, on ? h(Ico, { d: I.check, cor: "#fff", tam: 15, larg: 3 }) : null), t); }),
+    !ver ? h("button", { type: "button", onClick: () => setVer(true), style: { ...botaoPri, height: 50, fontSize: 16, background: C.escuro, boxShadow: "none", marginTop: 4 } }, "Ver o resultado") :
+    h("div", { style: { marginTop: 6, background: n ? C.laranjaClaro : C.verdeClaro, borderRadius: 14, padding: 14 } },
+      h("div", { style: { fontSize: 16, fontWeight: 800, color: n ? C.laranjaTxt : "#15803D" } }, n === 0 ? "Ótimo sinal!" : n === 1 ? "1 sinal para olhar com atenção" : n + " sinais para olhar com atenção"),
+      h("div", { style: { fontSize: 14, color: "#334155", lineHeight: 1.5, marginTop: 4 } }, n === 0 ? "Que tal medir de verdade e ter um ponto de partida para continuar assim? A avaliação mostra força, equilíbrio e memória em números." : "Isso costuma ter a ver com força, equilíbrio ou atenção, e tudo isso melhora com treino. A avaliação mostra exatamente onde você está e o que fazer."),
+      h("button", { type: "button", onClick: onComprar, style: { ...botaoPri, height: 50, fontSize: 16, marginTop: 12 } }, "Quero fazer a avaliação")));
+}
+const AVALIADO = [["💪", "Força", "Preensão manual e sentar e levantar", ["#FFB37A", "#FF5603"]], ["⚖️", "Equilíbrio", "Testes de equilíbrio em pé", ["#6EE7B7", "#059669"]], ["🚶", "Marcha e agilidade", "Velocidade e levantar e caminhar", ["#7DD3FC", "#0284C7"]], ["🧘", "Mobilidade", "Flexibilidade e amplitude", ["#5EEAD4", "#0F766E"]], ["🧠", "Memória e atenção", "Testes cognitivos rápidos", ["#C4B5FD", "#7C3AED"]], ["❤️", "Coração", "Fatores de risco cardiovascular", ["#F9A8D4", "#DB2777"]]];
+
 // ═══ CONTEÚDO DE CADA PRODUTO ═══
 const CONTEUDO = {
   mente: (pers) => ({
@@ -285,6 +305,29 @@ const CONTEUDO = {
     cruz: { href: "elo60-venda.html", img: "elo-60.jpg", t: "Quer corpo e mente juntos?", s: "Conheça o Elo 60+: exercícios em casa e os jogos da Mente Ativa no mesmo programa." },
     faq: [["Preciso saber jogar no celular?", "Não. Os jogos têm letras grandes, instruções simples e o botão de voltar sempre à vista."], ["Quanto tempo por dia?", "Cerca de 10 minutos já fazem diferença. Você joga quando quiser, no seu ritmo."], ["Como funciona o pagamento?", "Por Pix, direto para o " + pers + ". São 30 dias com os 8 jogos liberados. Renova só se quiser, sem fidelidade."], ["Já treino com o " + pers + ". Serve para mim?", "Serve, e combina muito. O corpo você treina com ele, a mente você treina em casa."]],
     final: ["Sua mente também merece treino", "30 dias com os 8 jogos por "], aviso: "A Mente Ativa não substitui acompanhamento médico.", padrao: 19.9
+  }),
+  avaliacao: (pers, d) => ({
+    nome: "Avaliação Funcional", img: "avaliacao-funcional.jpg", foto: "foto-sindicos-2.jpg", fotoPos: "center 35%", selo: "PRESENCIAL", rotulo: "AVALIAÇÃO FUNCIONAL", mensal: false,
+    tiles: AVALIADO.slice(0, 4).map((a) => [a[0], a[3]]),
+    titulo: "Descubra como está o seu corpo hoje, e o que fazer para viver com autonomia",
+    sub: "Força, equilíbrio, marcha e memória medidos pessoalmente pelo " + pers + ", com um relatório explicado em linguagem simples.",
+    precoRot: "AVALIAÇÃO COMPLETA", pagSub: "pagamento único", cta: "Quero fazer a avaliação", ctaSec: "✅  Fazer a checagem rápida", resumoSub: "Presencial, com relatório no app", barRot: "Avaliação",
+    para: [[I.escada, "Sente as pernas mais fracas", "Força medida e comparada"], [I.escudo, "Tem medo de cair", "Equilíbrio testado com segurança"], [I.ideia, "Quer saber por onde começar", "Um plano a partir dos números"], [I.grafico, "Quer acompanhar a evolução", "Reavaliação a cada 3 meses"]],
+    demoTit: ["Checagem rápida", "Comece por aqui, leva 20 segundos"], Demo: DemoSinais,
+    extra: () => h("div", null, Secao("O que é avaliado", "Seis áreas do seu dia a dia"),
+      h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 } }, AVALIADO.map(([ic, n, desc, g]) => h("div", { key: n, style: { ...cartao, padding: 12, display: "flex", gap: 10, alignItems: "center" } },
+        h("span", { style: { width: 42, height: 42, borderRadius: 12, background: "linear-gradient(135deg," + g[0] + "," + g[1] + ")", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 21, flexShrink: 0, boxShadow: "inset 0 -3px 0 rgba(0,0,0,0.15)" } }, ic),
+        h("span", { style: { minWidth: 0 } }, h("b", { style: { display: "block", fontSize: 13.5, lineHeight: 1.2 } }, n), h("span", { style: { display: "block", fontSize: 11.5, color: C.cinza, marginTop: 2, lineHeight: 1.3 } }, desc))))),
+      Secao("O que você recebe", "Um relatório que dá para entender"),
+      h("div", { style: cartao }, ["Relatório completo no seu app, para ver quando quiser", "O que cada resultado significa no seu dia a dia", "Recomendações de treino e sinais de alerta", "Reavaliação a cada 3 meses, comparando com a primeira"].map((t, i) => h("div", { key: i, style: { display: "flex", gap: 10, alignItems: "flex-start", fontSize: 15, lineHeight: 1.45, color: "#1E293B", marginTop: i ? 10 : 0 } },
+        h("span", { style: { width: 24, height: 24, borderRadius: 99, background: C.verdeClaro, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 } }, h(Ico, { d: I.check, cor: C.verde, tam: 15, larg: 2.8 })), h("span", null, t))))),
+    passos: [["Pague pelo Pix", "Leva um minuto, direto aqui na página."], ["O " + pers + " te chama no WhatsApp", "Para combinar o dia, o horário e o local."], ["Faça a avaliação", "Testes simples e seguros, adaptados ao seu nível. Venha com roupa confortável e tênis."], ["Receba o resultado no app", "Com a explicação de cada número e o que fazer a partir dele."]],
+    evolucao: "A cada 3 meses você refaz os testes e vê, lado a lado, quanto a força, o equilíbrio e a memória melhoraram.",
+    sobre: "Há mais de 15 anos atendo adultos e idosos. A avaliação é o primeiro passo de tudo o que faço: sem medir, a gente treina no escuro. Com os números na mão, você sabe exatamente onde está e para onde ir.",
+    cruz: null,
+    faq: [["Preciso estar em forma?", "Não. Os testes são adaptados ao seu nível e feitos com segurança, sempre com o " + pers + " do seu lado."], ["O que devo levar?", "Roupa confortável, tênis e, se usar, os óculos e a lista dos seus remédios."], ["Onde é feita?", (d.local ? d.local + ". " : "") + "É presencial, com o " + pers + ". O local e o horário são combinados pelo WhatsApp."], ["Como recebo o resultado?", "O relatório fica no seu app. Você abre quando quiser e acompanha as próximas avaliações ali mesmo."]],
+    pos: "Seu aviso chegou para o " + pers + ". Assim que ele confirmar o pagamento, te chama no WhatsApp para marcar a sua avaliação.",
+    final: ["Saiba hoje como está o seu corpo", "Avaliação completa por "], aviso: "A avaliação funcional não substitui consulta médica.", padrao: 0
   }),
   l360: (pers) => ({
     nome: "Longevus 360", img: "Longevus-360.jpg", foto: "foto-academia.jpg", fotoPos: "center 25%", selo: "TREINO + ALIMENTAÇÃO", rotulo: "LONGEVUS 360",
@@ -307,7 +350,7 @@ const CONTEUDO = {
     final: ["Comece a enxergar o seu dia inteiro", "Longevus 360 por "], aviso: "O Longevus 360 não substitui acompanhamento nutricional.", padrao: 0
   })
 };
-const tipoProduto = (d, id) => (d.produto === "l360" || String(id).indexOf("l360:") === 0 || Q.get("p") === "l360") ? "l360" : "mente";
+const tipoProduto = (d, id) => (d.produto === "l360" || String(id).indexOf("l360:") === 0 || Q.get("p") === "l360") ? "l360" : (d.produto === "mente" || Q.get("p") === "mente") ? "mente" : ((/avalia/i.test(d.titulo || "") && !/bioimped/i.test(d.titulo || "")) || Q.get("p") === "avaliacao") ? "avaliacao" : "mente";
 
 // ═══ PÁGINA ═══
 function App() {
@@ -317,9 +360,10 @@ function App() {
   const [checkout, setCheckout] = useState(null);
   const [barra, setBarra] = useState(false);
   const [faq, setFaq] = useState(-1);
+  const [pronto, setPronto] = useState(!id);
   const heroBtn = useRef(null);
   useEffect(() => {
-    if (id) rpc("rpc_vitrine_publico", { p_item_id: id }).then((r) => { if (r && r.data) { setD({ ...r.data, id }); setPix(r.pix || {}); } }).catch(() => {});
+    if (id) rpc("rpc_vitrine_publico", { p_item_id: id }).then((r) => { if (r && r.data) { setD({ ...r.data, id }); setPix(r.pix || {}); } setPronto(true); }).catch(() => setPronto(true));
     else rpc("get_professional_pix_config", { prof_id: PROF_ID }).then((r) => { const p = Array.isArray(r) ? r[0] : r; if (p) setPix(p); }).catch(() => {});
   }, []);
   useEffect(() => {
@@ -328,7 +372,7 @@ function App() {
     return () => window.removeEventListener("scroll", ver);
   }, []);
   const pers = primeiro(pix.nome || d.profissional) || "Wellington";
-  const P = CONTEUDO[tipoProduto(d, id)](pers);
+  const P = Object.assign({ mensal: true, pagSub: "sem fidelidade", barRot: "30 dias" }, CONTEUDO[tipoProduto(d, id)](pers, d));
   const nome = d.titulo || P.nome;
   useEffect(() => { document.title = nome + " · Wellington Brito"; }, [nome]);
 
@@ -337,6 +381,7 @@ function App() {
   const temPresente = !!(d.id && pix.pix_key && d.aceitaPresente !== false);
   const comprar = (modo) => setCheckout(modo || "mim");
   const waDuvida = waLink(pix.whatsapp, "Oi, " + pers + "! Vi a página do " + nome + " e tenho uma dúvida.");
+  if (!pronto) return h("div", { style: { minHeight: "100vh", background: C.escuro, display: "flex", alignItems: "center", justifyContent: "center" } }, h("img", { src: "logo-wb-claro.png", alt: "Wellington Brito", style: { height: 64, opacity: 0.9, animation: "some 1s ease infinite alternate" } }));
   const FAQ = P.faq.concat(temPresente ? [["Posso dar de presente?", "Pode. Toque em Dar de presente, pague o Pix e o " + pers + " fala com a pessoa."]] : []);
 
   return h("div", null,
@@ -356,11 +401,11 @@ function App() {
         h("div", { style: { flex: 1.25, background: C.escuro2, border: "1.5px solid " + C.laranja, borderRadius: 14, padding: "10px 12px" } },
           h("div", { style: { fontSize: 10.5, color: C.cinzaClaro, letterSpacing: "0.05em" } }, P.precoRot),
           h("div", { style: { fontSize: 24, fontWeight: 800, color: C.pessego, lineHeight: 1.15 } }, valor > 0 ? brl(valor) : "Consulte"),
-          valor > 0 ? h("div", { style: { fontSize: 12, color: C.cinzaClaro } }, "menos de " + brl(porDia) + " por dia") : null),
+          valor > 0 && P.mensal ? h("div", { style: { fontSize: 12, color: C.cinzaClaro } }, "menos de " + brl(porDia) + " por dia") : null),
         h("div", { style: { flex: 1, background: C.escuro2, borderRadius: 14, padding: "10px 12px" } },
           h("div", { style: { fontSize: 10.5, color: C.cinzaClaro, letterSpacing: "0.05em" } }, "PAGAMENTO"),
           h("div", { style: { fontSize: 16, fontWeight: 800, lineHeight: 1.25, marginTop: 2 } }, "Pix, sem cartão"),
-          h("div", { style: { fontSize: 12, color: C.cinzaClaro } }, "sem fidelidade"))),
+          h("div", { style: { fontSize: 12, color: C.cinzaClaro } }, P.pagSub))),
       h("button", { ref: heroBtn, type: "button", onClick: () => comprar("mim"), style: { ...botaoPri, marginTop: 14 } }, P.cta),
       h("a", { href: "#teste", style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", height: 48, marginTop: 8, borderRadius: 14, border: "1.5px solid rgba(255,255,255,0.22)", color: "#fff", fontWeight: 700, fontSize: 15, textDecoration: "none" } }, P.ctaSec)),
 
@@ -415,10 +460,10 @@ function App() {
 
     barra && !checkout ? h("div", { style: { position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 300, display: "flex", justifyContent: "center", animation: "sobe .25s ease both" } },
       h("div", { style: { width: "100%", maxWidth: 480, background: "rgba(255,255,255,0.97)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", borderTop: "1px solid " + C.borda, padding: "10px 16px calc(10px + env(safe-area-inset-bottom))", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 -8px 24px rgba(15,23,42,0.08)" } },
-        valor > 0 ? h("div", { style: { flexShrink: 0 } }, h("div", { style: { fontSize: 11, color: C.cinza } }, "30 dias"), h("div", { style: { fontSize: 19, fontWeight: 800 } }, brl(valor))) : null,
+        valor > 0 ? h("div", { style: { flexShrink: 0 } }, h("div", { style: { fontSize: 11, color: C.cinza } }, P.barRot), h("div", { style: { fontSize: 19, fontWeight: 800 } }, brl(valor))) : null,
         h("button", { type: "button", onClick: () => comprar("mim"), style: { ...botaoPri, height: 50, fontSize: 16, boxShadow: "none" } }, "Começar agora"))) : null,
 
-    h(Checkout, { aberto: !!checkout, modoInicial: checkout, onFechar: () => setCheckout(null), d: { ...d, titulo: nome, foto: d.foto || P.img }, pix, valor, mensal: true, temPresente, resumoSub: P.resumoSub }));
+    h(Checkout, { aberto: !!checkout, modoInicial: checkout, onFechar: () => setCheckout(null), d: { ...d, titulo: nome, foto: d.foto || P.img, posPagamento: d.posPagamento || P.pos }, pix, valor, mensal: P.mensal, temPresente, resumoSub: P.resumoSub }));
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(h(App));
