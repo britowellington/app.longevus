@@ -98,7 +98,8 @@
         // Uma linha por treino: semana atual, próximo cardio e última vez feito
         const linhas = treinos.map((t) => {
             const separado = cfg.treinos[t].onde === "separado";
-            const lista = separado ? sep.filter((s) => s.cardioTreinoKey === t) : musc.filter((s) => s.treinoKey === t);
+            // Desde o registro em etapa própria, todo cardio vira sessão de cardio. Treinos antigos (antes disso) contam pela musculação.
+            const lista = separado || sep.some((s) => s.cardioTreinoKey === t) ? sep.filter((s) => s.cardioTreinoKey === t) : musc.filter((s) => s.treinoKey === t);
             const ordenada = [...lista].sort((a, b) => (a.createdAt || a.date || "").localeCompare(b.createdAt || b.date || ""));
             const semana = ordenada.filter((s) => s.date !== hoje).length + 1;
             const ultima = ordenada.length ? ordenada[ordenada.length - 1].date : null;
@@ -110,8 +111,8 @@
             l.ordenada.forEach((s, i) => {
                 if (diasAtras(s.date) > 6)
                     return;
-                if (l.separado)
-                    min7 += (s.cardio && s.cardio.total) || 0;
+                if (s.source === "cardio_separado")
+                    min7 += (s.cardio && (s.cardio.min || s.cardio.total)) || 0;
                 else {
                     const inf = semanaInfo(cfg, l.t, i + 1);
                     min7 += inf ? inf.total : 0;
@@ -119,7 +120,7 @@
             });
         });
         // Adesão do cardio em outro horário nas últimas 4 semanas
-        const treinosSep = linhas.filter((l) => l.separado);
+        const treinosSep = linhas;
         const feitos28 = sep.filter((s) => diasAtras(s.date) <= 27).length;
         const esperado28 = treinosSep.length * 4;
         const adesao = esperado28 ? Math.min(100, Math.round(feitos28 / esperado28 * 100)) : null;
@@ -136,7 +137,7 @@
                     cfg.quedas ? " · risco de quedas" : "")),
             React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" } },
                 React.createElement(Stat, { valor: min7 + " min", rotulo: "\u00DAltimos 7 dias", sub: "meta de 150 min/sem.", cor: min7 >= 150 ? "#16a34a" : "#e11d48" }),
-                React.createElement(Stat, { valor: adesao === null ? "—" : adesao + "%", rotulo: "Ades\u00E3o 4 sem.", sub: esperado28 ? (feitos28 + " de " + esperado28 + " em outro horário") : "sem cardio em outro horário", cor: corAdesao })),
+                React.createElement(Stat, { valor: adesao === null ? "—" : adesao + "%", rotulo: "Ades\u00E3o 4 sem.", sub: esperado28 ? (feitos28 + " de " + esperado28 + " cardios") : "sem cardio", cor: corAdesao })),
             reteste && React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: "#7e22ce", background: "#fdf4ff", border: "1.5px solid #e9d5ff", borderRadius: 10, padding: "9px 12px", marginBottom: 12 } }, "Semana de reteste em pelo menos um treino: agende a reavalia\u00E7\u00E3o cardio."),
             React.createElement(Caixa, null,
                 React.createElement("div", { style: { fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 8 } }, "Por treino"),
@@ -163,7 +164,7 @@
                         l.info ? (l.info.texto.indexOf("contínuo") >= 0 ? l.info.texto : l.info.texto + " · " + l.info.total + " min") : "—"),
                     React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2 } }, l.ultima ? ("Última vez em " + fmtData(l.ultima) + (diasAtras(l.ultima) > 10 ? " · há " + diasAtras(l.ultima) + " dias" : "")) : "Ainda não realizado"))))),
             treinosSep.length > 0 && (React.createElement(Caixa, null,
-                React.createElement("div", { style: { fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 8 } }, "Cardios em outro hor\u00E1rio"),
+                React.createElement("div", { style: { fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 8 } }, "Cardios realizados"),
                 sep.length === 0 && React.createElement("div", { style: { fontSize: 12, color: "#94a3b8" } }, "Nenhum cardio conclu\u00EDdo ainda."),
                 sep.slice(0, 10).map((s, i) => {
                     const eg = ERGOS[(s.cardio && s.cardio.ergo) || ""];
@@ -171,13 +172,14 @@
                         React.createElement("div", { style: { minWidth: 0 } },
                             React.createElement("div", { style: { fontSize: 12.5, fontWeight: 700, color: "#0f172a" } },
                                 nomeT(s.cardioTreinoKey),
-                                eg ? " · " + eg.icone + " " + eg.nome : ""),
+                                eg ? " · " + eg.icone + " " + eg.nome : "",
+                                s.momento === "pos_treino" ? " · pós-treino" : ""),
                             React.createElement("div", { style: { fontSize: 11, color: "#64748b" } }, s.cardio ? ("Sem. " + s.cardio.semana + " · " + s.cardio.texto) : "Cardio concluído")),
                         React.createElement("div", { style: { textAlign: "right", flexShrink: 0 } },
                             React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: "#475569" } }, fmtData(s.date)),
                             React.createElement("div", { style: { fontSize: 11, color: "#94a3b8" } }, s.cardio && s.cardio.total ? s.cardio.total + " min" : ""))));
                 }))),
-            React.createElement("div", { style: { fontSize: 10.5, color: "#94a3b8", lineHeight: 1.5, padding: "0 4px 8px" } }, "O cardio no fim do treino \u00E9 contado junto com o treino conclu\u00EDdo. O cardio em outro hor\u00E1rio conta quando o aluno toca em Concluir cardio.")));
+            React.createElement("div", { style: { fontSize: 10.5, color: "#94a3b8", lineHeight: 1.5, padding: "0 4px 8px" } }, "Cada cardio conta quando o aluno conclui o cardio no app, seja logo ap\u00F3s a muscula\u00E7\u00E3o ou em outro hor\u00E1rio.")));
     };
     window.LongevusCardio = { Painel };
 })();

@@ -2091,6 +2091,17 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
   const doneCount = allKeys.filter(k=>done.has(k)).length;
   const allDone = totalCount>0 && doneCount===totalCount;
 
+  // Cardio em outro horário: aparece só depois que a musculação daquele treino foi concluída hoje
+  const cardioHoje = (()=>{
+    if(!prog || !prog.cardio || !prog.cardio.treinos) return [];
+    const hj = hojeLocal();
+    const ts = [...new Set(lastSessions.filter(x=>x && x.programId===prog.id && x.date===hj && x.treinoKey && x.source!=="atividade_extra").map(x=>x.treinoKey))];
+    return ts.filter(t=>prog.cardio.treinos[t] && CARDIO_ERGOS[prog.cardio.treinos[t].ergo]).map(t=>{
+      const doT = cardioSessoes.filter(x=>x && x.programId===prog.id && x.cardioTreinoKey===t);
+      const sem = doT.filter(x=>x.date!==hj).length+1;
+      return { t, sem, pos: !cardioSeparado(prog.cardio,t), info: cardioSemana(prog.cardio,t,sem), feito: doT.find(x=>x.date===hj)||null };
+    });
+  })();
   const cronoKey = studentId+"|"+(prog?prog.id:"")+"|"+treinoAtivo+"|"+hojeLocal();
   const crono = cronoMap[cronoKey]||null;
   const setCrono = (fn) => setCronoMap(m=>{ const n={...m}; const v=fn(m[cronoKey]||null); if(v) n[cronoKey]=v; else delete n[cronoKey]; return n; });
@@ -2129,15 +2140,16 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
   const changeTreino = (i) => { setTreinoIdx(i); setDone(new Set()); setCargas({}); setSavedToday(false); };
   const changeBloco = (i) => { if(i>maxUnlockedIdx) return; setBlocoIdx(i); setTreinoIdx(0); setDone(new Set()); setCargas({}); setSavedToday(false); };
 
-  const concluirCardio = async (info, fracao) => {
+  const concluirCardio = async (info, fracao, tKey) => {
     if(!info) return;
     setSalvandoCardio(true);
     try{
       const headers = await authedHeaders();
       const g = cardioGasto(info, pesoAluno, fracao);
-      const data = { studentId, programId: prog.id, cardioTreinoKey: treinoAtivo, date: hojeLocal(),
+      const data = { studentId, programId: prog.id, cardioTreinoKey: tKey||treinoAtivo, date: hojeLocal(),
         cardio: { ergo:info.ergo, semana:info.semana, texto:info.texto, total:info.total, fracao, min:g.min, kcal:pesoAluno?g.kcal:null },
         cardioMin: g.min, cardioKcal: pesoAluno?g.kcal:null, cardioKcalKg: g.kcalKg, cardioErgo: info.ergo,
+        momento: (prog.cardio && cardioSeparado(prog.cardio, tKey||treinoAtivo)) ? "outro_horario" : "pos_treino",
         source: "cardio_separado", createdAt: new Date().toISOString() };
       const body = { id: uid2(), data, owner_id: ownerId, student_id: studentId };
       const r = await fetch(SUPA_URL+"/rest/v1/sessions", { method:"POST", headers, body: JSON.stringify(body) });
@@ -2194,7 +2206,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
     setSaving(false);
   };
 
-  const temCardioFim = !!(prog && prog.cardio && prog.cardio.treinos && prog.cardio.treinos[treinoAtivo] && CARDIO_ERGOS[prog.cardio.treinos[treinoAtivo].ergo] && !cardioSeparado(prog.cardio,treinoAtivo));
+  const temCardioFim = false; // o cardio agora é sempre registrado depois da musculação, em etapa própria
   const semanaCardioFim = (()=>{ const hj=hojeLocal(); return lastSessions.filter(x=>x && prog && x.programId===prog.id && x.treinoKey===treinoAtivo && x.source!=="atividade_extra" && x.date!==hj).length+1; })();
 
   const salvarCheckin = async () => {
@@ -2570,6 +2582,26 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
           </div>
         )}
 
+        {cardioHoje.map(ch=>{
+          const bt = {flex:1,height:42,borderRadius:12,border:"1.5px solid #e11d48",background:"#fff",color:"#be123c",fontWeight:800,fontSize:13.5,cursor:salvandoCardio?"default":"pointer",fontFamily:"inherit"};
+          const rodape = ch.feito
+            ? <div style={{marginTop:10,background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"9px 12px",fontSize:12.5,fontWeight:700,color:"#15803d",textAlign:"center"}}>Cardio concluído hoje{ch.feito.cardioMin?(" · "+ch.feito.cardioMin+" min"):""}{ch.feito.cardioKcal?(" · déficit de cerca de "+ch.feito.cardioKcal+" kcal"):""}. Muito bem!</div>
+            : <div style={{marginTop:10}}>
+                <button type="button" disabled={salvandoCardio} onClick={()=>{ lvAudio(); setGuiado({info:ch.info,separado:true,tKey:ch.t}); }} style={{width:"100%",height:44,borderRadius:12,border:"none",background:"#0f172a",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"inherit",marginBottom:10}}>▶ Iniciar cardio guiado</button>
+                <div style={{fontSize:12,fontWeight:700,color:"#475569",marginBottom:6}}>{salvandoCardio?"Salvando...":"Ou, se já fez, marque:"}</div>
+                <div style={{display:"flex",gap:6}}>
+                  <button type="button" disabled={salvandoCardio} onClick={()=>concluirCardio(ch.info,1,ch.t)} style={bt}>Fiz completo</button>
+                  <button type="button" disabled={salvandoCardio} onClick={()=>concluirCardio(ch.info,0.5,ch.t)} style={bt}>Fiz metade</button>
+                </div>
+              </div>;
+          return (
+            <div key={"ch-"+ch.t}>
+              {!ch.feito && <div style={{fontSize:12,fontWeight:800,color:"#be123c",margin:"2px 2px 6px"}}>{ch.pos?"Falta o cardio pós-treino de hoje":"Seu cardio de hoje está pendente"}</div>}
+              <CardioCard cfg={prog.cardio} treinoKey={ch.t} semana={ch.sem} rodape={rodape}/>
+            </div>
+          );
+        })}
+
         {totalCount>0 && <CronoTreinoBarra crono={crono} bloqueado={savedToday} onIniciar={cronoIniciar} onPausar={cronoPausar} onRetomar={cronoRetomar}/>}
         <CronoCtx.Provider value={cronoCtxVal}>
         {MOMENTOS.map(([key,label,color])=>{
@@ -2607,39 +2639,9 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
         })}
         </CronoCtx.Provider>
 
-        {prog && prog.cardio && !cardioSeparado(prog.cardio,treinoAtivo) && (()=>{
-          const hojeC = hojeLocal();
-          const feitas = lastSessions.filter(x=>x && x.programId===prog.id && x.treinoKey===treinoAtivo && x.source!=="atividade_extra" && x.date!==hojeC).length;
-          const infoF = cardioSemana(prog.cardio,treinoAtivo,feitas+1);
-          const rodF = savedToday ? null : (cardioGuiadoFim
-            ? <div style={{marginTop:10,background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"9px 12px",fontSize:12.5,fontWeight:700,color:"#15803d",textAlign:"center"}}>Cardio feito · {cardioGuiadoFim.min} min{cardioGuiadoFim.fracao<0.95?" (parcial)":""}. Agora é só concluir o treino.</div>
-            : <button type="button" onClick={()=>{ lvAudio(); setGuiado({info:infoF,separado:false}); }} style={{marginTop:10,width:"100%",height:44,borderRadius:12,border:"none",background:"#0f172a",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"inherit"}}>▶ Iniciar cardio guiado</button>);
-          return <CardioCard cfg={prog.cardio} treinoKey={treinoAtivo} semana={feitas+1} rodape={rodF}/>;
-        })()}
 
         {totalCount>0 && (
           <div style={{marginTop:8,marginBottom:20}}>
-            {prog && prog.cardio && cardioSeparado(prog.cardio,treinoAtivo) && (()=>{
-              const hojeC = hojeLocal();
-              const doTreino = cardioSessoes.filter(x=>x && x.programId===prog.id && x.cardioTreinoKey===treinoAtivo);
-              const feitoHoje = doTreino.some(x=>x.date===hojeC);
-              const sem = doTreino.filter(x=>x.date!==hojeC).length+1;
-              const info = cardioSemana(prog.cardio,treinoAtivo,sem);
-              const feitoReg = doTreino.find(x=>x.date===hojeC);
-              const kHoje = feitoReg && feitoReg.cardioKcal;
-              const bt = {flex:1,height:42,borderRadius:12,border:"1.5px solid #e11d48",background:"#fff",color:"#be123c",fontWeight:800,fontSize:13.5,cursor:salvandoCardio?"default":"pointer",fontFamily:"inherit"};
-              const rodape = feitoHoje
-                ? <div style={{marginTop:10,background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"9px 12px",fontSize:12.5,fontWeight:700,color:"#15803d",textAlign:"center"}}>Cardio concluído hoje{feitoReg&&feitoReg.cardioMin?(" · "+feitoReg.cardioMin+" min"):""}{kHoje?(" · déficit de cerca de "+kHoje+" kcal"):""}. Muito bem!</div>
-                : <div style={{marginTop:10}}>
-                    <button type="button" disabled={salvandoCardio} onClick={()=>{ lvAudio(); setGuiado({info,separado:true}); }} style={{width:"100%",height:44,borderRadius:12,border:"none",background:"#0f172a",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"inherit",marginBottom:10}}>▶ Iniciar cardio guiado</button>
-                    <div style={{fontSize:12,fontWeight:700,color:"#475569",marginBottom:6}}>{salvandoCardio?"Salvando...":"Ou, se já fez, marque:"}</div>
-                    <div style={{display:"flex",gap:6}}>
-                      <button type="button" disabled={salvandoCardio} onClick={()=>concluirCardio(info,1)} style={bt}>Fiz completo</button>
-                      <button type="button" disabled={salvandoCardio} onClick={()=>concluirCardio(info,0.5)} style={bt}>Fiz metade</button>
-                    </div>
-                  </div>;
-              return <CardioCard cfg={prog.cardio} treinoKey={treinoAtivo} semana={sem} rodape={rodape}/>;
-            })()}
             {savedToday ? (
               <div style={{background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"12px 14px",textAlign:"center",fontSize:13,fontWeight:700,color:"#15803d",display:"flex",alignItems:"flex-start",gap:8}}>
                 <Icon name="check" size={16} style={{marginTop:2,flexShrink:0}}/>
@@ -2684,8 +2686,8 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
 
       {contagem && <CronoContagem key={contagem.rotulo+contagem.total+contagem.modo} cfg={contagem} onClose={()=>setContagem(null)}/>}
       {guiado && <CardioGuiado cfg={prog.cardio} info={guiado.info}
-        onFim={(fr,min)=>{ const g=guiado; setGuiado(null); if(g.separado) concluirCardio(g.info,1); else setCardioGuiadoFim({fracao:1,min,ms:min*60000}); }}
-        onSair={(fr,min)=>{ const g=guiado; setGuiado(null); if(fr<0.1) return; if(g.separado) concluirCardio(g.info,Math.round(fr*100)/100); else setCardioGuiadoFim({fracao:fr,min,ms:min*60000}); }}/>}
+        onFim={(fr,min)=>{ const g=guiado; setGuiado(null); if(g.separado) concluirCardio(g.info,1,g.tKey); else setCardioGuiadoFim({fracao:1,min,ms:min*60000}); }}
+        onSair={(fr,min)=>{ const g=guiado; setGuiado(null); if(fr<0.1) return; if(g.separado) concluirCardio(g.info,Math.round(fr*100)/100,g.tKey); else setCardioGuiadoFim({fracao:fr,min,ms:min*60000}); }}/>}
       {showCheckin && (
         <Modal title="Como foi seu treino?" onClose={()=>{}}>
           <div style={{display:"flex",alignItems:"center",gap:10,background:"#fff4ee",border:"1.5px solid #ffd9c2",borderRadius:10,padding:"10px 12px",marginBottom:20}}>
@@ -2816,7 +2818,23 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
                   <Icon name="unlock" size={16} style={{flexShrink:0}}/><span>Você completou o {blocoAtivo.label}! O próximo bloco já está liberado.</span>
                 </div>
               )}
-              <Btn full onClick={()=>setShowCelebration(false)}>Continuar</Btn>
+              {(()=>{
+                const ch = cardioHoje.find(c=>c.t===treinoAtivo && !c.feito);
+                if(!ch || !ch.info) return <Btn full onClick={()=>setShowCelebration(false)}>Continuar</Btn>;
+                const eg = CARDIO_ERGOS[ch.info.ergo];
+                return (
+                  <div style={{background:"#fff1f2",border:"1.5px solid #fecdd3",borderRadius:14,padding:"12px 13px",textAlign:"left"}}>
+                    <div style={{fontSize:11,fontWeight:800,color:"#be123c",textTransform:"uppercase",letterSpacing:0.3}}>{ch.pos?"Agora é o cardio pós-treino":"Seu próximo treino é o cardio"}</div>
+                    <div style={{fontSize:15,fontWeight:800,color:"#0f172a",marginTop:3}}>{eg.icone} {eg.nome} · {ch.info.texto}</div>
+                    <div style={{fontSize:12,color:"#64748b",marginTop:2}}>{ch.info.total} min no total. {ch.pos?"É logo na sequência, antes de ir embora.":"Pode ser agora ou mais tarde, longe da musculação."}</div>
+                    <div style={{display:"flex",gap:8,marginTop:11}}>
+                      <button type="button" onClick={()=>{ setShowCelebration(false); lvAudio(); setGuiado({info:ch.info,separado:true,tKey:ch.t}); }} style={{flex:1,height:44,borderRadius:12,border:"none",background:"#0f172a",color:"#fff",fontWeight:800,fontSize:13.5,cursor:"pointer",fontFamily:"inherit"}}>▶ Fazer agora</button>
+                      <button type="button" onClick={()=>setShowCelebration(false)} style={{flex:1,height:44,borderRadius:12,border:"1.5px solid #e11d48",background:"#fff",color:"#be123c",fontWeight:800,fontSize:13.5,cursor:"pointer",fontFamily:"inherit"}}>{ch.pos?"Fazer depois":"Em outro momento"}</button>
+                    </div>
+                    <div style={{fontSize:11,color:"#94a3b8",marginTop:8}}>Ele fica guardado no topo da aba Treino até você concluir.</div>
+                  </div>
+                );
+              })()}
               <div style={{marginTop:8}}>
                 <Btn variant="secondary" full onClick={()=>{ setShowCelebration(false); irAtividadeExtra(); }}>Registrar atividade extra</Btn>
               </div>
