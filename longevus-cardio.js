@@ -44,14 +44,27 @@
             const token = (r && r.data && r.data.session && r.data.session.access_token) || SUPA_KEY;
             return { "apikey": SUPA_KEY, "Authorization": "Bearer " + token };
         },
+        // Exclui registros (só o professor usa). Retorna quantas linhas saíram: 0 indica bloqueio de permissão.
+        async excluir(tabela, ids) {
+            const h = await this.headers();
+            let n = 0;
+            for (const id of ids) {
+                const r = await fetch(SUPA_URL + "/rest/v1/" + tabela + "?id=eq." + encodeURIComponent(id), { method: "DELETE", headers: { ...h, "Prefer": "return=representation" } });
+                if (r.ok) {
+                    const rows = await r.json().catch(() => []);
+                    n += (rows || []).length;
+                }
+            }
+            return n;
+        },
         async carregar(studentId) {
             const h = await this.headers();
             const [rp, rs] = await Promise.all([
                 fetch(SUPA_URL + "/rest/v1/programs?select=data&student_id=eq." + encodeURIComponent(studentId) + "&limit=50", { headers: h }),
-                fetch(SUPA_URL + "/rest/v1/sessions?select=data&student_id=eq." + encodeURIComponent(studentId) + "&limit=1000", { headers: h })
+                fetch(SUPA_URL + "/rest/v1/sessions?select=id,data&student_id=eq." + encodeURIComponent(studentId) + "&limit=1000", { headers: h })
             ]);
             const progs = rp.ok ? (await rp.json()).map((x) => x && x.data).filter(Boolean) : [];
-            const sess = rs.ok ? (await rs.json()).map((x) => x && x.data).filter(Boolean) : [];
+            const sess = rs.ok ? (await rs.json()).filter((x) => x && x.data).map((x) => ({ ...x.data, __id: x.id })) : [];
             return { progs, sess };
         }
     };
@@ -188,6 +201,45 @@
         const [dados, setDados] = useState(null);
         const [erro, setErro] = useState(false);
         const [filtro, setFiltro] = useState("tudo");
+        const [confirmar, setConfirmar] = useState(null);
+        const [excluindo, setExcluindo] = useState(false);
+        const [aviso, setAviso] = useState("");
+        const excluirItem = async (it, ck) => {
+            setExcluindo(true);
+            setAviso("");
+            try {
+                const n = await api.excluir("sessions", [it.s.__id]);
+                if (!n) {
+                    setAviso("Não foi possível excluir. Verifique a permissão de exclusão na tabela de sessões.");
+                }
+                else {
+                    let saiuCk = [];
+                    if (it.t === "m" && ck && ck.__id && ck.source !== "professor_presencial") {
+                        const n2 = await api.excluir("checkins", [ck.__id]);
+                        if (n2)
+                            saiuCk = [ck.__id];
+                    }
+                    setDados((d) => ({ ...d, sess: d.sess.filter((x) => x.__id !== it.s.__id), checks: d.checks.filter((x) => !saiuCk.includes(x.__id)) }));
+                    setAviso(it.t === "m" ? "Treino excluído. O déficit dele também saiu da aba Calorias." : "Cardio excluído. O déficit dele também saiu da aba Calorias.");
+                }
+            }
+            catch (e) {
+                setAviso("Erro ao excluir. Tente novamente.");
+            }
+            setExcluindo(false);
+            setConfirmar(null);
+        };
+        const BotaoExcluir = ({ it, ck }) => {
+            const k = it.s.__id;
+            if (!k)
+                return null;
+            if (confirmar !== k)
+                return React.createElement("button", { type: "button", onClick: () => setConfirmar(k), style: { background: "transparent", border: "none", color: "#94a3b8", fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", padding: "2px 0" } }, "Excluir");
+            return (React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 8, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 9, padding: "7px 9px" } },
+                React.createElement("span", { style: { fontSize: 12, color: "#991b1b", fontWeight: 700 } }, "Excluir este registro do aluno?"),
+                React.createElement("button", { type: "button", disabled: excluindo, onClick: () => excluirItem(it, ck), style: { background: "#dc2626", color: "#fff", border: "none", borderRadius: 8, padding: "6px 11px", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" } }, excluindo ? "Excluindo..." : "Sim, excluir"),
+                React.createElement("button", { type: "button", disabled: excluindo, onClick: () => setConfirmar(null), style: { background: "#fff", color: "#475569", border: "1px solid #e2e8f0", borderRadius: 8, padding: "6px 11px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "Cancelar")));
+        };
         useEffect(() => {
             let vivo = true;
             if (!st || !st.id || !supa()) {
@@ -199,9 +251,9 @@
                     const h = await api.headers();
                     const [d, rc] = await Promise.all([
                         api.carregar(st.id),
-                        fetch(SUPA_URL + "/rest/v1/checkins?select=data&student_id=eq." + encodeURIComponent(st.id) + "&type=eq.pos_treino&limit=500", { headers: h })
+                        fetch(SUPA_URL + "/rest/v1/checkins?select=id,data&student_id=eq." + encodeURIComponent(st.id) + "&type=eq.pos_treino&limit=500", { headers: h })
                     ]);
-                    const checks = rc.ok ? (await rc.json()).map((x) => x && x.data).filter(Boolean) : [];
+                    const checks = rc.ok ? (await rc.json()).filter((x) => x && x.data).map((x) => ({ ...x.data, __id: x.id })) : [];
                     if (vivo)
                         setDados({ ...d, checks });
                 }
@@ -245,6 +297,7 @@
                 chip("tudo", "Tudo"),
                 chip("musc", "Musculação"),
                 chip("cardio", "Cardio")),
+            aviso && React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: aviso.indexOf("excluído") >= 0 ? "#15803d" : "#b91c1c", background: aviso.indexOf("excluído") >= 0 ? "#f0fdf4" : "#fef2f2", border: "1px solid " + (aviso.indexOf("excluído") >= 0 ? "#bbf7d0" : "#fecaca"), borderRadius: 10, padding: "8px 11px", marginBottom: 10 } }, aviso),
             itens.length === 0 && React.createElement(Caixa, { style: { textAlign: "center", color: "#94a3b8" } }, "Nenhum registro ainda."),
             itens.map((it, i) => {
                 const s = it.s;
@@ -252,24 +305,30 @@
                     const eg = ERGOS[s.cardioErgo || (s.cardio && s.cardio.ergo)];
                     const parcial = s.cardio && s.cardio.fracao != null && s.cardio.fracao < 0.95;
                     return (React.createElement(Caixa, { key: i, style: { border: "1.5px solid #fecdd3", padding: "11px 13px" } },
-                        React.createElement("div", { style: { fontWeight: 800, fontSize: 13.5 } },
-                            "\u2764\uFE0F ",
-                            fmtData(s.date),
-                            " \u00B7 Cardio",
-                            eg ? " · " + eg.icone + " " + eg.nome : "",
-                            s.momento === "pos_treino" ? " · pós-treino" : ""),
-                        React.createElement("div", { style: { fontSize: 12, color: "#64748b", marginTop: 2 } }, [s.cardio && s.cardio.texto, s.cardio && s.cardio.semana ? "semana " + s.cardio.semana : null, parcial ? (s.cardioMin + " min feitos · parcial") : "completo", s.cardioKcal ? "cerca de " + s.cardioKcal + " kcal" : null].filter(Boolean).join(" · "))));
+                        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 } },
+                            React.createElement("div", { style: { fontWeight: 800, fontSize: 13.5 } },
+                                "\u2764\uFE0F ",
+                                fmtData(s.date),
+                                " \u00B7 Cardio",
+                                eg ? " · " + eg.icone + " " + eg.nome : "",
+                                s.momento === "pos_treino" ? " · pós-treino" : ""),
+                            confirmar !== s.__id && React.createElement(BotaoExcluir, { it: it })),
+                        React.createElement("div", { style: { fontSize: 12, color: "#64748b", marginTop: 2 } }, [s.cardio && s.cardio.texto, s.cardio && s.cardio.semana ? "semana " + s.cardio.semana : null, parcial ? (s.cardioMin + " min feitos · parcial") : "completo", s.cardioKcal ? "cerca de " + s.cardioKcal + " kcal" : null].filter(Boolean).join(" · ")),
+                        confirmar === s.__id && React.createElement(BotaoExcluir, { it: it })));
                 }
                 const ck = ckDe(s);
                 const linhas = s.exercicios && s.exercicios.length ? s.exercicios : Object.values(s.cargas || {}).map((c) => ({ exId: c.exId, nome: c.nome, carga: c.carga, feito: true }));
                 const det = [ck && ck.duracao ? ck.duracao + " min" : null, ck && ck.esforco ? ESF[ck.esforco] : null, s.totalEx ? (s.completedEx + " de " + s.totalEx + " exercícios") : null, ck && ck.dor && ck.dor !== "nenhuma" ? "dor: " + ck.dor : null].filter(Boolean).join(" · ");
                 return (React.createElement(Caixa, { key: i, style: { border: "1.5px solid #fed7aa", padding: "11px 13px" } },
-                    React.createElement("div", { style: { fontWeight: 800, fontSize: 13.5 } },
-                        "\uD83D\uDCAA ",
-                        fmtData(s.date),
-                        " \u00B7 ",
-                        nomeT(s, s.treinoKey)),
+                    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 } },
+                        React.createElement("div", { style: { fontWeight: 800, fontSize: 13.5 } },
+                            "\uD83D\uDCAA ",
+                            fmtData(s.date),
+                            " \u00B7 ",
+                            nomeT(s, s.treinoKey)),
+                        confirmar !== s.__id && React.createElement(BotaoExcluir, { it: it, ck: ck })),
                     det && React.createElement("div", { style: { fontSize: 12, color: "#64748b", marginTop: 2 } }, det),
+                    confirmar === s.__id && React.createElement(BotaoExcluir, { it: it, ck: ck }),
                     linhas.length > 0 && (React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", marginTop: 7 } },
                         React.createElement("thead", null,
                             React.createElement("tr", null,
