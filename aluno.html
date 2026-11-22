@@ -1107,9 +1107,21 @@ const TelaCardio = ({cfg, ch, sessoesCardio, salvando, onVoltar, onGuiado, onMan
 // ─── HISTÓRICO DO ALUNO (musculação e cardio) ──────────────────────────────
 const histDataFmt = (iso, hj) => { if(!iso) return ""; const d=iso.slice(8,10)+"/"+iso.slice(5,7); if(iso===hj) return "Hoje · "+d; const o=new Date(hj+"T12:00:00"); o.setDate(o.getDate()-1); const ontem=o.getFullYear()+"-"+String(o.getMonth()+1).padStart(2,"0")+"-"+String(o.getDate()).padStart(2,"0"); return iso===ontem?("Ontem · "+d):d; };
 const ESFORCO_ROT = {1:"Leve",2:"Leve a moderado",3:"Moderado",4:"Moderado a intenso",5:"Intenso"};
-const HistItemMusc = ({s, ck, nome}) => {
+const HistItemMusc = ({s, ck, nome, prog, nomeEx}) => {
   const [aberto,setAberto] = useState(false);
-  const linhas = s.exercicios && s.exercicios.length ? s.exercicios : Object.values(s.cargas||{}).map(c=>({nome:c.nome,carga:c.carga,feito:true}));
+  // Treinos antigos (antes de o app salvar a lista): séries e repetições vêm da prescrição daquele bloco e treino
+  const linhas = (()=>{
+    if(s.exercicios && s.exercicios.length) return s.exercicios;
+    const pr = prog && prog.id===s.programId && prog.prescricao && prog.prescricao[s.blocoKey] && prog.prescricao[s.blocoKey][s.treinoKey];
+    if(!pr) return Object.values(s.cargas||{}).map(c=>({nome:c.nome,carga:c.carga}));
+    const out=[];
+    ["inicial","principal","final"].forEach(mk=>(pr[mk]||[]).forEach((it,idx)=>{
+      if(!it || it.isCognitivo || it.exId==="cognitivo") return;
+      const c=(s.cargas||{})[mk+"-"+idx];
+      out.push({nome:nomeEx(it.exId)||(c&&c.nome)||"Exercício",series:it.series||"",reps:it.reps||"",carga:c?c.carga:""});
+    }));
+    return out;
+  })();
   const det = [ck&&ck.duracao?ck.duracao+" min":null, ck&&ck.esforco?ESFORCO_ROT[ck.esforco]:null, ck&&ck.musculacaoKcal?("cerca de "+ck.musculacaoKcal+" kcal"):null, (!ck&&s.totalEx)?(s.completedEx+" de "+s.totalEx+" exercícios"):null].filter(Boolean).join(" · ");
   const th = {padding:"6px 4px",textAlign:"left",color:"#94a3b8",fontSize:10.5,textTransform:"uppercase",fontWeight:800};
   const td = {padding:"6px 4px",textAlign:"left",borderTop:"1px solid #f1f5f9",fontSize:12,color:"#0f172a"};
@@ -1146,7 +1158,7 @@ const HistItemCardio = ({c}) => {
     </div>
   );
 };
-const TelaHistorico = ({studentId, sessoes, cardios, nomeT, onVoltar, getHeaders}) => {
+const TelaHistorico = ({studentId, sessoes, cardios, nomeT, onVoltar, getHeaders, prog, nomeEx}) => {
   const [filtro,setFiltro] = useState("tudo");
   const [checks,setChecks] = useState(null);
   useEffect(()=>{
@@ -1182,7 +1194,7 @@ const TelaHistorico = ({studentId, sessoes, cardios, nomeT, onVoltar, getHeaders
         <div key={d.date}>
           <div style={{fontSize:12,fontWeight:800,color:"#64748b",margin:"6px 2px 6px",textTransform:"uppercase"}}>{histDataFmt(d.date,hj)}</div>
           {d.itens.map((it,i)=> it.tipo==="m"
-            ? <HistItemMusc key={"m"+i} s={it.s} ck={ckDe(it.s)} nome={nomeT(it.s.treinoKey)}/>
+            ? <HistItemMusc key={"m"+i} s={it.s} ck={ckDe(it.s)} nome={nomeT(it.s.treinoKey)} prog={prog} nomeEx={nomeEx}/>
             : <HistItemCardio key={"c"+i} c={it.c}/>)}
         </div>
       ))}
@@ -2686,7 +2698,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
           onVoltar={()=>setTela(null)} onHistorico={()=>setTela("historico")} nomeT={t=>nomeTreinoDe(prog,t)}
           onGuiado={()=>{ const ch=cardioHoje.find(c=>!c.feito); if(ch){ lvAudio(); setGuiado({info:ch.info,separado:true,tKey:ch.t}); } }}
           onManual={(fr)=>{ const ch=cardioHoje.find(c=>!c.feito); if(ch) concluirCardio(ch.info,fr,ch.t); }}/>}
-        {tela==="historico" && <TelaHistorico studentId={studentId} sessoes={lastSessions} cardios={cardioSessoes} nomeT={t=>nomeTreinoDe(prog,t)} getHeaders={authedHeaders} onVoltar={()=>setTela(null)}/>}
+        {tela==="historico" && <TelaHistorico studentId={studentId} sessoes={lastSessions} cardios={cardioSessoes} nomeT={t=>nomeTreinoDe(prog,t)} getHeaders={authedHeaders} prog={prog} nomeEx={(id)=>{ const pers=prog&&prog.nomesExercicios&&(prog.nomesExercicios[id]||"").trim(); if(pers) return pers; const ex=bibCustom.find(e=>e.id===id)||EXERCISES.find(e=>e.id===id); return ex?ex.nome:""; }} onVoltar={()=>setTela(null)}/>}
       </div>
       )}
       {tab==="treino" && prog && !showPreCheckinGate && !tela && (

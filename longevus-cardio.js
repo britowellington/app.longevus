@@ -254,8 +254,24 @@
                         fetch(SUPA_URL + "/rest/v1/checkins?select=id,data&student_id=eq." + encodeURIComponent(st.id) + "&type=eq.pos_treino&limit=500", { headers: h })
                     ]);
                     const checks = rc.ok ? (await rc.json()).filter((x) => x && x.data).map((x) => ({ ...x.data, __id: x.id })) : [];
+                    // Nomes dos exercícios para treinos antigos (antes de o app salvar a lista completa)
+                    const ids = new Set();
+                    d.sess.forEach((s) => { if (s.exercicios && s.exercicios.length)
+                        return; const p = d.progs.find((x) => x.id === s.programId); const pr = p && p.prescricao && p.prescricao[s.blocoKey] && p.prescricao[s.blocoKey][s.treinoKey]; if (!pr)
+                        return; ["inicial", "principal", "final"].forEach((mk) => (pr[mk] || []).forEach((it) => { if (it && it.exId && !it.isCognitivo && it.exId !== "cognitivo")
+                        ids.add(it.exId); })); });
+                    let nomesEx = {};
+                    if (ids.size) {
+                        try {
+                            const lista = [...ids].map((x) => '"' + String(x).replace(/"/g, "") + '"').join(",");
+                            const re = await fetch(SUPA_URL + "/rest/v1/exercises?select=id,nome&id=in.(" + encodeURIComponent(lista) + ")", { headers: h });
+                            if (re.ok)
+                                (await re.json()).forEach((e) => { nomesEx[e.id] = e.nome; });
+                        }
+                        catch (e2) { }
+                    }
                     if (vivo)
-                        setDados({ ...d, checks });
+                        setDados({ ...d, checks, nomesEx });
                 }
                 catch (e) {
                     if (vivo)
@@ -281,6 +297,24 @@
             if (l)
                 return l.carga;
         } return null; };
+        // Treinos antigos: séries e repetições vêm da prescrição do programa naquele bloco e treino
+        const linhasDe = (s) => {
+            if (s.exercicios && s.exercicios.length)
+                return s.exercicios;
+            const p = progNome[s.programId];
+            const pr = p && p.prescricao && p.prescricao[s.blocoKey] && p.prescricao[s.blocoKey][s.treinoKey];
+            if (!pr)
+                return Object.values(s.cargas || {}).map((c) => ({ exId: c.exId, nome: c.nome, carga: c.carga }));
+            const out = [];
+            ["inicial", "principal", "final"].forEach((mk) => (pr[mk] || []).forEach((it, idx) => {
+                if (!it || it.isCognitivo || it.exId === "cognitivo")
+                    return;
+                const c = (s.cargas || {})[mk + "-" + idx];
+                const nomePers = p.nomesExercicios && (p.nomesExercicios[it.exId] || "").trim();
+                out.push({ exId: it.exId, nome: nomePers || (c && c.nome) || (dados.nomesEx || {})[it.exId] || "Exercício", series: it.series || "", reps: it.reps || "", carga: c ? c.carga : "" });
+            }));
+            return out;
+        };
         const ckDe = (s) => dados.checks.find((k) => k.date === s.date && k.treinoKey === s.treinoKey) || dados.checks.find((k) => k.date === s.date && k.source === "professor_presencial");
         const itens = [
             ...(filtro !== "cardio" ? musc.map((s) => ({ t: "m", s })) : []),
@@ -317,7 +351,7 @@
                         confirmar === s.__id && React.createElement(BotaoExcluir, { it: it })));
                 }
                 const ck = ckDe(s);
-                const linhas = s.exercicios && s.exercicios.length ? s.exercicios : Object.values(s.cargas || {}).map((c) => ({ exId: c.exId, nome: c.nome, carga: c.carga, feito: true }));
+                const linhas = linhasDe(s);
                 const det = [ck && ck.duracao ? ck.duracao + " min" : null, ck && ck.esforco ? ESF[ck.esforco] : null, s.totalEx ? (s.completedEx + " de " + s.totalEx + " exercícios") : null, ck && ck.dor && ck.dor !== "nenhuma" ? "dor: " + ck.dor : null].filter(Boolean).join(" · ");
                 return (React.createElement(Caixa, { key: i, style: { border: "1.5px solid #fed7aa", padding: "11px 13px" } },
                     React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 } },
