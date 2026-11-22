@@ -847,6 +847,174 @@ const GastoLinha=({rotulo,min,kcal,peso,forte})=>(
   </div>
 );
 
+// ─── CRONÔMETRO DO TREINO, DESCANSO, ISOMETRIA E CARDIO GUIADO ──────────────
+// O tempo é calculado por horário (Date.now), então não se perde se a tela apagar ou o app recarregar.
+const CronoCtx = React.createContext(null);
+const cronoSegDe = (txt) => {
+  if(!txt || txt==="—") return 0;
+  const t = String(txt).toLowerCase().replace(",",".");
+  const m = t.match(/(\d+(?:\.\d+)?)/); if(!m) return 0;
+  const v = parseFloat(m[1]);
+  return /min/.test(t) ? Math.round(v*60) : Math.round(v);
+};
+const cronoHoldDe = (reps) => /^\s*\d+\s*(s|seg|segundos)\s*$/i.test(String(reps||"")) ? parseInt(reps) : 0;
+const cronoFmt = (seg) => { seg = Math.max(0, Math.round(seg)); const h=Math.floor(seg/3600), m=Math.floor((seg%3600)/60), s=seg%60; return (h?h+":"+String(m).padStart(2,"0"):m)+":"+String(s).padStart(2,"0"); };
+const cronoElapsed = (c) => !c ? 0 : (c.acc||0) + (c.ini && !c.pausa ? Date.now()-c.ini : 0);
+const lvAudio = () => { try{ const AC = window.AudioContext||window.webkitAudioContext; if(!AC) return null; if(!window.__lvAC) window.__lvAC = new AC(); if(window.__lvAC.state==="suspended") window.__lvAC.resume(); return window.__lvAC; }catch(e){ return null; } };
+const lvBipe = (vezes) => {
+  const ac = lvAudio();
+  const n = vezes||1;
+  if(ac){ try{ for(let i=0;i<n;i++){ const o=ac.createOscillator(), g=ac.createGain(); o.type="sine"; o.frequency.value=i===n-1?1046:880; o.connect(g); g.connect(ac.destination); const t0=ac.currentTime+i*0.28; g.gain.setValueAtTime(0.0001,t0); g.gain.exponentialRampToValueAtTime(0.35,t0+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t0+0.22); o.start(t0); o.stop(t0+0.24); } }catch(e){} }
+  try{ if(navigator.vibrate) navigator.vibrate(n>1?[220,100,220,100,320]:[250]); }catch(e){}
+};
+const useTick = (ativo, ms) => { const [,setT]=useState(0); useEffect(()=>{ if(!ativo) return; const id=setInterval(()=>setT(t=>t+1), ms||500); return ()=>clearInterval(id); },[ativo]); };
+
+// Relógio do treino (topo da tela)
+const CronoTreinoBarra = ({crono, onIniciar, onPausar, onRetomar, bloqueado}) => {
+  useTick(!!(crono && !crono.pausa), 1000);
+  if(bloqueado) return null;
+  if(!crono) return (
+    <button type="button" onClick={onIniciar} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:9,background:"#0f172a",color:"#fff",border:"none",borderRadius:14,padding:"14px 16px",fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit",marginBottom:12,boxShadow:"0 4px 14px rgba(15,23,42,0.18)"}}>
+      <span style={{fontSize:16}}>▶</span> Iniciar treino
+      <span style={{fontSize:11,fontWeight:600,color:"#94a3b8",marginLeft:4}}>ou marque o 1º exercício</span>
+    </button>
+  );
+  const seg = cronoElapsed(crono)/1000;
+  return (
+    <div style={{position:"sticky",top:8,zIndex:20,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,background:"#0f172a",color:"#fff",borderRadius:14,padding:"10px 12px 10px 16px",marginBottom:12,boxShadow:"0 4px 14px rgba(15,23,42,0.18)"}}>
+      <div style={{display:"flex",alignItems:"center",gap:9}}>
+        <span style={{width:9,height:9,borderRadius:99,background:crono.pausa?"#f59e0b":"#22c55e"}}/>
+        <div>
+          <div style={{fontSize:22,fontWeight:800,fontVariantNumeric:"tabular-nums",lineHeight:1}}>{cronoFmt(seg)}</div>
+          <div style={{fontSize:10.5,color:"#94a3b8",fontWeight:700,marginTop:2}}>{crono.pausa?"Treino pausado":"Tempo de treino"}</div>
+        </div>
+      </div>
+      <button type="button" onClick={crono.pausa?onRetomar:onPausar} style={{background:crono.pausa?"#22c55e":"#1e293b",color:"#fff",border:"none",borderRadius:10,padding:"9px 14px",fontSize:13,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{crono.pausa?"▶ Retomar":"⏸ Pausar"}</button>
+    </div>
+  );
+};
+
+// Botões no card do exercício
+const CronoBotoesEx = ({item, nome}) => {
+  const c = React.useContext(CronoCtx);
+  if(!c) return null;
+  const desc = cronoSegDe(item.descanso), hold = cronoHoldDe(item.reps);
+  if(!desc && !hold) return null;
+  const st = {border:"1.5px solid #e2e8f0",background:"#fff",color:"#0f172a",borderRadius:9,padding:"7px 11px",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit",display:"inline-flex",alignItems:"center",gap:5};
+  return (
+    <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:9}}>
+      {hold>0 && <button type="button" onClick={()=>c.abrir({modo:"segurar",total:hold,rotulo:nome})} style={{...st,borderColor:"#FF5603",color:"#c2410c"}}>▶ Segurar {hold} s</button>}
+      {desc>0 && <button type="button" onClick={()=>c.abrir({modo:"descanso",total:desc,rotulo:nome})} style={st}>⏱ Descanso {cronoFmt(desc)}</button>}
+    </div>
+  );
+};
+
+// Contagem regressiva (descanso ou isometria)
+const CronoContagem = ({cfg, onClose}) => {
+  const [fim,setFim] = useState(()=>Date.now()+cfg.total*1000);
+  const [acabou,setAcabou] = useState(false);
+  useTick(!acabou, 200);
+  const rest = Math.max(0,(fim-Date.now())/1000);
+  useEffect(()=>{ if(!acabou && rest<=0){ setAcabou(true); lvBipe(3); const id=setTimeout(onClose,1800); return ()=>clearTimeout(id); } });
+  const tot = Math.max(cfg.total, Math.ceil((fim-Date.now())/1000));
+  const frac = cfg.total>0 ? Math.min(1, rest/Math.max(cfg.total,1)) : 0;
+  const R=88, C=2*Math.PI*R;
+  const ehDesc = cfg.modo==="descanso";
+  const cor = ehDesc ? "#FF5603" : "#0284c7";
+  const bt = {flex:1,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontWeight:800,borderRadius:12,padding:"12px 6px",fontSize:13.5,cursor:"pointer",fontFamily:"inherit"};
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:1200,background:"rgba(15,23,42,0.45)",display:"flex",alignItems:"flex-end"}} onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:520,margin:"0 auto",background:"#fff",borderRadius:"22px 22px 0 0",padding:"18px 20px 26px",textAlign:"center",boxShadow:"0 -10px 30px rgba(15,23,42,.15)"}}>
+        <div style={{width:40,height:4,borderRadius:99,background:"#e2e8f0",margin:"0 auto 12px"}}/>
+        <div style={{fontSize:12,fontWeight:800,color:"#64748b",textTransform:"uppercase",letterSpacing:0.4}}>{ehDesc?"Descanso":"Segure a posição"} · {cfg.rotulo}</div>
+        <div style={{position:"relative",width:200,height:200,margin:"12px auto"}}>
+          <svg width="200" height="200" viewBox="0 0 200 200"><circle cx="100" cy="100" r={R} fill="none" stroke="#f1f5f9" strokeWidth="12"/><circle cx="100" cy="100" r={R} fill="none" stroke={acabou?"#16a34a":cor} strokeWidth="12" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C*(1-frac)} transform="rotate(-90 100 100)"/></svg>
+          <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+            {acabou ? <div style={{fontSize:30,fontWeight:800,color:"#16a34a"}}>{ehDesc?"Bora!":"Pronto!"}</div> : <div style={{fontSize:52,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>{cronoFmt(Math.ceil(rest))}</div>}
+            <div style={{fontSize:12,color:"#94a3b8",fontWeight:700}}>{acabou?(ehDesc?"Próxima série":"Série concluída"):("de "+cronoFmt(tot))}</div>
+          </div>
+        </div>
+        {ehDesc ? (
+          <div style={{display:"flex",gap:8}}>
+            <button type="button" style={bt} onClick={()=>setFim(f=>f+15000)}>+15 s</button>
+            <button type="button" style={bt} onClick={()=>setFim(f=>Math.max(Date.now(),f-15000))}>−15 s</button>
+            <button type="button" style={{...bt,flex:1.3,background:"#FF5603",borderColor:"#FF5603",color:"#fff"}} onClick={onClose}>Pular descanso</button>
+          </div>
+        ) : (
+          <button type="button" style={{...bt,width:"100%",background:"#0f172a",borderColor:"#0f172a",color:"#fff"}} onClick={onClose}>Parar</button>
+        )}
+        <div style={{fontSize:11,color:"#94a3b8",marginTop:12}}>O celular vibra e apita quando acabar.</div>
+      </div>
+    </div>
+  );
+};
+
+// Cardio guiado (tela cheia, fase a fase)
+const cardioFases = (info) => {
+  if(!info) return [];
+  const f = [{z:"Z1",rot:"Aquecimento",seg:info.aqMin*60}];
+  if(info.tipo==="intervalado"){
+    for(let i=1;i<=info.series;i++){ f.push({z:info.zona,rot:"Forte · estímulo "+i+" de "+info.series,seg:info.on}); if(i<info.series) f.push({z:"Z1",rot:"Leve · recuperação",seg:info.off}); }
+  } else f.push({z:"Z2",rot:"Ritmo base",seg:Math.max(60,(info.total-info.aqMin-info.vcMin)*60)});
+  f.push({z:"Z1",rot:"Volta à calma",seg:info.vcMin*60});
+  return f;
+};
+const CARDIO_COR_ESCURO = {Z1:"#38bdf8",Z2:"#22c55e",Z3:"#f59e0b",Z4:"#ef4444"};
+const CardioGuiado = ({cfg, info, onFim, onSair}) => {
+  const fases = cardioFases(info);
+  const total = fases.reduce((a,b)=>a+b.seg,0);
+  const [st,setSt] = useState(()=>({ini:Date.now(),acc:0,pausa:false}));
+  const [fim,setFim] = useState(false);
+  const ultFase = React.useRef(0);
+  useTick(!fim && !st.pausa, 250);
+  const el = Math.min(total, (st.acc + (st.pausa?0:Date.now()-st.ini))/1000);
+  let idx=0, ini=0; while(idx<fases.length-1 && el>=ini+fases[idx].seg){ ini+=fases[idx].seg; idx++; }
+  const fase = fases[idx], restFase = Math.max(0, ini+fase.seg-el), prox = fases[idx+1];
+  useEffect(()=>{ if(fim) return; if(el>=total){ setFim(true); lvBipe(3); return; } if(idx!==ultFase.current){ ultFase.current=idx; lvBipe(fases[idx].z==="Z1"?1:2); } });
+  const pausar = () => setSt(s=>s.pausa?{ini:Date.now(),acc:s.acc,pausa:false}:{ini:null,acc:s.acc+Date.now()-s.ini,pausa:true});
+  const pular = () => setSt(s=>{ const alvo=(ini+fase.seg)*1000; return s.pausa?{...s,acc:alvo}:{ini:Date.now(),acc:alvo,pausa:false}; });
+  const fc = cardioFC(cfg, fase.z), z = CARDIO_ZONAS[fase.z], eg = CARDIO_ERGOS[info.ergo];
+  const cor = CARDIO_COR_ESCURO[fase.z];
+  const caixa = {background:"#1e293b",borderRadius:12,padding:"10px 14px",minWidth:84};
+  const minFeitos = Math.round(el/60);
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:1300,background:"#0f172a",color:"#fff",display:"flex",flexDirection:"column",fontFamily:"inherit"}}>
+      <div style={{padding:"16px 16px 0",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
+        <div><div style={{fontWeight:800,fontSize:16}}>{info.separado?"Cardio":"Cardio final"} · {eg.icone} {eg.nome}</div><div style={{fontSize:12,color:"#94a3b8",marginTop:2}}>Semana {info.semana} · {info.texto}</div></div>
+        {!fim && <button type="button" onClick={()=>onSair(el/total, minFeitos)} style={{background:"transparent",border:"1.5px solid #334155",color:"#cbd5e1",borderRadius:9,padding:"6px 10px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Encerrar</button>}
+      </div>
+      <div style={{display:"flex",gap:3,margin:"14px 16px 0"}}>
+        {fases.map((f,i)=>(<div key={i} style={{flex:Math.max(1,f.seg/30),height:6,borderRadius:99,background:i<idx||fim?CARDIO_COR_ESCURO[f.z]:(i===idx?CARDIO_COR_ESCURO[f.z]:"#334155"),opacity:i<idx||fim?0.55:1,boxShadow:i===idx&&!fim?"0 0 0 2px #fff":"none"}}/>))}
+      </div>
+      {fim ? (
+        <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:24}}>
+          <div style={{fontSize:56}}>🎉</div>
+          <div style={{fontSize:24,fontWeight:800,marginTop:8}}>Cardio concluído!</div>
+          <div style={{fontSize:14,color:"#94a3b8",marginTop:6}}>{Math.round(total/60)} min no {eg.nome.toLowerCase()}</div>
+          <button type="button" onClick={()=>onFim(1, Math.round(total/60))} style={{marginTop:26,background:"#FF5603",color:"#fff",border:"none",borderRadius:14,padding:"15px 28px",fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>Salvar e voltar</button>
+        </div>
+      ) : (<>
+        <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"0 16px"}}>
+          <div style={{display:"inline-block",background:cor,color:"#0f172a",fontWeight:800,fontSize:13,borderRadius:99,padding:"6px 14px",textTransform:"uppercase"}}>{fase.rot}</div>
+          <div style={{fontSize:96,fontWeight:800,marginTop:10,fontVariantNumeric:"tabular-nums",letterSpacing:-2,lineHeight:1.1}}>{cronoFmt(Math.ceil(restFase))}</div>
+          <div style={{fontSize:15,color:"#cbd5e1",marginTop:4,maxWidth:320}}>{eg.dica[fase.z]}</div>
+          <div style={{display:"flex",gap:8,justifyContent:"center",marginTop:20,flexWrap:"wrap"}}>
+            <div style={caixa}><div style={{fontSize:11,color:"#94a3b8",fontWeight:700}}>{fc?"FC ALVO":"ESFORÇO"}</div><div style={{fontSize:18,fontWeight:800}}>{fc?(fc[0]+" a "+fc[1]):z.fala}</div></div>
+            <div style={caixa}><div style={{fontSize:11,color:"#94a3b8",fontWeight:700}}>PSE</div><div style={{fontSize:18,fontWeight:800}}>{z.pse}</div></div>
+            <div style={caixa}><div style={{fontSize:11,color:"#94a3b8",fontWeight:700}}>FALTAM</div><div style={{fontSize:18,fontWeight:800}}>{cronoFmt(total-el)}</div></div>
+          </div>
+          {prox && <div style={{fontSize:14,color:"#94a3b8",marginTop:22}}>A seguir: <b style={{color:CARDIO_COR_ESCURO[prox.z]}}>{prox.rot.split(" · ")[0]} · {cronoFmt(prox.seg)}</b></div>}
+          {cfg.quedas && info.ergo==="esteira" && <div style={{fontSize:12,color:"#fbbf24",marginTop:12}}>Segure no apoio da esteira sempre que precisar.</div>}
+        </div>
+        <div style={{display:"flex",gap:10,padding:"0 16px 28px"}}>
+          <button type="button" onClick={pausar} style={{flex:1,background:st.pausa?"#22c55e":"transparent",border:"1.5px solid "+(st.pausa?"#22c55e":"#334155"),color:"#fff",borderRadius:14,padding:15,fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"inherit"}}>{st.pausa?"▶ Retomar":"⏸ Pausar"}</button>
+          <button type="button" onClick={pular} style={{flex:1,background:"transparent",border:"1.5px solid #334155",color:"#fff",borderRadius:14,padding:15,fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"inherit"}}>⏭ Pular fase</button>
+        </div>
+      </>)}
+    </div>
+  );
+};
+
 const METODOS_ALUNO = {
   B7:   { tipo:"grupo", faixa:"B7 · sem descanso entre os 2", icone:"🔗", cor:"#1d4ed8", bg:"#eff6ff", border:"#bfdbfe" },
   TRI7: { tipo:"grupo", faixa:"Tri7 · sem descanso entre os 3", icone:"🔗", cor:"#1d4ed8", bg:"#eff6ff", border:"#bfdbfe" },
@@ -902,6 +1070,7 @@ const ExercicioItem = ({item, bibCustom, checked, onToggle, carga, onCargaChange
             <span>Descanso: <b style={{color:"#475569"}}>{item.descanso}</b></span>
           </div>
           {!isCog && <div style={{marginTop:8}}><CargaInput value={carga||""} onChange={onCargaChange} lastCarga={lastCarga}/></div>}
+          {!isCog && <CronoBotoesEx item={item} nome={nome}/>}
           {caixaMetodo}
           {item.obs && <div style={{marginTop:10,fontSize:12,color:"#64748b",fontStyle:"italic",padding:"8px 10px",background:"#f8fafc",borderRadius:8,display:"flex",alignItems:"flex-start",gap:6}}><Icon name="note" size={13} style={{marginTop:1,flexShrink:0}}/><span>{item.obs}</span></div>}
           {hasDetail && (
@@ -945,6 +1114,7 @@ const ExercicioItem = ({item, bibCustom, checked, onToggle, carga, onCargaChange
         )}
       </div>
       {!isCog && <div style={{marginTop:8,marginLeft:48}}><CargaInput compact value={carga||""} onChange={onCargaChange} lastCarga={lastCarga}/></div>}
+      {!isCog && !g && <div style={{marginLeft:48}}><CronoBotoesEx item={item} nome={nome}/></div>}
       {caixaMetodo}
       {item.obs && <div style={{marginTop:8,fontSize:11,color:"#64748b",fontStyle:"italic",padding:"6px 8px",background:"#f8fafc",borderRadius:6,display:"flex",alignItems:"flex-start",gap:6}}><Icon name="note" size={12} style={{marginTop:1,flexShrink:0}}/><span>{item.obs}</span></div>}
       {hasDetail && (
@@ -978,6 +1148,7 @@ const BlocoGrupo = ({membros, met, bibCustom, done, onToggle, cargas, onCarga, g
       ))}
       <div style={{padding:"9px 14px",background:"#f8fafc",borderTop:"1px solid #f1f5f9",fontSize:12,color:"#475569",lineHeight:1.5}}>
         Faça {lista} em sequência, sem pausa.{temDesc ? (" Só descanse "+descUlt+" depois do "+letras[n-1]+".") : ""}
+        {temDesc && <CronoBotoesEx item={{descanso:descUlt,reps:""}} nome={"Bloco "+lista}/>}
       </div>
     </div>
   );
@@ -1652,6 +1823,11 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
   const [cardioSessoes,setCardioSessoes]=useState([]); // cardios em outro horário (source cardio_separado), fora do progresso da musculação
   const [salvandoCardio,setSalvandoCardio]=useState(false);
   const [pesoAluno,setPesoAluno]=useState(null);
+  const [cronoMap,setCronoMap]=useState(()=>{ try{ const m=JSON.parse(localStorage.getItem("lv_crono_treino")||"{}"); const hj=hojeLocal(); Object.keys(m).forEach(k=>{ if(!k.endsWith("|"+hj)) delete m[k]; }); return m; }catch(e){ return {}; } });
+  useEffect(()=>{ try{ localStorage.setItem("lv_crono_treino", JSON.stringify(cronoMap)); }catch(e){} },[cronoMap]);
+  const [contagem,setContagem]=useState(null);
+  const [guiado,setGuiado]=useState(null);
+  const [cardioGuiadoFim,setCardioGuiadoFim]=useState(null);
   const [gastoTreino,setGastoTreino]=useState(null);
   const [cardioResultado,setCardioResultado]=useState(null);
   useEffect(()=>{
@@ -1915,7 +2091,16 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
   const doneCount = allKeys.filter(k=>done.has(k)).length;
   const allDone = totalCount>0 && doneCount===totalCount;
 
+  const cronoKey = studentId+"|"+(prog?prog.id:"")+"|"+treinoAtivo+"|"+hojeLocal();
+  const crono = cronoMap[cronoKey]||null;
+  const setCrono = (fn) => setCronoMap(m=>{ const n={...m}; const v=fn(m[cronoKey]||null); if(v) n[cronoKey]=v; else delete n[cronoKey]; return n; });
+  const cronoIniciar = () => { lvAudio(); setCrono(c=>c||{ini:Date.now(),acc:0,pausa:false}); };
+  const cronoPausar = () => setCrono(c=>c&&!c.pausa?{ini:null,acc:(c.acc||0)+Date.now()-c.ini,pausa:true}:c);
+  const cronoRetomar = () => setCrono(c=>c&&c.pausa?{ini:Date.now(),acc:c.acc||0,pausa:false}:c);
+  const cronoCtxVal = { abrir:(cfg)=>{ lvAudio(); setContagem(cfg); } };
+
   const toggle = (key) => {
+    if(!done.has(key) && !crono && !savedToday) cronoIniciar();
     setDone(prev=>{
       const n = new Set(prev);
       if(n.has(key)) n.delete(key); else n.add(key);
@@ -1989,7 +2174,11 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
         setSavedToday(true);
         setLastSessions(prev=>[data, ...prev]);
         if(true){ // registro pós-treino sempre abre: duração e esforço calculam o déficit do treino
-          setCheckin({esforco:null,completude:null,dor:"nenhuma",obs:"",duracao:null,cardioFeito:null});
+          const msTot = cronoElapsed(crono);
+          const minMed = crono ? Math.max(1, Math.round((msTot - (cardioGuiadoFim?cardioGuiadoFim.ms:0))/60000)) : null;
+          const cfPre = cardioGuiadoFim ? (cardioGuiadoFim.fracao>=0.95?"completo":(cardioGuiadoFim.fracao>=0.4?"metade":"nao")) : null;
+          if(crono) cronoPausar();
+          setCheckin({esforco:null,completude:null,dor:"nenhuma",obs:"",duracao:minMed,duracaoMedida:!!minMed,cardioFeito:cfPre,cardioFracao:cardioGuiadoFim?cardioGuiadoFim.fracao:null});
           setCheckinError("");
           setShowCheckin(true);
         } else {
@@ -2015,7 +2204,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
       const headers = await authedHeaders();
       const today = hojeLocal();
       const cInfo = temCardioFim ? cardioSemana(prog.cardio, treinoAtivo, semanaCardioFim) : null;
-      const fracao = checkin.cardioFeito==="completo" ? 1 : (checkin.cardioFeito==="metade" ? 0.5 : 0);
+      const fracao = (checkin.cardioFracao!=null && checkin.cardioFeito!=="nao") ? checkin.cardioFracao : (checkin.cardioFeito==="completo" ? 1 : (checkin.cardioFeito==="metade" ? 0.5 : 0));
       const gC = cInfo && fracao>0 ? cardioGasto(cInfo, pesoAluno, fracao) : {min:0,kcal:0};
       const minMusc = parseFloat(checkin.duracao)||0;
       const kMusc = kcalNet(ESFORCO_MET[checkin.esforco]||4, pesoAluno, minMusc);
@@ -2029,6 +2218,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
       const body = { id: uid2(), owner_id: ownerId, student_id: studentId, type: "pos_treino", data };
       const r = await fetch(SUPA_URL+"/rest/v1/checkins", { method:"POST", headers, body: JSON.stringify(body) });
       if(r.ok){
+        setCrono(()=>null); setCardioGuiadoFim(null);
         setGastoTreino({ musc:{min:minMusc,kcal:kMusc}, cardio: (cInfo&&fracao>0)?{...gC, ergo:cInfo.ergo, fracao}:null, cardioNao: !!(temCardioFim&&fracao===0) });
         setShowCheckin(false);
         setShowCelebration(true);
@@ -2380,6 +2570,8 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
           </div>
         )}
 
+        {totalCount>0 && <CronoTreinoBarra crono={crono} bloqueado={savedToday} onIniciar={cronoIniciar} onPausar={cronoPausar} onRetomar={cronoRetomar}/>}
+        <CronoCtx.Provider value={cronoCtxVal}>
         {MOMENTOS.map(([key,label,color])=>{
           const items = sessao[key] || [];
           if(items.length===0) return null;
@@ -2413,11 +2605,16 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
             </div>
           );
         })}
+        </CronoCtx.Provider>
 
         {prog && prog.cardio && !cardioSeparado(prog.cardio,treinoAtivo) && (()=>{
           const hojeC = hojeLocal();
           const feitas = lastSessions.filter(x=>x && x.programId===prog.id && x.treinoKey===treinoAtivo && x.source!=="atividade_extra" && x.date!==hojeC).length;
-          return <CardioCard cfg={prog.cardio} treinoKey={treinoAtivo} semana={feitas+1}/>;
+          const infoF = cardioSemana(prog.cardio,treinoAtivo,feitas+1);
+          const rodF = savedToday ? null : (cardioGuiadoFim
+            ? <div style={{marginTop:10,background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"9px 12px",fontSize:12.5,fontWeight:700,color:"#15803d",textAlign:"center"}}>Cardio feito · {cardioGuiadoFim.min} min{cardioGuiadoFim.fracao<0.95?" (parcial)":""}. Agora é só concluir o treino.</div>
+            : <button type="button" onClick={()=>{ lvAudio(); setGuiado({info:infoF,separado:false}); }} style={{marginTop:10,width:"100%",height:44,borderRadius:12,border:"none",background:"#0f172a",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"inherit"}}>▶ Iniciar cardio guiado</button>);
+          return <CardioCard cfg={prog.cardio} treinoKey={treinoAtivo} semana={feitas+1} rodape={rodF}/>;
         })()}
 
         {totalCount>0 && (
@@ -2434,7 +2631,8 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
               const rodape = feitoHoje
                 ? <div style={{marginTop:10,background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"9px 12px",fontSize:12.5,fontWeight:700,color:"#15803d",textAlign:"center"}}>Cardio concluído hoje{feitoReg&&feitoReg.cardioMin?(" · "+feitoReg.cardioMin+" min"):""}{kHoje?(" · déficit de cerca de "+kHoje+" kcal"):""}. Muito bem!</div>
                 : <div style={{marginTop:10}}>
-                    <div style={{fontSize:12,fontWeight:700,color:"#475569",marginBottom:6}}>{salvandoCardio?"Salvando...":"Concluir cardio:"}</div>
+                    <button type="button" disabled={salvandoCardio} onClick={()=>{ lvAudio(); setGuiado({info,separado:true}); }} style={{width:"100%",height:44,borderRadius:12,border:"none",background:"#0f172a",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"inherit",marginBottom:10}}>▶ Iniciar cardio guiado</button>
+                    <div style={{fontSize:12,fontWeight:700,color:"#475569",marginBottom:6}}>{salvandoCardio?"Salvando...":"Ou, se já fez, marque:"}</div>
                     <div style={{display:"flex",gap:6}}>
                       <button type="button" disabled={salvandoCardio} onClick={()=>concluirCardio(info,1)} style={bt}>Fiz completo</button>
                       <button type="button" disabled={salvandoCardio} onClick={()=>concluirCardio(info,0.5)} style={bt}>Fiz metade</button>
@@ -2484,6 +2682,10 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
         temElo: !!(studentData?.eloAcesso && studentData.eloAcesso.status && studentData.eloAcesso.status!=="bloqueado")
       }}/>
 
+      {contagem && <CronoContagem key={contagem.rotulo+contagem.total+contagem.modo} cfg={contagem} onClose={()=>setContagem(null)}/>}
+      {guiado && <CardioGuiado cfg={prog.cardio} info={guiado.info}
+        onFim={(fr,min)=>{ const g=guiado; setGuiado(null); if(g.separado) concluirCardio(g.info,1); else setCardioGuiadoFim({fracao:1,min,ms:min*60000}); }}
+        onSair={(fr,min)=>{ const g=guiado; setGuiado(null); if(fr<0.1) return; if(g.separado) concluirCardio(g.info,Math.round(fr*100)/100); else setCardioGuiadoFim({fracao:fr,min,ms:min*60000}); }}/>}
       {showCheckin && (
         <Modal title="Como foi seu treino?" onClose={()=>{}}>
           <div style={{display:"flex",alignItems:"center",gap:10,background:"#fff4ee",border:"1.5px solid #ffd9c2",borderRadius:10,padding:"10px 12px",marginBottom:20}}>
@@ -2493,11 +2695,19 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
           <div style={{marginBottom:22}}>
             <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:temCardioFim?3:10}}>{temCardioFim?"Quanto tempo durou a musculação?":"Quanto tempo durou o treino?"}</div>
             {temCardioFim&&<div style={{fontSize:11.5,color:"#94a3b8",marginBottom:10}}>Sem contar o cardio do final.</div>}
+            {checkin.duracaoMedida ? (
+              <div style={{display:"flex",alignItems:"center",gap:10,background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:12,padding:"12px 14px"}}>
+                <div style={{fontSize:26,fontWeight:800,color:"#15803d",fontVariantNumeric:"tabular-nums"}}>{checkin.duracao} min</div>
+                <div style={{fontSize:11.5,color:"#166534",lineHeight:1.4}}>Medido pelo cronômetro.<br/>Pausas descontadas.</div>
+                <button type="button" onClick={()=>setCheckin(c=>({...c,duracaoMedida:false}))} style={{marginLeft:"auto",background:"transparent",border:"none",color:"#15803d",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>Ajustar</button>
+              </div>
+            ) : (
             <div style={{display:"flex",gap:6}}>
               {[30,45,60,75,90].map(m=>(
                 <button key={m} onClick={()=>setCheckin(c=>({...c,duracao:c.duracao===m?null:m}))} style={{flex:1,padding:"12px 2px",borderRadius:10,border:checkin.duracao===m?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:checkin.duracao===m?"#fff4ee":"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:checkin.duracao===m?"#FF5603":"#475569"}}>{m+" min"}</button>
               ))}
             </div>
+            )}
           </div>
           {true && (
           <div style={{marginBottom:22}}>
