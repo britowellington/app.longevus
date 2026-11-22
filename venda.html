@@ -55,7 +55,7 @@ const pixPayload = ({ pixKey, merchantName, merchantCity, amount, txid }) => {
 
 const rpc = async (nome, corpo) => { const r = await fetch(SUPA_URL + "/rest/v1/rpc/" + nome, { method: "POST", headers: { apikey: SUPA_KEY, Authorization: "Bearer " + SUPA_KEY, "Content-Type": "application/json" }, body: JSON.stringify(corpo || {}) }); if (!r.ok) throw new Error(await r.text()); const t = await r.text(); return t ? JSON.parse(t) : null; };
 const valorNum = (v) => { if (typeof v === "number") return v; const t = String(v || "").replace(/[^\d,.-]/g, ""); if (!t) return 0; const n = t.includes(",") ? Number(t.replace(/\./g, "").replace(",", ".")) : Number(t); return isNaN(n) ? 0 : n; };
-const brl = (v) => "R$ " + Number(v || 0).toFixed(2).replace(".", ",");
+const brl = (v) => "R$ " + Number(v || 0).toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 const soDig = (t) => String(t || "").replace(/\D/g, "");
 const fmtTel = (t) => { const d = soDig(t).slice(0, 11); if (d.length <= 2) return d; if (d.length <= 7) return "(" + d.slice(0, 2) + ") " + d.slice(2); return "(" + d.slice(0, 2) + ") " + d.slice(2, 7) + "-" + d.slice(7); };
 const primeiro = (n) => String(n || "").trim().split(/\s+/)[0] || "";
@@ -146,7 +146,8 @@ function DemoGenio({ onComprar }) {
 }
 
 // ═══ CHECKOUT (Pix + "Já paguei", igual ao comprar.html) ═══
-function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoInicial, resumoSub }) {
+function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoInicial, resumoSub, planos, planoIni }) {
+  const [plSel, setPlSel] = useState(null);
   const [para, setPara] = useState(modoInicial || "mim");
   const [etapa, setEtapa] = useState("dados");
   const [f, setF] = useState({ nome: "", whats: "" });
@@ -162,6 +163,26 @@ function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoIn
   const payload = etapa === "pix" && pix.pix_key ? pixPayload({ pixKey: pix.pix_key, merchantName: pix.pix_merchant_name || pix.nome, merchantCity: pix.pix_merchant_city, amount: valor, txid: ("SV" + titulo.replace(/[^A-Za-z0-9]/g, "")).slice(0, 20) }) : null;
   useEffect(() => { if (payload && qr.current && window.QRCode) { qr.current.innerHTML = ""; new window.QRCode(qr.current, { text: payload, width: 170, height: 170, colorDark: "#0f172a", colorLight: "#ffffff" }); } }, [payload]);
   if (!aberto) return null;
+  if (planos && planos.length) {
+    const sel = plSel || planoIni || planos[0].slug;
+    const pl = planos.find((x) => x.slug === sel) || planos[0];
+    const ir = () => { location.href = base + "aluno.html?cadastro=1&plano=" + encodeURIComponent(pl.slug); };
+    return h("div", { style: { position: "fixed", inset: 0, zIndex: 400, display: "flex", alignItems: "flex-end", justifyContent: "center" } },
+      h("div", { onClick: onFechar, style: { position: "absolute", inset: 0, background: "rgba(15,23,42,0.55)", animation: "some .25s ease both" } }),
+      h("div", { role: "dialog", "aria-modal": "true", "aria-label": "Escolher plano", className: "rolar", style: { position: "relative", width: "100%", maxWidth: 480, maxHeight: "92vh", overflowY: "auto", background: "#fff", borderRadius: "26px 26px 0 0", padding: "10px 18px calc(22px + env(safe-area-inset-bottom))", animation: "sobe .32s cubic-bezier(.2,.8,.2,1) both" } },
+        h("div", { style: { width: 42, height: 5, borderRadius: 3, background: C.borda, margin: "0 auto 10px" } }),
+        h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 } },
+          h("div", { style: { fontSize: 19, fontWeight: 800 } }, planos.length > 1 ? "Escolha o seu plano" : "Finalizar"),
+          h("button", { type: "button", onClick: onFechar, "aria-label": "Fechar", style: { display: "inline-flex", alignItems: "center", gap: 4, height: 40, padding: "0 14px 0 10px", borderRadius: 20, border: "1.5px solid " + C.borda, background: "#fff", color: C.escuro, fontWeight: 700, fontSize: 14.5, cursor: "pointer" } }, h(Ico, { d: I.fechar, cor: C.escuro, tam: 16, larg: 2.4 }), "Fechar")),
+        planos.map((x) => { const on = x.slug === pl.slug; return h("button", { key: x.slug, type: "button", onClick: () => setPlSel(x.slug), style: { width: "100%", display: "flex", alignItems: "center", gap: 12, textAlign: "left", padding: "14px 14px", marginBottom: 10, borderRadius: 16, cursor: "pointer", border: on ? "2px solid " + C.laranja : "1.5px solid " + C.borda, background: on ? C.laranjaClaro : "#fff" } },
+          h("span", { style: { width: 22, height: 22, borderRadius: 99, flexShrink: 0, border: on ? "7px solid " + C.laranja : "2px solid " + C.borda, background: "#fff" } }),
+          h("span", { style: { flex: 1, minWidth: 0 } }, h("b", { style: { display: "block", fontSize: 16, color: C.escuro } }, x.nome), x.sub ? h("span", { style: { display: "block", fontSize: 13, color: C.cinza, marginTop: 2 } }, x.sub) : null),
+          h("span", { style: { textAlign: "right", flexShrink: 0 } }, h("b", { style: { display: "block", fontSize: 17, color: C.escuro } }, brl(x.valor)), x.mes ? h("span", { style: { fontSize: 12, color: C.cinza } }, "por mês") : null)); }),
+        h("button", { type: "button", onClick: ir, style: { ...botaoPri, marginTop: 4 } }, "Continuar com " + pl.nome),
+        h("div", { style: { display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12.5, color: C.cinza, lineHeight: 1.5, marginTop: 12 } },
+          h(Ico, { d: I.escudo, cor: C.cinzaClaro, tam: 18 }),
+          h("span", null, "Você cria a sua conta no app e paga " + (pl.mes ? "a primeira mensalidade " : "") + "no Pix, direto para o " + (primeiro(pix.nome || d.profissional) || "Wellington") + "."))));
+  }
   const pers = primeiro(pix.nome || d.profissional) || "Wellington";
   const irPix = () => {
     if (!f.nome.trim()) return setErro("Digite o seu nome.");
@@ -335,6 +356,23 @@ function DemoPlano({ onComprar }) {
       h("div", { style: { marginTop: 14, fontSize: 13.5, color: C.cinza, textAlign: "center" } }, "Escolha um objetivo para ver a sua semana."));
 }
 
+// ── Personal presencial: como é uma aula ──
+const FASES = [["💬", "Conversa e aquecimento", "Como você chegou hoje, mobilidade e preparo das articulações."], ["🏋️", "Força", "Os exercícios principais, com a carga ajustada para você naquele dia."], ["⚖️", "Equilíbrio e agilidade", "Base, giros e passos rápidos, para andar com mais segurança."], ["🧠", "Corpo e mente juntos", "Exercícios com dupla tarefa: mexer o corpo e pensar ao mesmo tempo."], ["🌿", "Alongamento e respiração", "Volta à calma e o combinado para a próxima aula."]];
+function DemoAula({ onComprar }) {
+  const [i, setI] = useState(0);
+  const [ic, t, s] = FASES[i];
+  return h("div", { style: { ...cartao, padding: 16 } },
+    h("div", { style: { display: "flex", gap: 5, marginBottom: 14 } }, FASES.map((f, k) => h("button", { key: k, type: "button", onClick: () => setI(k), "aria-label": f[1], style: { flex: 1, height: 6, borderRadius: 99, border: "none", padding: 0, cursor: "pointer", background: k <= i ? C.laranja : "#E2E8F0" } }))),
+    h("div", { style: { display: "flex", gap: 14, alignItems: "center", minHeight: 96 } },
+      h("span", { style: { width: 64, height: 64, borderRadius: 18, background: C.laranjaClaro, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, flexShrink: 0 } }, ic),
+      h("span", null, h("span", { style: { display: "block", fontSize: 11.5, fontWeight: 800, color: C.laranjaTxt, letterSpacing: "0.06em" } }, "ETAPA " + (i + 1) + " DE " + FASES.length), h("b", { style: { display: "block", fontSize: 17, marginTop: 2 } }, t), h("span", { style: { display: "block", fontSize: 14, color: C.cinza, lineHeight: 1.45, marginTop: 3 } }, s))),
+    h("div", { style: { display: "flex", gap: 8, marginTop: 14 } },
+      i > 0 ? h("button", { type: "button", onClick: () => setI(i - 1), style: { width: 96, height: 50, borderRadius: 14, border: "1.5px solid " + C.borda, background: "#fff", fontWeight: 800, fontSize: 15, cursor: "pointer", color: C.escuro } }, "Voltar") : null,
+      i < FASES.length - 1 ? h("button", { type: "button", onClick: () => setI(i + 1), style: { ...botaoPri, flex: 1, height: 50, fontSize: 16, background: C.escuro, boxShadow: "none" } }, "Próxima etapa") :
+        h("button", { type: "button", onClick: onComprar, style: { ...botaoPri, flex: 1, height: 50, fontSize: 16 } }, "Quero treinar assim")));
+}
+const PLANOS_PRES = [["presencial2x", "2x por semana", "Para começar e criar a rotina", 900], ["presencial", "3x por semana", "Para evoluir mais rápido", 1200]];
+
 // ═══ CONTEÚDO DE CADA PRODUTO ═══
 const CONTEUDO = {
   mente: (pers) => ({
@@ -421,6 +459,24 @@ const CONTEUDO = {
     pos: "Seu aviso chegou para o " + pers + ". Assim que ele confirmar o pagamento, te chama no WhatsApp para marcar a sua avaliação inicial.",
     final: ["Pare de treinar no escuro", "Consultoria por "], aviso: "A consultoria não substitui acompanhamento médico.", padrao: 0
   }),
+  presencial: (pers, d) => ({
+    nome: "Personal presencial", img: "foto-sindicos-2.jpg", foto: "foto-moradores-2.jpg", fotoPos: "center 30%", selo: "PRESENCIAL", rotulo: "PERSONAL", mensal: false, aPartir: true,
+    tiles: [["🏋️", ["#FFB37A", "#FF5603"]], ["⚖️", ["#6EE7B7", "#059669"]], ["🧠", ["#C4B5FD", "#7C3AED"]], ["📱", ["#7DD3FC", "#0284C7"]]],
+    titulo: "Treino individual, com o personal do seu lado do começo ao fim",
+    sub: "Força, equilíbrio e mente trabalhados juntos, com avaliação, método e o seu treino no app. Para viver com mais autonomia.",
+    precoRot: "A PARTIR DE", pagSub: "mensalidade no Pix", cta: "Escolher meu plano", ctaSec: "💬  Conversar antes de contratar", ctaSecWa: "Oi, " + pers + "! Vi a página do personal presencial e queria conversar antes de contratar.", resumoSub: "Aulas individuais", barRot: "A partir de",
+    para: [[I.escudo, "Quer treinar com segurança", "Atenção total em cada movimento"], [I.escada, "Tem dor, limitação ou medo de cair", "Treino adaptado a você"], [I.grafico, "Já tentou sozinho e parou", "Rotina com compromisso"], [I.estrela, "Quer resultado com método", "Avaliação e reavaliação"]],
+    demoTit: ["Como é uma aula", "Toque para ver cada etapa"], Demo: DemoAula,
+    extra: () => h("div", null, Secao("O que está incluso", "Muito além da aula"),
+      h("div", { style: cartao }, ["Avaliação funcional completa no início e a cada 3 meses", "Aulas individuais com o " + pers + ", do começo ao fim", "Treino, cargas e evolução registrados no seu app", "Plano pensado para a sua saúde, o seu objetivo e o seu ritmo", "Contato direto pelo WhatsApp"].map((t, i) => h("div", { key: i, style: { display: "flex", gap: 10, alignItems: "flex-start", fontSize: 15, lineHeight: 1.45, color: "#1E293B", marginTop: i ? 10 : 0 } },
+        h("span", { style: { width: 24, height: 24, borderRadius: 99, background: C.verdeClaro, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 } }, h(Ico, { d: I.check, cor: C.verde, tam: 15, larg: 2.8 })), h("span", null, t))))),
+    passos: [["Escolha o seu plano", "2x ou 3x por semana."], ["Crie sua conta no app", "E pague a primeira mensalidade no Pix, ali mesmo."], ["Faça a avaliação funcional", "Para o " + pers + " montar o plano a partir dos seus números."], ["Treine e acompanhe no app", "Cada aula, carga e reavaliação fica registrada."]],
+    evolucao: "A cada 3 meses você refaz a avaliação e vê, lado a lado, quanto a força, o equilíbrio e a memória melhoraram.",
+    sobre: "Há mais de 15 anos atendo adultos e idosos. No presencial eu acompanho cada repetição, ajusto o treino no dia e cuido para você evoluir com segurança. O objetivo é sempre o mesmo: mais autonomia para a sua vida.",
+    cruz: { href: "venda.html?p=l360", img: "Longevus-360.jpg", t: "Quer somar a alimentação?", s: "Conheça o Longevus 360: alimentação e treino conversando no app, todos os dias." },
+    faq: [["Onde são as aulas?", (d.local ? d.local + ". " : "") + "O local e os horários são combinados com o " + pers + " depois que você escolhe o plano."], ["Qual a diferença entre 2x e 3x?", "Com 3x por semana a evolução vem mais rápido. O 2x é ótimo para começar e criar a rotina."], ["Tenho uma dor ou limitação. Posso?", "Pode. A avaliação mostra o que adaptar, e o treino é montado para você. Se for o caso, a orientação é passar pelo seu médico antes."], ["Como funciona o pagamento?", "É uma mensalidade no Pix. Você paga a primeira ao criar a conta, e as próximas aparecem no app no vencimento."], ["Posso conversar antes?", "Claro. Toque em Conversar antes de contratar e fale direto com o " + pers + " no WhatsApp."]],
+    final: ["Treine com quem entende de longevidade", "Planos a partir de "], aviso: "O treino não substitui acompanhamento médico.", padrao: 0
+  }),
   l360: (pers) => ({
     nome: "Longevus 360", img: "Longevus-360.jpg", foto: "foto-academia.jpg", fotoPos: "center 25%", selo: "TREINO + ALIMENTAÇÃO", rotulo: "LONGEVUS 360",
     tiles: [["📷", ["#FFB37A", "#FF5603"]], ["🥗", ["#6EE7B7", "#059669"]], ["🏋️", ["#7DD3FC", "#0284C7"]], ["📊", ["#C4B5FD", "#7C3AED"]]],
@@ -442,7 +498,7 @@ const CONTEUDO = {
     final: ["Comece a enxergar o seu dia inteiro", "Longevus 360 por "], aviso: "O Longevus 360 não substitui acompanhamento nutricional.", padrao: 0
   })
 };
-const tipoProduto = (d, id) => (d.produto === "l360" || String(id).indexOf("l360:") === 0 || Q.get("p") === "l360") ? "l360" : (d.produto === "mente" || Q.get("p") === "mente") ? "mente" : (/bioimped/i.test(d.titulo || "") || Q.get("p") === "bio") ? "bio" : (/consultoria/i.test(d.titulo || "") || Q.get("p") === "consultoria") ? "consultoria" : ((/avalia/i.test(d.titulo || "") && !/bioimped/i.test(d.titulo || "")) || Q.get("p") === "avaliacao") ? "avaliacao" : "mente";
+const tipoProduto = (d, id) => (d.produto === "l360" || String(id).indexOf("l360:") === 0 || Q.get("p") === "l360") ? "l360" : (d.produto === "mente" || Q.get("p") === "mente") ? "mente" : (/bioimped/i.test(d.titulo || "") || Q.get("p") === "bio") ? "bio" : (/presencial|personal/i.test((d.planoNome || "") + " " + (d.titulo || "")) && !/consult/i.test(d.titulo || "") || Q.get("p") === "presencial") ? "presencial" : (/consultoria/i.test(d.titulo || "") || Q.get("p") === "consultoria") ? "consultoria" : ((/avalia/i.test(d.titulo || "") && !/bioimped/i.test(d.titulo || "")) || Q.get("p") === "avaliacao") ? "avaliacao" : "mente";
 
 // ═══ PÁGINA ═══
 function App() {
@@ -467,8 +523,16 @@ function App() {
   const P = Object.assign({ mensal: true, pagSub: "sem fidelidade", barRot: "30 dias" }, CONTEUDO[tipoProduto(d, id)](pers, d));
   const nome = d.titulo || P.nome;
   useEffect(() => { document.title = nome + " · Wellington Brito"; }, [nome]);
+  const tipo = tipoProduto(d, id);
+  const [plPres, setPlPres] = useState(null);
+  useEffect(() => {
+    if (!pronto || tipo !== "presencial") return;
+    Promise.all(PLANOS_PRES.map(([slug, rot, sub, fb]) => rpc("rpc_obter_plano_venda", { p_prof_id: PROF_ID, p_slug: slug }).then((r) => { const x = Array.isArray(r) ? r[0] : r; return x && x.nome ? { slug, nome: rot, sub, valor: Number(x.valor) || fb, mes: true } : null; }).catch(() => "erro")))
+      .then((l) => { const ok = l.filter((x) => x && x !== "erro"); setPlPres(ok.length ? ok : l.every((x) => x === "erro") ? PLANOS_PRES.map(([slug, rot, sub, fb]) => ({ slug, nome: rot, sub, valor: fb, mes: true })) : []); });
+  }, [pronto, tipo]);
+  const planos = tipo === "presencial" ? (plPres || []) : (d.cobranca === "plano" && d.planoSlug ? [{ slug: d.planoSlug, nome: d.planoNome || nome, valor: Number(d.planoValor) || 0, mes: !/consult/i.test(d.planoNome || nome) }] : null);
 
-  const valor = valorNum(d.valor || d.preco) || P.padrao;
+  const valor = planos && planos.length ? Math.min.apply(null, planos.map((x) => x.valor)) : (valorNum(d.valor || d.preco) || P.padrao);
   const porDia = Math.ceil((valor / 30) * 100) / 100;
   const temPresente = !!(d.id && pix.pix_key && d.aceitaPresente !== false);
   const comprar = (modo) => setCheckout(modo || "mim");
@@ -493,7 +557,7 @@ function App() {
         h("div", { style: { flex: 1.25, background: C.escuro2, border: "1.5px solid " + C.laranja, borderRadius: 14, padding: "10px 12px" } },
           h("div", { style: { fontSize: 10.5, color: C.cinzaClaro, letterSpacing: "0.05em" } }, P.precoRot),
           h("div", { style: { fontSize: 24, fontWeight: 800, color: C.pessego, lineHeight: 1.15 } }, valor > 0 ? brl(valor) : "Consulte"),
-          valor > 0 && P.mensal ? h("div", { style: { fontSize: 12, color: C.cinzaClaro } }, "menos de " + brl(porDia) + " por dia") : null),
+          valor > 0 && P.mensal ? h("div", { style: { fontSize: 12, color: C.cinzaClaro } }, "menos de " + brl(porDia) + " por dia") : valor > 0 && P.aPartir ? h("div", { style: { fontSize: 12, color: C.cinzaClaro } }, "por mês") : null),
         h("div", { style: { flex: 1, background: C.escuro2, borderRadius: 14, padding: "10px 12px" } },
           h("div", { style: { fontSize: 10.5, color: C.cinzaClaro, letterSpacing: "0.05em" } }, "PAGAMENTO"),
           h("div", { style: { fontSize: 16, fontWeight: 800, lineHeight: 1.25, marginTop: 2 } }, "Pix, sem cartão"),
@@ -555,7 +619,7 @@ function App() {
         valor > 0 ? h("div", { style: { flexShrink: 0 } }, h("div", { style: { fontSize: 11, color: C.cinza } }, P.barRot), h("div", { style: { fontSize: 19, fontWeight: 800 } }, brl(valor))) : null,
         h("button", { type: "button", onClick: () => comprar("mim"), style: { ...botaoPri, height: 50, fontSize: 16, boxShadow: "none" } }, "Começar agora"))) : null,
 
-    h(Checkout, { aberto: !!checkout, modoInicial: checkout, onFechar: () => setCheckout(null), d: { ...d, titulo: nome, foto: d.foto || P.img, posPagamento: d.posPagamento || P.pos }, pix, valor, mensal: P.mensal, temPresente, resumoSub: P.resumoSub }));
+    h(Checkout, { aberto: !!checkout, modoInicial: checkout, onFechar: () => setCheckout(null), d: { ...d, titulo: nome, foto: d.foto || P.img, posPagamento: d.posPagamento || P.pos }, pix, valor, mensal: P.mensal, temPresente, resumoSub: P.resumoSub, planos, planoIni: d.planoSlug }));
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(h(App));
