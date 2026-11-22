@@ -19,7 +19,7 @@
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="longevus-aluno-extras.js?v=35"></script>
+<script src="longevus-aluno-extras.js?v=36"></script>
 <script src="longevus-antropometria.js?v=8"></script>
 <script src="longevus-vitrine.js?v=25"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -818,6 +818,32 @@ const CardioCard=({cfg,treinoKey,semana,mostrarReteste,rodape})=>{
     </div>
   );
 };
+
+// ─── GASTO ENERGÉTICO (estimativa: (MET - 1) x peso x minutos / 60, mesma conta da aba Calorias) ──
+const CARDIO_MET={esteira:{Z1:3,Z2:4,Z3:5.5,Z4:7},bike:{Z1:3.5,Z2:5,Z3:6.8,Z4:8},eliptico:{Z1:4,Z2:5,Z3:6,Z4:7.5}};
+const ESFORCO_MET={1:3.5,2:4,3:4.5,4:5.5,5:6};
+const ESFORCO_OPCOES=[
+  {v:1,e:"😌",l:"Leve",d:"Deu para conversar normalmente e sobrou bastante energia."},
+  {v:3,e:"🙂",l:"Moderado",d:"Cansei, mas conseguia falar frases. Ainda daria para fazer mais um pouco."},
+  {v:5,e:"😓",l:"Intenso",d:"Fiquei ofegante e difícil de falar. As últimas repetições foram bem pesadas."}
+];
+const kcalNet=(met,peso,min)=>met&&peso&&min?Math.max(0,Math.round((met-1)*peso*min/60)):0;
+const cardioGasto=(info,peso,fracao)=>{
+  if(!info||!CARDIO_MET[info.ergo])return {min:0,kcal:0};
+  const f=fracao==null?1:fracao, mets=CARDIO_MET[info.ergo];
+  const segs=info.tipo==="intervalado"
+    ?[[info.aqMin,"Z1"],[info.series*info.on/60,info.zona],[(info.series-1)*info.off/60,"Z1"],[info.vcMin,"Z1"]]
+    :[[info.aqMin,"Z1"],[Math.max(0,info.total-info.aqMin-info.vcMin),"Z2"],[info.vcMin,"Z1"]];
+  let min=0,kg=0;
+  segs.forEach(sg=>{const mm=sg[0]*f;min+=mm;kg+=(mets[sg[1]]-1)*mm/60;});
+  return {min:Math.round(min),kcal:peso?Math.round(kg*peso):0,kcalKg:Math.round(kg*1000)/1000};
+};
+const GastoLinha=({rotulo,min,kcal,peso,forte})=>(
+  <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10,padding:"6px 0",borderTop:forte?"1px solid #fed7aa":"none"}}>
+    <div style={{fontSize:forte?14:13,fontWeight:forte?800:600,color:"#0f172a",textAlign:"left"}}>{rotulo}{min?<span style={{fontWeight:500,color:"#64748b"}}>{" · "+min+" min"}</span>:null}</div>
+    <div style={{fontSize:forte?15:13,fontWeight:800,color:forte?"#c2410c":"#0f172a",whiteSpace:"nowrap"}}>{peso?("cerca de "+kcal+" kcal"):"—"}</div>
+  </div>
+);
 
 const METODOS_ALUNO = {
   B7:   { tipo:"grupo", faixa:"B7 · sem descanso entre os 2", icone:"🔗", cor:"#1d4ed8", bg:"#eff6ff", border:"#bfdbfe" },
@@ -1623,6 +1649,15 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
   const [lastSessions,setLastSessions]=useState([]);
   const [cardioSessoes,setCardioSessoes]=useState([]); // cardios em outro horário (source cardio_separado), fora do progresso da musculação
   const [salvandoCardio,setSalvandoCardio]=useState(false);
+  const [pesoAluno,setPesoAluno]=useState(null);
+  const [gastoTreino,setGastoTreino]=useState(null);
+  const [cardioResultado,setCardioResultado]=useState(null);
+  useEffect(()=>{
+    let vivo=true;
+    const X=window.LongevusAlunoExtras;
+    if(X&&X.peso)X.peso(studentId).then(p=>{if(vivo)setPesoAluno(p||null);}).catch(()=>{});
+    return ()=>{vivo=false;};
+  },[studentId]);
   const [showCelebration,setShowCelebration]=useState(false);
   const [saveError,setSaveError]=useState("");
   const [tab,setTab]=useState(()=>{ try{ sessionStorage.setItem("lv_ctx","aluno"); localStorage.setItem("lv_ctx", JSON.stringify({ c:"aluno", t:Date.now() })); const t=new URLSearchParams(location.search).get("tab"); if(["inicio","treino","programacao","alimentacao","avaliacao"].includes(t)) return t; }catch(e){} return "inicio"; }); // inicio | treino | programacao | avaliacao
@@ -1907,15 +1942,19 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
   const changeTreino = (i) => { setTreinoIdx(i); setDone(new Set()); setCargas({}); setSavedToday(false); };
   const changeBloco = (i) => { if(i>maxUnlockedIdx) return; setBlocoIdx(i); setTreinoIdx(0); setDone(new Set()); setCargas({}); setSavedToday(false); };
 
-  const concluirCardio = async (info) => {
+  const concluirCardio = async (info, fracao) => {
+    if(!info) return;
     setSalvandoCardio(true);
     try{
       const headers = await authedHeaders();
+      const g = cardioGasto(info, pesoAluno, fracao);
       const data = { studentId, programId: prog.id, cardioTreinoKey: treinoAtivo, date: new Date().toISOString().slice(0,10),
-        cardio: info, source: "cardio_separado", createdAt: new Date().toISOString() };
+        cardio: { ergo:info.ergo, semana:info.semana, texto:info.texto, total:info.total, fracao, min:g.min, kcal:pesoAluno?g.kcal:null },
+        cardioMin: g.min, cardioKcal: pesoAluno?g.kcal:null, cardioKcalKg: g.kcalKg, cardioErgo: info.ergo,
+        source: "cardio_separado", createdAt: new Date().toISOString() };
       const body = { id: uid2(), data, owner_id: ownerId, student_id: studentId };
       const r = await fetch(SUPA_URL+"/rest/v1/sessions", { method:"POST", headers, body: JSON.stringify(body) });
-      if(r.ok) setCardioSessoes(prev=>[data, ...prev]);
+      if(r.ok){ setCardioSessoes(prev=>[data, ...prev]); setCardioResultado({...g, ergo:info.ergo, fracao}); }
     } catch(e){ /* silencioso: o aluno pode tentar de novo */ }
     setSalvandoCardio(false);
   };
@@ -1948,7 +1987,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
         setSavedToday(true);
         setLastSessions(prev=>[data, ...prev]);
         if(postFieldsEnabled){
-          setCheckin({esforco:null,completude:null,dor:"nenhuma",obs:"",duracao:null});
+          setCheckin({esforco:null,completude:null,dor:"nenhuma",obs:"",duracao:null,cardioFeito:null});
           setCheckinError("");
           setShowCheckin(true);
         } else {
@@ -1964,20 +2003,31 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
     setSaving(false);
   };
 
+  const temCardioFim = !!(prog && prog.cardio && prog.cardio.treinos && prog.cardio.treinos[treinoAtivo] && CARDIO_ERGOS[prog.cardio.treinos[treinoAtivo].ergo] && !cardioSeparado(prog.cardio,treinoAtivo));
+  const semanaCardioFim = (()=>{ const hj=new Date().toISOString().slice(0,10); return lastSessions.filter(x=>x && prog && x.programId===prog.id && x.treinoKey===treinoAtivo && x.source!=="atividade_extra" && x.date!==hj).length+1; })();
+
   const salvarCheckin = async () => {
     setCheckinSaving(true);
     setCheckinError("");
     try{
       const headers = await authedHeaders();
       const today = new Date().toISOString().slice(0,10);
+      const cInfo = temCardioFim ? cardioSemana(prog.cardio, treinoAtivo, semanaCardioFim) : null;
+      const fracao = checkin.cardioFeito==="completo" ? 1 : (checkin.cardioFeito==="metade" ? 0.5 : 0);
+      const gC = cInfo && fracao>0 ? cardioGasto(cInfo, pesoAluno, fracao) : {min:0,kcal:0};
+      const minMusc = parseFloat(checkin.duracao)||0;
+      const kMusc = kcalNet(ESFORCO_MET[checkin.esforco]||4, pesoAluno, minMusc);
       const data = {
         esforco: checkin.esforco, completude: checkin.completude, dor: checkin.dor, obs: checkin.obs, duracao: checkin.duracao,
         treinoKey: treinoAtivo, blocoKey: blocoAtivo.key, date: today,
+        ...(temCardioFim ? { cardioFeito: checkin.cardioFeito, cardioErgo: cInfo?cInfo.ergo:null, cardioMin: gC.min, cardioKcal: pesoAluno?gC.kcal:null, cardioKcalKg: gC.kcalKg||0 } : {}),
+        musculacaoKcal: pesoAluno?kMusc:null,
         source: "aluno_checkin", createdAt: new Date().toISOString()
       };
       const body = { id: uid2(), owner_id: ownerId, student_id: studentId, type: "pos_treino", data };
       const r = await fetch(SUPA_URL+"/rest/v1/checkins", { method:"POST", headers, body: JSON.stringify(body) });
       if(r.ok){
+        setGastoTreino({ musc:{min:minMusc,kcal:kMusc}, cardio: (cInfo&&fracao>0)?{...gC, ergo:cInfo.ergo, fracao}:null, cardioNao: !!(temCardioFim&&fracao===0) });
         setShowCheckin(false);
         setShowCelebration(true);
       } else {
@@ -2376,9 +2426,18 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
               const feitoHoje = doTreino.some(x=>x.date===hojeC);
               const sem = doTreino.filter(x=>x.date!==hojeC).length+1;
               const info = cardioSemana(prog.cardio,treinoAtivo,sem);
+              const feitoReg = doTreino.find(x=>x.date===hojeC);
+              const kHoje = feitoReg && feitoReg.cardioKcal;
+              const bt = {flex:1,height:42,borderRadius:12,border:"1.5px solid #e11d48",background:"#fff",color:"#be123c",fontWeight:800,fontSize:13.5,cursor:salvandoCardio?"default":"pointer",fontFamily:"inherit"};
               const rodape = feitoHoje
-                ? <div style={{marginTop:10,background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"9px 12px",fontSize:12.5,fontWeight:700,color:"#15803d",textAlign:"center"}}>Cardio concluído hoje. Muito bem!</div>
-                : <button type="button" disabled={salvandoCardio} onClick={()=>concluirCardio(info?{ergo:info.ergo,semana:info.semana,texto:info.texto,total:info.total}:null)} style={{marginTop:10,width:"100%",height:42,borderRadius:12,border:"1.5px solid #e11d48",background:"#fff",color:"#be123c",fontWeight:800,fontSize:13.5,cursor:salvandoCardio?"default":"pointer",fontFamily:"inherit"}}>{salvandoCardio?"Salvando...":"Concluir cardio"}</button>;
+                ? <div style={{marginTop:10,background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"9px 12px",fontSize:12.5,fontWeight:700,color:"#15803d",textAlign:"center"}}>Cardio concluído hoje{feitoReg&&feitoReg.cardioMin?(" · "+feitoReg.cardioMin+" min"):""}{kHoje?(" · cerca de "+kHoje+" kcal"):""}. Muito bem!</div>
+                : <div style={{marginTop:10}}>
+                    <div style={{fontSize:12,fontWeight:700,color:"#475569",marginBottom:6}}>{salvandoCardio?"Salvando...":"Concluir cardio:"}</div>
+                    <div style={{display:"flex",gap:6}}>
+                      <button type="button" disabled={salvandoCardio} onClick={()=>concluirCardio(info,1)} style={bt}>Fiz completo</button>
+                      <button type="button" disabled={salvandoCardio} onClick={()=>concluirCardio(info,0.5)} style={bt}>Fiz metade</button>
+                    </div>
+                  </div>;
               return <CardioCard cfg={prog.cardio} treinoKey={treinoAtivo} semana={sem} rodape={rodape}/>;
             })()}
             {savedToday ? (
@@ -2430,7 +2489,8 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
             <div style={{fontSize:12,color:"#c2410c",fontWeight:600,lineHeight:1.4}}>Seu professor usa isso pra ajustar seu treino. Responda com atenção!</div>
           </div>
           <div style={{marginBottom:22}}>
-            <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>Quanto tempo durou o treino?</div>
+            <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:temCardioFim?3:10}}>{temCardioFim?"Quanto tempo durou a musculação?":"Quanto tempo durou o treino?"}</div>
+            {temCardioFim&&<div style={{fontSize:11.5,color:"#94a3b8",marginBottom:10}}>Sem contar o cardio do final.</div>}
             <div style={{display:"flex",gap:6}}>
               {[30,45,60,75,90].map(m=>(
                 <button key={m} onClick={()=>setCheckin(c=>({...c,duracao:c.duracao===m?null:m}))} style={{flex:1,padding:"12px 2px",borderRadius:10,border:checkin.duracao===m?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:checkin.duracao===m?"#fff4ee":"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:checkin.duracao===m?"#FF5603":"#475569"}}>{m+" min"}</button>
@@ -2439,14 +2499,24 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
           </div>
           {ccfg.post?.esforco && (
           <div style={{marginBottom:22}}>
-            <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>Esforço do treino</div>
-            <div style={{display:"flex",gap:6}}>
-              {[{v:1,e:"😌",l:"Tranquilo"},{v:2,e:"🙂",l:"Moderado"},{v:3,e:"😅",l:"Puxado"},{v:4,e:"😓",l:"Muito puxado"},{v:5,e:"🥵",l:"No limite"}].map(o=>(
-                <button key={o.v} onClick={()=>setCheckin(c=>({...c,esforco:o.v}))} style={{flex:1,padding:"10px 2px",borderRadius:10,border:checkin.esforco===o.v?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:checkin.esforco===o.v?"#fff4ee":"#fff",cursor:"pointer",textAlign:"center",fontFamily:"inherit"}}>
-                  <div style={{fontSize:20}}>{o.e}</div>
-                  <div style={{fontSize:8,fontWeight:700,color:checkin.esforco===o.v?"#FF5603":"#94a3b8",marginTop:2}}>{o.l}</div>
+            <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>Como foi o treino?</div>
+            <div style={{display:"flex",flexDirection:"column",gap:7}}>
+              {ESFORCO_OPCOES.map(o=>{const on=checkin.esforco===o.v;return(
+                <button key={o.v} onClick={()=>setCheckin(c=>({...c,esforco:o.v}))} style={{display:"flex",alignItems:"center",gap:11,padding:"10px 12px",borderRadius:12,border:on?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:on?"#fff4ee":"#fff",cursor:"pointer",textAlign:"left",fontFamily:"inherit"}}>
+                  <div style={{fontSize:24,flexShrink:0}}>{o.e}</div>
+                  <div><div style={{fontSize:14,fontWeight:800,color:on?"#c2410c":"#0f172a"}}>{o.l}</div><div style={{fontSize:11.5,color:"#64748b",lineHeight:1.4,marginTop:1}}>{o.d}</div></div>
                 </button>
-              ))}
+              );})}
+            </div>
+          </div>
+          )}
+          {temCardioFim && (
+          <div style={{marginBottom:22}}>
+            <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>Fez o cardio do final?</div>
+            <div style={{display:"flex",gap:6}}>
+              {[["completo","Completo"],["metade","Metade"],["nao","Não fiz"]].map(o=>{const on=checkin.cardioFeito===o[0];return(
+                <button key={o[0]} onClick={()=>setCheckin(c=>({...c,cardioFeito:o[0]}))} style={{flex:1,padding:"11px 4px",borderRadius:10,border:on?"1.5px solid #FF5603":"1.5px solid #e2e8f0",background:on?"#fff4ee":"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:on?"#FF5603":"#475569"}}>{o[1]}</button>
+              );})}
             </div>
           </div>
           )}
@@ -2488,7 +2558,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
               <Icon name="alert" size={14} style={{marginTop:1,flexShrink:0}}/><span>{checkinError}</span>
             </div>
           )}
-          <Btn full onClick={salvarCheckin} disabled={(ccfg.post?.esforco&&checkin.esforco===null)||(ccfg.post?.completude&&checkin.completude===null)||(ccfg.post?.obs&&!checkin.obs.trim())||checkinSaving}>
+          <Btn full onClick={salvarCheckin} disabled={(temCardioFim&&!checkin.cardioFeito)||(ccfg.post?.esforco&&checkin.esforco===null)||(ccfg.post?.completude&&checkin.completude===null)||(ccfg.post?.obs&&!checkin.obs.trim())||checkinSaving}>
             {checkinSaving ? "Salvando..." : "Concluir e ver resultado"}
           </Btn>
         </Modal>
@@ -2509,6 +2579,16 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
               <div style={{fontSize:14,color:"#64748b",marginBottom:18,lineHeight:1.6}}>
                 Você concluiu o {nomeTreinoDe(prog,treinoAtivo)} de hoje.{proximoLabel && <> Na próxima vez, seu <b>{proximoLabel}</b> vai abrir direto.</>}
               </div>
+              {gastoTreino && (gastoTreino.musc.min>0 || gastoTreino.cardio) && (
+                <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:12,padding:"10px 13px",marginBottom:18,textAlign:"left"}}>
+                  <div style={{fontSize:11,fontWeight:800,color:"#c2410c",textTransform:"uppercase",letterSpacing:0.3,marginBottom:2}}>Gasto energético estimado</div>
+                  {gastoTreino.musc.min>0&&<GastoLinha rotulo="Musculação" min={gastoTreino.musc.min} kcal={gastoTreino.musc.kcal} peso={pesoAluno}/>}
+                  {gastoTreino.cardio&&<GastoLinha rotulo={"Cardio na "+(CARDIO_ERGOS[gastoTreino.cardio.ergo]?CARDIO_ERGOS[gastoTreino.cardio.ergo].nome.toLowerCase():"")+(gastoTreino.cardio.fracao<1?" (metade)":"")} min={gastoTreino.cardio.min} kcal={gastoTreino.cardio.kcal} peso={pesoAluno}/>}
+                  {gastoTreino.musc.min>0&&gastoTreino.cardio&&<GastoLinha forte rotulo="Total" min={gastoTreino.musc.min+gastoTreino.cardio.min} kcal={gastoTreino.musc.kcal+gastoTreino.cardio.kcal} peso={pesoAluno}/>}
+                  {!pesoAluno&&<div style={{fontSize:11,color:"#9a3412",marginTop:4}}>Para ver as calorias, seu peso precisa estar na avaliação ou na antropometria.</div>}
+                  {gastoTreino.cardioNao&&<div style={{fontSize:11,color:"#64748b",marginTop:4}}>Cardio do final não realizado hoje.</div>}
+                </div>
+              )}
               {!desbloqueouBloco ? (
                 <div style={{marginBottom:18}}>
                   <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#64748b",marginBottom:5,fontWeight:700}}>

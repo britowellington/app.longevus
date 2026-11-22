@@ -1220,7 +1220,7 @@
     ["outra", "Outra atividade moderada", 4]
   ];
   const ENERGIA_DURACOES = [30, 45, 60, 75, 90];
-  const ENERGIA_MET_ESFORCO = { 1: 3, 2: 3.5, 3: 4.5, 4: 5.5, 5: 6 };
+  const ENERGIA_MET_ESFORCO = { 1: 3.5, 2: 4, 3: 4.5, 4: 5.5, 5: 6 };
   const ENERGIA_FATORES = [[1.2, "Sedentária"], [1.35, "Leve"], [1.5, "Ativa"]];
   const ENERGIA_OBJETIVOS = [["manter", "Manter"], ["emagrecer", "Emagrecer"], ["massa", "Ganhar massa"]];
   const ENERGIA_AJUSTES = { emagrecer: [300, 400, 500], massa: [150, 250, 350], manter: [] };
@@ -1233,7 +1233,14 @@
         const r = await fetch(SUPA_URL + "/rest/v1/checkins?" + q, { headers: h });
         if (!r.ok) return [];
         const rows = await r.json();
-        return (rows || []).map((x) => x.data).filter(Boolean);
+        let lista = (rows || []).map((x) => x.data).filter(Boolean);
+        try {
+          const q2 = "select=data&student_id=eq." + encodeURIComponent(studentId) + "&data->>source=eq.cardio_separado&data->>date=gte." + desde + "&data->>date=lte." + ate + "&limit=200";
+          const r2 = await fetch(SUPA_URL + "/rest/v1/sessions?" + q2, { headers: h });
+          if (r2.ok) lista = lista.concat(((await r2.json()) || []).map((x) => x.data).filter(Boolean));
+        } catch (e2) {
+        }
+        return lista;
       } catch (e) {
         return [];
       }
@@ -1312,13 +1319,20 @@
       d.kcal += item.kcal;
       d.itens.push(item);
     };
+    const cardioKcalDe = (c) => nutriNum(c.cardioKcal) || (nutriNum(c.cardioKcalKg) && peso ? Math.round(nutriNum(c.cardioKcalKg) * peso) : 0);
     (checkins || []).forEach((c) => {
+      if (c.source === "cardio_separado") {
+        const mC = nutriNum(c.cardioMin);
+        add(c.date, { rotulo: "Cardio" + (mC ? " · " + Math.round(mC) + " min" : ""), kcal: cardioKcalDe(c), semDuracao: !mC, tipo: "treino" });
+        return;
+      }
       const presencial0 = c.source === "professor_presencial";
       if (!presencial0 && comPresencial[c.date]) return;
       if (presencial0 && !nutriNum(c.duracao) && (checkins || []).some((o) => o.date === c.date && o.source !== "professor_presencial" && nutriNum(o.duracao))) return;
       const min = nutriNum(c.duracao), met = ENERGIA_MET_ESFORCO[c.esforco] || 4;
       const presencial = c.source === "professor_presencial";
       add(c.date, { rotulo: (presencial ? "Treino presencial" : "Treino") + (min ? " · " + Math.round(min) + " min" : ""), kcal: energiaKcal(met, peso, min), semDuracao: !min, tipo: "treino" });
+      if (nutriNum(c.cardioMin) && cardioKcalDe(c)) add(c.date, { rotulo: "Cardio do treino · " + Math.round(nutriNum(c.cardioMin)) + " min", kcal: cardioKcalDe(c), tipo: "treino" });
     });
     (atividades || []).forEach((a) => {
       const def = (a.modalidade ? null : ENERGIA_ATIVIDADES.find((x) => x[0] === a.tipo)) || [a.tipo, a.rotulo || "Atividade", nutriNum(a.met) || 4];
@@ -2337,5 +2351,14 @@
       setVista("receita");
     }, style: { ...cdBotao(true), opacity: pendente ? 0.5 : 1 } }, c.periodo === "refeicao" ? "Ver receita" : "Ver receitas")))));
   };
-  window.LongevusAlunoExtras = { TelaAlimentacao, AntroAluno, InicioTopo };
+  const pesoAtual = async (id) => {
+    try {
+      const [m, antro, fontes] = await Promise.all([nutriApi.metas(id), antroApi.listar(id), antroApi.fontesMedidas(id)]);
+      const med = antroMedidas(antro || [], fontes && fontes.aval, m || {});
+      return med && med.peso && med.peso.v || null;
+    } catch (e) {
+      return null;
+    }
+  };
+  window.LongevusAlunoExtras = { TelaAlimentacao, AntroAluno, InicioTopo, peso: pesoAtual };
 })();
