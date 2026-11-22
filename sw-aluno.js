@@ -10,7 +10,7 @@
 // v3: novo "id" no manifest-aluno.json (meu-treino-aluno-v2), pra destravar a
 // instalação em aparelhos onde o Chrome ficou com um registro antigo preso.
 
-const CACHE_NAME = "meutreino-cache-v3"; // troque para v4, v5... se quiser forçar limpeza de cache
+const CACHE_NAME = "meutreino-cache-v4"; // troque para v4, v5... se quiser forçar limpeza de cache
 const APP_SHELL = [
   "./aluno.html",
   "./manifest-aluno.json",
@@ -39,6 +39,18 @@ self.addEventListener("fetch", (event) => {
 
   // Só cuida de requisições GET da própria origem (não mexe em chamadas ao Supabase)
   if (req.method !== "GET" || new URL(req.url).origin !== self.location.origin) {
+    return;
+  }
+
+  // v4: imagens abrem na hora pelo cache e se atualizam em segundo plano
+  // (stale-while-revalidate). HTML e JS continuam sempre buscando a versão nova.
+  if (/\.(jpe?g|png|webp|gif|svg)$/i.test(new URL(req.url).pathname)) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then((cache) => cache.match(req).then((hit) => {
+        const rede = fetch(req, { cache: "no-store" }).then((res) => { if (res && res.ok) cache.put(req, res.clone()); return res; }).catch(() => hit);
+        return hit || rede;
+      }))
+    );
     return;
   }
 
