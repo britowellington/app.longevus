@@ -3561,6 +3561,7 @@ const VerModelo=({modeloId,modelos,setModelos,bibCustom,students,assessments,pro
         bibCustom={bibCustom}
         editMode={false}
       />
+      {d.cardio&&<CardioPrevia key={"cm-"+treinoAtivo} cfg={d.cardio} treinoKey={treinoAtivo} nomeT={t=>nomeTreinoDe(d.nomesTreinos,t)}/>}
       <div style={{marginTop:16,paddingTop:14,borderTop:"1px solid #f1f5f9",display:"flex",flexDirection:"column",gap:8}}>
         <Btn full onClick={abrirUsarModal}>👤 Usar com aluno</Btn>
         <Btn variant="danger" full onClick={excluirModelo}>🗑 Remover modelo</Btn>
