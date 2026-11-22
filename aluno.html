@@ -2797,18 +2797,18 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
               <div><div style={{...cap,color:"#15803d"}}>❤️ 2. Cardio concluído</div><div style={{fontWeight:800,fontSize:15,color:"#0f172a",marginTop:2}}>{egH.icone} {egH.nome}{chHoje.feito.cardioMin?(" · "+chHoje.feito.cardioMin+" min"):""}</div>{chHoje.feito.cardioKcal?<div style={{fontSize:12,color:"#166534"}}>Déficit de cerca de {chHoje.feito.cardioKcal} kcal</div>:null}</div>
             </div>
           ) : feitaHoje ? (
-            <div style={{background:"#e11d48",color:"#fff",borderRadius:16,padding:"14px 15px",marginBottom:12,boxShadow:"0 6px 18px rgba(225,29,72,0.28)"}}>
+            <div style={{background:"linear-gradient(135deg,#FF5603,#ff8c42)",color:"#fff",borderRadius:16,padding:"14px 15px",marginBottom:12,boxShadow:"0 6px 18px rgba(255,86,3,0.25)"}}>
               <div style={{...cap,opacity:0.92}}>❤️ 2. {chHoje.pos?"Agora é o cardio":"Cardio de hoje"}</div>
               <div style={{fontWeight:800,fontSize:19,marginTop:4}}>{egH.icone} {egH.nome} · {chHoje.info.texto}</div>
               <div style={{fontSize:12.5,opacity:0.92,marginTop:2}}>Ritmo {zH.nome} · semana {chHoje.info.semana} de 24{chHoje.pos?"":" · pode ser mais tarde"}</div>
-              <button type="button" onClick={()=>abrirCardio(chHoje)} style={{width:"100%",background:"#fff",color:"#be123c",fontWeight:800,border:"none",borderRadius:12,padding:12,marginTop:12,fontSize:14.5,cursor:"pointer",fontFamily:"inherit"}}>Ver cardio de hoje ›</button>
+              <button type="button" onClick={()=>abrirCardio(chHoje)} style={{width:"100%",background:"#fff",color:"#c2410c",fontWeight:800,border:"none",borderRadius:12,padding:12,marginTop:12,fontSize:14.5,cursor:"pointer",fontFamily:"inherit"}}>Ver cardio de hoje ›</button>
             </div>
           ) : (
-            <div style={{background:"#fff",border:"1.5px solid #fecdd3",borderRadius:16,padding:"14px 15px",marginBottom:12}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}><div style={{...cap,color:"#be123c"}}>❤️ 2. Cardio · {chHoje.pos?"pós-treino":"outro horário"}</div><span style={{fontSize:11,color:"#94a3b8",fontWeight:700}}>Semana {chHoje.info.semana} · {chHoje.info.fase}</span></div>
-              <div style={{fontWeight:800,fontSize:17,marginTop:4,color:"#0f172a"}}>{egH.icone} {egH.nome} · {chHoje.info.texto}</div>
-              <div style={{fontSize:12.5,color:"#64748b",marginTop:2}}>Ritmo {zH.nome} · {chHoje.pos?"logo depois da musculação":"em outro período do dia"}</div>
-              <button type="button" onClick={()=>abrirCardio(chHoje)} style={{width:"100%",background:"#fff",border:"1.5px solid #e11d48",color:"#be123c",fontWeight:800,borderRadius:12,padding:11,marginTop:11,fontSize:14,cursor:"pointer",fontFamily:"inherit"}}>Ver cardio de hoje ›</button>
+            <div style={{background:"linear-gradient(135deg,#FF5603,#ff8c42)",color:"#fff",borderRadius:16,padding:"14px 15px",marginBottom:12,boxShadow:"0 6px 18px rgba(255,86,3,0.25)"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}><div style={{...cap,opacity:0.92}}>❤️ 2. Cardio · {chHoje.pos?"pós-treino":"outro horário"}</div><span style={{fontSize:11,opacity:0.85,fontWeight:700}}>Semana {chHoje.info.semana} · {chHoje.info.fase}</span></div>
+              <div style={{fontWeight:800,fontSize:20,marginTop:4,lineHeight:1.2}}>{egH.icone} {egH.nome} · {chHoje.info.texto}</div>
+              <div style={{fontSize:12.5,opacity:0.92,marginTop:2}}>Ritmo {zH.nome} · {chHoje.pos?"logo depois da musculação":"em outro período do dia"}</div>
+              <button type="button" onClick={()=>abrirCardio(chHoje)} style={{width:"100%",background:"#fff",color:"#c2410c",fontWeight:800,border:"none",borderRadius:12,padding:12,marginTop:12,fontSize:14.5,cursor:"pointer",fontFamily:"inherit"}}>Ver cardio de hoje ›</button>
             </div>
           ))}
           {atividadesHoje.length>0 && (
