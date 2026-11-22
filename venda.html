@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
-<title>Mente Ativa · Wellington Brito</title>
-<meta name="description" content="8 jogos de memória, atenção e linguagem para quem tem 50 anos ou mais. 10 minutos por dia, no celular. Com o personal Wellington Brito."/>
-<meta property="og:title" content="Mente Ativa · memória e atenção em 10 minutos por dia"/>
-<meta property="og:description" content="8 jogos de memória, atenção e linguagem, no celular. Com o personal Wellington Brito."/>
-<meta property="og:image" content="https://britowellington.github.io/app.longevus/mente-ativa.jpg"/>
+<title>Wellington Brito · Personal Trainer</title>
+<meta name="description" content="Serviços do personal Wellington Brito, especialista em envelhecimento e longevidade."/>
+<meta property="og:title" content="Wellington Brito · Personal Trainer"/>
+<meta property="og:description" content="Saúde, longevidade e autonomia para quem tem 50 anos ou mais."/>
+<meta property="og:image" content="https://britowellington.github.io/app.longevus/foto-wellington.jpg"/>
 <meta property="og:type" content="website"/>
 <link rel="icon" type="image/png" href="favicon-32.png"/>
 <meta name="theme-color" content="#0F172A"/>
@@ -32,7 +32,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
-// ═══ Página de venda dos serviços da vitrine (venda.html?i=<id>) · por enquanto: Mente Ativa ═══
+// ═══ Página de venda dos serviços da vitrine (venda.html?i=<id>) · Mente Ativa e Longevus 360 (próximos produtos entram em CONTEUDO) ═══
 // Pagamento igual ao comprar.html: Pix aqui mesmo + "Já paguei" (rpc_registrar_compra_publica).
 const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
 const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
@@ -146,7 +146,7 @@ function DemoGenio({ onComprar }) {
 }
 
 // ═══ CHECKOUT (Pix + "Já paguei", igual ao comprar.html) ═══
-function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoInicial }) {
+function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoInicial, resumoSub }) {
   const [para, setPara] = useState(modoInicial || "mim");
   const [etapa, setEtapa] = useState("dados");
   const [f, setF] = useState({ nome: "", whats: "" });
@@ -182,7 +182,7 @@ function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoIn
   const aba = (k, t) => h("button", { type: "button", onClick: () => { setPara(k); setErro(""); setEtapa("dados"); }, style: { flex: 1, height: 44, borderRadius: 12, border: "none", fontWeight: 800, fontSize: 14.5, cursor: "pointer", background: para === k ? C.escuro : "transparent", color: para === k ? "#fff" : "#475569" } }, t);
   const resumo = h("div", { style: { display: "flex", alignItems: "center", gap: 12, background: C.fundo, borderRadius: 14, padding: "10px 12px", marginBottom: 14 } },
     h("img", { src: d.foto || "mente-ativa.jpg", alt: "", style: { width: 46, height: 46, borderRadius: 12, objectFit: "cover" } }),
-    h("div", { style: { flex: 1, minWidth: 0 } }, h("div", { style: { fontSize: 15, fontWeight: 800 } }, titulo + (mensal ? " · 30 dias" : "")), h("div", { style: { fontSize: 12.5, color: C.cinza } }, presente ? "Presente para " + (pr.nome.trim() || "alguém especial") : "8 jogos liberados")),
+    h("div", { style: { flex: 1, minWidth: 0 } }, h("div", { style: { fontSize: 15, fontWeight: 800 } }, titulo + (mensal ? " · 30 dias" : "")), h("div", { style: { fontSize: 12.5, color: C.cinza } }, presente ? "Presente para " + (pr.nome.trim() || "alguém especial") : resumoSub || "Acesso liberado")),
     h("div", { style: { fontSize: 18, fontWeight: 800 } }, brl(valor)));
   const caixaErro = erro ? h("div", { role: "alert", style: { background: C.vermelhoClaro, color: C.vermelho, borderRadius: 12, padding: "10px 12px", fontSize: 14, lineHeight: 1.45, marginBottom: 12 } }, erro) : null;
   const waProf = waLink(pix.whatsapp, "Oi, " + pers + "! Sou " + f.nome.trim() + " e acabei de pagar: " + titulo + (presente ? " (presente para " + pr.nome.trim() + ")" : "") + ". Segue o comprovante.");
@@ -231,7 +231,85 @@ function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoIn
       corpo));
 }
 
-// ═══ PÁGINA · MENTE ATIVA ═══
+// ── Demonstração do Longevus 360: um dia de exemplo ──
+function Demo360({ onComprar }) {
+  const [passo, setPasso] = useState(0); // 0 nada · 1 analisando · 2 almoço feito · 3 treino feito
+  const t = useRef(null);
+  useEffect(() => () => clearTimeout(t.current), []);
+  const META = 500, ALIM = passo >= 2 ? 320 : 0, TREINO = passo >= 3 ? 210 : 0;
+  const tot = ALIM + TREINO;
+  const pct = (v) => Math.min(100, Math.round((v / META) * 100)) + "%";
+  const fotografar = () => { setPasso(1); t.current = setTimeout(() => setPasso(2), 1300); };
+  const linha = (cor, rot, v) => h("div", { style: { display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#334155" } }, h("span", { style: { width: 10, height: 10, borderRadius: 3, background: cor } }), h("span", { style: { flex: 1 } }, rot), h("b", null, v + " kcal"));
+  return h("div", { style: { ...cartao, padding: 16 } },
+    h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 } },
+      h("div", null, h("div", { style: { fontSize: 16, fontWeight: 800 } }, "Seu dia no 360"), h("div", { style: { fontSize: 12.5, color: C.cinza } }, "Exemplo com números ilustrativos")),
+      h("span", { style: { fontSize: 12, fontWeight: 800, color: tot >= META ? C.verde : C.laranjaTxt, background: tot >= META ? C.verdeClaro : C.laranjaClaro, borderRadius: 99, padding: "4px 10px" } }, tot >= META ? "Meta batida" : "Meta: " + META + " kcal")),
+    h("div", { style: { fontSize: 12, fontWeight: 700, color: C.cinza, marginBottom: 6 } }, "Déficit do dia"),
+    h("div", { style: { height: 16, borderRadius: 99, background: "#F1F5F9", overflow: "hidden", display: "flex" } },
+      h("div", { style: { width: pct(ALIM), background: C.laranja, transition: "width .6s" } }),
+      h("div", { style: { width: pct(TREINO), background: "#0284C7", transition: "width .6s" } })),
+    h("div", { style: { display: "flex", flexDirection: "column", gap: 6, marginTop: 10 } }, linha(C.laranja, "Déficit da alimentação", ALIM), linha("#0284C7", "Déficit do treino", TREINO)),
+    passo === 1 ? h("div", { style: { marginTop: 14, background: C.fundo, borderRadius: 14, padding: "14px 12px", textAlign: "center", fontSize: 14, fontWeight: 700, color: C.cinza } }, "📷  Analisando a foto do almoço...") : null,
+    passo >= 2 ? h("div", { style: { marginTop: 14, display: "flex", gap: 10, alignItems: "center", background: C.fundo, borderRadius: 14, padding: "10px 12px" } },
+      h("span", { style: { width: 44, height: 44, borderRadius: 12, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 } }, "🍽️"),
+      h("span", { style: { flex: 1, minWidth: 0 } }, h("b", { style: { display: "block", fontSize: 14 } }, "Almoço: frango, arroz e salada"), h("span", { style: { display: "block", fontSize: 12.5, color: C.cinza } }, "540 kcal · 38 g de proteína"))) : null,
+    passo >= 3 ? h("div", { style: { marginTop: 8, display: "flex", gap: 10, alignItems: "center", background: C.fundo, borderRadius: 14, padding: "10px 12px" } },
+      h("span", { style: { width: 44, height: 44, borderRadius: 12, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 } }, "🏋️"),
+      h("span", { style: { flex: 1, minWidth: 0 } }, h("b", { style: { display: "block", fontSize: 14 } }, "Treino de força, 50 min"), h("span", { style: { display: "block", fontSize: 12.5, color: C.cinza } }, "Gasto calculado pelo app"))) : null,
+    h("div", { style: { marginTop: 14 } },
+      passo === 0 ? h("button", { type: "button", onClick: fotografar, style: { ...botaoPri, height: 50, fontSize: 16, background: C.escuro, boxShadow: "none" } }, "📷  Registrar o almoço por foto") :
+      passo === 2 ? h("button", { type: "button", onClick: () => setPasso(3), style: { ...botaoPri, height: 50, fontSize: 16, background: "#0284C7", boxShadow: "none" } }, "🏋️  Finalizar o treino de hoje") :
+      passo === 3 ? h("div", null,
+        h("div", { style: { fontSize: 14, color: "#334155", textAlign: "center", lineHeight: 1.5, marginBottom: 10 } }, "Comida e treino somados mostram o seu dia inteiro, e o que ainda falta para o objetivo."),
+        h("button", { type: "button", onClick: onComprar, style: { ...botaoPri, height: 50, fontSize: 16 } }, "Quero o Longevus 360")) : null));
+}
+
+// ═══ CONTEÚDO DE CADA PRODUTO ═══
+const CONTEUDO = {
+  mente: (pers) => ({
+    nome: "Mente Ativa", img: "mente-ativa.jpg", foto: "foto-moradores-3.jpg", fotoPos: "center 20%", selo: "10 MIN POR DIA", rotulo: "MENTE ATIVA",
+    tiles: JOGOS.slice(0, 4).map((j) => [j[0], j[4]]),
+    titulo: "Memória e atenção afiadas, com jogos de 10 minutos por dia",
+    sub: "O corpo você treina comigo. A mente, você treina em casa. São 8 jogos pensados para quem tem 50 anos ou mais.",
+    precoRot: "30 DIAS DE ACESSO", cta: "Quero treinar a mente", ctaSec: "🎨  Testar um jogo grátis", resumoSub: "8 jogos liberados",
+    para: [[I.ideia, "Esquece onde deixou as coisas", "Memória treinada todo dia"], [I.grafico, "Quer manter a cabeça afiada", "Atenção e raciocínio rápido"], [I.estrela, "Gosta de um bom desafio", "Jogos leves e divertidos"], [I.casa, "Quer algo para fazer em casa", "No celular, quando quiser"]],
+    demoTit: ["Teste agora", "Jogue um pouco antes de decidir"], Demo: DemoGenio,
+    extra: () => h("div", null, Secao("Os 8 jogos", "Memória, atenção e linguagem"),
+      h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 } }, JOGOS.map(([ic, n, area, desc, g]) => h("div", { key: n, style: { ...cartao, padding: 12, display: "flex", gap: 10, alignItems: "center" } },
+        h("span", { style: { width: 42, height: 42, borderRadius: 12, background: "linear-gradient(135deg," + g[0] + "," + g[1] + ")", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 21, flexShrink: 0, boxShadow: "inset 0 -3px 0 rgba(0,0,0,0.15)" } }, ic),
+        h("span", { style: { minWidth: 0 } }, h("b", { style: { display: "block", fontSize: 13.5, lineHeight: 1.2 } }, n), h("span", { style: { display: "block", fontSize: 11.5, color: C.cinza, marginTop: 2 } }, area + " · " + desc)))))),
+    passos: [["Pague pelo Pix", "Leva um minuto, direto aqui na página."], ["O " + pers + " libera o seu acesso", "Ele confirma o pagamento e te chama no WhatsApp."], ["Faça o desafio do dia", "O app escolhe o jogo pelo que você mais precisa treinar, com uma meta só sua."], ["Acompanhe sua evolução", "Cada resultado fica salvo, e o " + pers + " acompanha com você."]],
+    evolucao: "Cada jogo registra o seu resultado. Dá para ver, semana a semana, a memória e a atenção melhorando.",
+    sobre: "Há mais de 15 anos atendo adultos e idosos. No meu trabalho, corpo e mente andam juntos. A Mente Ativa leva para o seu celular os mesmos estímulos de memória e atenção que uso nas minhas aulas.",
+    cruz: { href: "elo60-venda.html", img: "elo-60.jpg", t: "Quer corpo e mente juntos?", s: "Conheça o Elo 60+: exercícios em casa e os jogos da Mente Ativa no mesmo programa." },
+    faq: [["Preciso saber jogar no celular?", "Não. Os jogos têm letras grandes, instruções simples e o botão de voltar sempre à vista."], ["Quanto tempo por dia?", "Cerca de 10 minutos já fazem diferença. Você joga quando quiser, no seu ritmo."], ["Como funciona o pagamento?", "Por Pix, direto para o " + pers + ". São 30 dias com os 8 jogos liberados. Renova só se quiser, sem fidelidade."], ["Já treino com o " + pers + ". Serve para mim?", "Serve, e combina muito. O corpo você treina com ele, a mente você treina em casa."]],
+    final: ["Sua mente também merece treino", "30 dias com os 8 jogos por "], aviso: "A Mente Ativa não substitui acompanhamento médico.", padrao: 19.9
+  }),
+  l360: (pers) => ({
+    nome: "Longevus 360", img: "Longevus-360.jpg", foto: "foto-academia.jpg", fotoPos: "center 25%", selo: "TREINO + ALIMENTAÇÃO", rotulo: "LONGEVUS 360",
+    tiles: [["📷", ["#FFB37A", "#FF5603"]], ["🥗", ["#6EE7B7", "#059669"]], ["🏋️", ["#7DD3FC", "#0284C7"]], ["📊", ["#C4B5FD", "#7C3AED"]]],
+    titulo: "Treino e alimentação conversando todos os dias",
+    sub: "Tire foto da refeição e o app calcula calorias e proteína. Somado ao gasto do seu treino, você vê o seu dia inteiro e o que falta para chegar no objetivo.",
+    precoRot: "POR MÊS", cta: "Quero o Longevus 360", ctaSec: "📷  Ver como funciona", resumoSub: "Aba Calorias liberada no app",
+    para: [[I.grafico, "Quer emagrecer sem dieta maluca", "Déficit na medida certa"], [I.check, "Precisa comer mais proteína", "Meta mínima todo dia"], [I.ideia, "Não sabe quanto pode comer", "O app mostra o que ainda cabe"], [I.estrela, "Já treina e quer mais resultado", "Treino e comida somados"]],
+    demoTit: ["Veja na prática", "Um dia no Longevus 360"], Demo: Demo360,
+    extra: (d) => { const lista = String(d.inclui || "Registro da refeição por foto\nMetas diárias para o seu objetivo\nDéficit dividido entre alimentação e treino\nCardápios práticos com o que tem em casa\nAcompanhamento direto do seu personal").split("\n").map((x) => x.trim()).filter(Boolean);
+      return h("div", null, Secao("O que você recebe", "Tudo dentro do seu app"),
+        h("div", { style: cartao }, lista.map((t, i) => h("div", { key: i, style: { display: "flex", gap: 10, alignItems: "flex-start", fontSize: 15, lineHeight: 1.45, color: "#1E293B", marginTop: i ? 10 : 0 } },
+          h("span", { style: { width: 24, height: 24, borderRadius: 99, background: C.verdeClaro, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 } }, h(Ico, { d: I.check, cor: C.verde, tam: 15, larg: 2.8 })), h("span", null, t))),
+          h("div", { style: { display: "flex", alignItems: "center", gap: 10, marginTop: 14, background: C.laranjaClaro, borderRadius: 12, padding: "10px 12px" } }, h(Ico, { d: I.escudo, tam: 20 }), h("span", { style: { fontSize: 13.5, color: "#7C2D12", lineHeight: 1.45 } }, "As fotos não ficam guardadas. O app salva só os números.")))); },
+    passos: [["Pague pelo Pix", "Leva um minuto, direto aqui na página."], ["O " + pers + " libera a aba Calorias", "E define com você as metas de calorias e proteína."], ["Tire foto de cada refeição", "O app estima calorias e macros na hora. O que comer fora, você lança em Extras."], ["Veja o seu déficit", "Alimentação e treino somados, com o que falta para fechar o dia."]],
+    evolucao: "Dia, semana e mês: você vê se bateu a meta, quanto de déficit fez e como está chegando perto do objetivo.",
+    sobre: "Há mais de 15 anos atendo adultos e idosos. Treino sozinho não faz milagre: o resultado aparece quando o que você come conversa com o que você treina. O Longevus 360 junta as duas coisas no mesmo lugar.",
+    cruz: null,
+    faq: [["Preciso pesar a comida?", "Não. A foto já dá uma boa estimativa. Se quiser, você ajusta ou lança à mão o que comeu fora das refeições."], ["Substitui o nutricionista?", "Não. O 360 ajuda no dia a dia. Se você tem nutricionista, as metas podem seguir o que ele passou."], ["As fotos ficam salvas?", "Não. O app guarda só os números de cada refeição."], ["Como funciona o pagamento?", "Por Pix, direto para o " + pers + ". É mensal, renova só se quiser, sem fidelidade."]],
+    final: ["Comece a enxergar o seu dia inteiro", "Longevus 360 por "], aviso: "O Longevus 360 não substitui acompanhamento nutricional.", padrao: 0
+  })
+};
+const tipoProduto = (d, id) => (d.produto === "l360" || String(id).indexOf("l360:") === 0 || Q.get("p") === "l360") ? "l360" : "mente";
+
+// ═══ PÁGINA ═══
 function App() {
   const id = Q.get("i") || "";
   const [d, setD] = useState({});
@@ -249,79 +327,63 @@ function App() {
     window.addEventListener("scroll", ver, { passive: true }); ver();
     return () => window.removeEventListener("scroll", ver);
   }, []);
-  useEffect(() => { document.title = (d.titulo || "Mente Ativa") + " · Wellington Brito"; }, [d.titulo]);
-
-  const valor = valorNum(d.valor || d.preco) || 19.9;
-  const porDia = Math.ceil((valor / 30) * 100) / 100;
-  const temPresente = !!(d.id && pix.pix_key && d.aceitaPresente === true);
   const pers = primeiro(pix.nome || d.profissional) || "Wellington";
+  const P = CONTEUDO[tipoProduto(d, id)](pers);
+  const nome = d.titulo || P.nome;
+  useEffect(() => { document.title = nome + " · Wellington Brito"; }, [nome]);
+
+  const valor = valorNum(d.valor || d.preco) || P.padrao;
+  const porDia = Math.ceil((valor / 30) * 100) / 100;
+  const temPresente = !!(d.id && pix.pix_key && d.aceitaPresente !== false);
   const comprar = (modo) => setCheckout(modo || "mim");
-  const waDuvida = waLink(pix.whatsapp, "Oi, " + pers + "! Vi a página da Mente Ativa e tenho uma dúvida.");
-  const PARA = [
-    [I.ideia, "Esquece onde deixou as coisas", "Memória treinada todo dia"],
-    [I.grafico, "Quer manter a cabeça afiada", "Atenção e raciocínio rápido"],
-    [I.estrela, "Gosta de um bom desafio", "Jogos leves e divertidos"],
-    [I.casa, "Quer algo para fazer em casa", "No celular, quando quiser"]];
-  const PASSOS = [
-    ["Pague pelo Pix", "Leva um minuto, direto aqui na página."],
-    ["O " + pers + " libera o seu acesso", "Ele confirma o pagamento e te chama no WhatsApp."],
-    ["Faça o desafio do dia", "O app escolhe o jogo pelo que você mais precisa treinar, com uma meta só sua."],
-    ["Acompanhe sua evolução", "Cada resultado fica salvo, e o " + pers + " acompanha com você."]];
-  const FAQ = [
-    ["Preciso saber jogar no celular?", "Não. Os jogos têm letras grandes, instruções simples e o botão de voltar sempre à vista."],
-    ["Quanto tempo por dia?", "Cerca de 10 minutos já fazem diferença. Você joga quando quiser, no seu ritmo."],
-    ["Como funciona o pagamento?", "Por Pix, direto para o " + pers + ". São 30 dias com os 8 jogos liberados. Renova só se quiser, sem fidelidade."],
-    ["Já treino com o " + pers + ". Serve para mim?", "Serve, e combina muito. O corpo você treina com ele, a mente você treina em casa."]]
-    .concat(temPresente ? [["Posso dar de presente?", "Pode. Toque em Dar de presente, pague o Pix e o " + pers + " fala com a pessoa."]] : []);
+  const waDuvida = waLink(pix.whatsapp, "Oi, " + pers + "! Vi a página do " + nome + " e tenho uma dúvida.");
+  const FAQ = P.faq.concat(temPresente ? [["Posso dar de presente?", "Pode. Toque em Dar de presente, pague o Pix e o " + pers + " fala com a pessoa."]] : []);
 
   return h("div", null,
     // ── HERO ──
     h("div", { style: { background: C.escuro, color: "#F8FAFC", padding: "calc(16px + env(safe-area-inset-top)) 18px 24px", borderRadius: "0 0 30px 30px" } },
       h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between" } },
         h("img", { src: "logo-wb-claro.png", alt: "Wellington Brito Personal Trainer", style: { height: 54, width: "auto" } }),
-        h("span", { style: { fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", color: C.pessego, border: "1px solid rgba(253,186,116,0.45)", borderRadius: 99, padding: "5px 10px" } }, "10 MIN POR DIA")),
+        h("span", { style: { fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", color: C.pessego, border: "1px solid rgba(253,186,116,0.45)", borderRadius: 99, padding: "5px 10px" } }, P.selo)),
       h("div", { className: "entra", style: { position: "relative", marginTop: 16, height: 250, borderRadius: 18, overflow: "hidden", display: "grid", gridTemplateColumns: "1.3fr 1fr", gridTemplateRows: "122px 122px", gap: 6 } },
-        h("img", { src: "foto-moradores-3.jpg", alt: "O " + pers + " com alunos", style: { gridRow: "1 / 3", width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 20%", display: "block" } }),
-        h("img", { src: d.foto || "mente-ativa.jpg", alt: "", style: { width: "100%", height: "100%", objectFit: "cover", display: "block" } }),
-        h("div", { style: { background: C.escuro2, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, padding: 8 } }, JOGOS.slice(0, 4).map(([ic, n, , , g]) => h("span", { key: n, style: { borderRadius: 10, background: "linear-gradient(135deg," + g[0] + "," + g[1] + ")", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, boxShadow: "inset 0 -3px 0 rgba(0,0,0,0.15)" } }, ic))),
-        h("span", { style: { position: "absolute", left: 10, bottom: 10, fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", background: C.laranja, color: "#fff", borderRadius: 8, padding: "5px 9px" } }, "MENTE ATIVA")),
-      h("div", { className: "entra", style: { fontSize: 26, fontWeight: 800, lineHeight: 1.18, marginTop: 18, animationDelay: ".08s" } }, "Memória e atenção afiadas, com jogos de 10 minutos por dia"),
-      h("div", { style: { fontSize: 15, color: "#CBD5E1", marginTop: 8, lineHeight: 1.5 } }, "O corpo você treina comigo. A mente, você treina em casa. São 8 jogos pensados para quem tem 50 anos ou mais."),
+        h("img", { src: P.foto, alt: "O " + pers + " com aluno", style: { gridRow: "1 / 3", width: "100%", height: "100%", objectFit: "cover", objectPosition: P.fotoPos, display: "block" } }),
+        h("img", { src: d.foto || P.img, alt: "", style: { width: "100%", height: "100%", objectFit: "cover", display: "block" } }),
+        h("div", { style: { background: C.escuro2, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, padding: 8 } }, P.tiles.map(([ic, g], i) => h("span", { key: i, style: { borderRadius: 10, background: "linear-gradient(135deg," + g[0] + "," + g[1] + ")", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, boxShadow: "inset 0 -3px 0 rgba(0,0,0,0.15)" } }, ic))),
+        h("span", { style: { position: "absolute", left: 10, bottom: 10, fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", background: C.laranja, color: "#fff", borderRadius: 8, padding: "5px 9px" } }, P.rotulo)),
+      h("div", { className: "entra", style: { fontSize: 26, fontWeight: 800, lineHeight: 1.18, marginTop: 18, animationDelay: ".08s" } }, P.titulo),
+      h("div", { style: { fontSize: 15, color: "#CBD5E1", marginTop: 8, lineHeight: 1.5 } }, P.sub),
       h("div", { style: { display: "flex", gap: 8, marginTop: 16 } },
         h("div", { style: { flex: 1.25, background: C.escuro2, border: "1.5px solid " + C.laranja, borderRadius: 14, padding: "10px 12px" } },
-          h("div", { style: { fontSize: 10.5, color: C.cinzaClaro, letterSpacing: "0.05em" } }, "30 DIAS DE ACESSO"),
-          h("div", { style: { fontSize: 24, fontWeight: 800, color: C.pessego, lineHeight: 1.15 } }, brl(valor)),
-          h("div", { style: { fontSize: 12, color: C.cinzaClaro } }, "menos de " + brl(porDia) + " por dia")),
+          h("div", { style: { fontSize: 10.5, color: C.cinzaClaro, letterSpacing: "0.05em" } }, P.precoRot),
+          h("div", { style: { fontSize: 24, fontWeight: 800, color: C.pessego, lineHeight: 1.15 } }, valor > 0 ? brl(valor) : "Consulte"),
+          valor > 0 ? h("div", { style: { fontSize: 12, color: C.cinzaClaro } }, "menos de " + brl(porDia) + " por dia") : null),
         h("div", { style: { flex: 1, background: C.escuro2, borderRadius: 14, padding: "10px 12px" } },
           h("div", { style: { fontSize: 10.5, color: C.cinzaClaro, letterSpacing: "0.05em" } }, "PAGAMENTO"),
           h("div", { style: { fontSize: 16, fontWeight: 800, lineHeight: 1.25, marginTop: 2 } }, "Pix, sem cartão"),
           h("div", { style: { fontSize: 12, color: C.cinzaClaro } }, "sem fidelidade"))),
-      h("button", { ref: heroBtn, type: "button", onClick: () => comprar("mim"), style: { ...botaoPri, marginTop: 14 } }, "Quero treinar a mente"),
-      h("a", { href: "#teste", style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", height: 48, marginTop: 8, borderRadius: 14, border: "1.5px solid rgba(255,255,255,0.22)", color: "#fff", fontWeight: 700, fontSize: 15, textDecoration: "none" } }, "🎨  Testar um jogo grátis")),
+      h("button", { ref: heroBtn, type: "button", onClick: () => comprar("mim"), style: { ...botaoPri, marginTop: 14 } }, P.cta),
+      h("a", { href: "#teste", style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", height: 48, marginTop: 8, borderRadius: 14, border: "1.5px solid rgba(255,255,255,0.22)", color: "#fff", fontWeight: 700, fontSize: 15, textDecoration: "none" } }, P.ctaSec)),
 
     h("div", { style: { padding: "0 16px 120px" } },
       Secao("Para quem é", "Feito para você que"),
-      h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 } }, PARA.map(([ic, t, sub]) => h("div", { key: t, style: { ...cartao, padding: 13 } },
+      h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 } }, P.para.map(([ic, t, sub]) => h("div", { key: t, style: { ...cartao, padding: 13 } },
         bolha(ic),
         h("div", { style: { fontSize: 14, fontWeight: 800, lineHeight: 1.25, marginTop: 9 } }, t),
         h("div", { style: { fontSize: 12.5, color: C.cinza, lineHeight: 1.35, marginTop: 3 } }, sub)))),
 
-      h("div", { id: "teste", style: { scrollMarginTop: 12 } }, Secao("Teste agora", "Jogue um pouco antes de decidir")),
-      h(DemoGenio, { onComprar: () => comprar("mim") }),
+      h("div", { id: "teste", style: { scrollMarginTop: 12 } }, Secao(P.demoTit[0], P.demoTit[1])),
+      h(P.Demo, { onComprar: () => comprar("mim") }),
 
-      Secao("Os 8 jogos", "Memória, atenção e linguagem"),
-      h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 } }, JOGOS.map(([ic, n, area, desc, g]) => h("div", { key: n, style: { ...cartao, padding: 12, display: "flex", gap: 10, alignItems: "center" } },
-        h("span", { style: { width: 42, height: 42, borderRadius: 12, background: "linear-gradient(135deg," + g[0] + "," + g[1] + ")", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 21, flexShrink: 0, boxShadow: "inset 0 -3px 0 rgba(0,0,0,0.15)" } }, ic),
-        h("span", { style: { minWidth: 0 } }, h("b", { style: { display: "block", fontSize: 13.5, lineHeight: 1.2 } }, n), h("span", { style: { display: "block", fontSize: 11.5, color: C.cinza, marginTop: 2 } }, area + " · " + desc))))),
+      P.extra(d),
 
       Secao("Como funciona", "Simples do começo ao fim"),
-      h("div", { style: { ...cartao, padding: "6px 16px" } }, PASSOS.map(([t, sub], i) => h("div", { key: t, style: { display: "flex", gap: 13, padding: "13px 0", borderTop: i ? "1px solid #F1F5F9" : "none" } },
+      h("div", { style: { ...cartao, padding: "6px 16px" } }, P.passos.map(([t, sub], i) => h("div", { key: t, style: { display: "flex", gap: 13, padding: "13px 0", borderTop: i ? "1px solid #F1F5F9" : "none" } },
         h("span", { style: { width: 32, height: 32, borderRadius: 99, background: i === 0 ? C.laranja : C.escuro, color: "#fff", fontWeight: 800, fontSize: 14.5, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, i + 1),
         h("span", null, h("b", { style: { display: "block", fontSize: 15 } }, t), h("span", { style: { display: "block", fontSize: 13.5, color: C.cinza, lineHeight: 1.45, marginTop: 2 } }, sub))))),
 
       h("div", { style: { marginTop: 14, background: C.escuro, color: "#fff", borderRadius: 20, padding: 18, display: "flex", gap: 14, alignItems: "center" } },
         h("span", { style: { width: 48, height: 48, borderRadius: 14, background: C.escuro2, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, h(Ico, { d: I.grafico, cor: C.pessego, tam: 24 })),
-        h("span", null, h("b", { style: { display: "block", fontSize: 16 } }, "Você vê a sua evolução"), h("span", { style: { display: "block", fontSize: 13.5, color: "#CBD5E1", lineHeight: 1.45, marginTop: 3 } }, "Cada jogo registra o seu resultado. Dá para ver, semana a semana, a memória e a atenção melhorando."))),
+        h("span", null, h("b", { style: { display: "block", fontSize: 16 } }, "Você vê a sua evolução"), h("span", { style: { display: "block", fontSize: 13.5, color: "#CBD5E1", lineHeight: 1.45, marginTop: 3 } }, P.evolucao))),
 
       Secao("Quem vai te guiar"),
       h("div", { style: { ...cartao, padding: 0, overflow: "hidden" } },
@@ -331,14 +393,13 @@ function App() {
             h("div", { style: { fontSize: 18, fontWeight: 800 } }, "Wellington Brito"),
             h("div", { style: { fontSize: 13, color: C.cinza, marginTop: 1 } }, "Personal Trainer · CREF 089836-G/SP"),
             h("div", { style: { fontSize: 13, color: C.laranjaTxt, fontWeight: 800, marginTop: 2 } }, "Envelhecimento e Longevidade"))),
-        h("div", { style: { padding: "0 16px 16px", fontSize: 14.5, color: "#334155", lineHeight: 1.6 } }, "Há mais de 15 anos atendo adultos e idosos. No meu trabalho, corpo e mente andam juntos. A Mente Ativa leva para o seu celular os mesmos estímulos de memória e atenção que uso nas minhas aulas."),
+        h("div", { style: { padding: "0 16px 16px", fontSize: 14.5, color: "#334155", lineHeight: 1.6 } }, P.sobre),
         h("div", { style: { background: C.laranjaClaro, padding: "12px 16px", fontSize: 15, fontWeight: 800, color: C.laranjaTxt } }, "“Autonomia é o melhor resultado.”")),
 
-      // ── Cross-sell Elo 60+ ──
-      h("a", { href: "elo60-venda.html", style: { ...cartao, marginTop: 14, display: "flex", gap: 12, alignItems: "center", textDecoration: "none", color: C.escuro, border: "1.5px solid #FDE7D3" } },
-        h("img", { src: "elo-60.jpg", alt: "", style: { width: 54, height: 54, borderRadius: 14, objectFit: "cover", flexShrink: 0 } }),
-        h("span", { style: { flex: 1, minWidth: 0 } }, h("b", { style: { display: "block", fontSize: 15 } }, "Quer corpo e mente juntos?"), h("span", { style: { display: "block", fontSize: 13, color: C.cinza, lineHeight: 1.4, marginTop: 2 } }, "Conheça o Elo 60+: exercícios em casa e os jogos da Mente Ativa no mesmo programa.")),
-        h("span", { style: { display: "inline-flex", transform: "rotate(180deg)" } }, h(Ico, { d: I.seta, tam: 20, larg: 2.4 }))),
+      P.cruz ? h("a", { href: P.cruz.href, style: { ...cartao, marginTop: 14, display: "flex", gap: 12, alignItems: "center", textDecoration: "none", color: C.escuro, border: "1.5px solid #FDE7D3" } },
+        h("img", { src: P.cruz.img, alt: "", style: { width: 54, height: 54, borderRadius: 14, objectFit: "cover", flexShrink: 0 } }),
+        h("span", { style: { flex: 1, minWidth: 0 } }, h("b", { style: { display: "block", fontSize: 15 } }, P.cruz.t), h("span", { style: { display: "block", fontSize: 13, color: C.cinza, lineHeight: 1.4, marginTop: 2 } }, P.cruz.s)),
+        h("span", { style: { display: "inline-flex", transform: "rotate(180deg)" } }, h(Ico, { d: I.seta, tam: 20, larg: 2.4 }))) : null,
 
       Secao("Dúvidas"),
       h("div", { style: { ...cartao, padding: "2px 16px" } }, FAQ.map(([q, r], i) => h("div", { key: q, style: { borderTop: i ? "1px solid #F1F5F9" : "none" } },
@@ -347,17 +408,17 @@ function App() {
       waDuvida ? h("a", { href: waDuvida, target: "_blank", rel: "noopener noreferrer", style: { display: "block", textAlign: "center", marginTop: 12, color: C.laranjaTxt, fontWeight: 800, fontSize: 14.5, textDecoration: "none", padding: 8 } }, "Ainda com dúvida? Fale com o " + pers + " no WhatsApp") : null,
 
       h("div", { style: { marginTop: 18, background: "linear-gradient(135deg,#FF5603,#FF8A3D)", borderRadius: 22, padding: 20, color: "#fff", textAlign: "center", boxShadow: "0 12px 26px rgba(255,86,3,0.28)" } },
-        h("div", { style: { fontSize: 21, fontWeight: 800, lineHeight: 1.25 } }, "Sua mente também merece treino"),
-        h("div", { style: { fontSize: 14, opacity: 0.92, marginTop: 4 } }, "30 dias com os 8 jogos por " + brl(valor) + "."),
-        h("button", { type: "button", onClick: () => comprar("mim"), style: { width: "100%", height: 54, marginTop: 14, borderRadius: 16, border: "none", background: "#fff", color: C.laranjaTxt, fontWeight: 800, fontSize: 16.5, cursor: "pointer" } }, "Quero treinar a mente")),
-      h("div", { style: { textAlign: "center", fontSize: 12, color: C.cinzaClaro, marginTop: 18, lineHeight: 1.6 } }, "Wellington Brito · Personal Trainer · CREF 089836-G/SP", h("br"), "A Mente Ativa não substitui acompanhamento médico.")),
+        h("div", { style: { fontSize: 21, fontWeight: 800, lineHeight: 1.25 } }, P.final[0]),
+        valor > 0 ? h("div", { style: { fontSize: 14, opacity: 0.92, marginTop: 4 } }, P.final[1] + brl(valor) + ".") : null,
+        h("button", { type: "button", onClick: () => comprar("mim"), style: { width: "100%", height: 54, marginTop: 14, borderRadius: 16, border: "none", background: "#fff", color: C.laranjaTxt, fontWeight: 800, fontSize: 16.5, cursor: "pointer" } }, P.cta)),
+      h("div", { style: { textAlign: "center", fontSize: 12, color: C.cinzaClaro, marginTop: 18, lineHeight: 1.6 } }, "Wellington Brito · Personal Trainer · CREF 089836-G/SP", h("br"), P.aviso)),
 
     barra && !checkout ? h("div", { style: { position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 300, display: "flex", justifyContent: "center", animation: "sobe .25s ease both" } },
       h("div", { style: { width: "100%", maxWidth: 480, background: "rgba(255,255,255,0.97)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", borderTop: "1px solid " + C.borda, padding: "10px 16px calc(10px + env(safe-area-inset-bottom))", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 -8px 24px rgba(15,23,42,0.08)" } },
-        h("div", { style: { flexShrink: 0 } }, h("div", { style: { fontSize: 11, color: C.cinza } }, "30 dias"), h("div", { style: { fontSize: 19, fontWeight: 800 } }, brl(valor))),
+        valor > 0 ? h("div", { style: { flexShrink: 0 } }, h("div", { style: { fontSize: 11, color: C.cinza } }, "30 dias"), h("div", { style: { fontSize: 19, fontWeight: 800 } }, brl(valor))) : null,
         h("button", { type: "button", onClick: () => comprar("mim"), style: { ...botaoPri, height: 50, fontSize: 16, boxShadow: "none" } }, "Começar agora"))) : null,
 
-    h(Checkout, { aberto: !!checkout, modoInicial: checkout, onFechar: () => setCheckout(null), d, pix, valor, mensal: true, temPresente }));
+    h(Checkout, { aberto: !!checkout, modoInicial: checkout, onFechar: () => setCheckout(null), d: { ...d, titulo: nome, foto: d.foto || P.img }, pix, valor, mensal: true, temPresente, resumoSub: P.resumoSub }));
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(h(App));
