@@ -2583,21 +2583,25 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
         )}
 
         {cardioHoje.map(ch=>{
-          const bt = {flex:1,height:42,borderRadius:12,border:"1.5px solid #e11d48",background:"#fff",color:"#be123c",fontWeight:800,fontSize:13.5,cursor:salvandoCardio?"default":"pointer",fontFamily:"inherit"};
-          const rodape = ch.feito
-            ? <div style={{marginTop:10,background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"9px 12px",fontSize:12.5,fontWeight:700,color:"#15803d",textAlign:"center"}}>Cardio concluído hoje{ch.feito.cardioMin?(" · "+ch.feito.cardioMin+" min"):""}{ch.feito.cardioKcal?(" · déficit de cerca de "+ch.feito.cardioKcal+" kcal"):""}. Muito bem!</div>
-            : <div style={{marginTop:10}}>
-                <button type="button" disabled={salvandoCardio} onClick={()=>{ lvAudio(); setGuiado({info:ch.info,separado:true,tKey:ch.t}); }} style={{width:"100%",height:44,borderRadius:12,border:"none",background:"#0f172a",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"inherit",marginBottom:10}}>▶ Iniciar cardio guiado</button>
-                <div style={{fontSize:12,fontWeight:700,color:"#475569",marginBottom:6}}>{salvandoCardio?"Salvando...":"Ou, se já fez, marque:"}</div>
-                <div style={{display:"flex",gap:6}}>
-                  <button type="button" disabled={salvandoCardio} onClick={()=>concluirCardio(ch.info,1,ch.t)} style={bt}>Fiz completo</button>
-                  <button type="button" disabled={salvandoCardio} onClick={()=>concluirCardio(ch.info,0.5,ch.t)} style={bt}>Fiz metade</button>
-                </div>
-              </div>;
+          const eg = ch.info ? CARDIO_ERGOS[ch.info.ergo] : null;
+          if(!eg) return null;
+          if(ch.feito) return (
+            <div key={"ch-"+ch.t} style={{display:"flex",alignItems:"center",gap:9,background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:12,padding:"9px 12px",marginBottom:10}}>
+              <span style={{width:22,height:22,borderRadius:99,background:"#16a34a",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,flexShrink:0}}>✓</span>
+              <div style={{fontSize:12.5,color:"#15803d",fontWeight:700,lineHeight:1.4}}>Cardio de hoje feito · {eg.icone} {eg.nome}{ch.feito.cardioMin?(" · "+ch.feito.cardioMin+" min"):""}{ch.feito.cardioKcal?(" · cerca de "+ch.feito.cardioKcal+" kcal"):""}</div>
+            </div>
+          );
+          const lk = {background:"transparent",border:"none",color:"#be123c",fontSize:12,fontWeight:800,cursor:salvandoCardio?"default":"pointer",fontFamily:"inherit",padding:"2px 0",textDecoration:"underline"};
           return (
-            <div key={"ch-"+ch.t}>
-              {!ch.feito && <div style={{fontSize:12,fontWeight:800,color:"#be123c",margin:"2px 2px 6px"}}>{ch.pos?"Falta o cardio pós-treino de hoje":"Seu cardio de hoje está pendente"}</div>}
-              <CardioCard cfg={prog.cardio} treinoKey={ch.t} semana={ch.sem} rodape={rodape}/>
+            <div key={"ch-"+ch.t} style={{background:"#fff1f2",border:"1.5px solid #fecdd3",borderRadius:14,padding:"11px 13px",marginBottom:12}}>
+              <div style={{fontSize:11,fontWeight:800,color:"#be123c",textTransform:"uppercase",letterSpacing:0.3}}>{ch.pos?"Falta o cardio pós-treino de hoje":"Falta o cardio de hoje"}</div>
+              <div style={{fontSize:14.5,fontWeight:800,color:"#0f172a",marginTop:3}}>{eg.icone} {eg.nome} · {ch.info.texto}</div>
+              <button type="button" disabled={salvandoCardio} onClick={()=>{ lvAudio(); setGuiado({info:ch.info,separado:true,tKey:ch.t}); }} style={{width:"100%",height:42,borderRadius:12,border:"none",background:"#0f172a",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"inherit",marginTop:9}}>▶ Fazer agora</button>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginTop:7,fontSize:12,color:"#64748b"}}>
+                <span>{salvandoCardio?"Salvando...":"Já fez?"}</span>
+                <button type="button" disabled={salvandoCardio} onClick={()=>concluirCardio(ch.info,1,ch.t)} style={lk}>Fiz completo</button>
+                <button type="button" disabled={salvandoCardio} onClick={()=>concluirCardio(ch.info,0.5,ch.t)} style={lk}>Fiz metade</button>
+              </div>
             </div>
           );
         })}
