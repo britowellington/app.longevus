@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>Mente Ativa · Wellington Brito</title>
+<meta name="description" content="8 jogos de memória, atenção e linguagem para quem tem 50 anos ou mais. 10 minutos por dia, no celular. Com o personal Wellington Brito."/>
+<meta property="og:title" content="Mente Ativa · memória e atenção em 10 minutos por dia"/>
+<meta property="og:description" content="8 jogos de memória, atenção e linguagem, no celular. Com o personal Wellington Brito."/>
+<meta property="og:image" content="https://britowellington.github.io/app.longevus/mente-ativa.jpg"/>
+<meta property="og:type" content="website"/>
+<link rel="icon" type="image/png" href="favicon-32.png"/>
+<meta name="theme-color" content="#0F172A"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;background:#F4F5F7;color:#0F172A;-webkit-font-smoothing:antialiased}
+  button,input,textarea{font-family:inherit}
+  input::placeholder,textarea::placeholder{color:#94A3B8}
+  #root{max-width:480px;margin:0 auto;min-height:100vh}
+  @keyframes sobe{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  @keyframes some{from{opacity:0}to{opacity:1}}
+  @keyframes entra{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+  .entra{animation:entra .5s ease both}
+  .rolar::-webkit-scrollbar{display:none}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+// ═══ Página de venda dos serviços da vitrine (venda.html?i=<id>) · por enquanto: Mente Ativa ═══
+// Pagamento igual ao comprar.html: Pix aqui mesmo + "Já paguei" (rpc_registrar_compra_publica).
+const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
+const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
+const PROF_ID = "64f27a4b-4cba-450c-9e52-e799c3c0b8d8";
+const { useState, useEffect, useRef } = React;
+const h = React.createElement;
+const C = { escuro: "#0F172A", escuro2: "#18233A", laranja: "#FF5603", laranjaTxt: "#C2410C", laranjaClaro: "#FFF4EE", pessego: "#FDBA74", cinza: "#64748B", cinzaClaro: "#94A3B8", borda: "#E2E8F0", verde: "#16A34A", verdeClaro: "#F0FDF4", fundo: "#F4F5F7", vermelho: "#B91C1C", vermelhoClaro: "#FEF2F2" };
+
+
+// ── Pix (BR Code) ──
+const pixAscii = (s, max) => { const l = String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9 ]/g, "").trim(); return max ? l.slice(0, max) : l; };
+const pixCRC = (p) => { let c = 0xFFFF; for (let i = 0; i < p.length; i++) { c ^= (p.charCodeAt(i) << 8); for (let j = 0; j < 8; j++) { c = (c & 0x8000) ? ((c << 1) ^ 0x1021) & 0xFFFF : (c << 1) & 0xFFFF; } } return c.toString(16).toUpperCase().padStart(4, "0"); };
+const tlv = (id, v) => id + String(v).length.toString().padStart(2, "0") + v;
+const pixPayload = ({ pixKey, merchantName, merchantCity, amount, txid }) => {
+  if (!pixKey) return null;
+  const conta = tlv("26", tlv("00", "br.gov.bcb.pix") + tlv("01", pixKey));
+  const sem = tlv("00", "01") + conta + tlv("52", "0000") + tlv("53", "986") + (amount ? tlv("54", Number(amount).toFixed(2)) : "") + tlv("58", "BR") + tlv("59", pixAscii(merchantName, 25) || "LONGEVUS") + tlv("60", pixAscii(merchantCity, 15) || "BRASIL") + tlv("62", tlv("05", pixAscii(txid, 25).replace(/\s/g, "") || "***")) + "6304";
+  return sem + pixCRC(sem);
+};
+
+const rpc = async (nome, corpo) => { const r = await fetch(SUPA_URL + "/rest/v1/rpc/" + nome, { method: "POST", headers: { apikey: SUPA_KEY, Authorization: "Bearer " + SUPA_KEY, "Content-Type": "application/json" }, body: JSON.stringify(corpo || {}) }); if (!r.ok) throw new Error(await r.text()); const t = await r.text(); return t ? JSON.parse(t) : null; };
+const valorNum = (v) => { if (typeof v === "number") return v; const t = String(v || "").replace(/[^\d,.-]/g, ""); if (!t) return 0; const n = t.includes(",") ? Number(t.replace(/\./g, "").replace(",", ".")) : Number(t); return isNaN(n) ? 0 : n; };
+const brl = (v) => "R$ " + Number(v || 0).toFixed(2).replace(".", ",");
+const soDig = (t) => String(t || "").replace(/\D/g, "");
+const fmtTel = (t) => { const d = soDig(t).slice(0, 11); if (d.length <= 2) return d; if (d.length <= 7) return "(" + d.slice(0, 2) + ") " + d.slice(2); return "(" + d.slice(0, 2) + ") " + d.slice(2, 7) + "-" + d.slice(7); };
+const primeiro = (n) => String(n || "").trim().split(/\s+/)[0] || "";
+const waLink = (num, txt) => { let d = soDig(num); if (!d) return null; if (!(d.length >= 12 && d.indexOf("55") === 0)) d = "55" + d; return "https://wa.me/" + d + (txt ? "?text=" + encodeURIComponent(txt) : ""); };
+const base = location.origin + location.pathname.replace(/[^/]*$/, "");
+const LINK_ELO = base + "elo60.html";
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+
+// Origem da campanha (utm_source / utm_campaign), salva no cadastro
+const Q = new URLSearchParams(location.search);
+const ORIGEM = [Q.get("utm_source"), Q.get("utm_campaign"), Q.get("utm_medium")].filter(Boolean).join(" / ") || (document.referrer ? "link" : "direto");
+
+const CAPS = [["Base", "Força de pernas, equilíbrio e mobilidade"], ["Força para o dia a dia", "Levantar, sentar e carregar compras"], ["Equilíbrio firme", "Base estreita, giros e olhos em movimento"], ["Do chão para cima", "Descer e levantar do chão com apoio"], ["Caminhar melhor", "Passada, ritmo e escadas"], ["Mãos e braços fortes", "Pegada, empurrar, puxar e alcançar"], ["Reação rápida", "Reflexo, passo de proteção e atenção"], ["Mente e corpo juntos", "Mais dupla tarefa em cada aula"], ["Prevenção de quedas", "Equilíbrio dinâmico e superfícies"], ["Fôlego", "Resistência leve e circuitos mais longos"], ["Coordenação", "Ritmo, sequências e dança leve"], ["Vitalidade", "Tudo junto, teste final e certificado"]];
+const INCLUI_PADRAO = "Aula do dia guiada, com vídeo e cronômetro\nExercícios de corpo e mente juntos\nJogos da Mente Ativa liberados\nTestes de força, equilíbrio e memória nos dias 1, 15 e 30\nTudo em casa, cerca de 15 minutos por dia";
+
+// ── Ícones ──
+const Ico = ({ d, cor, tam, larg }) => h("svg", { width: tam || 20, height: tam || 20, viewBox: "0 0 24 24", fill: "none", stroke: cor || C.laranjaTxt, strokeWidth: larg || 2, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true" }, [].concat(d).map((p, i) => h("path", { key: i, d: p })));
+const I = {
+  check: "M5 12l4 4 10-10",
+  cadeira: ["M7 3h10v8H7z", "M5 11h14", "M7 11v10", "M17 11v10"],
+  escada: ["M3 20h5v-5h5v-5h5V5h3"],
+  ideia: ["M9 18h6", "M10 22h4", "M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"],
+  escudo: ["M12 3l8 3v6c0 4.5-3.4 8.4-8 9-4.6-.6-8-4.5-8-9V6z", "M9 12l2 2 4-4"],
+  mente: ["M9 4a3 3 0 0 0-3 3v.5A3 3 0 0 0 4 10.3 3 3 0 0 0 5 15a3 3 0 0 0 4 3.9V4z", "M15 4a3 3 0 0 1 3 3v.5a3 3 0 0 1 2 2.8 3 3 0 0 1-1 4.7 3 3 0 0 1-4 3.9V4z"],
+  casa: ["M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"],
+  passos: ["M7 20c-1.7 0-3-1.3-3-3 0-2 1-3 1-5s-1-3-1-5c0-1.7 1.3-3 3-3s2 1.3 2 3c0 2-1 3-1 5s1 3 1 5c0 1.7-.3 3-2 3z", "M17 14c1.7 0 3 1.3 3 3", "M15 4c1.7 0 2 1.3 2 3 0 2 1 3 1 5"],
+  grafico: ["M4 20h16", "M7 16v-4", "M12 16V8", "M17 16V5"],
+  pix: ["M7 7l5-5 5 5-5 5z", "M7 17l5 5 5-5-5-5z", "M2 12l5-5M2 12l5 5M22 12l-5-5M22 12l-5 5"],
+  presente: ["M4 11h16v10H4z", "M2 7h20v4H2z", "M12 7v14", "M12 7c-1.5-3-5-3-5-1s3 1 5 1zm0 0c1.5-3 5-3 5-1s-3 1-5 1z"],
+  estrela: ["M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z"],
+  fechar: ["M6 6l12 12", "M18 6L6 18"],
+  seta: "M15 18l-6-6 6-6",
+  mais: ["M6 9l6 6 6-6"]
+};
+
+// ── Peças visuais ──
+const Secao = (t, sub) => h("div", { style: { margin: "28px 0 12px" } },
+  h("div", { style: { fontSize: 11.5, fontWeight: 800, letterSpacing: "0.09em", color: C.laranjaTxt, textTransform: "uppercase" } }, t),
+  sub ? h("div", { style: { fontSize: 20, fontWeight: 800, lineHeight: 1.25, marginTop: 4 } }, sub) : null);
+const cartao = { background: "#fff", borderRadius: 18, padding: 16, boxShadow: "0 1px 2px rgba(15,23,42,0.05), 0 10px 26px rgba(15,23,42,0.06)" };
+const bolha = (d, fundo) => h("span", { style: { width: 40, height: 40, borderRadius: 12, background: fundo || C.laranjaClaro, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, h(Ico, { d }));
+const botaoPri = { width: "100%", height: 56, borderRadius: 16, border: "none", background: C.laranja, color: "#fff", fontWeight: 800, fontSize: 17, cursor: "pointer", boxShadow: "0 10px 22px rgba(255,86,3,0.30)" };
+const estInput = { width: "100%", height: 52, padding: "0 14px", borderRadius: 14, border: "1.5px solid " + C.borda, fontSize: 16.5, background: "#fff", color: C.escuro, outline: "none" };
+const Campo = ({ rotulo, children }) => h("label", { style: { display: "block", marginBottom: 12 } }, h("span", { style: { display: "block", fontSize: 13.5, fontWeight: 700, color: "#334155", marginBottom: 5 } }, rotulo), children);
+
+
+// ═══ Conteúdo por produto (Mente Ativa por enquanto; os próximos entram aqui) ═══
+const JOGOS = [["🎨", "Gênio das Cores", "Memória", "Repita a sequência de cores", ["#FFB37A", "#FF5603"]], ["🃏", "Memória de Pares", "Memória", "Encontre os iguais", ["#FDBA74", "#EA580C"]], ["🔢", "Sequência Numérica", "Atenção", "1, 2, 3... rápido", ["#6EE7B7", "#059669"]], ["🎈", "Estourar Balões", "Atenção", "Reflexo e foco", ["#7DD3FC", "#0284C7"]], ["🔍", "Caça-Palavras", "Atenção", "Varredura visual", ["#5EEAD4", "#0F766E"]], ["🧩", "Copiar Padrões", "Atenção", "Raciocínio visual", ["#A5B4FC", "#4F46E5"]], ["📝", "Listar Palavras", "Linguagem", "Fluência verbal", ["#F9A8D4", "#DB2777"]], ["🔤", "Completar Letra", "Linguagem", "Lembrar palavras", ["#C4B5FD", "#7C3AED"]]];
+
+// ── Mini jogo de demonstração: Gênio das Cores ──
+const CORES = [["#FF5603", "#FFB37A"], ["#0284C7", "#7DD3FC"], ["#059669", "#6EE7B7"], ["#7C3AED", "#C4B5FD"]];
+function DemoGenio({ onComprar }) {
+  const [fase, setFase] = useState("inicio"); // inicio | mostrando | vez | acertou | errou | fim
+  const [seq, setSeq] = useState([]);
+  const [pos, setPos] = useState(0);
+  const [aceso, setAceso] = useState(-1);
+  const timers = useRef([]);
+  const limpar = () => { timers.current.forEach(clearTimeout); timers.current = []; };
+  useEffect(() => () => limpar(), []);
+  const mostrar = (s) => {
+    setFase("mostrando"); setPos(0);
+    s.forEach((c, i) => {
+      timers.current.push(setTimeout(() => setAceso(c), 700 + i * 750));
+      timers.current.push(setTimeout(() => setAceso(-1), 700 + i * 750 + 480));
+    });
+    timers.current.push(setTimeout(() => setFase("vez"), 700 + s.length * 750));
+  };
+  const comecar = () => { limpar(); const s = [Math.floor(Math.random() * 4), Math.floor(Math.random() * 4)]; setSeq(s); mostrar(s); };
+  const tocar = (i) => {
+    if (fase !== "vez") return;
+    setAceso(i); timers.current.push(setTimeout(() => setAceso(-1), 220));
+    if (seq[pos] !== i) { setFase("errou"); return; }
+    if (pos + 1 < seq.length) { setPos(pos + 1); return; }
+    if (seq.length >= 4) { setFase("fim"); return; }
+    setFase("acertou");
+    const s = seq.concat([Math.floor(Math.random() * 4)]);
+    timers.current.push(setTimeout(() => { setSeq(s); mostrar(s); }, 900));
+  };
+  const msg = { inicio: "Toque em Jogar e repita a sequência de cores.", mostrando: "Preste atenção...", vez: "Sua vez! Toque nas cores na mesma ordem.", acertou: "Muito bem! Agora com mais uma cor.", errou: "Quase! A memória melhora com treino.", fim: "Parabéns! Você fez a sequência de 4 cores." }[fase];
+  return h("div", { style: { ...cartao, padding: 16 } },
+    h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 } },
+      h("div", null, h("div", { style: { fontSize: 16, fontWeight: 800 } }, "Gênio das Cores"), h("div", { style: { fontSize: 12.5, color: C.cinza } }, "Um dos 8 jogos, versão de teste")),
+      seq.length ? h("span", { style: { fontSize: 12, fontWeight: 800, color: C.laranjaTxt, background: C.laranjaClaro, borderRadius: 99, padding: "4px 10px" } }, seq.length + " cores") : null),
+    h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } }, CORES.map(([forte, claro], i) => h("button", { key: i, type: "button", onClick: () => tocar(i), "aria-label": "Cor " + (i + 1), style: { height: 84, borderRadius: 18, border: "none", cursor: fase === "vez" ? "pointer" : "default", background: aceso === i ? claro : forte, opacity: aceso === i || fase === "inicio" || fase === "vez" ? 1 : 0.55, transform: aceso === i ? "scale(0.96)" : "none", boxShadow: aceso === i ? "0 0 0 4px " + claro + ", 0 10px 22px " + forte + "66" : "inset 0 -6px 0 rgba(0,0,0,0.15)", transition: "all .15s" } }))),
+    h("div", { style: { fontSize: 14.5, fontWeight: 700, textAlign: "center", color: fase === "errou" ? C.laranjaTxt : fase === "fim" ? C.verde : C.escuro, margin: "14px 0 12px", minHeight: 22 } }, msg),
+    fase === "inicio" || fase === "errou" ? h("button", { type: "button", onClick: comecar, style: { ...botaoPri, height: 50, fontSize: 16, background: C.escuro, boxShadow: "none" } }, fase === "inicio" ? "Jogar" : "Tentar de novo") : null,
+    fase === "fim" ? h("button", { type: "button", onClick: onComprar, style: { ...botaoPri, height: 50, fontSize: 16 } }, "Quero os 8 jogos") : null);
+}
+
+// ═══ CHECKOUT (Pix + "Já paguei", igual ao comprar.html) ═══
+function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoInicial }) {
+  const [para, setPara] = useState(modoInicial || "mim");
+  const [etapa, setEtapa] = useState("dados");
+  const [f, setF] = useState({ nome: "", whats: "" });
+  const [pr, setPr] = useState({ nome: "", whats: "", msg: "" });
+  const [erro, setErro] = useState("");
+  const [env, setEnv] = useState(false);
+  const [copiado, setCopiado] = useState(false);
+  const qr = useRef(null);
+  useEffect(() => { if (aberto) { setPara(modoInicial || "mim"); setErro(""); } }, [aberto, modoInicial]);
+  useEffect(() => { document.body.style.overflow = aberto ? "hidden" : ""; }, [aberto]);
+  const presente = temPresente && para === "presente";
+  const titulo = d.titulo || "Mente Ativa";
+  const payload = etapa === "pix" && pix.pix_key ? pixPayload({ pixKey: pix.pix_key, merchantName: pix.pix_merchant_name || pix.nome, merchantCity: pix.pix_merchant_city, amount: valor, txid: ("SV" + titulo.replace(/[^A-Za-z0-9]/g, "")).slice(0, 20) }) : null;
+  useEffect(() => { if (payload && qr.current && window.QRCode) { qr.current.innerHTML = ""; new window.QRCode(qr.current, { text: payload, width: 170, height: 170, colorDark: "#0f172a", colorLight: "#ffffff" }); } }, [payload]);
+  if (!aberto) return null;
+  const pers = primeiro(pix.nome || d.profissional) || "Wellington";
+  const irPix = () => {
+    if (!f.nome.trim()) return setErro("Digite o seu nome.");
+    if (soDig(f.whats).length < 10) return setErro("Digite o seu WhatsApp com DDD.");
+    if (presente && !pr.nome.trim()) return setErro("Digite o nome de quem vai ganhar o presente.");
+    setErro(""); setEtapa("pix");
+  };
+  const jaPaguei = async () => {
+    if (env) return;
+    setEnv(true); setErro("");
+    try {
+      await rpc("rpc_registrar_compra_publica", { p_item_id: d.id, p_nome: f.nome.trim(), p_whatsapp: soDig(f.whats), p_presente: presente ? { nome: pr.nome.trim(), whatsapp: soDig(pr.whats), mensagem: pr.msg.trim() } : null });
+      setEtapa("feito");
+    } catch (e) { setErro("Não conseguimos enviar o aviso. Tente de novo ou fale no WhatsApp."); }
+    setEnv(false);
+  };
+  const copiar = () => { try { navigator.clipboard.writeText(payload).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 2500); }); } catch (e) {} };
+  const aba = (k, t) => h("button", { type: "button", onClick: () => { setPara(k); setErro(""); setEtapa("dados"); }, style: { flex: 1, height: 44, borderRadius: 12, border: "none", fontWeight: 800, fontSize: 14.5, cursor: "pointer", background: para === k ? C.escuro : "transparent", color: para === k ? "#fff" : "#475569" } }, t);
+  const resumo = h("div", { style: { display: "flex", alignItems: "center", gap: 12, background: C.fundo, borderRadius: 14, padding: "10px 12px", marginBottom: 14 } },
+    h("img", { src: d.foto || "mente-ativa.jpg", alt: "", style: { width: 46, height: 46, borderRadius: 12, objectFit: "cover" } }),
+    h("div", { style: { flex: 1, minWidth: 0 } }, h("div", { style: { fontSize: 15, fontWeight: 800 } }, titulo + (mensal ? " · 30 dias" : "")), h("div", { style: { fontSize: 12.5, color: C.cinza } }, presente ? "Presente para " + (pr.nome.trim() || "alguém especial") : "8 jogos liberados")),
+    h("div", { style: { fontSize: 18, fontWeight: 800 } }, brl(valor)));
+  const caixaErro = erro ? h("div", { role: "alert", style: { background: C.vermelhoClaro, color: C.vermelho, borderRadius: 12, padding: "10px 12px", fontSize: 14, lineHeight: 1.45, marginBottom: 12 } }, erro) : null;
+  const waProf = waLink(pix.whatsapp, "Oi, " + pers + "! Sou " + f.nome.trim() + " e acabei de pagar: " + titulo + (presente ? " (presente para " + pr.nome.trim() + ")" : "") + ". Segue o comprovante.");
+
+  let corpo;
+  if (!d.id) corpo = h("div", { style: { textAlign: "center", padding: "10px 4px" } },
+    h("div", { style: { fontSize: 15, color: "#475569", lineHeight: 1.55 } }, "Para contratar, fale com o " + pers + " no WhatsApp. Ele te manda o Pix e libera o seu acesso."),
+    waLink(pix.whatsapp, "Oi, " + pers + "! Quero contratar o " + titulo + ".") ? h("a", { href: waLink(pix.whatsapp, "Oi, " + pers + "! Quero contratar o " + titulo + "."), target: "_blank", rel: "noopener noreferrer", style: { ...botaoPri, display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", marginTop: 16, background: "#25D366", boxShadow: "none" } }, "Falar no WhatsApp") : null);
+  else if (etapa === "pix") corpo = h("div", null, resumo,
+    h("div", { style: { textAlign: "center" } },
+      h("div", { style: { fontSize: 17, fontWeight: 800 } }, "Pague com Pix"),
+      h("div", { style: { fontSize: 13.5, color: C.cinza, marginTop: 3 } }, "Escaneie no app do seu banco ou copie o código."),
+      payload ? h("div", { ref: qr, style: { display: "flex", justifyContent: "center", margin: "14px 0 12px" } }) : h("div", { style: { fontSize: 14, color: "#b45309", margin: "14px 0" } }, "Pix indisponível no momento. Fale no WhatsApp para pagar."),
+      payload ? h("button", { type: "button", onClick: copiar, style: { width: "100%", height: 50, borderRadius: 14, border: "1.5px solid " + C.borda, background: copiado ? C.verdeClaro : "#F8FAFC", fontWeight: 800, fontSize: 15, color: copiado ? C.verde : C.escuro, cursor: "pointer" } }, copiado ? "Código copiado" : "Copiar código Pix") : null,
+      caixaErro ? h("div", { style: { marginTop: 10 } }, caixaErro) : null,
+      h("button", { type: "button", onClick: jaPaguei, disabled: env, style: { ...botaoPri, background: C.verde, boxShadow: "0 10px 22px rgba(22,163,74,0.25)", marginTop: 10 } }, env ? "Enviando..." : "Já paguei"),
+      h("button", { type: "button", onClick: () => setEtapa("dados"), style: { marginTop: 10, border: "none", background: "none", color: C.cinza, fontSize: 14, textDecoration: "underline", cursor: "pointer" } }, "Voltar e corrigir os dados")));
+  else if (etapa === "feito") corpo = h("div", { style: { textAlign: "center", padding: "10px 2px 4px" } },
+    h("div", { style: { width: 64, height: 64, borderRadius: 20, background: C.verdeClaro, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" } }, h(Ico, { d: presente ? I.presente : I.check, cor: C.verde, tam: 30, larg: 2.4 })),
+    h("div", { style: { fontSize: 21, fontWeight: 800 } }, "Obrigado, " + primeiro(f.nome) + "!"),
+    h("div", { style: { fontSize: 15, color: "#475569", marginTop: 6, lineHeight: 1.55 } }, d.posPagamento || ("Seu aviso chegou para o " + pers + ". Assim que ele confirmar o pagamento, libera o seu acesso e te chama no WhatsApp.")),
+    presente ? h("div", { style: { fontSize: 13.5, color: C.cinza, marginTop: 8, lineHeight: 1.5 } }, "Presente para " + pr.nome.trim() + ". O " + pers + " também vai falar com " + primeiro(pr.nome) + ".") : null,
+    waProf ? h("a", { href: waProf, target: "_blank", rel: "noopener noreferrer", style: { ...botaoPri, display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", marginTop: 18, background: "#25D366", boxShadow: "0 10px 22px rgba(37,211,102,0.25)" } }, "Mandar o comprovante no WhatsApp") : null);
+  else corpo = h("div", null,
+    temPresente ? h("div", { style: { display: "flex", gap: 4, background: "#F1F5F9", borderRadius: 14, padding: 4, marginBottom: 14 } }, aba("mim", "Para mim"), aba("presente", "Dar de presente")) : null,
+    resumo,
+    h(Campo, { rotulo: "Seu nome" }, h("input", { style: estInput, value: f.nome, onChange: (e) => { setF({ ...f, nome: e.target.value }); setErro(""); }, placeholder: "Nome e sobrenome", autoComplete: "name" })),
+    h(Campo, { rotulo: "Seu WhatsApp" }, h("input", { style: estInput, type: "tel", inputMode: "tel", value: f.whats, onChange: (e) => { setF({ ...f, whats: fmtTel(e.target.value) }); setErro(""); }, placeholder: "(11) 90000-0000", autoComplete: "tel" })),
+    presente ? h("div", { style: { background: C.laranjaClaro, borderRadius: 16, padding: "14px 14px 2px", marginBottom: 12 } },
+      h("div", { style: { fontSize: 13, fontWeight: 800, color: C.laranjaTxt, marginBottom: 10 } }, "Quem vai ganhar"),
+      h(Campo, { rotulo: "Nome" }, h("input", { style: estInput, value: pr.nome, onChange: (e) => { setPr({ ...pr, nome: e.target.value }); setErro(""); }, placeholder: "Ex.: minha mãe, Dona Maria" })),
+      h(Campo, { rotulo: "WhatsApp (opcional)" }, h("input", { style: estInput, type: "tel", inputMode: "tel", value: pr.whats, onChange: (e) => setPr({ ...pr, whats: fmtTel(e.target.value) }), placeholder: "(11) 90000-0000" }))) : null,
+    caixaErro,
+    h("button", { type: "button", onClick: irPix, style: botaoPri }, "Ir para o Pix"),
+    h("div", { style: { display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12.5, color: C.cinza, lineHeight: 1.5, marginTop: 12 } },
+      h(Ico, { d: I.escudo, cor: C.cinzaClaro, tam: 18 }),
+      h("span", null, "Pagamento por Pix direto para o " + pers + ". " + (mensal ? "São 30 dias de acesso. Renova só se quiser, sem fidelidade." : "Seus dados são usados só para combinar o atendimento."))));
+
+  return h("div", { style: { position: "fixed", inset: 0, zIndex: 400, display: "flex", alignItems: "flex-end", justifyContent: "center" } },
+    h("div", { onClick: onFechar, style: { position: "absolute", inset: 0, background: "rgba(15,23,42,0.55)", animation: "some .25s ease both" } }),
+    h("div", { role: "dialog", "aria-modal": "true", "aria-label": "Finalizar compra", className: "rolar", style: { position: "relative", width: "100%", maxWidth: 480, maxHeight: "92vh", overflowY: "auto", background: "#fff", borderRadius: "26px 26px 0 0", padding: "10px 18px calc(22px + env(safe-area-inset-bottom))", animation: "sobe .32s cubic-bezier(.2,.8,.2,1) both" } },
+      h("div", { style: { width: 42, height: 5, borderRadius: 3, background: C.borda, margin: "0 auto 10px" } }),
+      h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 } },
+        h("div", { style: { fontSize: 19, fontWeight: 800 } }, etapa === "feito" ? "Pedido enviado" : "Finalizar"),
+        h("button", { type: "button", onClick: onFechar, "aria-label": "Fechar", style: { display: "inline-flex", alignItems: "center", gap: 4, height: 40, padding: "0 14px 0 10px", borderRadius: 20, border: "1.5px solid " + C.borda, background: "#fff", color: C.escuro, fontWeight: 700, fontSize: 14.5, cursor: "pointer" } }, h(Ico, { d: I.fechar, cor: C.escuro, tam: 16, larg: 2.4 }), "Fechar")),
+      corpo));
+}
+
+// ═══ PÁGINA · MENTE ATIVA ═══
+function App() {
+  const id = Q.get("i") || "";
+  const [d, setD] = useState({});
+  const [pix, setPix] = useState({});
+  const [checkout, setCheckout] = useState(null);
+  const [barra, setBarra] = useState(false);
+  const [faq, setFaq] = useState(-1);
+  const heroBtn = useRef(null);
+  useEffect(() => {
+    if (id) rpc("rpc_vitrine_publico", { p_item_id: id }).then((r) => { if (r && r.data) { setD({ ...r.data, id }); setPix(r.pix || {}); } }).catch(() => {});
+    else rpc("get_professional_pix_config", { prof_id: PROF_ID }).then((r) => { const p = Array.isArray(r) ? r[0] : r; if (p) setPix(p); }).catch(() => {});
+  }, []);
+  useEffect(() => {
+    const ver = () => { const el = heroBtn.current; if (!el) return; setBarra(el.getBoundingClientRect().bottom < 0); };
+    window.addEventListener("scroll", ver, { passive: true }); ver();
+    return () => window.removeEventListener("scroll", ver);
+  }, []);
+  useEffect(() => { document.title = (d.titulo || "Mente Ativa") + " · Wellington Brito"; }, [d.titulo]);
+
+  const valor = valorNum(d.valor || d.preco) || 19.9;
+  const porDia = Math.ceil((valor / 30) * 100) / 100;
+  const temPresente = !!(d.id && pix.pix_key && d.aceitaPresente === true);
+  const pers = primeiro(pix.nome || d.profissional) || "Wellington";
+  const comprar = (modo) => setCheckout(modo || "mim");
+  const waDuvida = waLink(pix.whatsapp, "Oi, " + pers + "! Vi a página da Mente Ativa e tenho uma dúvida.");
+  const PARA = [
+    [I.ideia, "Esquece onde deixou as coisas", "Memória treinada todo dia"],
+    [I.grafico, "Quer manter a cabeça afiada", "Atenção e raciocínio rápido"],
+    [I.estrela, "Gosta de um bom desafio", "Jogos leves e divertidos"],
+    [I.casa, "Quer algo para fazer em casa", "No celular, quando quiser"]];
+  const PASSOS = [
+    ["Pague pelo Pix", "Leva um minuto, direto aqui na página."],
+    ["O " + pers + " libera o seu acesso", "Ele confirma o pagamento e te chama no WhatsApp."],
+    ["Faça o desafio do dia", "O app escolhe o jogo pelo que você mais precisa treinar, com uma meta só sua."],
+    ["Acompanhe sua evolução", "Cada resultado fica salvo, e o " + pers + " acompanha com você."]];
+  const FAQ = [
+    ["Preciso saber jogar no celular?", "Não. Os jogos têm letras grandes, instruções simples e o botão de voltar sempre à vista."],
+    ["Quanto tempo por dia?", "Cerca de 10 minutos já fazem diferença. Você joga quando quiser, no seu ritmo."],
+    ["Como funciona o pagamento?", "Por Pix, direto para o " + pers + ". São 30 dias com os 8 jogos liberados. Renova só se quiser, sem fidelidade."],
+    ["Já treino com o " + pers + ". Serve para mim?", "Serve, e combina muito. O corpo você treina com ele, a mente você treina em casa."]]
+    .concat(temPresente ? [["Posso dar de presente?", "Pode. Toque em Dar de presente, pague o Pix e o " + pers + " fala com a pessoa."]] : []);
+
+  return h("div", null,
+    // ── HERO ──
+    h("div", { style: { background: C.escuro, color: "#F8FAFC", padding: "calc(16px + env(safe-area-inset-top)) 18px 24px", borderRadius: "0 0 30px 30px" } },
+      h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between" } },
+        h("img", { src: "logo-wb-claro.png", alt: "Wellington Brito Personal Trainer", style: { height: 54, width: "auto" } }),
+        h("span", { style: { fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", color: C.pessego, border: "1px solid rgba(253,186,116,0.45)", borderRadius: 99, padding: "5px 10px" } }, "10 MIN POR DIA")),
+      h("div", { className: "entra", style: { position: "relative", marginTop: 16, height: 250, borderRadius: 18, overflow: "hidden", display: "grid", gridTemplateColumns: "1.3fr 1fr", gridTemplateRows: "122px 122px", gap: 6 } },
+        h("img", { src: "foto-moradores-3.jpg", alt: "O " + pers + " com alunos", style: { gridRow: "1 / 3", width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 20%", display: "block" } }),
+        h("img", { src: d.foto || "mente-ativa.jpg", alt: "", style: { width: "100%", height: "100%", objectFit: "cover", display: "block" } }),
+        h("div", { style: { background: C.escuro2, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, padding: 8 } }, JOGOS.slice(0, 4).map(([ic, n, , , g]) => h("span", { key: n, style: { borderRadius: 10, background: "linear-gradient(135deg," + g[0] + "," + g[1] + ")", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, boxShadow: "inset 0 -3px 0 rgba(0,0,0,0.15)" } }, ic))),
+        h("span", { style: { position: "absolute", left: 10, bottom: 10, fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", background: C.laranja, color: "#fff", borderRadius: 8, padding: "5px 9px" } }, "MENTE ATIVA")),
+      h("div", { className: "entra", style: { fontSize: 26, fontWeight: 800, lineHeight: 1.18, marginTop: 18, animationDelay: ".08s" } }, "Memória e atenção afiadas, com jogos de 10 minutos por dia"),
+      h("div", { style: { fontSize: 15, color: "#CBD5E1", marginTop: 8, lineHeight: 1.5 } }, "O corpo você treina comigo. A mente, você treina em casa. São 8 jogos pensados para quem tem 50 anos ou mais."),
+      h("div", { style: { display: "flex", gap: 8, marginTop: 16 } },
+        h("div", { style: { flex: 1.25, background: C.escuro2, border: "1.5px solid " + C.laranja, borderRadius: 14, padding: "10px 12px" } },
+          h("div", { style: { fontSize: 10.5, color: C.cinzaClaro, letterSpacing: "0.05em" } }, "30 DIAS DE ACESSO"),
+          h("div", { style: { fontSize: 24, fontWeight: 800, color: C.pessego, lineHeight: 1.15 } }, brl(valor)),
+          h("div", { style: { fontSize: 12, color: C.cinzaClaro } }, "menos de " + brl(porDia) + " por dia")),
+        h("div", { style: { flex: 1, background: C.escuro2, borderRadius: 14, padding: "10px 12px" } },
+          h("div", { style: { fontSize: 10.5, color: C.cinzaClaro, letterSpacing: "0.05em" } }, "PAGAMENTO"),
+          h("div", { style: { fontSize: 16, fontWeight: 800, lineHeight: 1.25, marginTop: 2 } }, "Pix, sem cartão"),
+          h("div", { style: { fontSize: 12, color: C.cinzaClaro } }, "sem fidelidade"))),
+      h("button", { ref: heroBtn, type: "button", onClick: () => comprar("mim"), style: { ...botaoPri, marginTop: 14 } }, "Quero treinar a mente"),
+      h("a", { href: "#teste", style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", height: 48, marginTop: 8, borderRadius: 14, border: "1.5px solid rgba(255,255,255,0.22)", color: "#fff", fontWeight: 700, fontSize: 15, textDecoration: "none" } }, "🎨  Testar um jogo grátis")),
+
+    h("div", { style: { padding: "0 16px 120px" } },
+      Secao("Para quem é", "Feito para você que"),
+      h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 } }, PARA.map(([ic, t, sub]) => h("div", { key: t, style: { ...cartao, padding: 13 } },
+        bolha(ic),
+        h("div", { style: { fontSize: 14, fontWeight: 800, lineHeight: 1.25, marginTop: 9 } }, t),
+        h("div", { style: { fontSize: 12.5, color: C.cinza, lineHeight: 1.35, marginTop: 3 } }, sub)))),
+
+      h("div", { id: "teste", style: { scrollMarginTop: 12 } }, Secao("Teste agora", "Jogue um pouco antes de decidir")),
+      h(DemoGenio, { onComprar: () => comprar("mim") }),
+
+      Secao("Os 8 jogos", "Memória, atenção e linguagem"),
+      h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 } }, JOGOS.map(([ic, n, area, desc, g]) => h("div", { key: n, style: { ...cartao, padding: 12, display: "flex", gap: 10, alignItems: "center" } },
+        h("span", { style: { width: 42, height: 42, borderRadius: 12, background: "linear-gradient(135deg," + g[0] + "," + g[1] + ")", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 21, flexShrink: 0, boxShadow: "inset 0 -3px 0 rgba(0,0,0,0.15)" } }, ic),
+        h("span", { style: { minWidth: 0 } }, h("b", { style: { display: "block", fontSize: 13.5, lineHeight: 1.2 } }, n), h("span", { style: { display: "block", fontSize: 11.5, color: C.cinza, marginTop: 2 } }, area + " · " + desc))))),
+
+      Secao("Como funciona", "Simples do começo ao fim"),
+      h("div", { style: { ...cartao, padding: "6px 16px" } }, PASSOS.map(([t, sub], i) => h("div", { key: t, style: { display: "flex", gap: 13, padding: "13px 0", borderTop: i ? "1px solid #F1F5F9" : "none" } },
+        h("span", { style: { width: 32, height: 32, borderRadius: 99, background: i === 0 ? C.laranja : C.escuro, color: "#fff", fontWeight: 800, fontSize: 14.5, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, i + 1),
+        h("span", null, h("b", { style: { display: "block", fontSize: 15 } }, t), h("span", { style: { display: "block", fontSize: 13.5, color: C.cinza, lineHeight: 1.45, marginTop: 2 } }, sub))))),
+
+      h("div", { style: { marginTop: 14, background: C.escuro, color: "#fff", borderRadius: 20, padding: 18, display: "flex", gap: 14, alignItems: "center" } },
+        h("span", { style: { width: 48, height: 48, borderRadius: 14, background: C.escuro2, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, h(Ico, { d: I.grafico, cor: C.pessego, tam: 24 })),
+        h("span", null, h("b", { style: { display: "block", fontSize: 16 } }, "Você vê a sua evolução"), h("span", { style: { display: "block", fontSize: 13.5, color: "#CBD5E1", lineHeight: 1.45, marginTop: 3 } }, "Cada jogo registra o seu resultado. Dá para ver, semana a semana, a memória e a atenção melhorando."))),
+
+      Secao("Quem vai te guiar"),
+      h("div", { style: { ...cartao, padding: 0, overflow: "hidden" } },
+        h("div", { style: { display: "flex", gap: 14, alignItems: "center", padding: 16 } },
+          h("img", { src: "foto-wellington.jpg", alt: "Wellington Brito", style: { width: 76, height: 76, borderRadius: 20, objectFit: "cover", flexShrink: 0 } }),
+          h("div", null,
+            h("div", { style: { fontSize: 18, fontWeight: 800 } }, "Wellington Brito"),
+            h("div", { style: { fontSize: 13, color: C.cinza, marginTop: 1 } }, "Personal Trainer · CREF 089836-G/SP"),
+            h("div", { style: { fontSize: 13, color: C.laranjaTxt, fontWeight: 800, marginTop: 2 } }, "Envelhecimento e Longevidade"))),
+        h("div", { style: { padding: "0 16px 16px", fontSize: 14.5, color: "#334155", lineHeight: 1.6 } }, "Há mais de 15 anos atendo adultos e idosos. No meu trabalho, corpo e mente andam juntos. A Mente Ativa leva para o seu celular os mesmos estímulos de memória e atenção que uso nas minhas aulas."),
+        h("div", { style: { background: C.laranjaClaro, padding: "12px 16px", fontSize: 15, fontWeight: 800, color: C.laranjaTxt } }, "“Autonomia é o melhor resultado.”")),
+
+      // ── Cross-sell Elo 60+ ──
+      h("a", { href: "elo60-venda.html", style: { ...cartao, marginTop: 14, display: "flex", gap: 12, alignItems: "center", textDecoration: "none", color: C.escuro, border: "1.5px solid #FDE7D3" } },
+        h("img", { src: "elo-60.jpg", alt: "", style: { width: 54, height: 54, borderRadius: 14, objectFit: "cover", flexShrink: 0 } }),
+        h("span", { style: { flex: 1, minWidth: 0 } }, h("b", { style: { display: "block", fontSize: 15 } }, "Quer corpo e mente juntos?"), h("span", { style: { display: "block", fontSize: 13, color: C.cinza, lineHeight: 1.4, marginTop: 2 } }, "Conheça o Elo 60+: exercícios em casa e os jogos da Mente Ativa no mesmo programa.")),
+        h("span", { style: { display: "inline-flex", transform: "rotate(180deg)" } }, h(Ico, { d: I.seta, tam: 20, larg: 2.4 }))),
+
+      Secao("Dúvidas"),
+      h("div", { style: { ...cartao, padding: "2px 16px" } }, FAQ.map(([q, r], i) => h("div", { key: q, style: { borderTop: i ? "1px solid #F1F5F9" : "none" } },
+        h("button", { type: "button", onClick: () => setFaq(faq === i ? -1 : i), "aria-expanded": faq === i, style: { width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "15px 0", border: "none", background: "none", textAlign: "left", fontSize: 15, fontWeight: 800, color: C.escuro, cursor: "pointer" } }, q, h("span", { style: { display: "inline-flex", transform: faq === i ? "rotate(180deg)" : "none", transition: "transform .2s" } }, h(Ico, { d: I.mais, cor: C.cinza, tam: 18, larg: 2.4 }))),
+        faq === i ? h("div", { style: { fontSize: 14, color: "#475569", lineHeight: 1.55, paddingBottom: 14, marginTop: -4 } }, r) : null))),
+      waDuvida ? h("a", { href: waDuvida, target: "_blank", rel: "noopener noreferrer", style: { display: "block", textAlign: "center", marginTop: 12, color: C.laranjaTxt, fontWeight: 800, fontSize: 14.5, textDecoration: "none", padding: 8 } }, "Ainda com dúvida? Fale com o " + pers + " no WhatsApp") : null,
+
+      h("div", { style: { marginTop: 18, background: "linear-gradient(135deg,#FF5603,#FF8A3D)", borderRadius: 22, padding: 20, color: "#fff", textAlign: "center", boxShadow: "0 12px 26px rgba(255,86,3,0.28)" } },
+        h("div", { style: { fontSize: 21, fontWeight: 800, lineHeight: 1.25 } }, "Sua mente também merece treino"),
+        h("div", { style: { fontSize: 14, opacity: 0.92, marginTop: 4 } }, "30 dias com os 8 jogos por " + brl(valor) + "."),
+        h("button", { type: "button", onClick: () => comprar("mim"), style: { width: "100%", height: 54, marginTop: 14, borderRadius: 16, border: "none", background: "#fff", color: C.laranjaTxt, fontWeight: 800, fontSize: 16.5, cursor: "pointer" } }, "Quero treinar a mente")),
+      h("div", { style: { textAlign: "center", fontSize: 12, color: C.cinzaClaro, marginTop: 18, lineHeight: 1.6 } }, "Wellington Brito · Personal Trainer · CREF 089836-G/SP", h("br"), "A Mente Ativa não substitui acompanhamento médico.")),
+
+    barra && !checkout ? h("div", { style: { position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 300, display: "flex", justifyContent: "center", animation: "sobe .25s ease both" } },
+      h("div", { style: { width: "100%", maxWidth: 480, background: "rgba(255,255,255,0.97)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", borderTop: "1px solid " + C.borda, padding: "10px 16px calc(10px + env(safe-area-inset-bottom))", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 -8px 24px rgba(15,23,42,0.08)" } },
+        h("div", { style: { flexShrink: 0 } }, h("div", { style: { fontSize: 11, color: C.cinza } }, "30 dias"), h("div", { style: { fontSize: 19, fontWeight: 800 } }, brl(valor))),
+        h("button", { type: "button", onClick: () => comprar("mim"), style: { ...botaoPri, height: 50, fontSize: 16, boxShadow: "none" } }, "Começar agora"))) : null,
+
+    h(Checkout, { aberto: !!checkout, modoInicial: checkout, onFechar: () => setCheckout(null), d, pix, valor, mensal: true, temPresente }));
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(h(App));
+</script>
+<script src="longevus-nav.js?v=1"></script>
+</body>
+</html>
