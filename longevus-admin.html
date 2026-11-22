@@ -10,814 +10,432 @@
 </head>
 <body>
   <div id="root"></div>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
   <script>
 var __LOGO_1__ = "data:image/png;base64,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";
 var __LOGO_2__ = "data:image/png;base64,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";
   </script>
-  <script type="text/babel" data-presets="react">
+  <script>
 const { useState, useEffect } = React;
-
 const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
 const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
 const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
-
 async function authHeaders() {
   const { data } = await supa.auth.getSession();
   const token = data?.session?.access_token || SUPA_KEY;
-  return { "apikey": SUPA_KEY, "Authorization": "Bearer "+token, "Content-Type": "application/json" };
+  return { "apikey": SUPA_KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json" };
 }
-
 const Login = ({ onLogin }) => {
-  const [email,setEmail]=useState("");
-  const [password,setPassword]=useState("");
-  const [error,setError]=useState("");
-  const [loading,setLoading]=useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const submit = async (e) => {
     e.preventDefault();
-    setError(""); setLoading(true);
+    setError("");
+    setLoading(true);
     try {
-      const { error } = await supa.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      const { error: error2 } = await supa.auth.signInWithPassword({ email, password });
+      if (error2) throw error2;
       onLogin();
-    } catch(err) {
+    } catch (err) {
       setError(err.message || "Erro ao autenticar.");
     } finally {
       setLoading(false);
     }
   };
-  return (
-    <div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f8fafc",padding:20,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
-      <form onSubmit={submit} style={{ background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:380,boxShadow:"0 4px 24px rgba(0,0,0,0.06)" }}>
-        <div style={{ textAlign:"center",marginBottom:18 }}>
-          <img src={__LOGO_1__} alt="Longevus" style={{ width:56,height:56,margin:"0 auto 8px",display:"block" }}/>
-          <div style={{ fontWeight:900,fontSize:20 }}>Longevus Admin</div>
-          <div style={{ fontSize:12,color:"#94a3b8" }}>Painel administrativo</div>
-        </div>
-        <div style={{ marginBottom:12 }}>
-          <label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>E-mail</label>
-          <input type="email" required value={email} onChange={e=>setEmail(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
-        </div>
-        <div style={{ marginBottom:16 }}>
-          <label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Senha</label>
-          <input type="password" required value={password} onChange={e=>setPassword(e.target.value)} style={{ width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:14,boxSizing:"border-box" }}/>
-        </div>
-        {error && <div style={{ fontSize:12,color:"#dc2626",marginBottom:12,textAlign:"center" }}>{error}</div>}
-        <button type="submit" disabled={loading} style={{ width:"100%",padding:"11px",borderRadius:8,border:"none",background:"#FF5603",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",opacity:loading?0.7:1 }}>
-          {loading ? "Aguarde..." : "Entrar"}
-        </button>
-      </form>
-    </div>
-  );
+  return React.createElement("div", { style: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", padding: 20, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" } }, React.createElement("form", { onSubmit: submit, style: { background: "#fff", borderRadius: 16, padding: 28, width: "100%", maxWidth: 380, boxShadow: "0 4px 24px rgba(0,0,0,0.06)" } }, React.createElement("div", { style: { textAlign: "center", marginBottom: 18 } }, React.createElement("img", { src: __LOGO_1__, alt: "Longevus", style: { width: 56, height: 56, margin: "0 auto 8px", display: "block" } }), React.createElement("div", { style: { fontWeight: 900, fontSize: 20 } }, "Longevus Admin"), React.createElement("div", { style: { fontSize: 12, color: "#94a3b8" } }, "Painel administrativo")), React.createElement("div", { style: { marginBottom: 12 } }, React.createElement("label", { style: { fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 } }, "E-mail"), React.createElement("input", { type: "email", required: true, value: email, onChange: (e) => setEmail(e.target.value), style: { width: "100%", padding: "10px 12px", borderRadius: 8, border: "1.5px solid #e2e8f0", fontSize: 14, boxSizing: "border-box" } })), React.createElement("div", { style: { marginBottom: 16 } }, React.createElement("label", { style: { fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 } }, "Senha"), React.createElement("input", { type: "password", required: true, value: password, onChange: (e) => setPassword(e.target.value), style: { width: "100%", padding: "10px 12px", borderRadius: 8, border: "1.5px solid #e2e8f0", fontSize: 14, boxSizing: "border-box" } })), error && React.createElement("div", { style: { fontSize: 12, color: "#dc2626", marginBottom: 12, textAlign: "center" } }, error), React.createElement("button", { type: "submit", disabled: loading, style: { width: "100%", padding: "11px", borderRadius: 8, border: "none", background: "#FF5603", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", opacity: loading ? 0.7 : 1 } }, loading ? "Aguarde..." : "Entrar")));
 };
-
-const BarChart = ({ data, color="#FF5603", onBarClick, selected }) => {
-  const max = Math.max(1, ...data.map(d=>d.value));
-  return (
-    <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-      {data.map(d=>(
-        <div key={d.label} onClick={()=>onBarClick && onBarClick(d.label)} style={{ cursor:onBarClick?"pointer":"default",opacity: (selected && selected!==d.label) ? 0.45 : 1 }}>
-          <div style={{ display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3 }}>
-            <span style={{ color: selected===d.label ? "#FF5603" : "#475569",fontWeight:600 }}>{d.label}</span>
-            <span style={{ color:"#94a3b8" }}>{d.value}</span>
-          </div>
-          <div style={{ background:"#f1f5f9",borderRadius:6,height:8,overflow:"hidden" }}>
-            <div style={{ background:d.color||color,height:"100%",width:(d.value/max*100)+"%",borderRadius:6,transition:"width 0.3s" }}/>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+const BarChart = ({ data, color = "#FF5603", onBarClick, selected }) => {
+  const max = Math.max(1, ...data.map((d) => d.value));
+  return React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, data.map((d) => React.createElement("div", { key: d.label, onClick: () => onBarClick && onBarClick(d.label), style: { cursor: onBarClick ? "pointer" : "default", opacity: selected && selected !== d.label ? 0.45 : 1 } }, React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 3 } }, React.createElement("span", { style: { color: selected === d.label ? "#FF5603" : "#475569", fontWeight: 600 } }, d.label), React.createElement("span", { style: { color: "#94a3b8" } }, d.value)), React.createElement("div", { style: { background: "#f1f5f9", borderRadius: 6, height: 8, overflow: "hidden" } }, React.createElement("div", { style: { background: d.color || color, height: "100%", width: d.value / max * 100 + "%", borderRadius: 6, transition: "width 0.3s" } })))));
 };
-
-const ProfList = ({ items, onSelect, counts }) => (
-  <div style={{ display:"flex",flexDirection:"column",gap:6,marginTop:12,borderTop:"1px solid #f1f5f9",paddingTop:12 }}>
-    {items.length===0 ? (
-      <div style={{ fontSize:12,color:"#94a3b8" }}>Nenhum profissional nesse grupo.</div>
-    ) : items.map(p=>(
-      <div key={p.id} onClick={()=>onSelect(p)} style={{ cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 10px",background:"#f8fafc",borderRadius:8 }}>
-        <div style={{ minWidth:0 }}>
-          <div style={{ fontSize:13,fontWeight:700 }}>{p.nome || p.email}</div>
-          <div style={{ fontSize:11,color:"#94a3b8" }}>{p.email}</div>
-        </div>
-        {counts && <div style={{ fontSize:12,color:"#94a3b8",flexShrink:0 }}>{counts[p.id]||0} aluno(s)</div>}
-      </div>
-    ))}
-  </div>
-);
-
+const ProfList = ({ items, onSelect, counts }) => React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6, marginTop: 12, borderTop: "1px solid #f1f5f9", paddingTop: 12 } }, items.length === 0 ? React.createElement("div", { style: { fontSize: 12, color: "#94a3b8" } }, "Nenhum profissional nesse grupo.") : items.map((p) => React.createElement("div", { key: p.id, onClick: () => onSelect(p), style: { cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", background: "#f8fafc", borderRadius: 8 } }, React.createElement("div", { style: { minWidth: 0 } }, React.createElement("div", { style: { fontSize: 13, fontWeight: 700 } }, p.nome || p.email), React.createElement("div", { style: { fontSize: 11, color: "#94a3b8" } }, p.email)), counts && React.createElement("div", { style: { fontSize: 12, color: "#94a3b8", flexShrink: 0 } }, counts[p.id] || 0, " aluno(s)"))));
 function App() {
-  const [session,setSession]=useState(null);
-  const [authLoading,setAuthLoading]=useState(true);
-  const [isAdmin,setIsAdmin]=useState(null); // null=checking, true/false
-  const [profs,setProfs]=useState([]);
-  const [counts,setCounts]=useState({});
-  const [loadingData,setLoadingData]=useState(false);
-  const [selected,setSelected]=useState(null); // professional object being viewed
-  const [selStudents,setSelStudents]=useState([]);
-  const [selAssessments,setSelAssessments]=useState([]);
-  const [selLoading,setSelLoading]=useState(false);
-  const [savingProf,setSavingProf]=useState(false);
-  const [planPrices,setPlanPrices]=useState({});
-  const [savingPrices,setSavingPrices]=useState(false);
-  const [resetMsg,setResetMsg]=useState("");
-  const [drill,setDrill]=useState(null); // { section, label }
-  const [planoEdit,setPlanoEdit]=useState(null);
-  const [statusEdit,setStatusEdit]=useState(null);
-  const [priceEdits,setPriceEdits]=useState({});
-  const [trialDateEdit,setTrialDateEdit]=useState("");
-  const [adminTab,setAdminTab]=useState("dashboard"); // dashboard | exercicios
-  const [exercises,setExercises]=useState([]);
-  const [exLoading,setExLoading]=useState(false);
-  const [exModal,setExModal]=useState(null); // null | "new" | exercise object
-  const [exSearch,setExSearch]=useState("");
-  const [exSaving,setExSaving]=useState(false);
-  const [exForm,setExForm]=useState({nome:"",grupo:"MMII",nivel:"Básico",momento:"Parte Principal",foco:"",descricao:"",execucao:"",beneficios:"",cuidados:"",material:"",obs:"",foto:"",video:"",default_series:"3",default_reps:"10-12",default_descanso:"60s",tags:""});
-
+  const [session, setSession] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(null);
+  const [profs, setProfs] = useState([]);
+  const [counts, setCounts] = useState({});
+  const [loadingData, setLoadingData] = useState(false);
+  const [selected, setSelected] = useState(null);
+  const [selStudents, setSelStudents] = useState([]);
+  const [selAssessments, setSelAssessments] = useState([]);
+  const [selLoading, setSelLoading] = useState(false);
+  const [savingProf, setSavingProf] = useState(false);
+  const [planPrices, setPlanPrices] = useState({});
+  const [savingPrices, setSavingPrices] = useState(false);
+  const [resetMsg, setResetMsg] = useState("");
+  const [drill, setDrill] = useState(null);
+  const [planoEdit, setPlanoEdit] = useState(null);
+  const [statusEdit, setStatusEdit] = useState(null);
+  const [priceEdits, setPriceEdits] = useState({});
+  const [trialDateEdit, setTrialDateEdit] = useState("");
+  const [adminTab, setAdminTab] = useState("dashboard");
+  const [exercises, setExercises] = useState([]);
+  const [exLoading, setExLoading] = useState(false);
+  const [exModal, setExModal] = useState(null);
+  const [exSearch, setExSearch] = useState("");
+  const [exSaving, setExSaving] = useState(false);
+  const [exForm, setExForm] = useState({ nome: "", grupo: "MMII", nivel: "Básico", momento: "Parte Principal", foco: "", descricao: "", execucao: "", beneficios: "", cuidados: "", material: "", obs: "", foto: "", video: "", default_series: "3", default_reps: "10-12", default_descanso: "60s", tags: "" });
   const toggleDrill = (section, label) => {
-    setDrill(d => (d && d.section===section && d.label===label) ? null : { section, label });
+    setDrill((d) => d && d.section === section && d.label === label ? null : { section, label });
   };
-
   const loadExercises = async () => {
     setExLoading(true);
     try {
-      const { data:sess } = await supa.auth.getSession();
+      const { data: sess } = await supa.auth.getSession();
       const token = sess?.session?.access_token || SUPA_KEY;
-      const h = { "apikey":SUPA_KEY,"Authorization":"Bearer "+token,"Content-Type":"application/json" };
-      const r = await fetch(SUPA_URL+"/rest/v1/exercises?select=*&order=nome.asc", { headers:h });
-      if (r.ok) { const rows = await r.json(); setExercises(rows||[]); }
-    } catch(e) { console.warn("Erro ao carregar exercícios"); }
+      const h = { "apikey": SUPA_KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json" };
+      const r = await fetch(SUPA_URL + "/rest/v1/exercises?select=*&order=nome.asc", { headers: h });
+      if (r.ok) {
+        const rows = await r.json();
+        setExercises(rows || []);
+      }
+    } catch (e) {
+      console.warn("Erro ao carregar exercícios");
+    }
     setExLoading(false);
   };
-
   const saveExercise = async () => {
     if (!exForm.nome.trim()) return;
     setExSaving(true);
     try {
-      const { data:sess } = await supa.auth.getSession();
+      const { data: sess } = await supa.auth.getSession();
       const token = sess?.session?.access_token || SUPA_KEY;
-      const h = { "apikey":SUPA_KEY,"Authorization":"Bearer "+token,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates" };
-      const payload = { ...exForm, id: exModal?.id || ("ex_"+Date.now()), updated_at: new Date().toISOString() };
-      await fetch(SUPA_URL+"/rest/v1/exercises", { method:"POST", headers:h, body:JSON.stringify(payload) });
+      const h = { "apikey": SUPA_KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates" };
+      const payload = { ...exForm, id: exModal?.id || "ex_" + Date.now(), updated_at: (new Date()).toISOString() };
+      await fetch(SUPA_URL + "/rest/v1/exercises", { method: "POST", headers: h, body: JSON.stringify(payload) });
       await loadExercises();
       setExModal(null);
-    } catch(e) { alert("Erro ao salvar. Tente novamente."); }
+    } catch (e) {
+      alert("Erro ao salvar. Tente novamente.");
+    }
     setExSaving(false);
   };
-
   const deleteExercise = async (id) => {
     if (!window.confirm("Remover este exercício?")) return;
     try {
-      const { data:sess } = await supa.auth.getSession();
+      const { data: sess } = await supa.auth.getSession();
       const token = sess?.session?.access_token || SUPA_KEY;
-      const h = { "apikey":SUPA_KEY,"Authorization":"Bearer "+token,"Content-Type":"application/json" };
-      await fetch(SUPA_URL+"/rest/v1/exercises?id=eq."+id, { method:"DELETE", headers:h });
+      const h = { "apikey": SUPA_KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json" };
+      await fetch(SUPA_URL + "/rest/v1/exercises?id=eq." + id, { method: "DELETE", headers: h });
       await loadExercises();
-    } catch(e) { alert("Erro ao remover."); }
+    } catch (e) {
+      alert("Erro ao remover.");
+    }
   };
-
   const openExModal = (ex) => {
     if (ex === "new") {
-      setExForm({nome:"",grupo:"MMII",nivel:"Básico",momento:"Parte Principal",foco:"",descricao:"",execucao:"",beneficios:"",cuidados:"",material:"",obs:"",foto:"",video:"",default_series:"3",default_reps:"10-12",default_descanso:"60s",tags:""});
-      setExModal({id:null});
+      setExForm({ nome: "", grupo: "MMII", nivel: "Básico", momento: "Parte Principal", foco: "", descricao: "", execucao: "", beneficios: "", cuidados: "", material: "", obs: "", foto: "", video: "", default_series: "3", default_reps: "10-12", default_descanso: "60s", tags: "" });
+      setExModal({ id: null });
     } else {
-      setExForm({nome:ex.nome||"",grupo:ex.grupo||"MMII",nivel:ex.nivel||"Básico",momento:ex.momento||"Parte Principal",foco:ex.foco||"",descricao:ex.descricao||"",execucao:ex.execucao||"",beneficios:ex.beneficios||"",cuidados:ex.cuidados||"",material:ex.material||"",obs:ex.obs||"",foto:ex.foto||"",video:ex.video||"",default_series:ex.default_series||"3",default_reps:ex.default_reps||"10-12",default_descanso:ex.default_descanso||"60s",tags:ex.tags||""});
+      setExForm({ nome: ex.nome || "", grupo: ex.grupo || "MMII", nivel: ex.nivel || "Básico", momento: ex.momento || "Parte Principal", foco: ex.foco || "", descricao: ex.descricao || "", execucao: ex.execucao || "", beneficios: ex.beneficios || "", cuidados: ex.cuidados || "", material: ex.material || "", obs: ex.obs || "", foto: ex.foto || "", video: ex.video || "", default_series: ex.default_series || "3", default_reps: ex.default_reps || "10-12", default_descanso: ex.default_descanso || "60s", tags: ex.tags || "" });
       setExModal(ex);
     }
   };
-
   const openProfessional = (p) => {
     setResetMsg("");
     setSelected(p);
-    setPlanoEdit(p.plano||"trial");
-    setStatusEdit(p.status_assinatura||"ativo");
-    setTrialDateEdit(p.trial_ends_at ? new Date(p.trial_ends_at).toISOString().slice(0,10) : "");
+    setPlanoEdit(p.plano || "trial");
+    setStatusEdit(p.status_assinatura || "ativo");
+    setTrialDateEdit(p.trial_ends_at ? new Date(p.trial_ends_at).toISOString().slice(0, 10) : "");
   };
-
   const saveTrialDate = async () => {
     if (!trialDateEdit) return;
-    // Mantém o horário 23:59 do dia escolhido
-    const iso = new Date(trialDateEdit+"T23:59:59").toISOString();
+    const iso = (new Date(trialDateEdit + "T23:59:59")).toISOString();
     await updateProf("trial_ends_at", iso);
   };
-
-  useEffect(()=>{
-    if (selected?.trial_ends_at) setTrialDateEdit(new Date(selected.trial_ends_at).toISOString().slice(0,10));
-  },[selected?.trial_ends_at]);
-
+  useEffect(() => {
+    if (selected?.trial_ends_at) setTrialDateEdit(new Date(selected.trial_ends_at).toISOString().slice(0, 10));
+  }, [selected?.trial_ends_at]);
   const savePlanStatus = async () => {
     await updateProfFields({ plano: planoEdit, status_assinatura: statusEdit });
   };
-
   const savePrices = async () => {
     setSavingPrices(true);
     try {
       const headers = await authHeaders();
       for (const [plano, valor] of Object.entries(priceEdits)) {
-        await fetch(SUPA_URL+"/rest/v1/plan_prices", {
-          method:"POST", headers: { ...headers, "Prefer":"resolution=merge-duplicates,return=representation" },
+        await fetch(SUPA_URL + "/rest/v1/plan_prices", {
+          method: "POST",
+          headers: { ...headers, "Prefer": "resolution=merge-duplicates,return=representation" },
           body: JSON.stringify({ plano, valor })
         });
       }
-      setPlanPrices(m=>({ ...m, ...priceEdits }));
+      setPlanPrices((m) => ({ ...m, ...priceEdits }));
       setPriceEdits({});
-    } catch(e) {}
+    } catch (e) {
+    }
     setSavingPrices(false);
   };
-
-  useEffect(()=>{
-    supa.auth.getSession().then(({data})=>{ setSession(data?.session||null); setAuthLoading(false); });
-    const { data: listener } = supa.auth.onAuthStateChange((_event, sess)=>{ setSession(sess); });
-    return ()=>{ listener?.subscription?.unsubscribe(); };
-  },[]);
-
-  useEffect(()=>{
-    if (!session) { setIsAdmin(null); return; }
-    (async()=>{
+  useEffect(() => {
+    supa.auth.getSession().then(({ data }) => {
+      setSession(data?.session || null);
+      setAuthLoading(false);
+    });
+    const { data: listener } = supa.auth.onAuthStateChange((_event, sess) => {
+      setSession(sess);
+    });
+    return () => {
+      listener?.subscription?.unsubscribe();
+    };
+  }, []);
+  useEffect(() => {
+    if (!session) {
+      setIsAdmin(null);
+      return;
+    }
+    (async () => {
       try {
         const headers = await authHeaders();
-        const r = await fetch(SUPA_URL+"/rest/v1/professionals?select=is_admin&id=eq."+session.user.id, { headers });
+        const r = await fetch(SUPA_URL + "/rest/v1/professionals?select=is_admin&id=eq." + session.user.id, { headers });
         const rows = await r.json();
         setIsAdmin(!!rows?.[0]?.is_admin);
-      } catch(e) { setIsAdmin(false); }
+      } catch (e) {
+        setIsAdmin(false);
+      }
     })();
-  },[session]);
-
-  useEffect(()=>{
+  }, [session]);
+  useEffect(() => {
     if (!isAdmin) return;
-    (async()=>{
+    (async () => {
       setLoadingData(true);
       try {
         const headers = await authHeaders();
         const [profsRes, countsRes, pricesRes] = await Promise.all([
-          fetch(SUPA_URL+"/rest/v1/professionals?select=*&order=created_at.desc", { headers }),
-          fetch(SUPA_URL+"/rest/v1/rpc/admin_student_counts", { method:"POST", headers, body: JSON.stringify({}) }),
-          fetch(SUPA_URL+"/rest/v1/plan_prices?select=*", { headers })
+          fetch(SUPA_URL + "/rest/v1/professionals?select=*&order=created_at.desc", { headers }),
+          fetch(SUPA_URL + "/rest/v1/rpc/admin_student_counts", { method: "POST", headers, body: JSON.stringify({}) }),
+          fetch(SUPA_URL + "/rest/v1/plan_prices?select=*", { headers })
         ]);
-        const profsData = await profsRes.json().catch(()=>[]);
-        const countsData = await countsRes.json().catch(()=>[]);
-        const pricesData = await pricesRes.json().catch(()=>[]);
+        const profsData = await profsRes.json().catch(() => []);
+        const countsData = await countsRes.json().catch(() => []);
+        const pricesData = await pricesRes.json().catch(() => []);
         const map = {};
-        (Array.isArray(countsData)?countsData:[]).forEach(c=>{ map[c.owner_id] = c.total; });
+        (Array.isArray(countsData) ? countsData : []).forEach((c) => {
+          map[c.owner_id] = c.total;
+        });
         const priceMap = {};
-        (Array.isArray(pricesData)?pricesData:[]).forEach(p=>{ priceMap[p.plano] = p.valor; });
-        setProfs(Array.isArray(profsData)?profsData:[]);
+        (Array.isArray(pricesData) ? pricesData : []).forEach((p) => {
+          priceMap[p.plano] = p.valor;
+        });
+        setProfs(Array.isArray(profsData) ? profsData : []);
         setCounts(map);
         setPlanPrices(priceMap);
-      } catch(e) {}
+      } catch (e) {
+      }
       setLoadingData(false);
     })();
-  },[isAdmin]);
-
-  useEffect(()=>{
-    if (!selected) { setSelStudents([]); setSelAssessments([]); return; }
-    (async()=>{
+  }, [isAdmin]);
+  useEffect(() => {
+    if (!selected) {
+      setSelStudents([]);
+      setSelAssessments([]);
+      return;
+    }
+    (async () => {
       setSelLoading(true);
       try {
         const headers = await authHeaders();
         const [sRes, aRes] = await Promise.all([
-          fetch(SUPA_URL+"/rest/v1/rpc/admin_students_by_owner", { method:"POST", headers, body: JSON.stringify({ target_owner: selected.id }) }),
-          fetch(SUPA_URL+"/rest/v1/rpc/admin_assessments_by_owner", { method:"POST", headers, body: JSON.stringify({ target_owner: selected.id }) })
+          fetch(SUPA_URL + "/rest/v1/rpc/admin_students_by_owner", { method: "POST", headers, body: JSON.stringify({ target_owner: selected.id }) }),
+          fetch(SUPA_URL + "/rest/v1/rpc/admin_assessments_by_owner", { method: "POST", headers, body: JSON.stringify({ target_owner: selected.id }) })
         ]);
-        const sRows = await sRes.json().catch(()=>[]);
-        const aRows = await aRes.json().catch(()=>[]);
-        setSelStudents(Array.isArray(sRows)?sRows:[]);
-        setSelAssessments(Array.isArray(aRows)?aRows:[]);
-      } catch(e) { setSelStudents([]); setSelAssessments([]); }
+        const sRows = await sRes.json().catch(() => []);
+        const aRows = await aRes.json().catch(() => []);
+        setSelStudents(Array.isArray(sRows) ? sRows : []);
+        setSelAssessments(Array.isArray(aRows) ? aRows : []);
+      } catch (e) {
+        setSelStudents([]);
+        setSelAssessments([]);
+      }
       setSelLoading(false);
     })();
-  },[selected]);
-
+  }, [selected]);
   const updateProf = async (field, value) => {
     if (!selected) return;
     setSavingProf(true);
     try {
       const headers = await authHeaders();
-      await fetch(SUPA_URL+"/rest/v1/professionals?id=eq."+selected.id, {
-        method:"PATCH", headers: { ...headers, "Prefer":"return=representation" },
+      await fetch(SUPA_URL + "/rest/v1/professionals?id=eq." + selected.id, {
+        method: "PATCH",
+        headers: { ...headers, "Prefer": "return=representation" },
         body: JSON.stringify({ [field]: value })
       });
-      setSelected(p=>({ ...p, [field]: value }));
-      setProfs(list=>list.map(p=>p.id===selected.id?{ ...p,[field]:value }:p));
-    } catch(e) {}
+      setSelected((p) => ({ ...p, [field]: value }));
+      setProfs((list) => list.map((p) => p.id === selected.id ? { ...p, [field]: value } : p));
+    } catch (e) {
+    }
     setSavingProf(false);
   };
-
   const updateProfFields = async (fields) => {
     if (!selected) return;
     setSavingProf(true);
     try {
       const headers = await authHeaders();
-      await fetch(SUPA_URL+"/rest/v1/professionals?id=eq."+selected.id, {
-        method:"PATCH", headers: { ...headers, "Prefer":"return=representation" },
+      await fetch(SUPA_URL + "/rest/v1/professionals?id=eq." + selected.id, {
+        method: "PATCH",
+        headers: { ...headers, "Prefer": "return=representation" },
         body: JSON.stringify(fields)
       });
-      setSelected(p=>({ ...p, ...fields }));
-      setProfs(list=>list.map(p=>p.id===selected.id?{ ...p, ...fields }:p));
-    } catch(e) {}
+      setSelected((p) => ({ ...p, ...fields }));
+      setProfs((list) => list.map((p) => p.id === selected.id ? { ...p, ...fields } : p));
+    } catch (e) {
+    }
     setSavingProf(false);
   };
-
   const extendTrial = async (days) => {
     if (!selected) return;
-    const base = (selected.trial_ends_at && new Date(selected.trial_ends_at).getTime() > Date.now())
-      ? new Date(selected.trial_ends_at)
-      : new Date();
-    const newDate = new Date(base.getTime() + days*86400000).toISOString();
+    const base = selected.trial_ends_at && new Date(selected.trial_ends_at).getTime() > Date.now() ? new Date(selected.trial_ends_at) : new Date();
+    const newDate = new Date(base.getTime() + days * 864e5).toISOString();
     await updateProf("trial_ends_at", newDate);
   };
-
   const trialExpired = (p) => p.trial_ends_at && new Date(p.trial_ends_at).getTime() < Date.now();
-
   const updatePlanPrice = async (plano, valor) => {
     setSavingPrices(true);
     try {
       const headers = await authHeaders();
-      await fetch(SUPA_URL+"/rest/v1/plan_prices", {
-        method:"POST", headers: { ...headers, "Prefer":"resolution=merge-duplicates,return=representation" },
+      await fetch(SUPA_URL + "/rest/v1/plan_prices", {
+        method: "POST",
+        headers: { ...headers, "Prefer": "resolution=merge-duplicates,return=representation" },
         body: JSON.stringify({ plano, valor })
       });
-      setPlanPrices(m=>({ ...m, [plano]: valor }));
-    } catch(e) {}
+      setPlanPrices((m) => ({ ...m, [plano]: valor }));
+    } catch (e) {
+    }
     setSavingPrices(false);
   };
-
   const sendPasswordReset = async (email) => {
     setResetMsg("Enviando...");
     try {
       const { error } = await supa.auth.resetPasswordForEmail(email, { redirectTo: "https://britowellington.github.io/app.longevus/longevus-app-test.html" });
       if (error) throw error;
-      setResetMsg("Email de redefinição enviado para "+email);
-    } catch(err) {
-      setResetMsg("Erro: "+(err.message||"não foi possível enviar"));
+      setResetMsg("Email de redefinição enviado para " + email);
+    } catch (err) {
+      setResetMsg("Erro: " + (err.message || "não foi possível enviar"));
     }
   };
-
-  if (authLoading || (session && isAdmin===null)) {
-    return <div style={{ minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#94a3b8",fontFamily:"-apple-system,sans-serif" }}>Carregando...</div>;
+  if (authLoading || session && isAdmin === null) {
+    return React.createElement("div", { style: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontFamily: "-apple-system,sans-serif" } }, "Carregando...");
   }
   if (!session) {
-    return <Login onLogin={()=>{}}/>;
+    return React.createElement(Login, { onLogin: () => {
+    } });
   }
   if (!isAdmin) {
-    return (
-      <div style={{ minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12,fontFamily:"-apple-system,sans-serif",padding:20,textAlign:"center" }}>
-        <div style={{ fontSize:18,fontWeight:700 }}>Acesso restrito</div>
-        <div style={{ fontSize:14,color:"#64748b" }}>Esta área é exclusiva para administradores do Longevus.</div>
-        <button onClick={()=>supa.auth.signOut()} style={{ marginTop:8,border:"1.5px solid #e2e8f0",background:"#fff",borderRadius:8,padding:"8px 16px",fontSize:13,cursor:"pointer" }}>Sair</button>
-      </div>
-    );
+    return React.createElement("div", { style: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, fontFamily: "-apple-system,sans-serif", padding: 20, textAlign: "center" } }, React.createElement("div", { style: { fontSize: 18, fontWeight: 700 } }, "Acesso restrito"), React.createElement("div", { style: { fontSize: 14, color: "#64748b" } }, "Esta área é exclusiva para administradores do Longevus."), React.createElement("button", { onClick: () => supa.auth.signOut(), style: { marginTop: 8, border: "1.5px solid #e2e8f0", background: "#fff", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer" } }, "Sair"));
   }
-
   const totalProfs = profs.length;
-  const totalAlunos = Object.values(counts).reduce((a,b)=>a+Number(b||0),0);
+  const totalAlunos = Object.values(counts).reduce((a, b) => a + Number(b || 0), 0);
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString("pt-BR") : "—";
   const fmtDateTime = (d) => d ? new Date(d).toLocaleString("pt-BR") : "—";
-
-  // --- Métricas ---
   const monthLabel = (d) => {
     const dt = new Date(d);
-    return dt.toLocaleDateString("pt-BR",{ month:"short", year:"2-digit" });
+    return dt.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
   };
   const growthMap = {};
-  profs.forEach(p=>{
+  profs.forEach((p) => {
     if (!p.created_at) return;
     const key = monthLabel(p.created_at);
-    growthMap[key] = (growthMap[key]||0) + 1;
+    growthMap[key] = (growthMap[key] || 0) + 1;
   });
-  // Ordenar cronologicamente pela data real
-  const growthOrder = [...new Set(profs.filter(p=>p.created_at).map(p=>p.created_at))]
-    .sort()
-    .map(monthLabel);
-  const growthData = [...new Set(growthOrder)].map(label=>({ label, value: growthMap[label]||0 }));
-
+  const growthOrder = [...new Set(profs.filter((p) => p.created_at).map((p) => p.created_at))].sort().map(monthLabel);
+  const growthData = [...new Set(growthOrder)].map((label) => ({ label, value: growthMap[label] || 0 }));
   const planoMap = {};
-  profs.forEach(p=>{ const k = p.plano||"trial"; planoMap[k] = (planoMap[k]||0)+1; });
-  const planoData = Object.entries(planoMap).map(([label,value])=>({ label, value }));
-
+  profs.forEach((p) => {
+    const k = p.plano || "trial";
+    planoMap[k] = (planoMap[k] || 0) + 1;
+  });
+  const planoData = Object.entries(planoMap).map(([label, value]) => ({ label, value }));
   const statusMap = {};
-  profs.forEach(p=>{ const k = p.status_assinatura||"ativo"; statusMap[k] = (statusMap[k]||0)+1; });
-  const statusColors = { ativo:"#16a34a", inadimplente:"#f59e0b", cancelado:"#dc2626" };
-  const statusData = Object.entries(statusMap).map(([label,value])=>({ label, value, color: statusColors[label]||"#94a3b8" }));
-
-  const comAlunos = profs.filter(p=>(counts[p.id]||0) > 0).length;
+  profs.forEach((p) => {
+    const k = p.status_assinatura || "ativo";
+    statusMap[k] = (statusMap[k] || 0) + 1;
+  });
+  const statusColors = { ativo: "#16a34a", inadimplente: "#f59e0b", cancelado: "#dc2626" };
+  const statusData = Object.entries(statusMap).map(([label, value]) => ({ label, value, color: statusColors[label] || "#94a3b8" }));
+  const comAlunos = profs.filter((p) => (counts[p.id] || 0) > 0).length;
   const semAlunos = totalProfs - comAlunos;
   const engajamentoData = [
-    { label:"Com alunos cadastrados", value: comAlunos, color:"#16a34a" },
-    { label:"Sem alunos ainda", value: semAlunos, color:"#94a3b8" },
+    { label: "Com alunos cadastrados", value: comAlunos, color: "#16a34a" },
+    { label: "Sem alunos ainda", value: semAlunos, color: "#94a3b8" }
   ];
-
-  // --- Métricas financeiras ---
-  const fmtBRL = (v) => "R$ " + Number(v||0).toLocaleString("pt-BR",{ minimumFractionDigits:2, maximumFractionDigits:2 });
+  const fmtBRL = (v) => "R$ " + Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const monthlyValue = (p) => {
-    const plano = p.plano||"trial";
-    const valor = Number(planPrices[plano]||0);
-    if (plano==="anual") return valor/12;
-    if (plano==="vitalicio") return 0; // não recorrente
-    if (plano==="trial") return 0;
-    return valor; // mensal
+    const plano = p.plano || "trial";
+    const valor = Number(planPrices[plano] || 0);
+    if (plano === "anual") return valor / 12;
+    if (plano === "vitalicio") return 0;
+    if (plano === "trial") return 0;
+    return valor;
   };
-  const activePaying = profs.filter(p=>(p.status_assinatura||"ativo")==="ativo" && (p.plano||"trial")!=="trial");
-  const mrr = activePaying.reduce((sum,p)=>sum+monthlyValue(p),0);
-  const payingRecurring = activePaying.filter(p=>(p.plano||"trial")!=="vitalicio");
-  const ticketMedio = payingRecurring.length>0 ? mrr/payingRecurring.length : 0;
-  const cancelados = profs.filter(p=>p.status_assinatura==="cancelado").length;
-  const everPaid = profs.filter(p=>(p.plano||"trial")!=="trial").length;
-  const churn = everPaid>0 ? (cancelados/everPaid)*100 : 0;
-  const ltv = churn>0 ? ticketMedio/(churn/100) : null;
-  const vitaliciosRevenue = profs.filter(p=>p.plano==="vitalicio").length * Number(planPrices.vitalicio||0);
+  const activePaying = profs.filter((p) => (p.status_assinatura || "ativo") === "ativo" && (p.plano || "trial") !== "trial");
+  const mrr = activePaying.reduce((sum, p) => sum + monthlyValue(p), 0);
+  const payingRecurring = activePaying.filter((p) => (p.plano || "trial") !== "vitalicio");
+  const ticketMedio = payingRecurring.length > 0 ? mrr / payingRecurring.length : 0;
+  const cancelados = profs.filter((p) => p.status_assinatura === "cancelado").length;
+  const everPaid = profs.filter((p) => (p.plano || "trial") !== "trial").length;
+  const churn = everPaid > 0 ? cancelados / everPaid * 100 : 0;
+  const ltv = churn > 0 ? ticketMedio / (churn / 100) : null;
+  const vitaliciosRevenue = profs.filter((p) => p.plano === "vitalicio").length * Number(planPrices.vitalicio || 0);
   const arr = mrr * 12;
-
-  // --- Engajamento real (última atividade) ---
   const fmtRelative = (d) => {
     if (!d) return "Nunca acessou";
     const diffMs = Date.now() - new Date(d).getTime();
-    const days = Math.floor(diffMs/86400000);
-    if (days<1) return "Hoje";
-    if (days===1) return "Ontem";
-    if (days<30) return "há "+days+" dias";
-    const months = Math.floor(days/30);
-    return "há "+months+" mês"+(months>1?"es":"");
+    const days = Math.floor(diffMs / 864e5);
+    if (days < 1) return "Hoje";
+    if (days === 1) return "Ontem";
+    if (days < 30) return "há " + days + " dias";
+    const months = Math.floor(days / 30);
+    return "há " + months + " mês" + (months > 1 ? "es" : "");
   };
-  const activos7d = profs.filter(p=>p.last_active && (Date.now()-new Date(p.last_active).getTime())<7*86400000).length;
+  const activos7d = profs.filter((p) => p.last_active && Date.now() - new Date(p.last_active).getTime() < 7 * 864e5).length;
   const inativos7d = totalProfs - activos7d;
   const ativ7dData = [
-    { label:"Ativos (últimos 7 dias)", value: activos7d, color:"#16a34a" },
-    { label:"Inativos", value: inativos7d, color:"#94a3b8" },
+    { label: "Ativos (últimos 7 dias)", value: activos7d, color: "#16a34a" },
+    { label: "Inativos", value: inativos7d, color: "#94a3b8" }
   ];
-
-  // --- Lista filtrada para drill-down ---
   const drillList = (() => {
     if (!drill) return null;
     const { section, label } = drill;
-    if (section==="growth") return profs.filter(p=>p.created_at && monthLabel(p.created_at)===label);
-    if (section==="plano") return profs.filter(p=>(p.plano||"trial")===label);
-    if (section==="status") return profs.filter(p=>(p.status_assinatura||"ativo")===label);
-    if (section==="engajamento") return label==="Com alunos cadastrados"
-      ? profs.filter(p=>(counts[p.id]||0)>0)
-      : profs.filter(p=>(counts[p.id]||0)===0);
-    if (section==="ativ7d") return label==="Ativos (últimos 7 dias)"
-      ? profs.filter(p=>p.last_active && (Date.now()-new Date(p.last_active).getTime())<7*86400000)
-      : profs.filter(p=>!(p.last_active && (Date.now()-new Date(p.last_active).getTime())<7*86400000));
-    if (section==="financeiro") {
-      if (label==="churn") return profs.filter(p=>p.status_assinatura==="cancelado");
-      if (label==="paying") return activePaying;
+    if (section === "growth") return profs.filter((p) => p.created_at && monthLabel(p.created_at) === label);
+    if (section === "plano") return profs.filter((p) => (p.plano || "trial") === label);
+    if (section === "status") return profs.filter((p) => (p.status_assinatura || "ativo") === label);
+    if (section === "engajamento") return label === "Com alunos cadastrados" ? profs.filter((p) => (counts[p.id] || 0) > 0) : profs.filter((p) => (counts[p.id] || 0) === 0);
+    if (section === "ativ7d") return label === "Ativos (últimos 7 dias)" ? profs.filter((p) => p.last_active && Date.now() - new Date(p.last_active).getTime() < 7 * 864e5) : profs.filter((p) => !(p.last_active && Date.now() - new Date(p.last_active).getTime() < 7 * 864e5));
+    if (section === "financeiro") {
+      if (label === "churn") return profs.filter((p) => p.status_assinatura === "cancelado");
+      if (label === "paying") return activePaying;
     }
     return [];
   })();
-
   if (selected) {
     const p = selected;
-    return (
-      <div style={{ minHeight:"100vh",background:"#f8fafc",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",paddingBottom:40 }}>
-        <div style={{ background:"#fff",borderBottom:"1.5px solid #e2e8f0",padding:"12px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:10 }}>
-          <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-            <button onClick={()=>setSelected(null)} style={{ border:"none",background:"transparent",fontSize:14,color:"#FF5603",fontWeight:700,cursor:"pointer" }}>← Voltar</button>
-          </div>
-          <button onClick={()=>supa.auth.signOut()} style={{ border:"none",background:"transparent",color:"#94a3b8",fontSize:12,cursor:"pointer",textDecoration:"underline" }}>Sair</button>
-        </div>
-        <div style={{ padding:"20px 16px",maxWidth:800,margin:"0 auto" }}>
-          <div style={{ background:"#fff",borderRadius:12,padding:"16px",border:"1px solid #e2e8f0",marginBottom:16 }}>
-            <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:4 }}>
-              {p.logo_url
-                ? <img src={p.logo_url} alt="" style={{ width:48,height:48,borderRadius:"50%",objectFit:"cover",flexShrink:0 }}/>
-                : <div style={{ width:48,height:48,borderRadius:"50%",background:"#f1f5f9",flexShrink:0 }}/>
-              }
-              <div style={{ fontWeight:800,fontSize:18,display:"flex",alignItems:"center",gap:8 }}>
-                {p.nome || p.email}
-                {p.is_admin && <span style={{ fontSize:10,background:"#FF560318",color:"#FF5603",borderRadius:999,padding:"2px 8px",fontWeight:700 }}>ADMIN</span>}
-              </div>
-            </div>
-            <div style={{ fontSize:13,color:"#94a3b8",marginTop:2 }}>{p.email}</div>
-            {p.whatsapp && (
-              <a href={"https://wa.me/"+String(p.whatsapp).replace(/\D/g,"")} target="_blank" style={{ fontSize:13,color:"#16a34a",fontWeight:700,marginTop:4,display:"inline-flex",alignItems:"center",gap:4,textDecoration:"none" }}>
-                📱 {p.whatsapp}
-              </a>
-            )}
-            <div style={{ fontSize:12,color:"#cbd5e1",marginTop:4 }}>Cadastrado em {fmtDate(p.created_at)} · Última atividade: {fmtRelative(p.last_active)}</div>
-            <div style={{ fontSize:12,color:"#cbd5e1",marginTop:2 }}>ID: {p.id}</div>
-            {(p.cref || p.especializacao) && (
-              <div style={{ fontSize:12,color:"#475569",marginTop:8,paddingTop:8,borderTop:"1px solid #f1f5f9" }}>
-                {p.cref && <div><strong>CREF:</strong> {p.cref}</div>}
-                {p.especializacao && <div style={{ marginTop:2 }}><strong>Especialização:</strong> {p.especializacao}</div>}
-              </div>
-            )}
-
-            <div style={{ display:"flex",gap:12,marginTop:16,flexWrap:"wrap" }}>
-              <div style={{ flex:"1 1 140px" }}>
-                <label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Plano</label>
-                <select value={planoEdit} disabled={savingProf} onChange={e=>setPlanoEdit(e.target.value)} style={{ width:"100%",padding:"8px 10px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13 }}>
-                  <option value="trial">trial</option>
-                  <option value="mensal">mensal</option>
-                  <option value="anual">anual</option>
-                  <option value="vitalicio">vitalício</option>
-                </select>
-              </div>
-              <div style={{ flex:"1 1 140px" }}>
-                <label style={{ fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4 }}>Status</label>
-                <select value={statusEdit} disabled={savingProf} onChange={e=>setStatusEdit(e.target.value)} style={{ width:"100%",padding:"8px 10px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13 }}>
-                  <option value="ativo">ativo</option>
-                  <option value="inadimplente">inadimplente</option>
-                  <option value="cancelado">cancelado</option>
-                </select>
-              </div>
-            </div>
-            {(planoEdit!==(p.plano||"trial") || statusEdit!==(p.status_assinatura||"ativo")) && (
-              <button onClick={savePlanStatus} disabled={savingProf} style={{ marginTop:10,border:"none",background:"#FF5603",color:"#fff",borderRadius:8,padding:"9px 16px",fontSize:13,fontWeight:700,cursor:"pointer" }}>
-                {savingProf?"Salvando...":"Salvar alterações"}
-              </button>
-            )}
-
-            {p.plano==="trial" && (
-              <div style={{ borderTop:"1px solid #f1f5f9",marginTop:16,paddingTop:12 }}>
-                <div style={{ fontSize:12,color: trialExpired(p)?"#dc2626":"#475569",fontWeight:600,marginBottom:8 }}>
-                  {p.trial_ends_at
-                    ? (trialExpired(p) ? "Trial expirado em "+fmtDate(p.trial_ends_at) : "Trial expira em "+fmtDate(p.trial_ends_at))
-                    : "Sem data de expiração de trial definida"}
-                </div>
-                <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
-                  <button onClick={()=>extendTrial(7)} disabled={savingProf} style={{ border:"1.5px solid #e2e8f0",background:"#fff",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",color:"#475569" }}>+7 dias</button>
-                  <button onClick={()=>extendTrial(14)} disabled={savingProf} style={{ border:"1.5px solid #e2e8f0",background:"#fff",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",color:"#475569" }}>+14 dias</button>
-                  <button onClick={()=>extendTrial(30)} disabled={savingProf} style={{ border:"1.5px solid #e2e8f0",background:"#fff",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",color:"#475569" }}>+30 dias</button>
-                </div>
-                <div style={{ display:"flex",gap:8,marginTop:10,alignItems:"flex-end",flexWrap:"wrap" }}>
-                  <div style={{ flex:"1 1 160px" }}>
-                    <label style={{ fontSize:11,color:"#94a3b8",display:"block",marginBottom:3 }}>Ou escolha a data de expiração</label>
-                    <input type="date" value={trialDateEdit} disabled={savingProf} onChange={e=>setTrialDateEdit(e.target.value)} style={{ width:"100%",padding:"6px 8px",borderRadius:6,border:"1.5px solid #e2e8f0",fontSize:13 }}/>
-                  </div>
-                  {trialDateEdit !== (p.trial_ends_at ? new Date(p.trial_ends_at).toISOString().slice(0,10) : "") && (
-                    <button onClick={saveTrialDate} disabled={savingProf} style={{ border:"none",background:"#FF5603",color:"#fff",borderRadius:8,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer" }}>
-                      {savingProf?"Salvando...":"Definir data"}
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <div style={{ borderTop:"1px solid #f1f5f9",marginTop:16,paddingTop:12 }}>
-              <button onClick={()=>sendPasswordReset(p.email)} style={{ border:"1.5px solid #e2e8f0",background:"#fff",borderRadius:8,padding:"8px 14px",fontSize:13,fontWeight:600,cursor:"pointer",color:"#475569" }}>
-                Enviar redefinição de senha
-              </button>
-              {resetMsg && <div style={{ fontSize:12,color:"#64748b",marginTop:8 }}>{resetMsg}</div>}
-            </div>
-          </div>
-
-          <div style={{ fontWeight:800,fontSize:16,marginBottom:10 }}>Alunos ({selStudents.length})</div>
-          {selLoading ? (
-            <div style={{ color:"#94a3b8",fontSize:13 }}>Carregando...</div>
-          ) : selStudents.length===0 ? (
-            <div style={{ color:"#94a3b8",fontSize:13 }}>Nenhum aluno cadastrado.</div>
-          ) : (
-            <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-              {selStudents.map(s=>{
-                const sAssess = selAssessments.filter(a=>a.student_id===s.id);
-                const lastAssess = sAssess.reduce((max,a)=>{
-                  const d = a.updated_at || a.created_at;
-                  return (!max || new Date(d)>new Date(max)) ? d : max;
-                }, null);
-                return (
-                <div key={s.id} style={{ background:"#fff",borderRadius:12,padding:"12px 16px",border:"1px solid #e2e8f0",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12 }}>
-                  <div style={{ minWidth:0 }}>
-                    <div style={{ fontWeight:700,fontSize:14 }}>{s.data?.name || s.data?.nome || "Sem nome"}</div>
-                    <div style={{ fontSize:11,color:"#cbd5e1",marginTop:2 }}>Criado em {fmtDateTime(s.created_at)} · Atualizado em {fmtDateTime(s.updated_at)}</div>
-                  </div>
-                  <div style={{ textAlign:"right",flexShrink:0 }}>
-                    <div style={{ fontSize:18,fontWeight:900 }}>{sAssess.length}</div>
-                    <div style={{ fontSize:11,color:"#94a3b8" }}>avaliação(ões)</div>
-                    <div style={{ fontSize:11,color:"#cbd5e1",marginTop:2 }}>{lastAssess ? "Última: "+fmtDateTime(lastAssess) : "Nenhuma ainda"}</div>
-                  </div>
-                </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-    );
+    return React.createElement("div", { style: { minHeight: "100vh", background: "#f8fafc", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", paddingBottom: 40 } }, React.createElement("div", { style: { background: "#fff", borderBottom: "1.5px solid #e2e8f0", padding: "12px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 10 } }, React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, React.createElement("button", { onClick: () => setSelected(null), style: { border: "none", background: "transparent", fontSize: 14, color: "#FF5603", fontWeight: 700, cursor: "pointer" } }, "← Voltar")), React.createElement("button", { onClick: () => supa.auth.signOut(), style: { border: "none", background: "transparent", color: "#94a3b8", fontSize: 12, cursor: "pointer", textDecoration: "underline" } }, "Sair")), React.createElement("div", { style: { padding: "20px 16px", maxWidth: 800, margin: "0 auto" } }, React.createElement("div", { style: { background: "#fff", borderRadius: 12, padding: "16px", border: "1px solid #e2e8f0", marginBottom: 16 } }, React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, marginBottom: 4 } }, p.logo_url ? React.createElement("img", { src: p.logo_url, alt: "", style: { width: 48, height: 48, borderRadius: "50%", objectFit: "cover", flexShrink: 0 } }) : React.createElement("div", { style: { width: 48, height: 48, borderRadius: "50%", background: "#f1f5f9", flexShrink: 0 } }), React.createElement("div", { style: { fontWeight: 800, fontSize: 18, display: "flex", alignItems: "center", gap: 8 } }, p.nome || p.email, p.is_admin && React.createElement("span", { style: { fontSize: 10, background: "#FF560318", color: "#FF5603", borderRadius: 999, padding: "2px 8px", fontWeight: 700 } }, "ADMIN"))), React.createElement("div", { style: { fontSize: 13, color: "#94a3b8", marginTop: 2 } }, p.email), p.whatsapp && React.createElement("a", { href: "https://wa.me/" + String(p.whatsapp).replace(/\D/g, ""), target: "_blank", style: { fontSize: 13, color: "#16a34a", fontWeight: 700, marginTop: 4, display: "inline-flex", alignItems: "center", gap: 4, textDecoration: "none" } }, "📱 ", p.whatsapp), React.createElement("div", { style: { fontSize: 12, color: "#cbd5e1", marginTop: 4 } }, "Cadastrado em ", fmtDate(p.created_at), " · Última atividade: ", fmtRelative(p.last_active)), React.createElement("div", { style: { fontSize: 12, color: "#cbd5e1", marginTop: 2 } }, "ID: ", p.id), (p.cref || p.especializacao) && React.createElement("div", { style: { fontSize: 12, color: "#475569", marginTop: 8, paddingTop: 8, borderTop: "1px solid #f1f5f9" } }, p.cref && React.createElement("div", null, React.createElement("strong", null, "CREF:"), " ", p.cref), p.especializacao && React.createElement("div", { style: { marginTop: 2 } }, React.createElement("strong", null, "Especialização:"), " ", p.especializacao)), React.createElement("div", { style: { display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" } }, React.createElement("div", { style: { flex: "1 1 140px" } }, React.createElement("label", { style: { fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 } }, "Plano"), React.createElement("select", { value: planoEdit, disabled: savingProf, onChange: (e) => setPlanoEdit(e.target.value), style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1.5px solid #e2e8f0", fontSize: 13 } }, React.createElement("option", { value: "trial" }, "trial"), React.createElement("option", { value: "mensal" }, "mensal"), React.createElement("option", { value: "anual" }, "anual"), React.createElement("option", { value: "vitalicio" }, "vitalício"))), React.createElement("div", { style: { flex: "1 1 140px" } }, React.createElement("label", { style: { fontSize: 12, fontWeight: 600, color: "#475569", display: "block", marginBottom: 4 } }, "Status"), React.createElement("select", { value: statusEdit, disabled: savingProf, onChange: (e) => setStatusEdit(e.target.value), style: { width: "100%", padding: "8px 10px", borderRadius: 8, border: "1.5px solid #e2e8f0", fontSize: 13 } }, React.createElement("option", { value: "ativo" }, "ativo"), React.createElement("option", { value: "inadimplente" }, "inadimplente"), React.createElement("option", { value: "cancelado" }, "cancelado")))), (planoEdit !== (p.plano || "trial") || statusEdit !== (p.status_assinatura || "ativo")) && React.createElement("button", { onClick: savePlanStatus, disabled: savingProf, style: { marginTop: 10, border: "none", background: "#FF5603", color: "#fff", borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, savingProf ? "Salvando..." : "Salvar alterações"), p.plano === "trial" && React.createElement("div", { style: { borderTop: "1px solid #f1f5f9", marginTop: 16, paddingTop: 12 } }, React.createElement("div", { style: { fontSize: 12, color: trialExpired(p) ? "#dc2626" : "#475569", fontWeight: 600, marginBottom: 8 } }, p.trial_ends_at ? trialExpired(p) ? "Trial expirado em " + fmtDate(p.trial_ends_at) : "Trial expira em " + fmtDate(p.trial_ends_at) : "Sem data de expiração de trial definida"), React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, React.createElement("button", { onClick: () => extendTrial(7), disabled: savingProf, style: { border: "1.5px solid #e2e8f0", background: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#475569" } }, "+7 dias"), React.createElement("button", { onClick: () => extendTrial(14), disabled: savingProf, style: { border: "1.5px solid #e2e8f0", background: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#475569" } }, "+14 dias"), React.createElement("button", { onClick: () => extendTrial(30), disabled: savingProf, style: { border: "1.5px solid #e2e8f0", background: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#475569" } }, "+30 dias")), React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 10, alignItems: "flex-end", flexWrap: "wrap" } }, React.createElement("div", { style: { flex: "1 1 160px" } }, React.createElement("label", { style: { fontSize: 11, color: "#94a3b8", display: "block", marginBottom: 3 } }, "Ou escolha a data de expiração"), React.createElement("input", { type: "date", value: trialDateEdit, disabled: savingProf, onChange: (e) => setTrialDateEdit(e.target.value), style: { width: "100%", padding: "6px 8px", borderRadius: 6, border: "1.5px solid #e2e8f0", fontSize: 13 } })), trialDateEdit !== (p.trial_ends_at ? new Date(p.trial_ends_at).toISOString().slice(0, 10) : "") && React.createElement("button", { onClick: saveTrialDate, disabled: savingProf, style: { border: "none", background: "#FF5603", color: "#fff", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" } }, savingProf ? "Salvando..." : "Definir data"))), React.createElement("div", { style: { borderTop: "1px solid #f1f5f9", marginTop: 16, paddingTop: 12 } }, React.createElement("button", { onClick: () => sendPasswordReset(p.email), style: { border: "1.5px solid #e2e8f0", background: "#fff", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#475569" } }, "Enviar redefinição de senha"), resetMsg && React.createElement("div", { style: { fontSize: 12, color: "#64748b", marginTop: 8 } }, resetMsg))), React.createElement("div", { style: { fontWeight: 800, fontSize: 16, marginBottom: 10 } }, "Alunos (", selStudents.length, ")"), selLoading ? React.createElement("div", { style: { color: "#94a3b8", fontSize: 13 } }, "Carregando...") : selStudents.length === 0 ? React.createElement("div", { style: { color: "#94a3b8", fontSize: 13 } }, "Nenhum aluno cadastrado.") : React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, selStudents.map((s) => {
+      const sAssess = selAssessments.filter((a) => a.student_id === s.id);
+      const lastAssess = sAssess.reduce((max, a) => {
+        const d = a.updated_at || a.created_at;
+        return !max || new Date(d) > new Date(max) ? d : max;
+      }, null);
+      return React.createElement("div", { key: s.id, style: { background: "#fff", borderRadius: 12, padding: "12px 16px", border: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 } }, React.createElement("div", { style: { minWidth: 0 } }, React.createElement("div", { style: { fontWeight: 700, fontSize: 14 } }, s.data?.name || s.data?.nome || "Sem nome"), React.createElement("div", { style: { fontSize: 11, color: "#cbd5e1", marginTop: 2 } }, "Criado em ", fmtDateTime(s.created_at), " · Atualizado em ", fmtDateTime(s.updated_at))), React.createElement("div", { style: { textAlign: "right", flexShrink: 0 } }, React.createElement("div", { style: { fontSize: 18, fontWeight: 900 } }, sAssess.length), React.createElement("div", { style: { fontSize: 11, color: "#94a3b8" } }, "avaliação(ões)"), React.createElement("div", { style: { fontSize: 11, color: "#cbd5e1", marginTop: 2 } }, lastAssess ? "Última: " + fmtDateTime(lastAssess) : "Nenhuma ainda")));
+    }))));
   }
-
-  return (
-    <div style={{ minHeight:"100vh",background:"#f8fafc",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",paddingBottom:40 }}>
-      <div style={{ background:"#fff",borderBottom:"1.5px solid #e2e8f0",padding:"12px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:10 }}>
-        <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-          <img src={__LOGO_1__} alt="Longevus" style={{ height:34,width:"auto" }}/>
-          <span style={{ fontWeight:800,fontSize:15 }}>Admin</span>
-        </div>
-        <button onClick={()=>supa.auth.signOut()} style={{ border:"none",background:"transparent",color:"#94a3b8",fontSize:12,cursor:"pointer",textDecoration:"underline" }}>Sair</button>
-      </div>
-
-      <div style={{ padding:"20px 16px",maxWidth:800,margin:"0 auto" }}>
-
-        {/* Tab navigation */}
-        <div style={{ display:"flex",gap:8,marginBottom:20,borderBottom:"2px solid #e2e8f0",paddingBottom:0 }}>
-          {[["dashboard","📊 Dashboard"],["exercicios","🏋️ Exercícios"]].map(([t,l])=>(
-            <button key={t} onClick={()=>{setAdminTab(t);if(t==="exercicios")loadExercises();}} style={{ padding:"8px 16px",border:"none",background:"transparent",fontWeight:700,fontSize:13,cursor:"pointer",borderBottom:"3px solid "+(adminTab===t?"#FF5603":"transparent"),color:adminTab===t?"#FF5603":"#64748b",marginBottom:-2 }}>{l}</button>
-          ))}
-        </div>
-
-        {/* Exercises Tab */}
-        {adminTab==="exercicios" && (
-          <div>
-            {exModal && (
-              <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:999,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:16,overflowY:"auto" }}>
-                <div style={{ background:"#fff",borderRadius:16,padding:20,width:"100%",maxWidth:480,marginTop:20 }}>
-                  <div style={{ fontWeight:800,fontSize:16,marginBottom:16 }}>{exModal.id?"Editar Exercício":"Novo Exercício"}</div>
-                  {[["nome","Nome *","text"],["foco","Foco / Músculo","text"],["descricao","Descrição","textarea"],["execucao","Como executar","textarea"],["beneficios","Benefícios","textarea"],["cuidados","Cuidados","textarea"],["material","Material","text"],["obs","Obs. clínicas","text"],["video","Vídeo (link YouTube)","text"],["tags","Tags","text"]].map(([k,l,t])=>(
-                    <div key={k} style={{ marginBottom:10 }}>
-                      <div style={{ fontSize:10,fontWeight:700,color:"#64748b",marginBottom:3,textTransform:"uppercase" }}>{l}</div>
-                      {t==="textarea"
-                        ? <textarea value={exForm[k]||""} onChange={e=>setExForm(f=>({...f,[k]:e.target.value}))} rows={3} style={{ width:"100%",padding:"8px 10px",border:"1.5px solid #e2e8f0",borderRadius:7,fontSize:13,resize:"vertical" }}/>
-                        : <input value={exForm[k]||""} onChange={e=>setExForm(f=>({...f,[k]:e.target.value}))} style={{ width:"100%",padding:"8px 10px",border:"1.5px solid #e2e8f0",borderRadius:7,fontSize:13 }}/>
-                      }
-                    </div>
-                  ))}
-                  <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10 }}>
-                    {[["grupo","Grupo",["MMII","MMSS","Core","Equilíbrio","Mobilidade","Alongamento","Cardio","Funcional","Coordenação","Respiração"]],["nivel","Nível",["Básico","Intermediário","Avançado"]],["momento","Momento",["Parte Inicial","Parte Principal","Parte Final"]]].map(([k,l,opts])=>(
-                      <div key={k}>
-                        <div style={{ fontSize:10,fontWeight:700,color:"#64748b",marginBottom:3,textTransform:"uppercase" }}>{l}</div>
-                        <select value={exForm[k]||""} onChange={e=>setExForm(f=>({...f,[k]:e.target.value}))} style={{ width:"100%",padding:"8px 6px",border:"1.5px solid #e2e8f0",borderRadius:7,fontSize:12 }}>
-                          {opts.map(o=><option key={o} value={o}>{o}</option>)}
-                        </select>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16 }}>
-                    {[["default_series","Séries"],["default_reps","Reps"],["default_descanso","Descanso"]].map(([k,l])=>(
-                      <div key={k}>
-                        <div style={{ fontSize:10,fontWeight:700,color:"#64748b",marginBottom:3,textTransform:"uppercase" }}>{l}</div>
-                        <input value={exForm[k]||""} onChange={e=>setExForm(f=>({...f,[k]:e.target.value}))} style={{ width:"100%",padding:"8px 6px",border:"1.5px solid #e2e8f0",borderRadius:7,fontSize:13 }}/>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ display:"flex",gap:8 }}>
-                    <button onClick={()=>setExModal(null)} style={{ flex:1,padding:"11px",border:"1.5px solid #e2e8f0",borderRadius:8,background:"#fff",fontWeight:700,fontSize:13,cursor:"pointer" }}>Cancelar</button>
-                    <button onClick={saveExercise} disabled={exSaving||!exForm.nome.trim()} style={{ flex:1,padding:"11px",border:"none",borderRadius:8,background:"#FF5603",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer" }}>{exSaving?"Salvando...":"Salvar"}</button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
-              <div style={{ fontWeight:800,fontSize:15 }}>Exercícios ({exercises.length})</div>
-              <button onClick={()=>openExModal("new")} style={{ padding:"8px 16px",border:"none",borderRadius:8,background:"#FF5603",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer" }}>+ Novo</button>
-            </div>
-            <input value={exSearch} onChange={e=>setExSearch(e.target.value)} placeholder="Buscar exercício..." style={{ width:"100%",padding:"10px 12px",border:"1.5px solid #e2e8f0",borderRadius:8,fontSize:13,marginBottom:12 }}/>
-            {exLoading ? <div style={{ textAlign:"center",padding:32,color:"#94a3b8" }}>Carregando...</div> : exercises.filter(e=>!exSearch||e.nome.toLowerCase().includes(exSearch.toLowerCase())||(e.tags||"").toLowerCase().includes(exSearch.toLowerCase())).map(ex=>(
-              <div key={ex.id} style={{ background:"#fff",borderRadius:10,padding:"12px 14px",marginBottom:8,border:"1.5px solid #e2e8f0",display:"flex",justifyContent:"space-between",alignItems:"flex-start" }}>
-                <div style={{ flex:1,minWidth:0 }}>
-                  <div style={{ fontWeight:700,fontSize:13,marginBottom:2 }}>{ex.nome}</div>
-                  <div style={{ fontSize:11,color:"#64748b" }}>{ex.grupo} · {ex.nivel} · {ex.momento}</div>
-                  {ex.video && <div style={{ fontSize:11,color:"#FF5603",marginTop:2 }}>▶ Vídeo</div>}
-                </div>
-                <div style={{ display:"flex",gap:6,flexShrink:0,marginLeft:8 }}>
-                  <button onClick={()=>openExModal(ex)} style={{ padding:"5px 10px",border:"1.5px solid #e2e8f0",borderRadius:6,background:"#fff",fontSize:12,cursor:"pointer" }}>Editar</button>
-                  <button onClick={()=>deleteExercise(ex.id)} style={{ padding:"5px 10px",border:"none",borderRadius:6,background:"#fee2e2",color:"#dc2626",fontSize:12,cursor:"pointer" }}>✕</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Dashboard Tab */}
-        {adminTab==="dashboard" && <div>
-        <div style={{ display:"flex",gap:12,marginBottom:20,flexWrap:"wrap" }}>
-          <div style={{ flex:"1 1 140px",background:"#fff",borderRadius:12,padding:"16px",border:"1px solid #e2e8f0" }}>
-            <div style={{ fontSize:24,fontWeight:900,color:"#FF5603" }}>{totalProfs}</div>
-            <div style={{ fontSize:12,color:"#94a3b8" }}>Profissionais</div>
-          </div>
-          <div style={{ flex:"1 1 140px",background:"#fff",borderRadius:12,padding:"16px",border:"1px solid #e2e8f0" }}>
-            <div style={{ fontSize:24,fontWeight:900,color:"#FF5603" }}>{totalAlunos}</div>
-            <div style={{ fontSize:12,color:"#94a3b8" }}>Alunos (total)</div>
-          </div>
-        </div>
-
-        {!loadingData && profs.length>0 && (
-          <div style={{ display:"flex",flexDirection:"column",gap:12,marginBottom:24 }}>
-            <div style={{ background:"#fff",borderRadius:12,padding:"16px",border:"1px solid #e2e8f0" }}>
-              <div style={{ fontWeight:800,fontSize:14,marginBottom:12 }}>Crescimento (cadastros por mês)</div>
-              {growthData.length>0 ? <BarChart data={growthData} color="#FF5603" onBarClick={l=>toggleDrill("growth",l)} selected={drill?.section==="growth"?drill.label:null}/> : <div style={{ fontSize:12,color:"#94a3b8" }}>Sem dados.</div>}
-              {drill?.section==="growth" && <ProfList items={drillList} onSelect={openProfessional} counts={counts}/>}
-            </div>
-            <div style={{ display:"flex",gap:12,flexWrap:"wrap" }}>
-              <div style={{ flex:"1 1 220px",background:"#fff",borderRadius:12,padding:"16px",border:"1px solid #e2e8f0" }}>
-                <div style={{ fontWeight:800,fontSize:14,marginBottom:12 }}>Por plano</div>
-                <BarChart data={planoData} color="#6366f1" onBarClick={l=>toggleDrill("plano",l)} selected={drill?.section==="plano"?drill.label:null}/>
-                {drill?.section==="plano" && <ProfList items={drillList} onSelect={openProfessional} counts={counts}/>}
-              </div>
-              <div style={{ flex:"1 1 220px",background:"#fff",borderRadius:12,padding:"16px",border:"1px solid #e2e8f0" }}>
-                <div style={{ fontWeight:800,fontSize:14,marginBottom:12 }}>Por status</div>
-                <BarChart data={statusData} onBarClick={l=>toggleDrill("status",l)} selected={drill?.section==="status"?drill.label:null}/>
-                {drill?.section==="status" && <ProfList items={drillList} onSelect={openProfessional} counts={counts}/>}
-              </div>
-            </div>
-            <div style={{ background:"#fff",borderRadius:12,padding:"16px",border:"1px solid #e2e8f0" }}>
-              <div style={{ fontWeight:800,fontSize:14,marginBottom:12 }}>Engajamento (alunos cadastrados)</div>
-              <BarChart data={engajamentoData} onBarClick={l=>toggleDrill("engajamento",l)} selected={drill?.section==="engajamento"?drill.label:null}/>
-              {drill?.section==="engajamento" && <ProfList items={drillList} onSelect={openProfessional} counts={counts}/>}
-            </div>
-            <div style={{ background:"#fff",borderRadius:12,padding:"16px",border:"1px solid #e2e8f0" }}>
-              <div style={{ fontWeight:800,fontSize:14,marginBottom:12 }}>Engajamento real (acessou nos últimos 7 dias)</div>
-              <BarChart data={ativ7dData} onBarClick={l=>toggleDrill("ativ7d",l)} selected={drill?.section==="ativ7d"?drill.label:null}/>
-              {drill?.section==="ativ7d" && <ProfList items={drillList} onSelect={openProfessional} counts={counts}/>}
-            </div>
-
-            <div style={{ background:"#fff",borderRadius:12,padding:"16px",border:"1px solid #e2e8f0" }}>
-              <div style={{ fontWeight:800,fontSize:14,marginBottom:4 }}>Visão financeira</div>
-              <div style={{ fontSize:11,color:"#94a3b8",marginBottom:12 }}>Estimativas com base nos preços configurados abaixo</div>
-              <div style={{ display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:16 }}>
-                <div onClick={()=>toggleDrill("financeiro","paying")} style={{ cursor:"pointer" }}>
-                  <div style={{ fontSize:20,fontWeight:900,color:"#FF5603" }}>{fmtBRL(mrr)}</div>
-                  <div style={{ fontSize:11,color:"#94a3b8" }}>MRR (receita mensal recorrente)</div>
-                </div>
-                <div onClick={()=>toggleDrill("financeiro","paying")} style={{ cursor:"pointer" }}>
-                  <div style={{ fontSize:20,fontWeight:900,color:"#FF5603" }}>{fmtBRL(arr)}</div>
-                  <div style={{ fontSize:11,color:"#94a3b8" }}>ARR (projeção anual)</div>
-                </div>
-                <div onClick={()=>toggleDrill("financeiro","paying")} style={{ cursor:"pointer" }}>
-                  <div style={{ fontSize:20,fontWeight:900,color:"#FF5603" }}>{fmtBRL(ticketMedio)}</div>
-                  <div style={{ fontSize:11,color:"#94a3b8" }}>Ticket médio / mês</div>
-                </div>
-                <div onClick={()=>toggleDrill("financeiro","churn")} style={{ cursor:"pointer" }}>
-                  <div style={{ fontSize:20,fontWeight:900,color: churn>10?"#dc2626":"#0f172a" }}>{churn.toFixed(1)}%</div>
-                  <div style={{ fontSize:11,color:"#94a3b8" }}>Churn ({cancelados}/{everPaid} clientes pagantes)</div>
-                </div>
-                <div>
-                  <div style={{ fontSize:20,fontWeight:900,color:"#0f172a" }}>{ltv!==null ? fmtBRL(ltv) : "—"}</div>
-                  <div style={{ fontSize:11,color:"#94a3b8" }}>LTV estimado</div>
-                </div>
-              </div>
-              {drill?.section==="financeiro" && (
-                <ProfList items={drillList} onSelect={openProfessional} counts={counts}/>
-              )}
-              {vitaliciosRevenue>0 && (
-                <div style={{ fontSize:12,color:"#94a3b8",marginBottom:12 }}>+ {fmtBRL(vitaliciosRevenue)} em receita vitalícia (pagamento único, fora do MRR)</div>
-              )}
-              <div style={{ borderTop:"1px solid #f1f5f9",paddingTop:12 }}>
-                <div style={{ fontSize:12,fontWeight:700,color:"#475569",marginBottom:8 }}>Configurar preços dos planos (R$)</div>
-                <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
-                  {["mensal","anual","vitalicio"].map(plano=>(
-                    <div key={plano} style={{ flex:"1 1 100px" }}>
-                      <label style={{ fontSize:11,color:"#94a3b8",display:"block",marginBottom:3,textTransform:"capitalize" }}>{plano}</label>
-                      <input type="number" step="0.01" value={priceEdits[plano]!==undefined?priceEdits[plano]:(planPrices[plano]||0)} disabled={savingPrices}
-                        onChange={e=>setPriceEdits(m=>({ ...m, [plano]: parseFloat(e.target.value)||0 }))}
-                        style={{ width:"100%",padding:"6px 8px",borderRadius:6,border:"1.5px solid #e2e8f0",fontSize:13 }}/>
-                    </div>
-                  ))}
-                </div>
-                {Object.keys(priceEdits).length>0 && (
-                  <button onClick={savePrices} disabled={savingPrices} style={{ marginTop:10,border:"none",background:"#FF5603",color:"#fff",borderRadius:8,padding:"8px 14px",fontSize:13,fontWeight:700,cursor:"pointer" }}>
-                    {savingPrices?"Salvando...":"Salvar preços"}
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div style={{ fontWeight:800,fontSize:16,marginBottom:10 }}>Profissionais cadastrados</div>
-
-        {loadingData ? (
-          <div style={{ color:"#94a3b8",fontSize:13 }}>Carregando...</div>
-        ) : profs.length===0 ? (
-          <div style={{ color:"#94a3b8",fontSize:13 }}>Nenhum profissional encontrado.</div>
-        ) : (
-          <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
-            {profs.map(p=>(
-              <div key={p.id} onClick={()=>openProfessional(p)} style={{ cursor:"pointer",background:"#fff",borderRadius:12,padding:"14px 16px",border:"1px solid #e2e8f0",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12 }}>
-                {p.logo_url
-                  ? <img src={p.logo_url} alt="" style={{ width:38,height:38,borderRadius:"50%",objectFit:"cover",flexShrink:0 }}/>
-                  : <div style={{ width:38,height:38,borderRadius:"50%",background:"#f1f5f9",flexShrink:0 }}/>
-                }
-                <div style={{ minWidth:0,flex:1 }}>
-                  <div style={{ fontWeight:700,fontSize:14,display:"flex",alignItems:"center",gap:6 }}>
-                    {p.nome || p.email}
-                    {p.is_admin && <span style={{ fontSize:10,background:"#FF560318",color:"#FF5603",borderRadius:999,padding:"2px 8px",fontWeight:700 }}>ADMIN</span>}
-                  </div>
-                  <div style={{ fontSize:12,color:"#94a3b8",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>{p.email}{p.whatsapp ? " · "+p.whatsapp : ""}</div>
-                  <div style={{ fontSize:11,color:"#cbd5e1",marginTop:2 }}>Cadastrado em {fmtDate(p.created_at)} · {fmtRelative(p.last_active)}</div>
-                </div>
-                <div style={{ textAlign:"right",flexShrink:0 }}>
-                  <div style={{ fontSize:18,fontWeight:900 }}>{counts[p.id]||0}</div>
-                  <div style={{ fontSize:11,color:"#94a3b8" }}>aluno(s)</div>
-                  <div style={{ fontSize:11,marginTop:4,fontWeight:700,color: p.status_assinatura==="ativo" ? "#16a34a" : "#dc2626" }}>
-                    {p.plano || "trial"} · {p.status_assinatura || "ativo"}
-                  </div>
-                  {p.plano==="trial" && trialExpired(p) && (
-                    <div style={{ fontSize:10,marginTop:2,fontWeight:700,color:"#dc2626" }}>TRIAL EXPIRADO</div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        </div>}
-      </div>
-    </div>
-  );
+  return React.createElement("div", { style: { minHeight: "100vh", background: "#f8fafc", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", paddingBottom: 40 } }, React.createElement("div", { style: { background: "#fff", borderBottom: "1.5px solid #e2e8f0", padding: "12px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 10 } }, React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, React.createElement("img", { src: __LOGO_1__, alt: "Longevus", style: { height: 34, width: "auto" } }), React.createElement("span", { style: { fontWeight: 800, fontSize: 15 } }, "Admin")), React.createElement("button", { onClick: () => supa.auth.signOut(), style: { border: "none", background: "transparent", color: "#94a3b8", fontSize: 12, cursor: "pointer", textDecoration: "underline" } }, "Sair")), React.createElement("div", { style: { padding: "20px 16px", maxWidth: 800, margin: "0 auto" } }, React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 20, borderBottom: "2px solid #e2e8f0", paddingBottom: 0 } }, [["dashboard", "📊 Dashboard"], ["exercicios", "🏋️ Exercícios"]].map(([t, l]) => React.createElement("button", { key: t, onClick: () => {
+    setAdminTab(t);
+    if (t === "exercicios") loadExercises();
+  }, style: { padding: "8px 16px", border: "none", background: "transparent", fontWeight: 700, fontSize: 13, cursor: "pointer", borderBottom: "3px solid " + (adminTab === t ? "#FF5603" : "transparent"), color: adminTab === t ? "#FF5603" : "#64748b", marginBottom: -2 } }, l))), adminTab === "exercicios" && React.createElement("div", null, exModal && React.createElement("div", { style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 999, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: 16, overflowY: "auto" } }, React.createElement("div", { style: { background: "#fff", borderRadius: 16, padding: 20, width: "100%", maxWidth: 480, marginTop: 20 } }, React.createElement("div", { style: { fontWeight: 800, fontSize: 16, marginBottom: 16 } }, exModal.id ? "Editar Exercício" : "Novo Exercício"), [["nome", "Nome *", "text"], ["foco", "Foco / Músculo", "text"], ["descricao", "Descrição", "textarea"], ["execucao", "Como executar", "textarea"], ["beneficios", "Benefícios", "textarea"], ["cuidados", "Cuidados", "textarea"], ["material", "Material", "text"], ["obs", "Obs. clínicas", "text"], ["video", "Vídeo (link YouTube)", "text"], ["tags", "Tags", "text"]].map(([k, l, t]) => React.createElement("div", { key: k, style: { marginBottom: 10 } }, React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: "#64748b", marginBottom: 3, textTransform: "uppercase" } }, l), t === "textarea" ? React.createElement("textarea", { value: exForm[k] || "", onChange: (e) => setExForm((f) => ({ ...f, [k]: e.target.value })), rows: 3, style: { width: "100%", padding: "8px 10px", border: "1.5px solid #e2e8f0", borderRadius: 7, fontSize: 13, resize: "vertical" } }) : React.createElement("input", { value: exForm[k] || "", onChange: (e) => setExForm((f) => ({ ...f, [k]: e.target.value })), style: { width: "100%", padding: "8px 10px", border: "1.5px solid #e2e8f0", borderRadius: 7, fontSize: 13 } }))), React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 10 } }, [["grupo", "Grupo", ["MMII", "MMSS", "Core", "Equilíbrio", "Mobilidade", "Alongamento", "Cardio", "Funcional", "Coordenação", "Respiração"]], ["nivel", "Nível", ["Básico", "Intermediário", "Avançado"]], ["momento", "Momento", ["Parte Inicial", "Parte Principal", "Parte Final"]]].map(([k, l, opts]) => React.createElement("div", { key: k }, React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: "#64748b", marginBottom: 3, textTransform: "uppercase" } }, l), React.createElement("select", { value: exForm[k] || "", onChange: (e) => setExForm((f) => ({ ...f, [k]: e.target.value })), style: { width: "100%", padding: "8px 6px", border: "1.5px solid #e2e8f0", borderRadius: 7, fontSize: 12 } }, opts.map((o) => React.createElement("option", { key: o, value: o }, o)))))), React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 } }, [["default_series", "Séries"], ["default_reps", "Reps"], ["default_descanso", "Descanso"]].map(([k, l]) => React.createElement("div", { key: k }, React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: "#64748b", marginBottom: 3, textTransform: "uppercase" } }, l), React.createElement("input", { value: exForm[k] || "", onChange: (e) => setExForm((f) => ({ ...f, [k]: e.target.value })), style: { width: "100%", padding: "8px 6px", border: "1.5px solid #e2e8f0", borderRadius: 7, fontSize: 13 } })))), React.createElement("div", { style: { display: "flex", gap: 8 } }, React.createElement("button", { onClick: () => setExModal(null), style: { flex: 1, padding: "11px", border: "1.5px solid #e2e8f0", borderRadius: 8, background: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer" } }, "Cancelar"), React.createElement("button", { onClick: saveExercise, disabled: exSaving || !exForm.nome.trim(), style: { flex: 1, padding: "11px", border: "none", borderRadius: 8, background: "#FF5603", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer" } }, exSaving ? "Salvando..." : "Salvar")))), React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 } }, React.createElement("div", { style: { fontWeight: 800, fontSize: 15 } }, "Exercícios (", exercises.length, ")"), React.createElement("button", { onClick: () => openExModal("new"), style: { padding: "8px 16px", border: "none", borderRadius: 8, background: "#FF5603", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer" } }, "+ Novo")), React.createElement("input", { value: exSearch, onChange: (e) => setExSearch(e.target.value), placeholder: "Buscar exercício...", style: { width: "100%", padding: "10px 12px", border: "1.5px solid #e2e8f0", borderRadius: 8, fontSize: 13, marginBottom: 12 } }), exLoading ? React.createElement("div", { style: { textAlign: "center", padding: 32, color: "#94a3b8" } }, "Carregando...") : exercises.filter((e) => !exSearch || e.nome.toLowerCase().includes(exSearch.toLowerCase()) || (e.tags || "").toLowerCase().includes(exSearch.toLowerCase())).map((ex) => React.createElement("div", { key: ex.id, style: { background: "#fff", borderRadius: 10, padding: "12px 14px", marginBottom: 8, border: "1.5px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "flex-start" } }, React.createElement("div", { style: { flex: 1, minWidth: 0 } }, React.createElement("div", { style: { fontWeight: 700, fontSize: 13, marginBottom: 2 } }, ex.nome), React.createElement("div", { style: { fontSize: 11, color: "#64748b" } }, ex.grupo, " · ", ex.nivel, " · ", ex.momento), ex.video && React.createElement("div", { style: { fontSize: 11, color: "#FF5603", marginTop: 2 } }, "▶ Vídeo")), React.createElement("div", { style: { display: "flex", gap: 6, flexShrink: 0, marginLeft: 8 } }, React.createElement("button", { onClick: () => openExModal(ex), style: { padding: "5px 10px", border: "1.5px solid #e2e8f0", borderRadius: 6, background: "#fff", fontSize: 12, cursor: "pointer" } }, "Editar"), React.createElement("button", { onClick: () => deleteExercise(ex.id), style: { padding: "5px 10px", border: "none", borderRadius: 6, background: "#fee2e2", color: "#dc2626", fontSize: 12, cursor: "pointer" } }, "✕"))))), adminTab === "dashboard" && React.createElement("div", null, React.createElement("div", { style: { display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" } }, React.createElement("div", { style: { flex: "1 1 140px", background: "#fff", borderRadius: 12, padding: "16px", border: "1px solid #e2e8f0" } }, React.createElement("div", { style: { fontSize: 24, fontWeight: 900, color: "#FF5603" } }, totalProfs), React.createElement("div", { style: { fontSize: 12, color: "#94a3b8" } }, "Profissionais")), React.createElement("div", { style: { flex: "1 1 140px", background: "#fff", borderRadius: 12, padding: "16px", border: "1px solid #e2e8f0" } }, React.createElement("div", { style: { fontSize: 24, fontWeight: 900, color: "#FF5603" } }, totalAlunos), React.createElement("div", { style: { fontSize: 12, color: "#94a3b8" } }, "Alunos (total)"))), !loadingData && profs.length > 0 && React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 } }, React.createElement("div", { style: { background: "#fff", borderRadius: 12, padding: "16px", border: "1px solid #e2e8f0" } }, React.createElement("div", { style: { fontWeight: 800, fontSize: 14, marginBottom: 12 } }, "Crescimento (cadastros por mês)"), growthData.length > 0 ? React.createElement(BarChart, { data: growthData, color: "#FF5603", onBarClick: (l) => toggleDrill("growth", l), selected: drill?.section === "growth" ? drill.label : null }) : React.createElement("div", { style: { fontSize: 12, color: "#94a3b8" } }, "Sem dados."), drill?.section === "growth" && React.createElement(ProfList, { items: drillList, onSelect: openProfessional, counts })), React.createElement("div", { style: { display: "flex", gap: 12, flexWrap: "wrap" } }, React.createElement("div", { style: { flex: "1 1 220px", background: "#fff", borderRadius: 12, padding: "16px", border: "1px solid #e2e8f0" } }, React.createElement("div", { style: { fontWeight: 800, fontSize: 14, marginBottom: 12 } }, "Por plano"), React.createElement(BarChart, { data: planoData, color: "#6366f1", onBarClick: (l) => toggleDrill("plano", l), selected: drill?.section === "plano" ? drill.label : null }), drill?.section === "plano" && React.createElement(ProfList, { items: drillList, onSelect: openProfessional, counts })), React.createElement("div", { style: { flex: "1 1 220px", background: "#fff", borderRadius: 12, padding: "16px", border: "1px solid #e2e8f0" } }, React.createElement("div", { style: { fontWeight: 800, fontSize: 14, marginBottom: 12 } }, "Por status"), React.createElement(BarChart, { data: statusData, onBarClick: (l) => toggleDrill("status", l), selected: drill?.section === "status" ? drill.label : null }), drill?.section === "status" && React.createElement(ProfList, { items: drillList, onSelect: openProfessional, counts }))), React.createElement("div", { style: { background: "#fff", borderRadius: 12, padding: "16px", border: "1px solid #e2e8f0" } }, React.createElement("div", { style: { fontWeight: 800, fontSize: 14, marginBottom: 12 } }, "Engajamento (alunos cadastrados)"), React.createElement(BarChart, { data: engajamentoData, onBarClick: (l) => toggleDrill("engajamento", l), selected: drill?.section === "engajamento" ? drill.label : null }), drill?.section === "engajamento" && React.createElement(ProfList, { items: drillList, onSelect: openProfessional, counts })), React.createElement("div", { style: { background: "#fff", borderRadius: 12, padding: "16px", border: "1px solid #e2e8f0" } }, React.createElement("div", { style: { fontWeight: 800, fontSize: 14, marginBottom: 12 } }, "Engajamento real (acessou nos últimos 7 dias)"), React.createElement(BarChart, { data: ativ7dData, onBarClick: (l) => toggleDrill("ativ7d", l), selected: drill?.section === "ativ7d" ? drill.label : null }), drill?.section === "ativ7d" && React.createElement(ProfList, { items: drillList, onSelect: openProfessional, counts })), React.createElement("div", { style: { background: "#fff", borderRadius: 12, padding: "16px", border: "1px solid #e2e8f0" } }, React.createElement("div", { style: { fontWeight: 800, fontSize: 14, marginBottom: 4 } }, "Visão financeira"), React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginBottom: 12 } }, "Estimativas com base nos preços configurados abaixo"), React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 10, marginBottom: 16 } }, React.createElement("div", { onClick: () => toggleDrill("financeiro", "paying"), style: { cursor: "pointer" } }, React.createElement("div", { style: { fontSize: 20, fontWeight: 900, color: "#FF5603" } }, fmtBRL(mrr)), React.createElement("div", { style: { fontSize: 11, color: "#94a3b8" } }, "MRR (receita mensal recorrente)")), React.createElement("div", { onClick: () => toggleDrill("financeiro", "paying"), style: { cursor: "pointer" } }, React.createElement("div", { style: { fontSize: 20, fontWeight: 900, color: "#FF5603" } }, fmtBRL(arr)), React.createElement("div", { style: { fontSize: 11, color: "#94a3b8" } }, "ARR (projeção anual)")), React.createElement("div", { onClick: () => toggleDrill("financeiro", "paying"), style: { cursor: "pointer" } }, React.createElement("div", { style: { fontSize: 20, fontWeight: 900, color: "#FF5603" } }, fmtBRL(ticketMedio)), React.createElement("div", { style: { fontSize: 11, color: "#94a3b8" } }, "Ticket médio / mês")), React.createElement("div", { onClick: () => toggleDrill("financeiro", "churn"), style: { cursor: "pointer" } }, React.createElement("div", { style: { fontSize: 20, fontWeight: 900, color: churn > 10 ? "#dc2626" : "#0f172a" } }, churn.toFixed(1), "%"), React.createElement("div", { style: { fontSize: 11, color: "#94a3b8" } }, "Churn (", cancelados, "/", everPaid, " clientes pagantes)")), React.createElement("div", null, React.createElement("div", { style: { fontSize: 20, fontWeight: 900, color: "#0f172a" } }, ltv !== null ? fmtBRL(ltv) : "—"), React.createElement("div", { style: { fontSize: 11, color: "#94a3b8" } }, "LTV estimado"))), drill?.section === "financeiro" && React.createElement(ProfList, { items: drillList, onSelect: openProfessional, counts }), vitaliciosRevenue > 0 && React.createElement("div", { style: { fontSize: 12, color: "#94a3b8", marginBottom: 12 } }, "+ ", fmtBRL(vitaliciosRevenue), " em receita vitalícia (pagamento único, fora do MRR)"), React.createElement("div", { style: { borderTop: "1px solid #f1f5f9", paddingTop: 12 } }, React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 8 } }, "Configurar preços dos planos (R$)"), React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } }, ["mensal", "anual", "vitalicio"].map((plano) => React.createElement("div", { key: plano, style: { flex: "1 1 100px" } }, React.createElement("label", { style: { fontSize: 11, color: "#94a3b8", display: "block", marginBottom: 3, textTransform: "capitalize" } }, plano), React.createElement(
+    "input",
+    {
+      type: "number",
+      step: "0.01",
+      value: priceEdits[plano] !== void 0 ? priceEdits[plano] : planPrices[plano] || 0,
+      disabled: savingPrices,
+      onChange: (e) => setPriceEdits((m) => ({ ...m, [plano]: parseFloat(e.target.value) || 0 })),
+      style: { width: "100%", padding: "6px 8px", borderRadius: 6, border: "1.5px solid #e2e8f0", fontSize: 13 }
+    }
+  )))), Object.keys(priceEdits).length > 0 && React.createElement("button", { onClick: savePrices, disabled: savingPrices, style: { marginTop: 10, border: "none", background: "#FF5603", color: "#fff", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, savingPrices ? "Salvando..." : "Salvar preços")))), React.createElement("div", { style: { fontWeight: 800, fontSize: 16, marginBottom: 10 } }, "Profissionais cadastrados"), loadingData ? React.createElement("div", { style: { color: "#94a3b8", fontSize: 13 } }, "Carregando...") : profs.length === 0 ? React.createElement("div", { style: { color: "#94a3b8", fontSize: 13 } }, "Nenhum profissional encontrado.") : React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } }, profs.map((p) => React.createElement("div", { key: p.id, onClick: () => openProfessional(p), style: { cursor: "pointer", background: "#fff", borderRadius: 12, padding: "14px 16px", border: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 } }, p.logo_url ? React.createElement("img", { src: p.logo_url, alt: "", style: { width: 38, height: 38, borderRadius: "50%", objectFit: "cover", flexShrink: 0 } }) : React.createElement("div", { style: { width: 38, height: 38, borderRadius: "50%", background: "#f1f5f9", flexShrink: 0 } }), React.createElement("div", { style: { minWidth: 0, flex: 1 } }, React.createElement("div", { style: { fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", gap: 6 } }, p.nome || p.email, p.is_admin && React.createElement("span", { style: { fontSize: 10, background: "#FF560318", color: "#FF5603", borderRadius: 999, padding: "2px 8px", fontWeight: 700 } }, "ADMIN")), React.createElement("div", { style: { fontSize: 12, color: "#94a3b8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, p.email, p.whatsapp ? " · " + p.whatsapp : ""), React.createElement("div", { style: { fontSize: 11, color: "#cbd5e1", marginTop: 2 } }, "Cadastrado em ", fmtDate(p.created_at), " · ", fmtRelative(p.last_active))), React.createElement("div", { style: { textAlign: "right", flexShrink: 0 } }, React.createElement("div", { style: { fontSize: 18, fontWeight: 900 } }, counts[p.id] || 0), React.createElement("div", { style: { fontSize: 11, color: "#94a3b8" } }, "aluno(s)"), React.createElement("div", { style: { fontSize: 11, marginTop: 4, fontWeight: 700, color: p.status_assinatura === "ativo" ? "#16a34a" : "#dc2626" } }, p.plano || "trial", " · ", p.status_assinatura || "ativo"), p.plano === "trial" && trialExpired(p) && React.createElement("div", { style: { fontSize: 10, marginTop: 2, fontWeight: 700, color: "#dc2626" } }, "TRIAL EXPIRADO"))))))));
 }
-
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App/>);
-  </script>
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(React.createElement(App, null));
+</script>
 </body>
 </html>
