@@ -308,6 +308,33 @@ function DemoBio({ onComprar }) {
 }
 const MEDIDO = [["⚖️", "Peso e IMC", "O ponto de partida", ["#FFB37A", "#FF5603"]], ["🔥", "% de gordura", "Quanto do peso é gordura", ["#FDBA74", "#EA580C"]], ["💪", "% de músculo", "Músculo esquelético", ["#7DD3FC", "#0284C7"]], ["🎯", "Gordura visceral", "A gordura entre os órgãos", ["#F9A8D4", "#DB2777"]], ["⚡", "Metabolismo de repouso", "Calorias gastas parado", ["#6EE7B7", "#059669"]], ["🕒", "Idade corporal", "Comparada à sua idade real", ["#C4B5FD", "#7C3AED"]]];
 
+// ── Consultoria: monte o seu ponto de partida ──
+const OBJ = [["Emagrecer", "Força para manter o músculo e cardio no fim do treino"], ["Ganhar massa", "Força com progressão de carga semana a semana"], ["Saúde e longevidade", "Força, equilíbrio e mobilidade para o dia a dia"], ["Condicionamento", "Circuitos e cardio intervalado para o fôlego"]];
+const DIVISAO = { 2: ["Corpo todo A", "Corpo todo B"], 3: ["Superior", "Inferior", "Corpo todo"], 4: ["Superior", "Inferior", "Superior", "Inferior"], 5: ["Empurrar", "Puxar", "Pernas", "Superior", "Inferior"] };
+function DemoPlano({ onComprar }) {
+  const [obj, setObj] = useState(-1);
+  const [dias, setDias] = useState(3);
+  const [local, setLocal] = useState("Academia");
+  const chip = (on, txt, fn, k) => h("button", { key: k || txt, type: "button", onClick: fn, style: { padding: "0 14px", height: 42, borderRadius: 12, cursor: "pointer", fontSize: 14, fontWeight: 800, border: on ? "2px solid " + C.laranja : "1.5px solid " + C.borda, background: on ? C.laranjaClaro : "#fff", color: on ? C.laranjaTxt : C.escuro } }, txt);
+  const rot = (t) => h("div", { style: { fontSize: 12.5, fontWeight: 800, color: C.cinza, margin: "14px 0 8px", textTransform: "uppercase", letterSpacing: "0.06em" } }, t);
+  const semana = local === "Casa" ? DIVISAO[dias].map((x, i) => "Treino " + String.fromCharCode(65 + i)) : DIVISAO[dias];
+  return h("div", { style: { ...cartao, padding: 16 } },
+    h("div", { style: { fontSize: 16, fontWeight: 800 } }, "Como seria a sua semana?"),
+    h("div", { style: { fontSize: 12.5, color: C.cinza, marginTop: 2 } }, "Um rascunho. O plano de verdade sai depois da avaliação."),
+    rot("Seu objetivo"),
+    h("div", { style: { display: "flex", flexWrap: "wrap", gap: 8 } }, OBJ.map((o, i) => chip(obj === i, o[0], () => setObj(i)))),
+    rot("Dias por semana"),
+    h("div", { style: { display: "flex", gap: 8 } }, [2, 3, 4, 5].map((n) => chip(dias === n, n + "x", () => setDias(n), "d" + n))),
+    rot("Onde vai treinar"),
+    h("div", { style: { display: "flex", gap: 8 } }, ["Academia", "Casa"].map((l) => chip(local === l, l, () => setLocal(l)))),
+    obj >= 0 ? h("div", { style: { marginTop: 16, background: C.escuro, color: "#fff", borderRadius: 16, padding: 14 } },
+      h("div", { style: { fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", color: C.pessego } }, "SUA SEMANA · " + OBJ[obj][0].toUpperCase()),
+      h("div", { style: { display: "grid", gridTemplateColumns: "repeat(" + Math.min(dias, 3) + ",1fr)", gap: 6, marginTop: 10 } }, semana.map((t, i) => h("div", { key: i, style: { background: C.escuro2, borderRadius: 10, padding: "9px 8px", textAlign: "center" } }, h("div", { style: { fontSize: 10.5, color: C.cinzaClaro } }, "Dia " + (i + 1)), h("div", { style: { fontSize: 13.5, fontWeight: 800, marginTop: 2 } }, t)))),
+      h("div", { style: { fontSize: 13.5, color: "#CBD5E1", lineHeight: 1.5, marginTop: 10 } }, OBJ[obj][1] + (local === "Casa" ? ", com o que você tem em casa." : ", com os aparelhos da sua academia.")),
+      h("button", { type: "button", onClick: onComprar, style: { ...botaoPri, height: 50, fontSize: 16, marginTop: 12, boxShadow: "none" } }, "Quero o meu plano")) :
+      h("div", { style: { marginTop: 14, fontSize: 13.5, color: C.cinza, textAlign: "center" } }, "Escolha um objetivo para ver a sua semana."));
+}
+
 // ═══ CONTEÚDO DE CADA PRODUTO ═══
 const CONTEUDO = {
   mente: (pers) => ({
@@ -375,6 +402,25 @@ const CONTEUDO = {
     pos: "Seu aviso chegou para o " + pers + ". Assim que ele confirmar o pagamento, te chama no WhatsApp para marcar a sua bioimpedância e passar as orientações de preparo.",
     final: ["Descubra do que o seu peso é feito", "Bioimpedância por "], aviso: "A bioimpedância não substitui consulta médica ou nutricional.", padrao: 0
   }),
+  consultoria: (pers, d) => ({
+    nome: "Consultoria", img: "consultoria.jpg", foto: "foto-moradores-1.jpg", fotoPos: "center 30%", selo: "ONLINE", rotulo: "CONSULTORIA", mensal: false,
+    tiles: [["📱", ["#FFB37A", "#FF5603"]], ["🎥", ["#7DD3FC", "#0284C7"]], ["🏋️", ["#6EE7B7", "#059669"]], ["💬", ["#C4B5FD", "#7C3AED"]]],
+    titulo: "Seu treino montado por um especialista, no seu celular",
+    sub: "Avaliação, plano de treino no app com vídeo de cada exercício e acompanhamento pelo WhatsApp. Em casa ou na academia, no seu horário.",
+    precoRot: "CONSULTORIA", pagSub: "sem intermediário", cta: "Quero a consultoria", ctaSec: "💬  Conversar antes de contratar", ctaSecWa: "Oi, " + pers + "! Vi a página da consultoria e queria conversar antes de contratar.", resumoSub: "Treino no app e acompanhamento", barRot: "Consultoria",
+    para: [[I.grafico, "Treina sozinho e não vê resultado", "Método e progressão"], [I.casa, "Não tem horário fixo", "Treine quando puder"], [I.escudo, "Tem alguma dor ou limitação", "Treino adaptado a você"], [I.estrela, "Quer evoluir com segurança", "Ajustes conforme avança"]],
+    demoTit: ["Monte um rascunho", "Como seria a sua semana"], Demo: DemoPlano,
+    extra: () => h("div", null, Secao("O que você recebe", "Tudo no seu app"),
+      h("div", { style: cartao }, ["Avaliação inicial para entender o seu ponto de partida", "Plano de treino no app, com vídeo e explicação de cada exercício", "Treino atualizado conforme você evolui", "Registro das cargas e histórico de cada treino", "Acompanhamento e dúvidas pelo WhatsApp"].map((t, i) => h("div", { key: i, style: { display: "flex", gap: 10, alignItems: "flex-start", fontSize: 15, lineHeight: 1.45, color: "#1E293B", marginTop: i ? 10 : 0 } },
+        h("span", { style: { width: 24, height: 24, borderRadius: 99, background: C.verdeClaro, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 } }, h(Ico, { d: I.check, cor: C.verde, tam: 15, larg: 2.8 })), h("span", null, t))))),
+    passos: [["Pague pelo Pix", "Leva um minuto, direto aqui na página."], ["O " + pers + " te chama no WhatsApp", "Para a sua avaliação inicial e para entender o seu objetivo."], ["Receba o treino no app", "Com vídeo de cada exercício, séries, repetições e descanso."], ["Treine e evolua", "Você registra as cargas e o " + pers + " ajusta o plano conforme avança."]],
+    evolucao: "Cada treino fica registrado no app, com as cargas. Dá para ver a sua evolução, e o " + pers + " acompanha junto.",
+    sobre: "Há mais de 15 anos monto treinos para pessoas de todas as idades. Na consultoria você tem o mesmo método que uso no presencial, com avaliação, periodização e acompanhamento, só que no seu horário.",
+    cruz: { href: "venda.html?p=l360", img: "Longevus-360.jpg", t: "Quer resultado mais rápido?", s: "Some o Longevus 360: alimentação e treino conversando no app, todos os dias." },
+    faq: [["Treino em casa ou na academia?", "Os dois. O plano é montado para onde você vai treinar, com o que você tem disponível."], ["Serve para qualquer idade?", "Serve. O treino é montado para a sua idade, o seu objetivo e o seu nível."], ["Tenho uma dor ou limitação. Posso?", "Pode. Conte na avaliação e o treino é adaptado. Se for o caso, a orientação é passar pelo seu médico antes."], ["Como tiro dúvidas?", "Pelo WhatsApp, direto com o " + pers + ". E cada exercício tem vídeo e explicação no app."], ["Como funciona o pagamento?", "Por Pix, direto para o " + pers + ", sem cartão."]],
+    pos: "Seu aviso chegou para o " + pers + ". Assim que ele confirmar o pagamento, te chama no WhatsApp para marcar a sua avaliação inicial.",
+    final: ["Pare de treinar no escuro", "Consultoria por "], aviso: "A consultoria não substitui acompanhamento médico.", padrao: 0
+  }),
   l360: (pers) => ({
     nome: "Longevus 360", img: "Longevus-360.jpg", foto: "foto-academia.jpg", fotoPos: "center 25%", selo: "TREINO + ALIMENTAÇÃO", rotulo: "LONGEVUS 360",
     tiles: [["📷", ["#FFB37A", "#FF5603"]], ["🥗", ["#6EE7B7", "#059669"]], ["🏋️", ["#7DD3FC", "#0284C7"]], ["📊", ["#C4B5FD", "#7C3AED"]]],
@@ -396,7 +442,7 @@ const CONTEUDO = {
     final: ["Comece a enxergar o seu dia inteiro", "Longevus 360 por "], aviso: "O Longevus 360 não substitui acompanhamento nutricional.", padrao: 0
   })
 };
-const tipoProduto = (d, id) => (d.produto === "l360" || String(id).indexOf("l360:") === 0 || Q.get("p") === "l360") ? "l360" : (d.produto === "mente" || Q.get("p") === "mente") ? "mente" : (/bioimped/i.test(d.titulo || "") || Q.get("p") === "bio") ? "bio" : ((/avalia/i.test(d.titulo || "") && !/bioimped/i.test(d.titulo || "")) || Q.get("p") === "avaliacao") ? "avaliacao" : "mente";
+const tipoProduto = (d, id) => (d.produto === "l360" || String(id).indexOf("l360:") === 0 || Q.get("p") === "l360") ? "l360" : (d.produto === "mente" || Q.get("p") === "mente") ? "mente" : (/bioimped/i.test(d.titulo || "") || Q.get("p") === "bio") ? "bio" : (/consultoria/i.test(d.titulo || "") || Q.get("p") === "consultoria") ? "consultoria" : ((/avalia/i.test(d.titulo || "") && !/bioimped/i.test(d.titulo || "")) || Q.get("p") === "avaliacao") ? "avaliacao" : "mente";
 
 // ═══ PÁGINA ═══
 function App() {
@@ -453,7 +499,7 @@ function App() {
           h("div", { style: { fontSize: 16, fontWeight: 800, lineHeight: 1.25, marginTop: 2 } }, "Pix, sem cartão"),
           h("div", { style: { fontSize: 12, color: C.cinzaClaro } }, P.pagSub))),
       h("button", { ref: heroBtn, type: "button", onClick: () => comprar("mim"), style: { ...botaoPri, marginTop: 14 } }, P.cta),
-      h("a", { href: "#teste", style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", height: 48, marginTop: 8, borderRadius: 14, border: "1.5px solid rgba(255,255,255,0.22)", color: "#fff", fontWeight: 700, fontSize: 15, textDecoration: "none" } }, P.ctaSec)),
+      h("a", { href: P.ctaSecWa ? (waLink(pix.whatsapp, P.ctaSecWa) || "#teste") : "#teste", target: P.ctaSecWa && pix.whatsapp ? "_blank" : undefined, rel: "noopener noreferrer", style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", height: 48, marginTop: 8, borderRadius: 14, border: "1.5px solid rgba(255,255,255,0.22)", color: "#fff", fontWeight: 700, fontSize: 15, textDecoration: "none" } }, P.ctaSec)),
 
     h("div", { style: { padding: "0 16px 120px" } },
       Secao("Para quem é", "Feito para você que"),
