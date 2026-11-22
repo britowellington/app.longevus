@@ -460,22 +460,22 @@ const CONTEUDO = {
     final: ["Pare de treinar no escuro", "Consultoria por "], aviso: "A consultoria não substitui acompanhamento médico.", padrao: 0
   }),
   presencial: (pers, d) => ({
-    nome: "Personal presencial", img: "foto-sindicos-2.jpg", foto: "foto-moradores-2.jpg", fotoPos: "center 30%", selo: "PRESENCIAL", rotulo: "PERSONAL", mensal: false, aPartir: true,
+    nome: "Personal presencial", img: "foto-sindicos-2.jpg", foto: "foto-moradores-2.jpg", fotoPos: "center 30%", selo: "PRESENCIAL", rotulo: "PERSONAL", mensal: false, semPreco: true, opcoes: [["2x por semana", "Para começar e criar a rotina"], ["3x por semana", "Para evoluir mais rápido"]], waMsg: "Oi, " + pers + "! Vi a página do personal presencial e quero saber mais sobre os planos.",
     tiles: [["🏋️", ["#FFB37A", "#FF5603"]], ["⚖️", ["#6EE7B7", "#059669"]], ["🧠", ["#C4B5FD", "#7C3AED"]], ["📱", ["#7DD3FC", "#0284C7"]]],
     titulo: "Treino individual, com o personal do seu lado do começo ao fim",
     sub: "Força, equilíbrio e mente trabalhados juntos, com avaliação, método e o seu treino no app. Para viver com mais autonomia.",
-    precoRot: "A PARTIR DE", pagSub: "mensalidade no Pix", cta: "Escolher meu plano", ctaSec: "💬  Conversar antes de contratar", ctaSecWa: "Oi, " + pers + "! Vi a página do personal presencial e queria conversar antes de contratar.", resumoSub: "Aulas individuais", barRot: "A partir de",
+    precoRot: "A PARTIR DE", pagSub: "mensalidade no Pix", cta: "💬  Quero saber mais", ctaSec: "Ver como é uma aula", resumoSub: "Aulas individuais", barRot: "A partir de",
     para: [[I.escudo, "Quer treinar com segurança", "Atenção total em cada movimento"], [I.escada, "Tem dor, limitação ou medo de cair", "Treino adaptado a você"], [I.grafico, "Já tentou sozinho e parou", "Rotina com compromisso"], [I.estrela, "Quer resultado com método", "Avaliação e reavaliação"]],
     demoTit: ["Como é uma aula", "Toque para ver cada etapa"], Demo: DemoAula,
     extra: () => h("div", null, Secao("O que está incluso", "Muito além da aula"),
       h("div", { style: cartao }, ["Avaliação funcional completa no início e a cada 3 meses", "Aulas individuais com o " + pers + ", do começo ao fim", "Treino, cargas e evolução registrados no seu app", "Plano pensado para a sua saúde, o seu objetivo e o seu ritmo", "Contato direto pelo WhatsApp"].map((t, i) => h("div", { key: i, style: { display: "flex", gap: 10, alignItems: "flex-start", fontSize: 15, lineHeight: 1.45, color: "#1E293B", marginTop: i ? 10 : 0 } },
         h("span", { style: { width: 24, height: 24, borderRadius: 99, background: C.verdeClaro, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 } }, h(Ico, { d: I.check, cor: C.verde, tam: 15, larg: 2.8 })), h("span", null, t))))),
-    passos: [["Escolha o seu plano", "2x ou 3x por semana."], ["Crie sua conta no app", "E pague a primeira mensalidade no Pix, ali mesmo."], ["Faça a avaliação funcional", "Para o " + pers + " montar o plano a partir dos seus números."], ["Treine e acompanhe no app", "Cada aula, carga e reavaliação fica registrada."]],
+    passos: [["Fale comigo no WhatsApp", "Toque em Quero saber mais e me conte o seu objetivo."], ["A gente escolhe o plano juntos", "2x ou 3x por semana, do jeito que fizer mais sentido para você."], ["Faça a avaliação funcional", "Para o " + pers + " montar o plano a partir dos seus números."], ["Treine e acompanhe no app", "Cada aula, carga e reavaliação fica registrada."]],
     evolucao: "A cada 3 meses você refaz a avaliação e vê, lado a lado, quanto a força, o equilíbrio e a memória melhoraram.",
     sobre: "Há mais de 15 anos atendo adultos e idosos. No presencial eu acompanho cada repetição, ajusto o treino no dia e cuido para você evoluir com segurança. O objetivo é sempre o mesmo: mais autonomia para a sua vida.",
     cruz: { href: "venda.html?p=l360", img: "Longevus-360.jpg", t: "Quer somar a alimentação?", s: "Conheça o Longevus 360: alimentação e treino conversando no app, todos os dias." },
-    faq: [["Onde são as aulas?", (d.local ? d.local + ". " : "") + "O local e os horários são combinados com o " + pers + " depois que você escolhe o plano."], ["Qual a diferença entre 2x e 3x?", "Com 3x por semana a evolução vem mais rápido. O 2x é ótimo para começar e criar a rotina."], ["Tenho uma dor ou limitação. Posso?", "Pode. A avaliação mostra o que adaptar, e o treino é montado para você. Se for o caso, a orientação é passar pelo seu médico antes."], ["Como funciona o pagamento?", "É uma mensalidade no Pix. Você paga a primeira ao criar a conta, e as próximas aparecem no app no vencimento."], ["Posso conversar antes?", "Claro. Toque em Conversar antes de contratar e fale direto com o " + pers + " no WhatsApp."]],
-    final: ["Treine com quem entende de longevidade", "Planos a partir de "], aviso: "O treino não substitui acompanhamento médico.", padrao: 0
+    faq: [["Onde são as aulas?", (d.local ? d.local + ". " : "") + "O local e os horários são combinados com o " + pers + " depois que você escolhe o plano."], ["Qual a diferença entre 2x e 3x?", "Com 3x por semana a evolução vem mais rápido. O 2x é ótimo para começar e criar a rotina."], ["Tenho uma dor ou limitação. Posso?", "Pode. A avaliação mostra o que adaptar, e o treino é montado para você. Se for o caso, a orientação é passar pelo seu médico antes."], ["Como faço para começar?", "Toque em Quero saber mais. Você fala direto comigo no WhatsApp e a gente combina tudo pessoalmente."]],
+    final: ["Treine com quem entende de longevidade", "2x ou 3x por semana. Vamos conversar?"], aviso: "O treino não substitui acompanhamento médico.", padrao: 0
   }),
   l360: (pers) => ({
     nome: "Longevus 360", img: "Longevus-360.jpg", foto: "foto-academia.jpg", fotoPos: "center 25%", selo: "TREINO + ALIMENTAÇÃO", rotulo: "LONGEVUS 360",
@@ -526,7 +526,7 @@ function App() {
   const tipo = tipoProduto(d, id);
   const [plPres, setPlPres] = useState(null);
   useEffect(() => {
-    if (!pronto || tipo !== "presencial") return;
+    if (!pronto || tipo !== "presencial" || P.semPreco) return;
     Promise.all(PLANOS_PRES.map(([slug, rot, sub, fb]) => rpc("rpc_obter_plano_venda", { p_prof_id: PROF_ID, p_slug: slug }).then((r) => { const x = Array.isArray(r) ? r[0] : r; return x && x.nome ? { slug, nome: rot, sub, valor: Number(x.valor) || fb, mes: true } : null; }).catch(() => "erro")))
       .then((l) => { const ok = l.filter((x) => x && x !== "erro"); setPlPres(ok.length ? ok : PLANOS_PRES.map(([slug, rot, sub, fb]) => ({ slug, nome: rot, sub, valor: fb, mes: true }))); });
   }, [pronto, tipo]);
@@ -535,7 +535,8 @@ function App() {
   const valor = planos && planos.length ? Math.min.apply(null, planos.map((x) => x.valor)) : (valorNum(d.valor || d.preco) || P.padrao);
   const porDia = Math.ceil((valor / 30) * 100) / 100;
   const temPresente = !!(d.id && pix.pix_key && d.aceitaPresente !== false);
-  const comprar = (modo) => setCheckout(modo || "mim");
+  const waVenda = (msg) => waLink(pix.whatsapp, msg || P.waMsg) || waLink("11977431011", msg || P.waMsg);
+  const comprar = (modo) => { if (P.semPreco) { window.open(waVenda(), "_blank", "noopener"); return; } setCheckout(modo || "mim"); };
   const waDuvida = waLink(pix.whatsapp, "Oi, " + pers + "! Vi a página do " + nome + " e tenho uma dúvida.");
   if (!pronto) return h("div", { style: { minHeight: "100vh", background: C.escuro, display: "flex", alignItems: "center", justifyContent: "center" } }, h("img", { src: "logo-wb-claro.png", alt: "Wellington Brito", style: { height: 64, opacity: 0.9, animation: "some 1s ease infinite alternate" } }));
   const FAQ = P.faq.concat(temPresente ? [["Posso dar de presente?", "Pode. Toque em Dar de presente, pague o Pix e o " + pers + " fala com a pessoa."]] : []);
@@ -553,6 +554,10 @@ function App() {
         h("span", { style: { position: "absolute", left: 10, bottom: 10, fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", background: C.laranja, color: "#fff", borderRadius: 8, padding: "5px 9px" } }, P.rotulo)),
       h("div", { className: "entra", style: { fontSize: 26, fontWeight: 800, lineHeight: 1.18, marginTop: 18, animationDelay: ".08s" } }, P.titulo),
       h("div", { style: { fontSize: 15, color: "#CBD5E1", marginTop: 8, lineHeight: 1.5 } }, P.sub),
+      P.semPreco ? h("div", { style: { display: "flex", gap: 8, marginTop: 16 } }, P.opcoes.map(([t, sub], i) => h("div", { key: t, style: { flex: 1, background: C.escuro2, border: i === 0 ? "1.5px solid " + C.laranja : "1.5px solid " + C.escuro2, borderRadius: 14, padding: "10px 12px" } },
+          h("div", { style: { fontSize: 10.5, color: C.cinzaClaro, letterSpacing: "0.05em" } }, "PLANO"),
+          h("div", { style: { fontSize: 20, fontWeight: 800, color: i === 0 ? C.pessego : "#fff", lineHeight: 1.2 } }, t),
+          h("div", { style: { fontSize: 12, color: C.cinzaClaro } }, sub)))) :
       h("div", { style: { display: "flex", gap: 8, marginTop: 16 } },
         h("div", { style: { flex: 1.25, background: C.escuro2, border: "1.5px solid " + C.laranja, borderRadius: 14, padding: "10px 12px" } },
           h("div", { style: { fontSize: 10.5, color: C.cinzaClaro, letterSpacing: "0.05em" } }, P.precoRot),
@@ -563,7 +568,7 @@ function App() {
           h("div", { style: { fontSize: 16, fontWeight: 800, lineHeight: 1.25, marginTop: 2 } }, "Pix, sem cartão"),
           h("div", { style: { fontSize: 12, color: C.cinzaClaro } }, P.pagSub))),
       h("button", { ref: heroBtn, type: "button", onClick: () => comprar("mim"), style: { ...botaoPri, marginTop: 14 } }, P.cta),
-      h("a", { href: P.ctaSecWa ? (waLink(pix.whatsapp, P.ctaSecWa) || "#teste") : "#teste", target: P.ctaSecWa && pix.whatsapp ? "_blank" : undefined, rel: "noopener noreferrer", style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", height: 48, marginTop: 8, borderRadius: 14, border: "1.5px solid rgba(255,255,255,0.22)", color: "#fff", fontWeight: 700, fontSize: 15, textDecoration: "none" } }, P.ctaSec)),
+      h("a", { href: P.ctaSecWa && !P.semPreco ? (waLink(pix.whatsapp, P.ctaSecWa) || "#teste") : "#teste", target: P.ctaSecWa && !P.semPreco && pix.whatsapp ? "_blank" : undefined, rel: "noopener noreferrer", style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", height: 48, marginTop: 8, borderRadius: 14, border: "1.5px solid rgba(255,255,255,0.22)", color: "#fff", fontWeight: 700, fontSize: 15, textDecoration: "none" } }, P.ctaSec)),
 
     h("div", { style: { padding: "0 16px 120px" } },
       Secao("Para quem é", "Feito para você que"),
@@ -610,14 +615,14 @@ function App() {
 
       h("div", { style: { marginTop: 18, background: "linear-gradient(135deg,#FF5603,#FF8A3D)", borderRadius: 22, padding: 20, color: "#fff", textAlign: "center", boxShadow: "0 12px 26px rgba(255,86,3,0.28)" } },
         h("div", { style: { fontSize: 21, fontWeight: 800, lineHeight: 1.25 } }, P.final[0]),
-        valor > 0 ? h("div", { style: { fontSize: 14, opacity: 0.92, marginTop: 4 } }, P.final[1] + brl(valor) + ".") : null,
+        P.semPreco ? h("div", { style: { fontSize: 14, opacity: 0.92, marginTop: 4 } }, P.final[1]) : valor > 0 ? h("div", { style: { fontSize: 14, opacity: 0.92, marginTop: 4 } }, P.final[1] + brl(valor) + ".") : null,
         h("button", { type: "button", onClick: () => comprar("mim"), style: { width: "100%", height: 54, marginTop: 14, borderRadius: 16, border: "none", background: "#fff", color: C.laranjaTxt, fontWeight: 800, fontSize: 16.5, cursor: "pointer" } }, P.cta)),
       h("div", { style: { textAlign: "center", fontSize: 12, color: C.cinzaClaro, marginTop: 18, lineHeight: 1.6 } }, "Wellington Brito · Personal Trainer · CREF 089836-G/SP", h("br"), P.aviso)),
 
     barra && !checkout ? h("div", { style: { position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 300, display: "flex", justifyContent: "center", animation: "sobe .25s ease both" } },
       h("div", { style: { width: "100%", maxWidth: 480, background: "rgba(255,255,255,0.97)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", borderTop: "1px solid " + C.borda, padding: "10px 16px calc(10px + env(safe-area-inset-bottom))", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 -8px 24px rgba(15,23,42,0.08)" } },
-        valor > 0 ? h("div", { style: { flexShrink: 0 } }, h("div", { style: { fontSize: 11, color: C.cinza } }, P.barRot), h("div", { style: { fontSize: 19, fontWeight: 800 } }, brl(valor))) : null,
-        h("button", { type: "button", onClick: () => comprar("mim"), style: { ...botaoPri, height: 50, fontSize: 16, boxShadow: "none" } }, "Começar agora"))) : null,
+        valor > 0 && !P.semPreco ? h("div", { style: { flexShrink: 0 } }, h("div", { style: { fontSize: 11, color: C.cinza } }, P.barRot), h("div", { style: { fontSize: 19, fontWeight: 800 } }, brl(valor))) : null,
+        h("button", { type: "button", onClick: () => comprar("mim"), style: { ...botaoPri, height: 50, fontSize: 16, boxShadow: "none" } }, P.semPreco ? "Falar no WhatsApp" : "Começar agora"))) : null,
 
     h(Checkout, { aberto: !!checkout, modoInicial: checkout, onFechar: () => setCheckout(null), d: { ...d, titulo: nome, foto: d.foto || P.img, posPagamento: d.posPagamento || P.pos }, pix, valor, mensal: P.mensal, temPresente, resumoSub: P.resumoSub, planos, planoIni: d.planoSlug }));
 }
