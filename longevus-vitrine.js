@@ -971,6 +971,16 @@
         h("button", { type: "button", onClick: desligar, disabled: salvando, style: { width: "100%", marginTop: 10, height: 40, borderRadius: 10, border: "1.5px solid #FCA5A5", background: "#fff", color: "#B91C1C", fontWeight: 700, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit" } }, "Desligar para todos")) : null);
   };
   const comGratis = (o) => (o && o.tipo === "servico" && !/grátis$/i.test(o.nome)) ? { ...o, nome: o.nome + " grátis" } : o;
+  // Link público da página de venda (painel): copia e abre
+  const baseLink = () => window.location.origin + window.location.pathname.replace(/[^/]*$/, "");
+  const LinkVenda = ({ url, rotulo }) => {
+    const [ok, setOk] = useState(false);
+    const copiar = async () => { let feito = false; try { await navigator.clipboard.writeText(url); feito = true; } catch (e) {} if (!feito) { window.prompt("Copie o link:", url); return; } setOk(true); setTimeout(() => setOk(false), 2500); };
+    return h("div", { style: { display: "flex", alignItems: "center", gap: 8, marginTop: 8, paddingTop: 8, borderTop: "1px solid #F1F5F9" } },
+      h("span", { style: { flex: 1, minWidth: 0, fontSize: 12, color: ok ? "#15803D" : COR.cinza, fontWeight: ok ? 700 : 400 } }, ok ? "Link copiado. Cole no WhatsApp ou na campanha." : (rotulo || "Página de venda")),
+      h("a", { href: url, target: "_blank", rel: "noopener noreferrer", style: { height: 32, padding: "0 12px", borderRadius: 9, background: "#EEF2FF", color: "#4F46E5", fontWeight: 700, fontSize: 12.5, display: "inline-flex", alignItems: "center", textDecoration: "none" } }, "Abrir"),
+      h("button", { type: "button", onClick: copiar, style: { height: 32, padding: "0 12px", borderRadius: 9, border: "none", background: COR.laranja, color: "#fff", fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" } }, "Copiar link"));
+  };
   const FormIndique = ({ inicial, opcoes, onSalvar, onCancelar, onApagar }) => {
     const [d, setD] = useState(() => ({ id: "vi_indique", produto: "indique", tipo: "proprio", categoria: "outro", titulo: "Indique e ganhe", publico: "todos", ativo: true, premio: opcoes[0] || null, beneficio: comGratis(opcoes.find((o) => /avalia/i.test(o.nome)) || opcoes[2] || opcoes[0] || null), ...(inicial || {}) }));
     const [outro, setOutro] = useState(() => (inicial && inicial.beneficio && inicial.beneficio.tipo === "texto") ? inicial.beneficio.nome : "");
@@ -1102,6 +1112,10 @@
         h("span", { style: { flex: 1 } }, h("span", { style: { display: "block", fontSize: 14, fontWeight: 800, color: COR.escuro } }, "Adicionar o Elo 60+ à vitrine"), h("span", { style: { display: "block", fontSize: 12, color: COR.cinza } }, "Já vem preenchido. Você só confere e salva.")),
         h("span", { style: { color: "#C2410C", fontWeight: 800, fontSize: 13 } }, "+")) : null,
       PRODUTOS.filter((pr) => pr.col === "l360").map((pr) => cfgs[pr.col] ? h(Cartao360, { key: pr.col, prod: pr, cfg: cfgs[pr.col], cont: contarAcesso(students, pr.col), m: met[pr.met] || { viram: 0, abriram: 0 }, pagaram: contarPagaram(avisos, pr), onAbrir: () => setVerProd(pr.col), onAnunciar: () => anunciarProd(pr.col) }) : null),
+      h("div", { style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 14, padding: "12px 14px", marginBottom: 8 } },
+        h("div", { style: { fontSize: 14, fontWeight: 800 } }, "Personal presencial"),
+        h("div", { style: { fontSize: 12, color: COR.cinza } }, "Página de venda com os seus planos 2x e 3x por semana"),
+        h(LinkVenda, { url: baseLink() + "venda.html?p=presencial" })),
       itens.length === 0 ? h("div", { style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 14, padding: 24, textAlign: "center", color: "#94A3B8", fontSize: 13, lineHeight: 1.5 } }, "Nenhuma oferta ainda. Cadastre um parceiro ou um serviço seu para aparecer no app.") : null,
       itens.map((d) => {
         const m = met[d.id] || { viram: 0, abriram: 0, cliques: 0 };
@@ -1116,7 +1130,8 @@
             h("button", { type: "button", onClick: () => alternar(d), "aria-label": on ? "Tirar do app" : "Mostrar no app", style: { width: 44, height: 24, borderRadius: 12, border: "none", background: on ? COR.laranja : "#CBD5E1", position: "relative", cursor: "pointer", flexShrink: 0 } }, h("span", { style: { position: "absolute", top: 3, left: on ? 23 : 3, width: 18, height: 18, borderRadius: 9, background: "#fff", transition: "left 0.2s" } }))),
           h("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 12, color: COR.cinza, marginTop: 8, paddingTop: 8, borderTop: "1px solid #F1F5F9" } },
             h("span", null, vencida ? "Vencida em " + d.validade.split("-").reverse().join("/") : on ? "No app" : "Pausada"),
-            h("span", null, h("b", { style: { color: COR.escuro } }, m.viram), " viram · ", h("b", { style: { color: COR.escuro } }, m.abriram || 0), " abriram · ", h("b", { style: { color: COR.escuro } }, m.cliques), m.cliques === 1 ? " chamou" : " chamaram")));
+            h("span", null, h("b", { style: { color: COR.escuro } }, m.viram), " viram · ", h("b", { style: { color: COR.escuro } }, m.abriram || 0), " abriram · ", h("b", { style: { color: COR.escuro } }, m.cliques), m.cliques === 1 ? " chamou" : " chamaram")),
+          d.tipo !== "parceiro" && d.produto !== "indique" ? h(LinkVenda, { url: d.produto === "elo" ? baseLink() + "elo60-venda.html?i=" + encodeURIComponent(d.id) : baseLink() + "comprar.html?i=" + encodeURIComponent(d.id) }) : null);
       }));
   };
 
