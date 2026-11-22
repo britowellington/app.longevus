@@ -367,6 +367,10 @@ const EXERCISES = [
   {id:"ex33",nome:"Sequência de Passos Laterais",cat:"Coordenação",grupo:"Coordenação",foco:"Padrão Motor",nivel:"Intermediario",icone:"👣",tags:["coordenação","marcha","equilíbrio"],momento:"principal"},
 ];
 const TREINO_DEFS={
+  X1:{label:"Treino extra 1",cor:"#9333ea",bg:"#faf5ff",border:"#e9d5ff",desc:"Treino adicional"},
+  X2:{label:"Treino extra 2",cor:"#0d9488",bg:"#f0fdfa",border:"#99f6e4",desc:"Treino adicional"},
+  X3:{label:"Treino extra 3",cor:"#db2777",bg:"#fdf2f8",border:"#fbcfe8",desc:"Treino adicional"},
+  X4:{label:"Treino extra 4",cor:"#4f46e5",bg:"#eef2ff",border:"#c7d2fe",desc:"Treino adicional"},
   A:{label:"Treino A",cor:"#3b82f6",bg:"#eff6ff",border:"#bfdbfe",desc:"MMII + Equilíbrio + Mobilidade",grupos:["MMII","Equilíbrio","Mobilidade"]},
   B:{label:"Treino B",cor:"#d97706",bg:"#fffbeb",border:"#fde68a",desc:"MMSS + Core + Alongamento",grupos:["MMSS","Core","Alongamento"]},
   C:{label:"Treino C",cor:"#7e22ce",bg:"#fdf4ff",border:"#e9d5ff",desc:"Funcional + Cardio + Coordenação",grupos:["Funcional","Cardio","Coordenação"]},
