@@ -922,6 +922,15 @@ const cardioLimpo=cfg=>{
   return {...cfg,treinos,intervalado:cardioIntervaladoKey({...cfg,treinos})};
 };
 
+// Padrão de novas periodizações: ergômetros em rodízio (esteira, bike, elíptico), cardio no fim do treino, intervalado no primeiro treino
+const CARDIO_RODIZIO=["esteira","bike","eliptico"];
+const cardioPadrao=(treinoKeys,student,assess)=>{
+  const ks=[...new Set((treinoKeys||[]).filter(Boolean))];
+  if(!ks.length)return null;
+  const treinos={};ks.forEach((k,i)=>{treinos[k]={ergo:CARDIO_RODIZIO[i%3],onde:"fim"};});
+  return {treinos,intervalado:ks[0],nivel:"padrao",...cardioAutoDe(student,assess)};
+};
+
 const CardioChipBtn=({on,onClick,children,cor})=>(
   <button type="button" onClick={onClick} style={{border:"1.5px solid "+(on?(cor||"#e11d48"):"#e2e8f0"),background:on?"#fff1f2":"#f8fafc",color:on?(cor||"#be123c"):"#64748b",borderRadius:7,padding:"6px 10px",fontSize:11.5,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{children}</button>
 );
@@ -1688,7 +1697,7 @@ const NovoProgramaWizard=({students,assessments,programs,setPrograms,bibCustom,n
   };
   const save=()=>{
     if(!sid||!titulo||!divisao)return;
-    const prog={id:uid(),studentId:sid,titulo,semanas:24,freq,divisao,obs,prescricao,criadoEm:new Date().toISOString().slice(0,10),assessmentRef:lastAssessment?.id||null,ocultoAluno:ocultoAluno===true,origem,patologiaId:origem==="patologia"?patologiaId:null,local,enfase:local==="academia"?enfase:null,ciclo:cicloAtual,variante:varianteAtual+1};
+    const prog={id:uid(),studentId:sid,titulo,semanas:24,freq,divisao,obs,prescricao,criadoEm:new Date().toISOString().slice(0,10),assessmentRef:lastAssessment?.id||null,ocultoAluno:ocultoAluno===true,origem,patologiaId:origem==="patologia"?patologiaId:null,local,enfase:local==="academia"?enfase:null,ciclo:cicloAtual,variante:varianteAtual+1,cardio:cardioPadrao(divisao?.sequencia,student,lastAssessment)};
     const fresh=LS.get("longevus_programs",programs);const updated=[...fresh.filter(p=>p.id!==prog.id),prog];setPrograms(updated);LS.set("longevus_programs",updated);ProgDB.save(prog);nav("ver",{id:prog.id});
   };
   const totalEx=Object.values(prescricao).reduce((a,b)=>a+Object.values(b||{}).reduce((c,s)=>c+Object.values(s||{}).reduce((d,arr)=>d+(arr?.length||0),0),0),0);
@@ -2452,6 +2461,7 @@ const NovoPeriodizacaoConsultoria=({students,programs,setPrograms,bibCustom,nav,
       origem:"consultoria",patologiaId:null,local,
       enfase:enfase!=="nenhuma"?enfase:null,ciclo:1,variante:1,
       consultoria:{parametros:params,fases:gerarFases(params)},
+      cardio:cardioPadrao([...(divisao?.sequencia||[]),...((blocosConfig||[]).flatMap(b=>b.treinos||[]))],student,null),
     };
     setProgGerado(prog);
     setStep(3);
@@ -3508,7 +3518,7 @@ const VerModelo=({modeloId,modelos,setModelos,bibCustom,students,assessments,pro
       criadoEm:new Date().toISOString().slice(0,10),assessmentRef:null,
       origem:d.origem||"manual",patologiaId:d.patologiaId||null,ciclo:cicloAtual,variante:1,
       origemModeloId:modelo.id,ocultoAluno:enviarOculto===true,dataInicio:dataInicioSel||hojeISOProg(),
-      cardio:cardioTemErgo(d.cardio)?{...d.cardio,...cardioAutoDe(students.find(s=>s.id===alunoSel),(assessments||[]).filter(a=>a&&a.studentId===alunoSel).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0])}:null
+      cardio:!cardioTemErgo(d.cardio)?cardioPadrao([...seq,...((blocosConfigNovo||[]).flatMap(b=>b.treinos||[]))],students.find(s=>s.id===alunoSel),(assessments||[]).filter(a=>a&&a.studentId===alunoSel).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0]):{...d.cardio,...cardioAutoDe(students.find(s=>s.id===alunoSel),(assessments||[]).filter(a=>a&&a.studentId===alunoSel).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0])}
     };
     const fresh=LS.get("longevus_programs",programs);
     const updated=[...fresh.filter(p=>p.id!==novoProg.id),novoProg];
