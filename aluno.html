@@ -1986,7 +1986,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
       if(r.ok){
         setSavedToday(true);
         setLastSessions(prev=>[data, ...prev]);
-        if(postFieldsEnabled){
+        if(true){ // registro pós-treino sempre abre: duração e esforço calculam o déficit do treino
           setCheckin({esforco:null,completude:null,dor:"nenhuma",obs:"",duracao:null,cardioFeito:null});
           setCheckinError("");
           setShowCheckin(true);
@@ -2430,7 +2430,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
               const kHoje = feitoReg && feitoReg.cardioKcal;
               const bt = {flex:1,height:42,borderRadius:12,border:"1.5px solid #e11d48",background:"#fff",color:"#be123c",fontWeight:800,fontSize:13.5,cursor:salvandoCardio?"default":"pointer",fontFamily:"inherit"};
               const rodape = feitoHoje
-                ? <div style={{marginTop:10,background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"9px 12px",fontSize:12.5,fontWeight:700,color:"#15803d",textAlign:"center"}}>Cardio concluído hoje{feitoReg&&feitoReg.cardioMin?(" · "+feitoReg.cardioMin+" min"):""}{kHoje?(" · cerca de "+kHoje+" kcal"):""}. Muito bem!</div>
+                ? <div style={{marginTop:10,background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"9px 12px",fontSize:12.5,fontWeight:700,color:"#15803d",textAlign:"center"}}>Cardio concluído hoje{feitoReg&&feitoReg.cardioMin?(" · "+feitoReg.cardioMin+" min"):""}{kHoje?(" · déficit de cerca de "+kHoje+" kcal"):""}. Muito bem!</div>
                 : <div style={{marginTop:10}}>
                     <div style={{fontSize:12,fontWeight:700,color:"#475569",marginBottom:6}}>{salvandoCardio?"Salvando...":"Concluir cardio:"}</div>
                     <div style={{display:"flex",gap:6}}>
@@ -2497,7 +2497,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
               ))}
             </div>
           </div>
-          {ccfg.post?.esforco && (
+          {true && (
           <div style={{marginBottom:22}}>
             <div style={{fontWeight:700,fontSize:13,color:"#475569",marginBottom:10}}>Como foi o treino?</div>
             <div style={{display:"flex",flexDirection:"column",gap:7}}>
@@ -2558,7 +2558,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
               <Icon name="alert" size={14} style={{marginTop:1,flexShrink:0}}/><span>{checkinError}</span>
             </div>
           )}
-          <Btn full onClick={salvarCheckin} disabled={(temCardioFim&&!checkin.cardioFeito)||(ccfg.post?.esforco&&checkin.esforco===null)||(ccfg.post?.completude&&checkin.completude===null)||(ccfg.post?.obs&&!checkin.obs.trim())||checkinSaving}>
+          <Btn full onClick={salvarCheckin} disabled={!checkin.duracao||checkin.esforco===null||(temCardioFim&&!checkin.cardioFeito)||(ccfg.post?.completude&&checkin.completude===null)||(ccfg.post?.obs&&!checkin.obs.trim())||checkinSaving}>
             {checkinSaving ? "Salvando..." : "Concluir e ver resultado"}
           </Btn>
         </Modal>
@@ -2581,7 +2581,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
               </div>
               {gastoTreino && (gastoTreino.musc.min>0 || gastoTreino.cardio) && (
                 <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:12,padding:"10px 13px",marginBottom:18,textAlign:"left"}}>
-                  <div style={{fontSize:11,fontWeight:800,color:"#c2410c",textTransform:"uppercase",letterSpacing:0.3,marginBottom:2}}>Gasto energético estimado</div>
+                  <div style={{fontSize:11,fontWeight:800,color:"#c2410c",textTransform:"uppercase",letterSpacing:0.3,marginBottom:2}}>Déficit do treino · gasto estimado</div>
                   {gastoTreino.musc.min>0&&<GastoLinha rotulo="Musculação" min={gastoTreino.musc.min} kcal={gastoTreino.musc.kcal} peso={pesoAluno}/>}
                   {gastoTreino.cardio&&<GastoLinha rotulo={"Cardio na "+(CARDIO_ERGOS[gastoTreino.cardio.ergo]?CARDIO_ERGOS[gastoTreino.cardio.ergo].nome.toLowerCase():"")+(gastoTreino.cardio.fracao<1?" (metade)":"")} min={gastoTreino.cardio.min} kcal={gastoTreino.cardio.kcal} peso={pesoAluno}/>}
                   {gastoTreino.musc.min>0&&gastoTreino.cardio&&<GastoLinha forte rotulo="Total" min={gastoTreino.musc.min+gastoTreino.cardio.min} kcal={gastoTreino.musc.kcal+gastoTreino.cardio.kcal} peso={pesoAluno}/>}
