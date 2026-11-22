@@ -2927,7 +2927,7 @@ const saveEdit = ()=>{
 };
 const stAbertos = pagamentos.filter(pg=>pg.studentId===studentId && pg.status==="previsto");
 const openNewProgram = () => {
-window.open("longevus-programa.html?novo="+encodeURIComponent(st.id),"_self");
+window.open("longevus-programa.html","_self");
 };
 const openViewProgram = (prog) => {
 window.open("longevus-programa.html?ver="+encodeURIComponent(prog.id),"_self");
