@@ -733,18 +733,23 @@ const CARDIO_ERGOS={
 const CARDIO_ZONAS={
   Z1:{nome:"Leve",pse:"2 a 3",fala:"conversa normal",fcr:[0.30,0.40],cor:"#0284c7",bg:"#f0f9ff",border:"#bae6fd"},
   Z2:{nome:"Base",pse:"4 a 5",fala:"conversa tranquila",fcr:[0.40,0.55],cor:"#16a34a",bg:"#f0fdf4",border:"#bbf7d0"},
-  Z3:{nome:"Moderado forte",pse:"6",fala:"só frases curtas",fcr:[0.55,0.70],cor:"#d97706",bg:"#fffbeb",border:"#fde68a"},
+  Z3:{nome:"Moderado",pse:"6",fala:"só frases curtas",fcr:[0.55,0.70],cor:"#d97706",bg:"#fffbeb",border:"#fde68a"},
   Z4:{nome:"Forte",pse:"7 a 8",fala:"poucas palavras",fcr:[0.70,0.80],cor:"#dc2626",bg:"#fef2f2",border:"#fecaca"}
 };
-const CARDIO_CONT=[10,12,15,10,15,18,20,12, 20,20,20,15,20,20,20,15, 20,22,22,15,25,25,25,15];
-const CARDIO_INT={10:[4,60,120,"Z3"],11:[5,60,120,"Z3"],13:[4,120,120,"Z3"],14:[5,120,120,"Z3"],15:[5,120,90,"Z3"],17:[6,30,60,"Z4"],18:[8,30,60,"Z4"],19:[6,45,90,"Z4"],21:[8,45,90,"Z4"],22:[6,60,120,"Z4"],23:[7,60,120,"Z4"]};
-// Sessão separada (outro horário): mais volume, aquecimento e volta à calma de 5 min, teto de 40 min
-const CARDIO_SEP_CONT=[20,22,25,18,25,28,30,20, 30,30,32,25,32,35,35,25, 35,38,40,25,40,40,40,25];
-const CARDIO_SEP_INT={10:[6,60,120,"Z3"],11:[8,60,120,"Z3"],13:[5,120,120,"Z3"],14:[6,120,120,"Z3"],15:[6,180,120,"Z3"],17:[8,30,60,"Z4"],18:[10,30,60,"Z4"],19:[8,45,90,"Z4"],21:[10,45,90,"Z4"],22:[8,60,120,"Z4"],23:[9,60,120,"Z4"]};
-const cardioSeparado=(cfg,treinoKey)=>!!(cfg&&cfg.treinos&&cfg.treinos[treinoKey]&&cfg.treinos[treinoKey].onde==="separado");
-const CARDIO_DELOAD=[4,8,12,16,20];
+// Macrociclo de 24 semanas = 3 mesociclos de 8 (Volume, Transição, Pico).
+// Cada mesociclo tem microciclos de 4 semanas: Ordinário, Ordinário, Choque, Recuperativo (editáveis por semana).
+// Relação inversa: o volume sobe no Meso 1, equaliza no Meso 2 e cai no Meso 3, enquanto a intensidade sobe.
+// Por treino: ergômetro, tempo inicial (min), intensidade inicial (1 Leve, 2 Base, 3 Moderado) e quando (fim/separado).
+// A sessão forte da semana é o treino marcado em cfg.intervalado.
+const CARDIO_VOL=[1.00,1.15,1.25,1.25,1.30,1.40,1.40,1.40, 1.30,1.25,1.20,1.20,1.20,1.15,1.10,1.10, 1.00,0.95,0.90,0.90,0.90,0.85,0.80,0.80];
+const CARDIO_MICRO_PADRAO=["O","O","C","R"];
+const CARDIO_MICRO_NOME={O:"Ordinário",C:"Choque",R:"Recuperativo"};
+const CARDIO_ZK=["","Z1","Z2","Z3","Z4"];
+const CARDIO_INTENS=[[1,"Leve","2 a 3"],[2,"Base","4 a 5"],[3,"Moderado","6"]];
 const CARDIO_RETESTE=[8,16,24];
-const cardioFase=s=>s<=8?"Base":(s<=16?"Desenvolvimento":"Consolidação");
+const CARDIO_DELOAD=[4,8,12,16,20,24];
+const cardioSeparado=(cfg,treinoKey)=>!!(cfg&&cfg.treinos&&cfg.treinos[treinoKey]&&cfg.treinos[treinoKey].onde==="separado");
+const cardioFase=s=>s<=8?"Volume":(s<=16?"Transição":"Pico");
 const cardioFmtSeg=s=>s<60?s+" s":(s%60===0?(s/60)+" min":Math.floor(s/60)+" min "+(s%60)+" s");
 const cardioTemErgo=cfg=>!!(cfg&&cfg.treinos&&Object.keys(cfg.treinos).some(k=>cfg.treinos[k]&&CARDIO_ERGOS[cfg.treinos[k].ergo]));
 const cardioIntervaladoKey=cfg=>{
@@ -760,24 +765,60 @@ const cardioFC=(cfg,zona)=>{
   const z=CARDIO_ZONAS[zona];const r=max-rep;
   return [Math.round(rep+r*z.fcr[0]),Math.round(rep+r*z.fcr[1])];
 };
-const cardioSemana=(cfg,treinoKey,semana)=>{
-  const t=cfg&&cfg.treinos&&cfg.treinos[treinoKey];
-  if(!t||!CARDIO_ERGOS[t.ergo])return null;
-  const s=Math.max(1,Math.min(24,parseInt(semana)||1));
-  const iniciante=cfg.nivel==="iniciante";
-  const sep=t.onde==="separado";
-  const TAB_INT=sep?CARDIO_SEP_INT:CARDIO_INT,TAB_CONT=sep?CARDIO_SEP_CONT:CARDIO_CONT;
-  const aq=sep?300:180,vc=sep?300:120;
-  const base={ergo:t.ergo,separado:sep,aqMin:aq/60,vcMin:vc/60,semana:s,fase:cardioFase(s),deload:CARDIO_DELOAD.includes(s),reteste:CARDIO_RETESTE.includes(s)};
-  if(cardioIntervaladoKey(cfg)===treinoKey&&TAB_INT[s]){
-    const d=TAB_INT[s];const n=d[0],on=d[1],off=d[2];let zona=d[3];
-    if(zona==="Z4"&&(iniciante||(cfg.quedas&&t.ergo==="esteira")))zona="Z3";
-    const total=Math.round((aq+n*on+(n-1)*off+vc)/60);
-    return {...base,tipo:"intervalado",series:n,on,off,zona,total,texto:n+"x ("+cardioFmtSeg(on)+" forte / "+cardioFmtSeg(off)+" leve)"};
+const cardioMicro=(cfg,s)=>(cfg&&cfg.micro&&cfg.micro[s])||CARDIO_MICRO_PADRAO[(s-1)%4];
+const cardioTetoMin=sep=>sep?45:30;
+const cardioTempoIni=(tr)=>{ const sep=tr&&tr.onde==="separado"; return Math.max(5,Math.min(cardioTetoMin(sep),parseInt(tr&&tr.tempo)||(sep?25:20))); };
+const cardioZonaIni=(tr)=>Math.max(1,Math.min(3,parseInt(tr&&tr.zona)||2));
+// Gera a semana sem ajustes manuais. fator multiplica o tempo e offZ soma na intensidade (vindos de ajustes anteriores).
+const cardioSemanaBase=(cfg,treinoKey,s,fator,offZ)=>{
+  const tr=cfg.treinos[treinoKey];
+  const i=s-1, meso=Math.floor(i/8), k=i%8;
+  const sep=tr.onde==="separado", tempo=cardioTempoIni(tr), z0=cardioZonaIni(tr);
+  const forte=cardioIntervaladoKey(cfg)===treinoKey;
+  const mt=cardioMicro(cfg,s);
+  const cap=cardioTetoMin(sep), aq=sep?5:3, vc=sep?5:2;
+  let V=Math.max(5,Math.min(cap,Math.round(tempo*CARDIO_VOL[i]*(mt==="C"?0.9:(mt==="R"?0.7:1))*(fator||1))));
+  let z, inter;
+  if(mt==="R"){ z=Math.min(z0,2); inter=false; }
+  else {
+    if(meso===0){ z=forte?z0+1:z0; inter=forte; }
+    else if(meso===1){ z=z0+1; inter=true; }
+    else { z=forte?z0+2:z0+1; inter=true; }
+    if(mt==="C"){ z+=1; inter=true; }
   }
-  let min=TAB_CONT[s-1];
-  if(iniciante&&s<=8)min=Math.max(sep?12:7,Math.round(min*0.7));
-  return {...base,tipo:"continuo",zona:"Z2",total:min,texto:min+" min contínuo"};
+  let zmax=meso===0?3:4;
+  if(cfg.nivel==="iniciante"||(cfg.quedas&&tr.ergo==="esteira")) zmax=Math.min(zmax,3);
+  z=Math.max(1,Math.min(zmax,z));
+  if(offZ && mt!=="R"){ z=Math.max(1,Math.min(4,z+offZ)); }
+  if(z<=z0) inter=false; else if(mt!=="R" && offZ) inter=true;
+  const base={ergo:tr.ergo,separado:sep,aqMin:aq,vcMin:vc,semana:s,meso:meso+1,fase:cardioFase(s),micro:mt,deload:mt==="R",choque:mt==="C",reteste:CARDIO_RETESTE.includes(s),vplan:V,zn:z};
+  if(!inter || V-aq-vc<4) return {...base,tipo:"continuo",zona:CARDIO_ZK[z],total:V,texto:V+" min contínuo"};
+  let on,off;
+  if(z>=4){ on=[30,30,45,45,45,60,60,60][k]; off=on; }
+  else if(meso===0){ on=60; off=120; }
+  else if(meso===1){ on=[60,60,90,90,120,120,120,120][k]; off=[120,120,120,120,120,90,90,90][k]; if(forte){ on=Math.round(on*1.5); off=Math.max(60,off-30); } }
+  else { on=[120,120,150,150,150,180,180,180][k]; off=Math.min(on,[90,90,90,90,60,60,60,60][k]); }
+  const W=(V-aq-vc)*60;
+  const n=Math.max(3,Math.min(10,Math.floor((W+off)/(on+off))));
+  const total=Math.round((aq*60+n*on+(n-1)*off+vc*60)/60);
+  return {...base,tipo:"intervalado",series:n,on,off,zona:CARDIO_ZK[z],total,texto:n+"x ("+cardioFmtSeg(on)+" forte / "+cardioFmtSeg(off)+" leve)"};
+};
+// Ajuste feito numa semana vale dali para frente (nunca para trás): ele vira um novo ponto de partida.
+const cardioSemana=(cfg,treinoKey,semana)=>{
+  const tr=cfg&&cfg.treinos&&cfg.treinos[treinoKey];
+  if(!tr||!CARDIO_ERGOS[tr.ergo])return null;
+  const s=Math.max(1,Math.min(24,parseInt(semana)||1));
+  const ajs=(cfg.ajustes&&cfg.ajustes[treinoKey])||{};
+  const semAj=Object.keys(ajs).map(Number).filter(w=>w>=1&&w<=s&&ajs[w]).sort((a,b)=>a-b);
+  let fator=1, offZ=0;
+  semAj.forEach(w=>{
+    const b=cardioSemanaBase(cfg,treinoKey,w,fator,offZ), aj=ajs[w];
+    if(aj.V && b.vplan) fator=fator*(Math.max(5,parseInt(aj.V))/b.vplan);
+    if(aj.z && b.micro!=="R") offZ=offZ+(Math.max(1,Math.min(4,parseInt(aj.z)))-b.zn);
+  });
+  const r=cardioSemanaBase(cfg,treinoKey,s,fator,offZ);
+  const desde=semAj.length?semAj[0]:null;
+  return {...r,ajustado:!!ajs[s],ajusteDesde:desde&&desde<s?semAj[semAj.length-1]:null};
 };
 
 const CardioZonaChip=({cfg,zona,rotulo})=>{
@@ -1037,14 +1078,16 @@ const TelaCardio = ({cfg, ch, sessoesCardio, salvando, onVoltar, onGuiado, onMan
         </div>
         <button type="button" onClick={onHistorico} style={{background:"#f1f5f9",border:"none",borderRadius:99,padding:"7px 12px",fontSize:12,fontWeight:800,color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>Histórico</button>
       </div>
+      {info && info.choque && !ch.feito && <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:12,padding:"9px 12px",marginBottom:10,fontSize:12.5,color:"#991b1b",lineHeight:1.45}}><b>⚡ Semana de choque.</b> Hoje o treino é um pouco mais forte que o normal, com menos tempo. Na próxima semana vem a recuperação.</div>}
+      {info && info.deload && !ch.feito && <div style={{background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:12,padding:"9px 12px",marginBottom:10,fontSize:12.5,color:"#166534",lineHeight:1.45}}><b>Semana recuperativa.</b> Menos tempo e ritmo leve para o corpo assimilar o treino.</div>}
       {info && eg && (
         <div style={{...card,borderColor:"#fecdd3"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
             <div style={{...cap,color:"#be123c"}}>{ch.pos?"Cardio pós-treino de hoje":"Cardio de hoje"}</div>
-            <div style={{fontSize:12,color:"#64748b"}}>Semana {info.semana} · {info.fase}</div>
+            <div style={{fontSize:12,color:"#64748b"}}>Semana {info.semana} · Meso {info.meso}</div>
           </div>
           <div style={{fontWeight:800,fontSize:18,color:"#0f172a",marginTop:4}}>{eg.icone} {eg.nome} · {info.texto}</div>
-          <div style={{fontSize:12,color:"#64748b",marginTop:3}}>{info.tipo==="intervalado"?("Comece com "+info.aqMin+" min leves e termine com "+info.vcMin+" min leves."):(info.aqMin+" min leves no início e "+info.vcMin+" no fim.")}{info.deload?" Semana mais leve para o corpo recuperar.":""}</div>
+          <div style={{fontSize:12,color:"#64748b",marginTop:3}}>{info.tipo==="intervalado"?("Comece com "+info.aqMin+" min leves e termine com "+info.vcMin+" min leves."):(info.aqMin+" min leves no início e "+info.vcMin+" no fim.")}</div>
           <div style={{display:"flex",gap:6,marginTop:10}}>
             <div style={{flex:1,background:zc.bg,border:"1.5px solid "+zc.border,borderRadius:10,padding:"8px 10px"}}>
               <div style={{...cap,color:zc.cor}}>{info.tipo==="intervalado"?"Forte":"Ritmo"} · {zc.nome}</div>
@@ -1084,9 +1127,9 @@ const TelaCardio = ({cfg, ch, sessoesCardio, salvando, onVoltar, onGuiado, onMan
           <div style={{display:"flex",gap:3,marginTop:10}}>
             {Array.from({length:24},(_,i)=>{ const s=i+1, c=CARDIO_FASE_COR(s); return <div key={s} style={{flex:1,height:8,borderRadius:99,background:s<=info.semana?c[0]:c[1],opacity:s<info.semana?0.55:1,boxShadow:s===info.semana?"0 0 0 2px #fff, 0 0 0 3.5px "+c[0]:"none"}}/>; })}
           </div>
-          <div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:10.5,color:"#94a3b8",fontWeight:700}}><span>Base</span><span>Desenvolvimento</span><span>Consolidação</span></div>
+          <div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:10.5,color:"#94a3b8",fontWeight:700}}><span>Volume</span><span>Transição</span><span>Pico</span></div>
           {prox.length>0 && <div style={{marginTop:10,fontSize:12.5,lineHeight:1.8}}>
-            {prox.map(p=>(<div key={p.s} style={{display:"flex",justifyContent:"space-between",gap:8}}><span style={{color:"#0f172a"}}>Semana {p.s}{p.i&&p.i.deload?" · mais leve":""}</span><span style={{color:"#64748b"}}>{p.i?p.i.texto:""}</span></div>))}
+            {prox.map(p=>(<div key={p.s} style={{display:"flex",justifyContent:"space-between",gap:8}}><span style={{color:"#0f172a"}}>Semana {p.s}{p.i&&p.i.choque?" · ⚡ choque":(p.i&&p.i.deload?" · recuperativa":"")}</span><span style={{color:"#64748b"}}>{p.i?p.i.texto:""}</span></div>))}
           </div>}
         </div>
       )}

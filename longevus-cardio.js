@@ -7,37 +7,146 @@
     const supa = () => window.__LV_SUPA;
     // ── Mesmas regras do longevus-programa.html e do aluno.html ──
     const ERGOS = { esteira: { nome: "Esteira", icone: "🚶" }, bike: { nome: "Bike", icone: "🚴" }, eliptico: { nome: "Elíptico", icone: "🏃" } };
-    const CONT = [10, 12, 15, 10, 15, 18, 20, 12, 20, 20, 20, 15, 20, 20, 20, 15, 20, 22, 22, 15, 25, 25, 25, 15];
-    const INT = { 10: [4, 60, 120], 11: [5, 60, 120], 13: [4, 120, 120], 14: [5, 120, 120], 15: [5, 120, 90], 17: [6, 30, 60], 18: [8, 30, 60], 19: [6, 45, 90], 21: [8, 45, 90], 22: [6, 60, 120], 23: [7, 60, 120] };
-    const SEP_CONT = [20, 22, 25, 18, 25, 28, 30, 20, 30, 30, 32, 25, 32, 35, 35, 25, 35, 38, 40, 25, 40, 40, 40, 25];
-    const SEP_INT = { 10: [6, 60, 120], 11: [8, 60, 120], 13: [5, 120, 120], 14: [6, 120, 120], 15: [6, 180, 120], 17: [8, 30, 60], 18: [10, 30, 60], 19: [8, 45, 90], 21: [10, 45, 90], 22: [8, 60, 120], 23: [9, 60, 120] };
     const RETESTE = [8, 16, 24];
+    const ERG_ALIAS = ERGOS;
     const NOMES = { A: "Treino A", B: "Treino B", C: "Treino C", D: "Treino D", FB: "Full Body", FBA: "Full Body A", FBB: "Full Body B", FBC: "Full Body C", FBD: "Full Body D", FBE: "Full Body E", SUP: "Superior", INF: "Inferior", PUSH: "Push", PULL: "Pull", LEGS: "Legs", PEITO: "Peito", COSTAS: "Costas", PERNA: "Perna", OMBRO: "Ombro", EMP: "Empurrar", PUX: "Puxar" };
-    const fase = (s) => s <= 8 ? "Base" : (s <= 16 ? "Desenvolvimento" : "Consolidação");
-    const fmtSeg = (s) => s < 60 ? s + " s" : (s % 60 === 0 ? (s / 60) + " min" : Math.floor(s / 60) + " min " + (s % 60) + " s");
-    const temErgo = (cfg) => !!(cfg && cfg.treinos && Object.keys(cfg.treinos).some((k) => cfg.treinos[k] && ERGOS[cfg.treinos[k].ergo]));
-    const intKey = (cfg) => {
-        if (cfg.intervalado && cfg.treinos[cfg.intervalado] && ERGOS[cfg.treinos[cfg.intervalado].ergo])
-            return cfg.intervalado;
-        return Object.keys(cfg.treinos).find((k) => cfg.treinos[k] && ERGOS[cfg.treinos[k].ergo]) || null;
-    };
-    const semanaInfo = (cfg, t, semana) => {
-        const tr = cfg.treinos[t];
-        if (!tr || !ERGOS[tr.ergo])
+    const CARDIO_ERGOS = ERGOS;
+    const CARDIO_ZONAS = {};
+    // mesmo gerador do longevus-programa.html e do aluno.html
+    // Macrociclo de 24 semanas = 3 mesociclos de 8 (Volume, Transição, Pico).
+    // Cada mesociclo tem microciclos de 4 semanas: Ordinário, Ordinário, Choque, Recuperativo (editáveis por semana).
+    // Relação inversa: o volume sobe no Meso 1, equaliza no Meso 2 e cai no Meso 3, enquanto a intensidade sobe.
+    // Por treino: ergômetro, tempo inicial (min), intensidade inicial (1 Leve, 2 Base, 3 Moderado) e quando (fim/separado).
+    // A sessão forte da semana é o treino marcado em cfg.intervalado.
+    const CARDIO_VOL = [1.00, 1.15, 1.25, 1.25, 1.30, 1.40, 1.40, 1.40, 1.30, 1.25, 1.20, 1.20, 1.20, 1.15, 1.10, 1.10, 1.00, 0.95, 0.90, 0.90, 0.90, 0.85, 0.80, 0.80];
+    const CARDIO_MICRO_PADRAO = ["O", "O", "C", "R"];
+    const CARDIO_MICRO_NOME = { O: "Ordinário", C: "Choque", R: "Recuperativo" };
+    const CARDIO_ZK = ["", "Z1", "Z2", "Z3", "Z4"];
+    const CARDIO_INTENS = [[1, "Leve", "2 a 3"], [2, "Base", "4 a 5"], [3, "Moderado", "6"]];
+    const CARDIO_RETESTE = [8, 16, 24];
+    const CARDIO_DELOAD = [4, 8, 12, 16, 20, 24];
+    const cardioSeparado = (cfg, treinoKey) => !!(cfg && cfg.treinos && cfg.treinos[treinoKey] && cfg.treinos[treinoKey].onde === "separado");
+    const cardioFase = s => s <= 8 ? "Volume" : (s <= 16 ? "Transição" : "Pico");
+    const cardioFmtSeg = s => s < 60 ? s + " s" : (s % 60 === 0 ? (s / 60) + " min" : Math.floor(s / 60) + " min " + (s % 60) + " s");
+    const cardioTemErgo = cfg => !!(cfg && cfg.treinos && Object.keys(cfg.treinos).some(k => cfg.treinos[k] && CARDIO_ERGOS[cfg.treinos[k].ergo]));
+    const cardioIntervaladoKey = cfg => {
+        if (!cfg || !cfg.treinos)
             return null;
-        const s = Math.max(1, Math.min(24, semana || 1));
-        const sep = tr.onde === "separado";
-        const tabI = sep ? SEP_INT : INT, tabC = sep ? SEP_CONT : CONT;
-        const aq = sep ? 300 : 180, vc = sep ? 300 : 120;
-        if (intKey(cfg) === t && tabI[s]) {
-            const d = tabI[s];
-            return { semana: s, texto: d[0] + "x (" + fmtSeg(d[1]) + " forte / " + fmtSeg(d[2]) + " leve)", total: Math.round((aq + d[0] * d[1] + (d[0] - 1) * d[2] + vc) / 60) };
-        }
-        let min = tabC[s - 1];
-        if (cfg.nivel === "iniciante" && s <= 8)
-            min = Math.max(sep ? 12 : 7, Math.round(min * 0.7));
-        return { semana: s, texto: min + " min contínuo", total: min };
+        if (cfg.intervalado && cfg.treinos[cfg.intervalado] && CARDIO_ERGOS[cfg.treinos[cfg.intervalado].ergo])
+            return cfg.intervalado;
+        return Object.keys(cfg.treinos).find(k => cfg.treinos[k] && CARDIO_ERGOS[cfg.treinos[k].ergo]) || null;
     };
+    const cardioFC = (cfg, zona) => {
+        if (!cfg || cfg.soPSE)
+            return null;
+        const rep = parseFloat(cfg.fcRepouso), idade = parseFloat(cfg.idade);
+        const max = parseFloat(cfg.fcMax) || (idade ? Math.round(208 - 0.7 * idade) : 0);
+        if (!rep || !max || max <= rep)
+            return null;
+        const z = CARDIO_ZONAS[zona];
+        const r = max - rep;
+        return [Math.round(rep + r * z.fcr[0]), Math.round(rep + r * z.fcr[1])];
+    };
+    const cardioMicro = (cfg, s) => (cfg && cfg.micro && cfg.micro[s]) || CARDIO_MICRO_PADRAO[(s - 1) % 4];
+    const cardioTetoMin = sep => sep ? 45 : 30;
+    const cardioTempoIni = (tr) => { const sep = tr && tr.onde === "separado"; return Math.max(5, Math.min(cardioTetoMin(sep), parseInt(tr && tr.tempo) || (sep ? 25 : 20))); };
+    const cardioZonaIni = (tr) => Math.max(1, Math.min(3, parseInt(tr && tr.zona) || 2));
+    // Gera a semana sem ajustes manuais. fator multiplica o tempo e offZ soma na intensidade (vindos de ajustes anteriores).
+    const cardioSemanaBase = (cfg, treinoKey, s, fator, offZ) => {
+        const tr = cfg.treinos[treinoKey];
+        const i = s - 1, meso = Math.floor(i / 8), k = i % 8;
+        const sep = tr.onde === "separado", tempo = cardioTempoIni(tr), z0 = cardioZonaIni(tr);
+        const forte = cardioIntervaladoKey(cfg) === treinoKey;
+        const mt = cardioMicro(cfg, s);
+        const cap = cardioTetoMin(sep), aq = sep ? 5 : 3, vc = sep ? 5 : 2;
+        let V = Math.max(5, Math.min(cap, Math.round(tempo * CARDIO_VOL[i] * (mt === "C" ? 0.9 : (mt === "R" ? 0.7 : 1)) * (fator || 1))));
+        let z, inter;
+        if (mt === "R") {
+            z = Math.min(z0, 2);
+            inter = false;
+        }
+        else {
+            if (meso === 0) {
+                z = forte ? z0 + 1 : z0;
+                inter = forte;
+            }
+            else if (meso === 1) {
+                z = z0 + 1;
+                inter = true;
+            }
+            else {
+                z = forte ? z0 + 2 : z0 + 1;
+                inter = true;
+            }
+            if (mt === "C") {
+                z += 1;
+                inter = true;
+            }
+        }
+        let zmax = meso === 0 ? 3 : 4;
+        if (cfg.nivel === "iniciante" || (cfg.quedas && tr.ergo === "esteira"))
+            zmax = Math.min(zmax, 3);
+        z = Math.max(1, Math.min(zmax, z));
+        if (offZ && mt !== "R") {
+            z = Math.max(1, Math.min(4, z + offZ));
+        }
+        if (z <= z0)
+            inter = false;
+        else if (mt !== "R" && offZ)
+            inter = true;
+        const base = { ergo: tr.ergo, separado: sep, aqMin: aq, vcMin: vc, semana: s, meso: meso + 1, fase: cardioFase(s), micro: mt, deload: mt === "R", choque: mt === "C", reteste: CARDIO_RETESTE.includes(s), vplan: V, zn: z };
+        if (!inter || V - aq - vc < 4)
+            return { ...base, tipo: "continuo", zona: CARDIO_ZK[z], total: V, texto: V + " min contínuo" };
+        let on, off;
+        if (z >= 4) {
+            on = [30, 30, 45, 45, 45, 60, 60, 60][k];
+            off = on;
+        }
+        else if (meso === 0) {
+            on = 60;
+            off = 120;
+        }
+        else if (meso === 1) {
+            on = [60, 60, 90, 90, 120, 120, 120, 120][k];
+            off = [120, 120, 120, 120, 120, 90, 90, 90][k];
+            if (forte) {
+                on = Math.round(on * 1.5);
+                off = Math.max(60, off - 30);
+            }
+        }
+        else {
+            on = [120, 120, 150, 150, 150, 180, 180, 180][k];
+            off = Math.min(on, [90, 90, 90, 90, 60, 60, 60, 60][k]);
+        }
+        const W = (V - aq - vc) * 60;
+        const n = Math.max(3, Math.min(10, Math.floor((W + off) / (on + off))));
+        const total = Math.round((aq * 60 + n * on + (n - 1) * off + vc * 60) / 60);
+        return { ...base, tipo: "intervalado", series: n, on, off, zona: CARDIO_ZK[z], total, texto: n + "x (" + cardioFmtSeg(on) + " forte / " + cardioFmtSeg(off) + " leve)" };
+    };
+    // Ajuste feito numa semana vale dali para frente (nunca para trás): ele vira um novo ponto de partida.
+    const cardioSemana = (cfg, treinoKey, semana) => {
+        const tr = cfg && cfg.treinos && cfg.treinos[treinoKey];
+        if (!tr || !CARDIO_ERGOS[tr.ergo])
+            return null;
+        const s = Math.max(1, Math.min(24, parseInt(semana) || 1));
+        const ajs = (cfg.ajustes && cfg.ajustes[treinoKey]) || {};
+        const semAj = Object.keys(ajs).map(Number).filter(w => w >= 1 && w <= s && ajs[w]).sort((a, b) => a - b);
+        let fator = 1, offZ = 0;
+        semAj.forEach(w => {
+            const b = cardioSemanaBase(cfg, treinoKey, w, fator, offZ), aj = ajs[w];
+            if (aj.V && b.vplan)
+                fator = fator * (Math.max(5, parseInt(aj.V)) / b.vplan);
+            if (aj.z && b.micro !== "R")
+                offZ = offZ + (Math.max(1, Math.min(4, parseInt(aj.z))) - b.zn);
+        });
+        const r = cardioSemanaBase(cfg, treinoKey, s, fator, offZ);
+        const desde = semAj.length ? semAj[0] : null;
+        return { ...r, ajustado: !!ajs[s], ajusteDesde: desde && desde < s ? semAj[semAj.length - 1] : null };
+    };
+    const fase = (s) => cardioFase(s);
+    const temErgo = cardioTemErgo;
+    const intKey = cardioIntervaladoKey;
+    const semanaInfo = (cfg, t, semana) => cardioSemana(cfg, t, semana);
     const api = {
         async headers() {
             const r = await supa().auth.getSession();

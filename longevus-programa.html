@@ -821,18 +821,23 @@ const CARDIO_ERGOS={
 const CARDIO_ZONAS={
   Z1:{nome:"Leve",pse:"2 a 3",fala:"conversa normal",fcr:[0.30,0.40],cor:"#0284c7",bg:"#f0f9ff",border:"#bae6fd"},
   Z2:{nome:"Base",pse:"4 a 5",fala:"conversa tranquila",fcr:[0.40,0.55],cor:"#16a34a",bg:"#f0fdf4",border:"#bbf7d0"},
-  Z3:{nome:"Moderado forte",pse:"6",fala:"só frases curtas",fcr:[0.55,0.70],cor:"#d97706",bg:"#fffbeb",border:"#fde68a"},
+  Z3:{nome:"Moderado",pse:"6",fala:"só frases curtas",fcr:[0.55,0.70],cor:"#d97706",bg:"#fffbeb",border:"#fde68a"},
   Z4:{nome:"Forte",pse:"7 a 8",fala:"poucas palavras",fcr:[0.70,0.80],cor:"#dc2626",bg:"#fef2f2",border:"#fecaca"}
 };
-const CARDIO_CONT=[10,12,15,10,15,18,20,12, 20,20,20,15,20,20,20,15, 20,22,22,15,25,25,25,15];
-const CARDIO_INT={10:[4,60,120,"Z3"],11:[5,60,120,"Z3"],13:[4,120,120,"Z3"],14:[5,120,120,"Z3"],15:[5,120,90,"Z3"],17:[6,30,60,"Z4"],18:[8,30,60,"Z4"],19:[6,45,90,"Z4"],21:[8,45,90,"Z4"],22:[6,60,120,"Z4"],23:[7,60,120,"Z4"]};
-// Sessão separada (outro horário): mais volume, aquecimento e volta à calma de 5 min, teto de 40 min
-const CARDIO_SEP_CONT=[20,22,25,18,25,28,30,20, 30,30,32,25,32,35,35,25, 35,38,40,25,40,40,40,25];
-const CARDIO_SEP_INT={10:[6,60,120,"Z3"],11:[8,60,120,"Z3"],13:[5,120,120,"Z3"],14:[6,120,120,"Z3"],15:[6,180,120,"Z3"],17:[8,30,60,"Z4"],18:[10,30,60,"Z4"],19:[8,45,90,"Z4"],21:[10,45,90,"Z4"],22:[8,60,120,"Z4"],23:[9,60,120,"Z4"]};
-const cardioSeparado=(cfg,treinoKey)=>!!(cfg&&cfg.treinos&&cfg.treinos[treinoKey]&&cfg.treinos[treinoKey].onde==="separado");
-const CARDIO_DELOAD=[4,8,12,16,20];
+// Macrociclo de 24 semanas = 3 mesociclos de 8 (Volume, Transição, Pico).
+// Cada mesociclo tem microciclos de 4 semanas: Ordinário, Ordinário, Choque, Recuperativo (editáveis por semana).
+// Relação inversa: o volume sobe no Meso 1, equaliza no Meso 2 e cai no Meso 3, enquanto a intensidade sobe.
+// Por treino: ergômetro, tempo inicial (min), intensidade inicial (1 Leve, 2 Base, 3 Moderado) e quando (fim/separado).
+// A sessão forte da semana é o treino marcado em cfg.intervalado.
+const CARDIO_VOL=[1.00,1.15,1.25,1.25,1.30,1.40,1.40,1.40, 1.30,1.25,1.20,1.20,1.20,1.15,1.10,1.10, 1.00,0.95,0.90,0.90,0.90,0.85,0.80,0.80];
+const CARDIO_MICRO_PADRAO=["O","O","C","R"];
+const CARDIO_MICRO_NOME={O:"Ordinário",C:"Choque",R:"Recuperativo"};
+const CARDIO_ZK=["","Z1","Z2","Z3","Z4"];
+const CARDIO_INTENS=[[1,"Leve","2 a 3"],[2,"Base","4 a 5"],[3,"Moderado","6"]];
 const CARDIO_RETESTE=[8,16,24];
-const cardioFase=s=>s<=8?"Base":(s<=16?"Desenvolvimento":"Consolidação");
+const CARDIO_DELOAD=[4,8,12,16,20,24];
+const cardioSeparado=(cfg,treinoKey)=>!!(cfg&&cfg.treinos&&cfg.treinos[treinoKey]&&cfg.treinos[treinoKey].onde==="separado");
+const cardioFase=s=>s<=8?"Volume":(s<=16?"Transição":"Pico");
 const cardioFmtSeg=s=>s<60?s+" s":(s%60===0?(s/60)+" min":Math.floor(s/60)+" min "+(s%60)+" s");
 const cardioTemErgo=cfg=>!!(cfg&&cfg.treinos&&Object.keys(cfg.treinos).some(k=>cfg.treinos[k]&&CARDIO_ERGOS[cfg.treinos[k].ergo]));
 const cardioIntervaladoKey=cfg=>{
@@ -848,24 +853,60 @@ const cardioFC=(cfg,zona)=>{
   const z=CARDIO_ZONAS[zona];const r=max-rep;
   return [Math.round(rep+r*z.fcr[0]),Math.round(rep+r*z.fcr[1])];
 };
-const cardioSemana=(cfg,treinoKey,semana)=>{
-  const t=cfg&&cfg.treinos&&cfg.treinos[treinoKey];
-  if(!t||!CARDIO_ERGOS[t.ergo])return null;
-  const s=Math.max(1,Math.min(24,parseInt(semana)||1));
-  const iniciante=cfg.nivel==="iniciante";
-  const sep=t.onde==="separado";
-  const TAB_INT=sep?CARDIO_SEP_INT:CARDIO_INT,TAB_CONT=sep?CARDIO_SEP_CONT:CARDIO_CONT;
-  const aq=sep?300:180,vc=sep?300:120;
-  const base={ergo:t.ergo,separado:sep,aqMin:aq/60,vcMin:vc/60,semana:s,fase:cardioFase(s),deload:CARDIO_DELOAD.includes(s),reteste:CARDIO_RETESTE.includes(s)};
-  if(cardioIntervaladoKey(cfg)===treinoKey&&TAB_INT[s]){
-    const d=TAB_INT[s];const n=d[0],on=d[1],off=d[2];let zona=d[3];
-    if(zona==="Z4"&&(iniciante||(cfg.quedas&&t.ergo==="esteira")))zona="Z3";
-    const total=Math.round((aq+n*on+(n-1)*off+vc)/60);
-    return {...base,tipo:"intervalado",series:n,on,off,zona,total,texto:n+"x ("+cardioFmtSeg(on)+" forte / "+cardioFmtSeg(off)+" leve)"};
+const cardioMicro=(cfg,s)=>(cfg&&cfg.micro&&cfg.micro[s])||CARDIO_MICRO_PADRAO[(s-1)%4];
+const cardioTetoMin=sep=>sep?45:30;
+const cardioTempoIni=(tr)=>{ const sep=tr&&tr.onde==="separado"; return Math.max(5,Math.min(cardioTetoMin(sep),parseInt(tr&&tr.tempo)||(sep?25:20))); };
+const cardioZonaIni=(tr)=>Math.max(1,Math.min(3,parseInt(tr&&tr.zona)||2));
+// Gera a semana sem ajustes manuais. fator multiplica o tempo e offZ soma na intensidade (vindos de ajustes anteriores).
+const cardioSemanaBase=(cfg,treinoKey,s,fator,offZ)=>{
+  const tr=cfg.treinos[treinoKey];
+  const i=s-1, meso=Math.floor(i/8), k=i%8;
+  const sep=tr.onde==="separado", tempo=cardioTempoIni(tr), z0=cardioZonaIni(tr);
+  const forte=cardioIntervaladoKey(cfg)===treinoKey;
+  const mt=cardioMicro(cfg,s);
+  const cap=cardioTetoMin(sep), aq=sep?5:3, vc=sep?5:2;
+  let V=Math.max(5,Math.min(cap,Math.round(tempo*CARDIO_VOL[i]*(mt==="C"?0.9:(mt==="R"?0.7:1))*(fator||1))));
+  let z, inter;
+  if(mt==="R"){ z=Math.min(z0,2); inter=false; }
+  else {
+    if(meso===0){ z=forte?z0+1:z0; inter=forte; }
+    else if(meso===1){ z=z0+1; inter=true; }
+    else { z=forte?z0+2:z0+1; inter=true; }
+    if(mt==="C"){ z+=1; inter=true; }
   }
-  let min=TAB_CONT[s-1];
-  if(iniciante&&s<=8)min=Math.max(sep?12:7,Math.round(min*0.7));
-  return {...base,tipo:"continuo",zona:"Z2",total:min,texto:min+" min contínuo"};
+  let zmax=meso===0?3:4;
+  if(cfg.nivel==="iniciante"||(cfg.quedas&&tr.ergo==="esteira")) zmax=Math.min(zmax,3);
+  z=Math.max(1,Math.min(zmax,z));
+  if(offZ && mt!=="R"){ z=Math.max(1,Math.min(4,z+offZ)); }
+  if(z<=z0) inter=false; else if(mt!=="R" && offZ) inter=true;
+  const base={ergo:tr.ergo,separado:sep,aqMin:aq,vcMin:vc,semana:s,meso:meso+1,fase:cardioFase(s),micro:mt,deload:mt==="R",choque:mt==="C",reteste:CARDIO_RETESTE.includes(s),vplan:V,zn:z};
+  if(!inter || V-aq-vc<4) return {...base,tipo:"continuo",zona:CARDIO_ZK[z],total:V,texto:V+" min contínuo"};
+  let on,off;
+  if(z>=4){ on=[30,30,45,45,45,60,60,60][k]; off=on; }
+  else if(meso===0){ on=60; off=120; }
+  else if(meso===1){ on=[60,60,90,90,120,120,120,120][k]; off=[120,120,120,120,120,90,90,90][k]; if(forte){ on=Math.round(on*1.5); off=Math.max(60,off-30); } }
+  else { on=[120,120,150,150,150,180,180,180][k]; off=Math.min(on,[90,90,90,90,60,60,60,60][k]); }
+  const W=(V-aq-vc)*60;
+  const n=Math.max(3,Math.min(10,Math.floor((W+off)/(on+off))));
+  const total=Math.round((aq*60+n*on+(n-1)*off+vc*60)/60);
+  return {...base,tipo:"intervalado",series:n,on,off,zona:CARDIO_ZK[z],total,texto:n+"x ("+cardioFmtSeg(on)+" forte / "+cardioFmtSeg(off)+" leve)"};
+};
+// Ajuste feito numa semana vale dali para frente (nunca para trás): ele vira um novo ponto de partida.
+const cardioSemana=(cfg,treinoKey,semana)=>{
+  const tr=cfg&&cfg.treinos&&cfg.treinos[treinoKey];
+  if(!tr||!CARDIO_ERGOS[tr.ergo])return null;
+  const s=Math.max(1,Math.min(24,parseInt(semana)||1));
+  const ajs=(cfg.ajustes&&cfg.ajustes[treinoKey])||{};
+  const semAj=Object.keys(ajs).map(Number).filter(w=>w>=1&&w<=s&&ajs[w]).sort((a,b)=>a-b);
+  let fator=1, offZ=0;
+  semAj.forEach(w=>{
+    const b=cardioSemanaBase(cfg,treinoKey,w,fator,offZ), aj=ajs[w];
+    if(aj.V && b.vplan) fator=fator*(Math.max(5,parseInt(aj.V))/b.vplan);
+    if(aj.z && b.micro!=="R") offZ=offZ+(Math.max(1,Math.min(4,parseInt(aj.z)))-b.zn);
+  });
+  const r=cardioSemanaBase(cfg,treinoKey,s,fator,offZ);
+  const desde=semAj.length?semAj[0]:null;
+  return {...r,ajustado:!!ajs[s],ajusteDesde:desde&&desde<s?semAj[semAj.length-1]:null};
 };
 
 const CardioZonaChip=({cfg,zona,rotulo})=>{
@@ -918,7 +959,7 @@ const cardioAutoDe=(student,a)=>{
 };
 const cardioLimpo=cfg=>{
   if(!cardioTemErgo(cfg))return null;
-  const treinos={};Object.keys(cfg.treinos).forEach(k=>{if(cfg.treinos[k]&&CARDIO_ERGOS[cfg.treinos[k].ergo])treinos[k]={ergo:cfg.treinos[k].ergo,onde:cfg.treinos[k].onde==="separado"?"separado":"fim"};});
+  const treinos={};Object.keys(cfg.treinos).forEach(k=>{if(cfg.treinos[k]&&CARDIO_ERGOS[cfg.treinos[k].ergo])treinos[k]={ergo:cfg.treinos[k].ergo,onde:cfg.treinos[k].onde==="separado"?"separado":"fim",tempo:cardioTempoIni(cfg.treinos[k]),zona:cardioZonaIni(cfg.treinos[k])};});
   return {...cfg,treinos,intervalado:cardioIntervaladoKey({...cfg,treinos})};
 };
 
@@ -927,7 +968,7 @@ const CARDIO_RODIZIO=["esteira","bike","eliptico"];
 const cardioPadrao=(treinoKeys,student,assess)=>{
   const ks=[...new Set((treinoKeys||[]).filter(Boolean))];
   if(!ks.length)return null;
-  const treinos={};ks.forEach((k,i)=>{treinos[k]={ergo:CARDIO_RODIZIO[i%3],onde:"fim"};});
+  const treinos={};ks.forEach((k,i)=>{treinos[k]={ergo:CARDIO_RODIZIO[i%3],onde:"fim",tempo:20,zona:2};});
   return {treinos,intervalado:ks[0],nivel:"padrao",...cardioAutoDe(student,assess)};
 };
 
@@ -937,43 +978,63 @@ const CardioChipBtn=({on,onClick,children,cor})=>(
 
 const CardioEditor=({cfg,setCfg,treinos,nomeT,auto})=>{
   const set=patch=>setCfg(c=>({...c,...patch}));
-  const setErgo=(t,ergo)=>setCfg(c=>{const tr={...(c.treinos||{})};if(ergo)tr[t]={ergo,onde:(tr[t]&&tr[t].onde)||"fim"};else delete tr[t];const n={...c,treinos:tr};return {...n,intervalado:cardioIntervaladoKey(n)};});
-  const setOnde=(t,onde)=>setCfg(c=>({...c,treinos:{...c.treinos,[t]:{...c.treinos[t],onde}}}));
+  const setTr=(t,patch)=>setCfg(c=>({...c,treinos:{...c.treinos,[t]:{...c.treinos[t],...patch}}}));
+  const setErgo=(t,ergo)=>setCfg(c=>{const tr={...(c.treinos||{})};if(ergo){const old=tr[t]||{};tr[t]={ergo,onde:old.onde||"fim",tempo:old.tempo||(old.onde==="separado"?25:20),zona:old.zona||2};}else delete tr[t];const n={...c,treinos:tr};return {...n,intervalado:cardioIntervaladoKey(n)};});
   const comErgo=treinos.filter(t=>cfg.treinos&&cfg.treinos[t]&&CARDIO_ERGOS[cfg.treinos[t].ergo]);
   const intKey=cardioIntervaladoKey(cfg);
   const inp={width:"100%",padding:"8px 9px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit",boxSizing:"border-box"};
-  const lbl={fontSize:11,fontWeight:700,color:"#64748b",marginBottom:6};
+  const lbl={fontSize:11,fontWeight:700,color:"#64748b",marginBottom:5};
+  const stepBtn={width:30,height:30,borderRadius:8,border:"none",background:"#f1f5f9",fontSize:16,fontWeight:800,color:"#0f172a",cursor:"pointer",fontFamily:"inherit"};
   return(
     <Card style={{marginBottom:10,padding:"12px 14px",border:"1.5px solid #fecdd3"}}>
-      <div style={{fontSize:11,fontWeight:800,color:"#be123c",marginBottom:4,textTransform:"uppercase"}}>Cardio · 24 semanas</div>
-      <div style={{fontSize:11,color:"#94a3b8",marginBottom:10,lineHeight:1.5}}>Escolha o ergômetro de cada treino e quando o cardio acontece. A progressão das 24 semanas é gerada sozinha.</div>
-      {treinos.map(t=>{const at=cfg.treinos&&cfg.treinos[t]?cfg.treinos[t].ergo:"";return(
-        <div key={t} style={{marginBottom:9}}>
-          <div style={{fontSize:12,fontWeight:700,color:"#0f172a",marginBottom:5}}>{nomeT(t)}</div>
+      <div style={{fontSize:11,fontWeight:800,color:"#be123c",marginBottom:4,textTransform:"uppercase"}}>Cardio · macrociclo de 24 semanas</div>
+      <div style={{fontSize:11,color:"#94a3b8",marginBottom:10,lineHeight:1.5}}>Defina o ponto de partida de cada treino. Os 3 mesociclos (Volume, Transição e Pico) e os microciclos são gerados a partir dele.</div>
+      {treinos.map(t=>{const tr=cfg.treinos&&cfg.treinos[t]; const at=tr?tr.ergo:""; const forte=at&&intKey===t; return(
+        <div key={t} style={{border:"1.5px solid "+(forte?"#fecaca":"#e2e8f0"),borderRadius:12,padding:"10px 11px",marginBottom:9,background:"#fff"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:6}}>
+            <div style={{fontSize:12.5,fontWeight:800,color:"#0f172a"}}>{nomeT(t)}</div>
+            {at&&<button type="button" onClick={()=>set({intervalado:t})} style={{border:"none",borderRadius:99,padding:"4px 9px",fontSize:10.5,fontWeight:800,cursor:"pointer",fontFamily:"inherit",background:forte?"#fef2f2":"#f1f5f9",color:forte?"#dc2626":"#94a3b8"}}>{forte?"⚡ Sessão forte":"Ordinária · tornar forte"}</button>}
+          </div>
           <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
             <CardioChipBtn on={!at} cor="#0f172a" onClick={()=>setErgo(t,"")}>Nenhum</CardioChipBtn>
             {Object.keys(CARDIO_ERGOS).map(k=>(<CardioChipBtn key={k} on={at===k} onClick={()=>setErgo(t,k)}>{CARDIO_ERGOS[k].icone} {CARDIO_ERGOS[k].nome}</CardioChipBtn>))}
           </div>
-          {at&&(<div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:5}}>
-            <CardioChipBtn on={!cardioSeparado(cfg,t)} cor="#475569" onClick={()=>setOnde(t,"fim")}>No fim do treino</CardioChipBtn>
-            <CardioChipBtn on={cardioSeparado(cfg,t)} cor="#475569" onClick={()=>setOnde(t,"separado")}>Em outro horário</CardioChipBtn>
-          </div>)}
-          {at&&cardioSeparado(cfg,t)&&<div style={{fontSize:10.5,color:"#94a3b8",marginTop:4}}>Sessão própria, até 40 min, com botão Concluir cardio no app do aluno.</div>}
+          {at&&(<>
+            <div style={{display:"flex",gap:8,marginTop:9,flexWrap:"wrap"}}>
+              <div style={{flex:"1 1 120px"}}>
+                <div style={lbl}>Tempo inicial</div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"4px 6px"}}>
+                  <button type="button" style={stepBtn} onClick={()=>setTr(t,{tempo:Math.max(5,cardioTempoIni(tr)-1)})}>−</button>
+                  <b style={{fontSize:15}}>{cardioTempoIni(tr)} min</b>
+                  <button type="button" style={stepBtn} onClick={()=>setTr(t,{tempo:Math.min(cardioTetoMin(tr.onde==="separado"),cardioTempoIni(tr)+1)})}>+</button>
+                </div>
+              </div>
+              <div style={{flex:"1 1 150px"}}>
+                <div style={lbl}>Quando</div>
+                <div style={{display:"flex",gap:4}}>
+                  <CardioChipBtn on={tr.onde!=="separado"} cor="#475569" onClick={()=>setTr(t,{onde:"fim",tempo:Math.min(30,cardioTempoIni(tr))})}>Pós-treino</CardioChipBtn>
+                  <CardioChipBtn on={tr.onde==="separado"} cor="#475569" onClick={()=>setTr(t,{onde:"separado"})}>Outro horário</CardioChipBtn>
+                </div>
+              </div>
+            </div>
+            <div style={{...lbl,marginTop:9}}>Intensidade inicial</div>
+            <div style={{display:"flex",gap:5}}>
+              {CARDIO_INTENS.map(([v,n,p])=>{const on=cardioZonaIni(tr)===v; const z=CARDIO_ZONAS[CARDIO_ZK[v]]; return(
+                <button key={v} type="button" onClick={()=>setTr(t,{zona:v})} style={{flex:1,border:(on?"2px solid ":"1.5px solid ")+(on?z.cor:"#e2e8f0"),background:on?z.bg:"#fff",borderRadius:10,padding:"6px 4px",cursor:"pointer",fontFamily:"inherit"}}>
+                  <div style={{fontSize:12,fontWeight:800,color:z.cor}}>{n}</div><div style={{fontSize:10,color:"#94a3b8"}}>PSE {p}</div>
+                </button>);})}
+            </div>
+          </>)}
         </div>
       );})}
       {comErgo.length>0&&(<>
-        <div style={{...lbl,marginTop:12}}>Intervalado das semanas 9 a 24 entra no</div>
-        <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-          {comErgo.map(t=>(<CardioChipBtn key={t} on={intKey===t} onClick={()=>set({intervalado:t})}>{nomeT(t)}</CardioChipBtn>))}
-        </div>
-        <div style={{fontSize:10.5,color:"#94a3b8",marginTop:4}}>Os outros treinos seguem contínuo em ritmo base.</div>
-        <div style={{...lbl,marginTop:12}}>Nível</div>
+        <div style={{...lbl,marginTop:6}}>Nível</div>
         <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
           <CardioChipBtn on={cfg.nivel!=="iniciante"} onClick={()=>set({nivel:"padrao"})}>Padrão</CardioChipBtn>
           <CardioChipBtn on={cfg.nivel==="iniciante"} onClick={()=>set({nivel:"iniciante"})}>Iniciante</CardioChipBtn>
         </div>
-        {cfg.nivel==="iniciante"&&<div style={{fontSize:10.5,color:"#94a3b8",marginTop:4}}>Bloco 1 com 30% menos tempo e intervalado do Bloco 3 em moderado forte.</div>}
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:14,marginBottom:6}}>
+        {cfg.nivel==="iniciante"&&<div style={{fontSize:10.5,color:"#94a3b8",marginTop:4}}>A intensidade não passa de Moderado.</div>}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:12,marginBottom:6}}>
           <div style={{...lbl,marginBottom:0}}>Dados para a FC alvo</div>
           {auto&&<button type="button" onClick={()=>set(auto)} style={{border:"none",background:"transparent",color:"#be123c",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",padding:0}}>Puxar da última avaliação</button>}
         </div>
@@ -987,30 +1048,102 @@ const CardioEditor=({cfg,setCfg,treinos,nomeT,auto})=>{
           <CardioChipBtn on={!!cfg.soPSE} onClick={()=>set({soPSE:!cfg.soPSE})}>{cfg.soPSE?"✓ ":""}Usa betabloqueador (só PSE)</CardioChipBtn>
           <CardioChipBtn on={!!cfg.quedas} onClick={()=>set({quedas:!cfg.quedas})}>{cfg.quedas?"✓ ":""}Risco de quedas</CardioChipBtn>
         </div>
-        {cfg.quedas&&intKey&&cfg.treinos[intKey].ergo==="esteira"&&<div style={{fontSize:11,color:"#b45309",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:7,padding:"6px 9px",marginTop:8,lineHeight:1.5}}>Risco de quedas com intervalado na esteira: o forte fica em moderado forte. Se puder, use a bike no treino do intervalado.</div>}
+        {cfg.quedas&&intKey&&cfg.treinos[intKey].ergo==="esteira"&&<div style={{fontSize:11,color:"#b45309",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:7,padding:"6px 9px",marginTop:8,lineHeight:1.5}}>Risco de quedas com a sessão forte na esteira: a intensidade não passa de Moderado. Se puder, use a bike na sessão forte.</div>}
+        <div style={{marginTop:14}}><CardioMacro cfg={cfg} setCfg={setCfg} treinos={treinos} nomeT={nomeT} editavel={true}/></div>
       </>)}
     </Card>
   );
 };
 
-const CardioPrevia=({cfg,treinoKey,nomeT})=>{
-  const [sem,setSem]=useState(1);
-  if(!cardioTemErgo(cfg))return null;
-  const tem=cfg.treinos&&cfg.treinos[treinoKey]&&CARDIO_ERGOS[cfg.treinos[treinoKey].ergo];
-  const btn={width:34,height:30,border:"1.5px solid #e2e8f0",borderRadius:8,background:"#fff",cursor:"pointer",color:"#475569",fontSize:14,fontWeight:700};
-  return(
-    <div style={{marginTop:6}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-        <div style={{fontSize:11,fontWeight:700,color:"#64748b",textTransform:"uppercase"}}>Prévia do cardio · {cardioFase(sem)}</div>
-        <div style={{display:"flex",alignItems:"center",gap:6}}>
-          <button type="button" onClick={()=>setSem(s=>Math.max(1,s-1))} style={btn}>‹</button>
-          <div style={{fontSize:12,fontWeight:800,color:"#0f172a",minWidth:52,textAlign:"center"}}>Sem. {sem}</div>
-          <button type="button" onClick={()=>setSem(s=>Math.min(24,s+1))} style={btn}>›</button>
+// Macrociclo: gráfico e grade semana a semana (editável no modo edição)
+const CARDIO_COR_Z={Z1:"#38bdf8",Z2:"#22c55e",Z3:"#f59e0b",Z4:"#ef4444"};
+const CardioMacro=({cfg,setCfg,treinos,nomeT,editavel})=>{
+  const ts=(treinos||Object.keys(cfg.treinos||{})).filter(t=>cfg.treinos&&cfg.treinos[t]&&CARDIO_ERGOS[cfg.treinos[t].ergo]);
+  const [meso,setMeso]=useState(0);
+  const [tGraf,setTGraf]=useState(null);
+  const [sel,setSel]=useState(null);
+  if(!ts.length) return null;
+  const tg=ts.includes(tGraf)?tGraf:ts[0];
+  const intKey=cardioIntervaladoKey(cfg);
+  const semanas=Array.from({length:24},(_,i)=>i+1);
+  const infoG=semanas.map(s=>cardioSemana(cfg,tg,s));
+  const maxV=Math.max(...infoG.map(x=>x?x.total:0),10);
+  const trocaMicro=(s)=>{ if(!editavel||!setCfg) return; const ord=["O","C","R"]; const atual=cardioMicro(cfg,s); const prox=ord[(ord.indexOf(atual)+1)%3]; setCfg(c=>{ const m={...(c.micro||{})}; if(prox===CARDIO_MICRO_PADRAO[(s-1)%4]) delete m[s]; else m[s]=prox; return {...c,micro:m}; }); };
+  const setAj=(t,s,patch)=>setCfg(c=>{ const aj={...(c.ajustes||{})}; const at={...(aj[t]||{})}; if(patch===null) delete at[s]; else at[s]={...(at[s]||{}),...patch}; aj[t]=at; return {...c,ajustes:aj}; });
+  const cab={fontSize:11,fontWeight:800,color:"#475569",textTransform:"uppercase"};
+  const microCor=m=>m==="C"?"#dc2626":"#64748b";
+  const selInfo=sel?cardioSemana(cfg,sel.t,sel.s):null;
+  return (
+    <div>
+      <div style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"10px 11px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+          <div style={cab}>Macrociclo · 24 semanas</div>
+          <div style={{display:"flex",gap:4}}>{ts.map(t=>(<button key={t} type="button" onClick={()=>setTGraf(t)} style={{border:"none",borderRadius:99,padding:"3px 8px",fontSize:10.5,fontWeight:800,cursor:"pointer",fontFamily:"inherit",background:t===tg?"#0f172a":"#e2e8f0",color:t===tg?"#fff":"#475569"}}>{CARDIO_ERGOS[cfg.treinos[t].ergo].icone} {t}</button>))}</div>
+        </div>
+        <div style={{display:"flex",gap:2,height:84,alignItems:"flex-end",marginTop:9}}>
+          {infoG.map((x,i)=>(<div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end",height:"100%"}}>
+            {x&&x.choque&&<div style={{fontSize:8,lineHeight:1}}>⚡</div>}
+            <div style={{width:"100%",height:Math.max(6,Math.round((x?x.total:0)/maxV*70)),borderRadius:3,background:x&&x.deload?"#cbd5e1":CARDIO_COR_Z[x?x.zona:"Z2"],outline:x&&x.ajustado?"1.5px solid #7e22ce":"none"}}/>
+          </div>))}
+        </div>
+        <div style={{display:"flex",marginTop:5,fontSize:9.5,fontWeight:800,color:"#64748b",textAlign:"center"}}>
+          <div style={{flex:1,borderTop:"3px solid #22c55e",paddingTop:3}}>Meso 1 · Volume</div>
+          <div style={{flex:1,borderTop:"3px solid #f59e0b",paddingTop:3}}>Meso 2 · Transição</div>
+          <div style={{flex:1,borderTop:"3px solid #ef4444",paddingTop:3}}>Meso 3 · Pico</div>
+        </div>
+        <div style={{display:"flex",gap:9,marginTop:7,fontSize:10,color:"#64748b",flexWrap:"wrap"}}>
+          <span>altura = tempo</span><span><b style={{color:"#22c55e"}}>■</b> Base</span><span><b style={{color:"#f59e0b"}}>■</b> Moderado</span><span><b style={{color:"#ef4444"}}>■</b> Forte</span><span><b style={{color:"#cbd5e1"}}>■</b> recuperativo</span><span>⚡ choque</span>
         </div>
       </div>
-      {tem?<CardioCard cfg={cfg} treinoKey={treinoKey} semana={sem} mostrarReteste={true}/>:<div style={{fontSize:12,color:"#94a3b8",background:"#f8fafc",border:"1.5px dashed #e2e8f0",borderRadius:10,padding:"10px 12px",marginBottom:14}}>{nomeT(treinoKey)} está sem cardio final.</div>}
+      <div style={{display:"flex",gap:5,margin:"10px 0 7px"}}>
+        {[0,1,2].map(m=>(<button key={m} type="button" onClick={()=>{setMeso(m);setSel(null);}} style={{flex:1,border:"1.5px solid "+(meso===m?"#0f172a":"#e2e8f0"),background:meso===m?"#0f172a":"#fff",color:meso===m?"#fff":"#475569",borderRadius:9,padding:"7px 4px",fontSize:11.5,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>Semanas {m*8+1} a {m*8+8}</button>))}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"58px repeat("+ts.length+",1fr)",gap:4,fontSize:9.5,fontWeight:800,color:"#64748b",textAlign:"center",marginBottom:4}}>
+        <div/>
+        {ts.map(t=>(<div key={t}>{CARDIO_ERGOS[cfg.treinos[t].ergo].icone} {t}{intKey===t?" ⚡":""}<br/><span style={{fontWeight:600,color:"#94a3b8"}}>{cfg.treinos[t].onde==="separado"?"outro horário":"pós-treino"}</span></div>))}
+      </div>
+      {semanas.slice(meso*8,meso*8+8).map(s=>{const m=cardioMicro(cfg,s); const fundo=m==="C"?"#fef2f2":(m==="R"?"#f8fafc":"#fff"); return(
+        <div key={s} style={{display:"grid",gridTemplateColumns:"58px repeat("+ts.length+",1fr)",gap:4,marginBottom:4}}>
+          <button type="button" onClick={()=>trocaMicro(s)} style={{background:fundo,border:"1.5px solid "+(m==="C"?"#fecaca":"#e2e8f0"),borderRadius:8,padding:"5px 2px",cursor:editavel?"pointer":"default",fontFamily:"inherit",textAlign:"center"}}>
+            <div style={{fontWeight:800,fontSize:12.5,color:"#0f172a"}}>S{s}</div>
+            <div style={{fontSize:8.5,fontWeight:800,color:microCor(m)}}>{m==="C"?"⚡ ":""}{CARDIO_MICRO_NOME[m]}{(cfg.micro&&cfg.micro[s])?" ✎":""}</div>
+          </button>
+          {ts.map(t=>{const x=cardioSemana(cfg,t,s); const z=CARDIO_ZONAS[x.zona]; const ativo=sel&&sel.t===t&&sel.s===s; return(
+            <button key={t} type="button" onClick={()=>editavel&&setSel(ativo?null:{t,s})} style={{background:ativo?"#fff7ed":fundo,border:"1.5px solid "+(ativo?"#FF5603":(x.ajustado?"#c4b5fd":"#e2e8f0")),borderRadius:8,padding:"5px 6px",textAlign:"left",cursor:editavel?"pointer":"default",fontFamily:"inherit"}}>
+              <div style={{fontSize:11,fontWeight:800,color:z.cor}}>{x.total}' · {z.nome}</div>
+              <div style={{fontSize:9.5,color:"#475569",marginTop:1,lineHeight:1.25}}>{x.tipo==="intervalado"?(x.series+"x ("+cardioFmtSeg(x.on)+" / "+cardioFmtSeg(x.off)+")"):"contínuo"}{x.ajustado?<b style={{color:"#7e22ce"}}> · ajustado</b>:(x.ajusteDesde?<span style={{color:"#7e22ce"}}> · segue S{x.ajusteDesde}</span>:"")}</div>
+            </button>);})}
+        </div>);})}
+      {editavel&&sel&&selInfo&&(
+        <div style={{border:"1.5px solid #FF5603",background:"#fff7ed",borderRadius:12,padding:"10px 11px",marginTop:6}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{fontSize:12.5,fontWeight:800,color:"#0f172a"}}>Ajustar {nomeT(sel.t)} · semana {sel.s}</div>
+            <button type="button" onClick={()=>setSel(null)} style={{border:"none",background:"transparent",fontSize:16,color:"#94a3b8",cursor:"pointer"}}>✕</button>
+          </div>
+          <div style={{fontSize:11.5,color:"#64748b",marginTop:2}}>{selInfo.texto} · {selInfo.total} min</div>
+          <div style={{fontSize:11,color:"#7e22ce",marginTop:3,fontWeight:700}}>O ajuste vale desta semana em diante. As semanas anteriores não mudam.</div>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginTop:9}}>
+            <span style={{fontSize:11,fontWeight:700,color:"#64748b",width:54}}>Tempo</span>
+            <button type="button" onClick={()=>setAj(sel.t,sel.s,{V:Math.max(5,selInfo.total-1)})} style={{width:30,height:30,borderRadius:8,border:"none",background:"#fff",fontWeight:800,cursor:"pointer"}}>−</button>
+            <b style={{fontSize:14,minWidth:52,textAlign:"center"}}>{selInfo.total} min</b>
+            <button type="button" onClick={()=>setAj(sel.t,sel.s,{V:Math.min(cardioTetoMin(selInfo.separado),selInfo.total+1)})} style={{width:30,height:30,borderRadius:8,border:"none",background:"#fff",fontWeight:800,cursor:"pointer"}}>+</button>
+          </div>
+          <div style={{display:"flex",gap:4,marginTop:8,alignItems:"center"}}>
+            <span style={{fontSize:11,fontWeight:700,color:"#64748b",width:54}}>Intens.</span>
+            {[1,2,3,4].map(v=>{const z=CARDIO_ZONAS[CARDIO_ZK[v]]; const on=selInfo.zona===CARDIO_ZK[v]; return(
+              <button key={v} type="button" onClick={()=>setAj(sel.t,sel.s,{z:v})} style={{flex:1,border:(on?"2px solid ":"1.5px solid ")+(on?z.cor:"#e2e8f0"),background:on?z.bg:"#fff",color:z.cor,borderRadius:8,padding:"6px 2px",fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>{z.nome}</button>);})}
+          </div>
+          {selInfo.ajustado&&<button type="button" onClick={()=>setAj(sel.t,sel.s,null)} style={{marginTop:9,border:"none",background:"transparent",color:"#be123c",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit",padding:0,textDecoration:"underline"}}>Voltar ao automático</button>}
+        </div>
+      )}
+      {editavel&&<div style={{fontSize:10.5,color:"#94a3b8",marginTop:8,lineHeight:1.5}}>Toque na semana para trocar o microciclo (ordinário, choque, recuperativo). Toque numa sessão para ajustar tempo e intensidade: vale daquela semana em diante, nunca para trás.</div>}
     </div>
   );
+};
+
+const CardioPrevia=({cfg,treinoKey,nomeT})=>{
+  if(!cardioTemErgo(cfg))return null;
+  return (<div style={{marginTop:6,marginBottom:14}}><div style={{fontSize:11,fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:8}}>Periodização do cardio</div><CardioMacro cfg={cfg} nomeT={nomeT} editavel={false}/></div>);
 };
 
 // ─── MÉTODOS DE INTENSIFICAÇÃO ───────────────────────────────────────────────
@@ -1838,7 +1971,8 @@ const VerPrograma=({programId,programs,setPrograms,students,assessments,bibCusto
   const [inicioEd,setInicioEd]=useState("");
   const ultAvalCardio=(assessments||[]).filter(a=>a&&a.studentId===prog?.studentId).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0];
   const cardioAuto=cardioAutoDe(student,ultAvalCardio);
-  const cardioInicial=()=>prog&&prog.cardio?JSON.parse(JSON.stringify(prog.cardio)):{treinos:{},intervalado:null,nivel:"padrao",...cardioAuto};
+  // Sem cardio ainda: já abre com a sugestão padrão (rodízio de ergômetros, 20 min em Base, pós-treino)
+  const cardioInicial=()=>prog&&prog.cardio?JSON.parse(JSON.stringify(prog.cardio)):(prog&&cardioPadrao([...((prog.divisao&&prog.divisao.sequencia)||[]),...((prog.blocosConfig||[]).flatMap(b=>b.treinos||[]))],student,ultAvalCardio))||{treinos:{},intervalado:null,nivel:"padrao",...cardioAuto};
   const [cardioEd,setCardioEd]=useState(null);
   useEffect(()=>{if(prog)setCardioEd(cardioInicial());},[programId]);
   useEffect(()=>{if(prog){setTituloEd(prog.titulo||"");setInicioEd(prog.dataInicio||"");setPrescricao(JSON.parse(JSON.stringify(prog.prescricao||{})));setSequencia([...(prog.divisao?.sequencia||["A"])]);setNomes({...(prog.nomesTreinos||{})});setNomesEx({...(prog.nomesExercicios||{})});}},[programId]);
@@ -1853,7 +1987,7 @@ const VerPrograma=({programId,programs,setPrograms,students,assessments,bibCusto
       categoria:prog.origem==="patologia"?prog.patologiaId:null,
       origemProgramaId:prog.id,
       vezesUsada:0,
-      data:{titulo:prog.titulo,freq:prog.freq,divisao:prog.divisao,nomesTreinos:prog.nomesTreinos||null,obs:prog.obs,prescricao,origem:prog.origem,patologiaId:prog.patologiaId||null,cardio:prog.cardio?{treinos:prog.cardio.treinos,intervalado:prog.cardio.intervalado||null,nivel:prog.cardio.nivel||"padrao"}:null}
+      data:{titulo:prog.titulo,freq:prog.freq,divisao:prog.divisao,nomesTreinos:prog.nomesTreinos||null,obs:prog.obs,prescricao,origem:prog.origem,patologiaId:prog.patologiaId||null,cardio:prog.cardio?{treinos:prog.cardio.treinos,intervalado:prog.cardio.intervalado||null,nivel:prog.cardio.nivel||"padrao",micro:prog.cardio.micro||null,ajustes:prog.cardio.ajustes||null}:null}
     };
     const ok=await ModeloDB.save(modelo);
     setModeloSalvando(false);
@@ -2132,7 +2266,7 @@ const VerPrograma=({programId,programs,setPrograms,students,assessments,bibCusto
         onMetodoForward={(mk,patches)=>propagarMetodoCiclo(treinoAtivo,mk,patches)}
       />
       </NomesExCtx.Provider>
-      {(editMode?cardioEd:prog.cardio)&&<CardioPrevia key={treinoAtivo} cfg={editMode?cardioEd:prog.cardio} treinoKey={treinoAtivo} nomeT={nomeT}/>}
+      {!editMode&&prog.cardio&&<CardioPrevia cfg={prog.cardio} treinoKey={treinoAtivo} nomeT={nomeT}/>}
       <div style={{marginTop:16,paddingTop:14,borderTop:"1px solid #f1f5f9"}}>
         <Btn variant="danger" full onClick={deletePrograma}>🗑 Remover programa</Btn>
       </div>
