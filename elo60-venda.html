@@ -104,6 +104,25 @@ const botaoPri = { width: "100%", height: 56, borderRadius: 16, border: "none", 
 const estInput = { width: "100%", height: 52, padding: "0 14px", borderRadius: 14, border: "1.5px solid " + C.borda, fontSize: 16.5, background: "#fff", color: C.escuro, outline: "none" };
 const Campo = ({ rotulo, children }) => h("label", { style: { display: "block", marginBottom: 12 } }, h("span", { style: { display: "block", fontSize: 13.5, fontWeight: 700, color: "#334155", marginBottom: 5 } }, rotulo), children);
 
+
+// ── Modo aluno (aberto pela vitrine do app): o aviso de pagamento vai ligado ao aluno ──
+const ALUNO = Q.get("ctx") === "aluno";
+const SID = Q.get("sid") || "", OID = Q.get("oid") || "";
+const tokenAluno = () => { try { const j = JSON.parse(localStorage.getItem("lv-aluno-auth") || "null"); return (j && (j.access_token || (j.currentSession && j.currentSession.access_token))) || null; } catch (e) { return null; } };
+const avisoAluno = async (d, presente) => {
+  const tk = tokenAluno();
+  if (!ALUNO || !SID || !OID || !tk) return false;
+  const corpo = { id: "av_" + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4), owner_id: OID, student_id: SID, servico: d.produto === "mente" ? "Mente Ativa" : d.produto === "l360" ? (d.titulo || "Longevus 360") : (d.titulo || "Serviço") };
+  const comItem = d.produto ? corpo : { ...corpo, item_id: d.id };
+  const hd = { apikey: SUPA_KEY, Authorization: "Bearer " + tk, "Content-Type": "application/json", Prefer: "return=minimal" };
+  try {
+    let r = await fetch(SUPA_URL + "/rest/v1/l360_avisos", { method: "POST", headers: hd, body: JSON.stringify(presente ? { ...comItem, presente } : comItem) });
+    if (!r.ok && !d.produto) r = await fetch(SUPA_URL + "/rest/v1/l360_avisos", { method: "POST", headers: hd, body: JSON.stringify(presente ? { ...corpo, presente } : corpo) });
+    return r.ok;
+  } catch (e) { return false; }
+};
+const BotaoVoltarApp = () => ALUNO ? h("button", { type: "button", onClick: () => { if (history.length > 1) history.back(); else location.href = base + "aluno.html"; }, style: { display: "inline-flex", alignItems: "center", gap: 6, height: 42, padding: "0 16px 0 10px", borderRadius: 21, border: "1.5px solid rgba(255,255,255,0.28)", background: "rgba(255,255,255,0.10)", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", marginBottom: 14 } }, h(Ico, { d: I.seta, cor: "#fff", tam: 20, larg: 2.6 }), "Voltar") : null;
+
 // ═══ CHECKOUT (folha que sobe) ═══
 function Checkout({ aberto, onFechar, d, pix, valor, temPresente, modoInicial }) {
   const [para, setPara] = useState(modoInicial || "mim");
@@ -150,7 +169,8 @@ function Checkout({ aberto, onFechar, d, pix, valor, temPresente, modoInicial })
     if (env) return;
     setEnv(true); setErro("");
     try {
-      await rpc("rpc_registrar_compra_publica", { p_item_id: d.id, p_nome: f.nome.trim(), p_whatsapp: soDig(f.whats), p_presente: { nome: pr.nome.trim(), whatsapp: soDig(pr.whats), mensagem: pr.msg.trim() } });
+      const pres = { nome: pr.nome.trim(), whatsapp: soDig(pr.whats), mensagem: pr.msg.trim() };
+      if (!(await avisoAluno(d, pres))) await rpc("rpc_registrar_compra_publica", { p_item_id: d.id, p_nome: f.nome.trim(), p_whatsapp: soDig(f.whats), p_presente: { nome: pr.nome.trim(), whatsapp: soDig(pr.whats), mensagem: pr.msg.trim() } });
       setEtapa("feito");
     } catch (e) { setErro("Não conseguimos enviar o aviso. Tente de novo ou fale no WhatsApp."); }
     setEnv(false);
@@ -216,7 +236,7 @@ function Checkout({ aberto, onFechar, d, pix, valor, temPresente, modoInicial })
     !presente ? h("a", { href: LINK_ELO + "?entrar=1", style: { display: "block", textAlign: "center", marginTop: 10, color: C.laranjaTxt, fontWeight: 700, fontSize: 14.5, textDecoration: "none", padding: 6 } }, "Já tenho conta") : null);
 
   const travado = etapa === "abrindo";
-  return h("div", { style: { position: "fixed", inset: 0, zIndex: 400, display: "flex", alignItems: "flex-end", justifyContent: "center" } },
+  return h("div", { style: { position: "fixed", inset: 0, bottom: ALUNO ? "calc(62px + env(safe-area-inset-bottom))" : 0, zIndex: 400, display: "flex", alignItems: "flex-end", justifyContent: "center" } },
     h("div", { onClick: travado ? undefined : onFechar, style: { position: "absolute", inset: 0, background: "rgba(15,23,42,0.55)", animation: "some .25s ease both" } }),
     h("div", { role: "dialog", "aria-modal": "true", "aria-label": "Finalizar compra", className: "rolar", style: { position: "relative", width: "100%", maxWidth: 480, maxHeight: "92vh", overflowY: "auto", background: "#fff", borderRadius: "26px 26px 0 0", padding: "10px 18px calc(22px + env(safe-area-inset-bottom))", animation: "sobe .32s cubic-bezier(.2,.8,.2,1) both" } },
       h("div", { style: { width: 42, height: 5, borderRadius: 3, background: C.borda, margin: "0 auto 10px" } }),
@@ -252,7 +272,7 @@ function App() {
   const temPresente = !!(d.id && pix.pix_key && d.aceitaPresente !== false);
   const pers = primeiro(pix.nome || d.profissional) || "Wellington";
   const inclui = String(d.inclui || INCLUI_PADRAO).split("\n").map((t) => t.trim()).filter(Boolean);
-  const comprar = (modo) => setCheckout(modo || "mim");
+  const comprar = (modo) => { if (ALUNO && (modo || "mim") === "mim") { location.href = LINK_ELO + "?entrar=1&ctx=aluno"; return; } setCheckout(modo || "mim"); };
   const waDuvida = waLink(pix.whatsapp, "Oi, " + pers + "! Vi a página do Elo 60+ e tenho uma dúvida.");
 
   const PARA = [
@@ -278,6 +298,7 @@ function App() {
   return h("div", null,
     // ── HERO ──
     h("div", { style: { background: C.escuro, color: "#F8FAFC", padding: "calc(16px + env(safe-area-inset-top)) 18px 24px", borderRadius: "0 0 30px 30px" } },
+      h(BotaoVoltarApp),
       h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between" } },
         h("img", { src: "logo-wb-claro.png", alt: "Wellington Brito Personal Trainer", style: { height: 54, width: "auto" } }),
         h("span", { style: { fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", color: C.pessego, border: "1px solid rgba(253,186,116,0.45)", borderRadius: 99, padding: "5px 10px" } }, "PARA 60+")),
@@ -298,6 +319,7 @@ function App() {
           h("div", { style: { fontSize: 16, fontWeight: 800, lineHeight: 1.25, marginTop: 2 } }, "Pix, sem cartão"),
           h("div", { style: { fontSize: 12, color: C.cinzaClaro } }, "sem fidelidade"))),
       h("button", { ref: heroBtn, type: "button", onClick: () => comprar("mim"), style: { ...botaoPri, marginTop: 14 } }, "Quero começar agora"),
+      ALUNO ? h("div", { style: { fontSize: 13, color: C.cinzaClaro, textAlign: "center", marginTop: 8 } }, "Entre com o mesmo e-mail e senha do seu app.") : null,
       temPresente ? h("button", { type: "button", onClick: () => comprar("presente"), style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", height: 48, marginTop: 8, borderRadius: 14, border: "1.5px solid rgba(255,255,255,0.22)", background: "transparent", color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer" } }, h(Ico, { d: I.presente, cor: C.pessego, tam: 18 }), "Dar de presente para alguém") : null),
 
     h("div", { style: { padding: "0 16px 120px" } },
@@ -370,7 +392,7 @@ function App() {
       h("div", { style: { textAlign: "center", fontSize: 12, color: C.cinzaClaro, marginTop: 18, lineHeight: 1.6 } }, "Wellington Brito · Personal Trainer · CREF 089836-G/SP", h("br"), "O Elo 60+ não substitui acompanhamento médico.")),
 
     // ── BARRA FIXA ──
-    barra && !checkout ? h("div", { style: { position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 300, display: "flex", justifyContent: "center", animation: "sobe .25s ease both" } },
+    barra && !checkout && !ALUNO ? h("div", { style: { position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 300, display: "flex", justifyContent: "center", animation: "sobe .25s ease both" } },
       h("div", { style: { width: "100%", maxWidth: 480, background: "rgba(255,255,255,0.97)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", borderTop: "1px solid " + C.borda, padding: "10px 16px calc(10px + env(safe-area-inset-bottom))", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 -8px 24px rgba(15,23,42,0.08)" } },
         h("div", { style: { flexShrink: 0 } }, h("div", { style: { fontSize: 11, color: C.cinza } }, "Primeiro mês"), h("div", { style: { fontSize: 19, fontWeight: 800 } }, brl(valor))),
         h("button", { type: "button", onClick: () => comprar("mim"), style: { ...botaoPri, height: 50, fontSize: 16, boxShadow: "none" } }, "Começar agora"))) : null,

@@ -547,8 +547,25 @@
             h("button", { type: "button", onClick: presentear, style: { background: "transparent", border: "none", color: COR.cinza, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", padding: 8, width: "100%", textDecoration: "underline" } }, "Prefere mandar o link para a pessoa comprar?")),
           h("button", { type: "button", onClick: copiar, style: { background: "transparent", border: "none", color: COR.laranjaTxt, fontWeight: 700, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit", padding: 6 } }, linkOk ? "Link copiado" : "Copiar o link do " + (d.titulo || "Elo 60+")))));
   };
+  // Serviços próprios abrem a mesma página de venda das campanhas (modo aluno)
+  const urlVendaAluno = (d, ownerId, studentId) => {
+    if (!d || d.tipo === "parceiro" || d.produto === "indique" || !d.id || String(d.id).indexOf("__") === 0) return null;
+    const q = "?i=" + encodeURIComponent(d.id) + "&ctx=aluno&sid=" + encodeURIComponent(studentId || "") + "&oid=" + encodeURIComponent(ownerId || "");
+    if (d.produto === "elo") return baseLink() + "elo60-venda.html" + q;
+    if (d.produto === "mente" || d.produto === "l360") return baseLink() + "venda.html" + q;
+    const txt = (d.planoNome || "") + " " + (d.titulo || "");
+    if (/presencial|personal/i.test(txt) && !/consult/i.test(d.titulo || "")) return baseLink() + "venda.html?p=presencial&ctx=aluno";
+    if (/avalia|bioimped|consult/i.test(txt)) return baseLink() + "venda.html" + q;
+    return null;
+  };
+  const AbrirVenda = ({ url }) => {
+    useEffect(() => { window.location.href = url; }, []);
+    return h("div", { style: { position: "fixed", inset: 0, zIndex: 320, background: COR.escuro, color: "#CBD5E1", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontFamily: "inherit" } }, "Abrindo...");
+  };
   const Detalhe = ({ item, ctx, onFechar, onClique, ownerId, studentId }) => {
     if (item && item.produto === "indique") return h(IndiqueTela, { item, ctx, ownerId, studentId, onFechar });
+    const urlV = item && !liberado(ctx, item) && !(item.produto === "mente" && !(ctx && ctx.menteBloq)) ? urlVendaAluno(item, ownerId, studentId) : null;
+    if (urlV) return h(AbrirVenda, { url: urlV });
     if (item && item.produto === "elo") return h(EloTela, { item, ctx, onFechar, onClique, ownerId, studentId });
     const d = item;
     const parceiro = d.tipo === "parceiro";
