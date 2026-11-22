@@ -55,7 +55,7 @@
             return { progs, sess };
         }
     };
-    const hojeISO = () => new Date().toISOString().slice(0, 10);
+    const hojeISO = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
     const diasAtras = (iso) => { if (!iso)
         return 9999; return Math.floor((new Date(hojeISO() + "T12:00:00") - new Date(iso + "T12:00:00")) / 86400000); };
     const fmtData = (iso) => iso ? iso.slice(8, 10) + "/" + iso.slice(5, 7) : "";

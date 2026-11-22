@@ -67,6 +67,8 @@ const PLANOS_VENDA_FALLBACK = {
 };
 
 const fmt = (d) => { if(!d) return "—"; const [y,m,dd]=String(d).split("-"); return dd&&m&&y?`${dd}/${m}/${y}`:d; };
+// Data local (Brasil). toISOString usa UTC e, depois das 21h, gravava o dia seguinte.
+const hojeLocal = () => { const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
 const uid2 = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 const baixarContratoHTML = (assinatura) => {
   const d = assinatura.data || {};
@@ -1807,7 +1809,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
       cargasPreenchidas[idx]={exId:it.exId,nome:ex?.nome||"Exercício",carga:v};
     });
     const data = {
-      studentId, atividadeExtraId: atividadeId, date: atividade.date||new Date().toISOString().slice(0,10),
+      studentId, atividadeExtraId: atividadeId, date: atividade.date||hojeLocal(),
       totalEx:(atividade.exercicios||[]).length, completedEx:doneKeysArr.length,
       doneKeys: doneKeysArr, cargas: cargasPreenchidas,
       source: "atividade_extra", createdAt: new Date().toISOString()
@@ -1866,7 +1868,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
     (async()=>{
       try{
         const headers = await authedHeaders();
-        const today = new Date().toISOString().slice(0,10);
+        const today = hojeLocal();
         const r = await fetch(SUPA_URL+"/rest/v1/checkins?select=id&student_id=eq."+encodeURIComponent(studentId)+"&type=eq.pre_treino&data->>date=eq."+today, { headers });
         if(r.ok){ const rows = await r.json(); setPreCheckinDone(rows.length>0); }
       } catch(e){}
@@ -1948,7 +1950,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
     try{
       const headers = await authedHeaders();
       const g = cardioGasto(info, pesoAluno, fracao);
-      const data = { studentId, programId: prog.id, cardioTreinoKey: treinoAtivo, date: new Date().toISOString().slice(0,10),
+      const data = { studentId, programId: prog.id, cardioTreinoKey: treinoAtivo, date: hojeLocal(),
         cardio: { ergo:info.ergo, semana:info.semana, texto:info.texto, total:info.total, fracao, min:g.min, kcal:pesoAluno?g.kcal:null },
         cardioMin: g.min, cardioKcal: pesoAluno?g.kcal:null, cardioKcalKg: g.kcalKg, cardioErgo: info.ergo,
         source: "cardio_separado", createdAt: new Date().toISOString() };
@@ -1964,7 +1966,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
     setSaveError("");
     try{
       const headers = await authedHeaders();
-      const today = new Date().toISOString().slice(0,10);
+      const today = hojeLocal();
       const cargasPreenchidas = {};
       allKeys.forEach(k=>{
         const v = (cargas[k]||"").toString().trim();
@@ -2004,14 +2006,14 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
   };
 
   const temCardioFim = !!(prog && prog.cardio && prog.cardio.treinos && prog.cardio.treinos[treinoAtivo] && CARDIO_ERGOS[prog.cardio.treinos[treinoAtivo].ergo] && !cardioSeparado(prog.cardio,treinoAtivo));
-  const semanaCardioFim = (()=>{ const hj=new Date().toISOString().slice(0,10); return lastSessions.filter(x=>x && prog && x.programId===prog.id && x.treinoKey===treinoAtivo && x.source!=="atividade_extra" && x.date!==hj).length+1; })();
+  const semanaCardioFim = (()=>{ const hj=hojeLocal(); return lastSessions.filter(x=>x && prog && x.programId===prog.id && x.treinoKey===treinoAtivo && x.source!=="atividade_extra" && x.date!==hj).length+1; })();
 
   const salvarCheckin = async () => {
     setCheckinSaving(true);
     setCheckinError("");
     try{
       const headers = await authedHeaders();
-      const today = new Date().toISOString().slice(0,10);
+      const today = hojeLocal();
       const cInfo = temCardioFim ? cardioSemana(prog.cardio, treinoAtivo, semanaCardioFim) : null;
       const fracao = checkin.cardioFeito==="completo" ? 1 : (checkin.cardioFeito==="metade" ? 0.5 : 0);
       const gC = cInfo && fracao>0 ? cardioGasto(cInfo, pesoAluno, fracao) : {min:0,kcal:0};
@@ -2045,7 +2047,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
     setPreCheckinError("");
     try{
       const headers = await authedHeaders();
-      const today = new Date().toISOString().slice(0,10);
+      const today = hojeLocal();
       const data = { ...preCheckin, date: today, source:"aluno_checkin", createdAt: new Date().toISOString() };
       const body = { id: uid2(), owner_id: ownerId, student_id: studentId, type:"pre_treino", data };
       const r = await fetch(SUPA_URL+"/rest/v1/checkins", { method:"POST", headers, body: JSON.stringify(body) });
@@ -2413,7 +2415,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
         })}
 
         {prog && prog.cardio && !cardioSeparado(prog.cardio,treinoAtivo) && (()=>{
-          const hojeC = new Date().toISOString().slice(0,10);
+          const hojeC = hojeLocal();
           const feitas = lastSessions.filter(x=>x && x.programId===prog.id && x.treinoKey===treinoAtivo && x.source!=="atividade_extra" && x.date!==hojeC).length;
           return <CardioCard cfg={prog.cardio} treinoKey={treinoAtivo} semana={feitas+1}/>;
         })()}
@@ -2421,7 +2423,7 @@ const MeuTreino = ({studentId, ownerId, studentName, studentData, bibCustom, con
         {totalCount>0 && (
           <div style={{marginTop:8,marginBottom:20}}>
             {prog && prog.cardio && cardioSeparado(prog.cardio,treinoAtivo) && (()=>{
-              const hojeC = new Date().toISOString().slice(0,10);
+              const hojeC = hojeLocal();
               const doTreino = cardioSessoes.filter(x=>x && x.programId===prog.id && x.cardioTreinoKey===treinoAtivo);
               const feitoHoje = doTreino.some(x=>x.date===hojeC);
               const sem = doTreino.filter(x=>x.date!==hojeC).length+1;
@@ -3419,7 +3421,7 @@ function App(){
     return <TelaContrato studentId={studentId} ownerId={ownerId} studentName={studentName} contratoTextoBase={textoBase} diasRestantes={diasRestantes} onSigned={(body)=>setContratoAssinatura(body)} onLogout={onLogout}/>;
   }
 
-  const hoje = new Date().toISOString().slice(0,10);
+  const hoje = hojeLocal();
   const billing = studentData?.billing;
   const diasParaVencer = billing?.vencimento ? Math.round((new Date(billing.vencimento)-new Date(hoje))/86400000) : null;
   const toleranciaDias = (billing?.toleranciaDias!==undefined && billing?.toleranciaDias!==null && billing?.toleranciaDias!=="") ? (parseInt(billing.toleranciaDias)||0) : (parseInt(profPix?.tolerancia_vencimento_dias) || 0);
