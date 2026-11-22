@@ -1,4 +1,4 @@
-// Longevus · Cardio (painel do professor). Gerado a partir de JSX, sem Babel.
+// Longevus · Cardio e Histórico (painel do professor). Gerado a partir de JSX, sem Babel.
 "use strict";
 (function () {
     const { useState, useEffect } = React;
@@ -181,5 +181,113 @@
                 }))),
             React.createElement("div", { style: { fontSize: 10.5, color: "#94a3b8", lineHeight: 1.5, padding: "0 4px 8px" } }, "Cada cardio conta quando o aluno conclui o cardio no app, seja logo ap\u00F3s a muscula\u00E7\u00E3o ou em outro hor\u00E1rio.")));
     };
-    window.LongevusCardio = { Painel };
+    // ── Histórico do aluno no painel (musculação e cardio) ──
+    const ESF = { 1: "Leve", 2: "Leve a moderado", 3: "Moderado", 4: "Moderado a intenso", 5: "Intenso" };
+    const num = (v) => { const n = parseFloat(String(v || "").replace(",", ".")); return isNaN(n) ? null : n; };
+    const Historico = ({ st }) => {
+        const [dados, setDados] = useState(null);
+        const [erro, setErro] = useState(false);
+        const [filtro, setFiltro] = useState("tudo");
+        useEffect(() => {
+            let vivo = true;
+            if (!st || !st.id || !supa()) {
+                setErro(true);
+                return;
+            }
+            (async () => {
+                try {
+                    const h = await api.headers();
+                    const [d, rc] = await Promise.all([
+                        api.carregar(st.id),
+                        fetch(SUPA_URL + "/rest/v1/checkins?select=data&student_id=eq." + encodeURIComponent(st.id) + "&type=eq.pos_treino&limit=500", { headers: h })
+                    ]);
+                    const checks = rc.ok ? (await rc.json()).map((x) => x && x.data).filter(Boolean) : [];
+                    if (vivo)
+                        setDados({ ...d, checks });
+                }
+                catch (e) {
+                    if (vivo)
+                        setErro(true);
+                }
+            })();
+            return () => { vivo = false; };
+        }, [st && st.id]);
+        if (erro)
+            return React.createElement(Caixa, { style: { textAlign: "center", color: "#94a3b8" } }, "N\u00E3o foi poss\u00EDvel carregar o hist\u00F3rico agora.");
+        if (!dados)
+            return React.createElement(Caixa, { style: { textAlign: "center", color: "#94a3b8" } }, "Carregando hist\u00F3rico...");
+        const progNome = {};
+        dados.progs.forEach((p) => { progNome[p.id] = p; });
+        const nomeT = (s, t) => { const p = progNome[s.programId]; return ((p && p.nomesTreinos && p.nomesTreinos[t]) || "").trim() || NOMES[t] || t || "Treino"; };
+        const musc = dados.sess.filter((s) => s.treinoKey && s.source !== "cardio_separado" && s.source !== "atividade_extra");
+        const cardios = dados.sess.filter((s) => s.source === "cardio_separado");
+        const musc30 = musc.filter((s) => diasAtras(s.date) <= 29).length, card30 = cardios.filter((s) => diasAtras(s.date) <= 29).length;
+        const ordMusc = [...musc].sort((a, b) => (a.date || "").localeCompare(b.date || "") || (a.createdAt || "").localeCompare(b.createdAt || ""));
+        const antes = (s, exId) => { const i = ordMusc.indexOf(s); for (let j = i - 1; j >= 0; j--) {
+            const o = ordMusc[j];
+            const l = (o.exercicios || []).find((x) => x.exId === exId && x.carga) || Object.values(o.cargas || {}).find((x) => x.exId === exId && x.carga);
+            if (l)
+                return l.carga;
+        } return null; };
+        const ckDe = (s) => dados.checks.find((k) => k.date === s.date && k.treinoKey === s.treinoKey) || dados.checks.find((k) => k.date === s.date && k.source === "professor_presencial");
+        const itens = [
+            ...(filtro !== "cardio" ? musc.map((s) => ({ t: "m", s })) : []),
+            ...(filtro !== "musc" ? cardios.map((s) => ({ t: "c", s })) : [])
+        ].sort((a, b) => (b.s.date || "").localeCompare(a.s.date || "") || (b.s.createdAt || "").localeCompare(a.s.createdAt || "")).slice(0, 40);
+        const chip = (k, l) => React.createElement("button", { key: k, type: "button", onClick: () => setFiltro(k), style: { background: filtro === k ? "#0f172a" : "#f1f5f9", color: filtro === k ? "#fff" : "#475569", border: "none", borderRadius: 99, padding: "7px 12px", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" } }, l);
+        const th = { padding: "5px 4px", textAlign: "left", color: "#94a3b8", fontSize: 10.5, textTransform: "uppercase", fontWeight: 800 };
+        const td = { padding: "5px 4px", textAlign: "left", borderTop: "1px solid #f1f5f9", fontSize: 12, color: "#0f172a" };
+        return (React.createElement("div", null,
+            React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" } },
+                React.createElement(Stat, { valor: musc30, rotulo: "Treinos", sub: "\u00FAltimos 30 dias", cor: "#FF5603" }),
+                React.createElement(Stat, { valor: card30, rotulo: "Cardios", sub: "\u00FAltimos 30 dias", cor: "#e11d48" })),
+            React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 12 } },
+                chip("tudo", "Tudo"),
+                chip("musc", "Musculação"),
+                chip("cardio", "Cardio")),
+            itens.length === 0 && React.createElement(Caixa, { style: { textAlign: "center", color: "#94a3b8" } }, "Nenhum registro ainda."),
+            itens.map((it, i) => {
+                const s = it.s;
+                if (it.t === "c") {
+                    const eg = ERGOS[s.cardioErgo || (s.cardio && s.cardio.ergo)];
+                    const parcial = s.cardio && s.cardio.fracao != null && s.cardio.fracao < 0.95;
+                    return (React.createElement(Caixa, { key: i, style: { border: "1.5px solid #fecdd3", padding: "11px 13px" } },
+                        React.createElement("div", { style: { fontWeight: 800, fontSize: 13.5 } },
+                            "\u2764\uFE0F ",
+                            fmtData(s.date),
+                            " \u00B7 Cardio",
+                            eg ? " · " + eg.icone + " " + eg.nome : "",
+                            s.momento === "pos_treino" ? " · pós-treino" : ""),
+                        React.createElement("div", { style: { fontSize: 12, color: "#64748b", marginTop: 2 } }, [s.cardio && s.cardio.texto, s.cardio && s.cardio.semana ? "semana " + s.cardio.semana : null, parcial ? (s.cardioMin + " min feitos · parcial") : "completo", s.cardioKcal ? "cerca de " + s.cardioKcal + " kcal" : null].filter(Boolean).join(" · "))));
+                }
+                const ck = ckDe(s);
+                const linhas = s.exercicios && s.exercicios.length ? s.exercicios : Object.values(s.cargas || {}).map((c) => ({ exId: c.exId, nome: c.nome, carga: c.carga, feito: true }));
+                const det = [ck && ck.duracao ? ck.duracao + " min" : null, ck && ck.esforco ? ESF[ck.esforco] : null, s.totalEx ? (s.completedEx + " de " + s.totalEx + " exercícios") : null, ck && ck.dor && ck.dor !== "nenhuma" ? "dor: " + ck.dor : null].filter(Boolean).join(" · ");
+                return (React.createElement(Caixa, { key: i, style: { border: "1.5px solid #fed7aa", padding: "11px 13px" } },
+                    React.createElement("div", { style: { fontWeight: 800, fontSize: 13.5 } },
+                        "\uD83D\uDCAA ",
+                        fmtData(s.date),
+                        " \u00B7 ",
+                        nomeT(s, s.treinoKey)),
+                    det && React.createElement("div", { style: { fontSize: 12, color: "#64748b", marginTop: 2 } }, det),
+                    linhas.length > 0 && (React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", marginTop: 7 } },
+                        React.createElement("thead", null,
+                            React.createElement("tr", null,
+                                React.createElement("th", { style: th }, "Exerc\u00EDcio"),
+                                React.createElement("th", { style: th }, "S x R"),
+                                React.createElement("th", { style: th }, "Carga"),
+                                React.createElement("th", { style: th }, "Antes"))),
+                        React.createElement("tbody", null, linhas.map((l, j) => {
+                            const ant = l.exId ? antes(s, l.exId) : null;
+                            const a = num(ant), c = num(l.carga);
+                            const comp = a == null || c == null ? null : (c > a ? ["↑ " + ant, "#16a34a"] : (c < a ? ["↓ " + ant, "#dc2626"] : ["= " + ant, "#64748b"]));
+                            return (React.createElement("tr", { key: j },
+                                React.createElement("td", { style: { ...td, color: l.feito === false ? "#94a3b8" : "#0f172a", textDecoration: l.feito === false ? "line-through" : "none" } }, l.nome),
+                                React.createElement("td", { style: td }, l.feito === false ? "—" : ((l.series || "") && (l.reps || "") ? l.series + "x" + l.reps : "—")),
+                                React.createElement("td", { style: { ...td, fontWeight: 800 } }, l.carga ? l.carga : "—"),
+                                React.createElement("td", { style: { ...td, color: comp ? comp[1] : "#cbd5e1", fontWeight: 700 } }, comp ? comp[0] : "—")));
+                        }))))));
+            })));
+    };
+    window.LongevusCardio = { Painel, Historico };
 })();
