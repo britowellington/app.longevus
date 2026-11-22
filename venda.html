@@ -550,9 +550,9 @@ function App() {
     Promise.all(PLANOS_PRES.map(([slug, rot, sub, fb]) => rpc("rpc_obter_plano_venda", { p_prof_id: PROF_ID, p_slug: slug }).then((r) => { const x = Array.isArray(r) ? r[0] : r; return x && x.nome ? { slug, nome: rot, sub, valor: Number(x.valor) || fb, mes: true } : null; }).catch(() => "erro")))
       .then((l) => { const ok = l.filter((x) => x && x !== "erro"); setPlPres(ok.length ? ok : PLANOS_PRES.map(([slug, rot, sub, fb]) => ({ slug, nome: rot, sub, valor: fb, mes: true }))); });
   }, [pronto, tipo]);
-  const planos = tipo === "presencial" ? (plPres || []) : (d.cobranca === "plano" && d.planoSlug ? [{ slug: d.planoSlug, nome: d.planoNome || nome, valor: Number(d.planoValor) || 0, mes: !/consult/i.test(d.planoNome || nome) }] : null);
+  const planos = tipo === "presencial" ? (plPres || []) : (!ALUNO && d.cobranca === "plano" && d.planoSlug ? [{ slug: d.planoSlug, nome: d.planoNome || nome, valor: Number(d.planoValor) || 0, mes: !/consult/i.test(d.planoNome || nome) }] : null);
 
-  const valor = planos && planos.length ? Math.min.apply(null, planos.map((x) => x.valor)) : (valorNum(d.valor || d.preco) || P.padrao);
+  const valor = planos && planos.length ? Math.min.apply(null, planos.map((x) => x.valor)) : (valorNum(d.valor || d.preco) || Number(d.planoValor) || P.padrao);
   const porDia = Math.ceil((valor / 30) * 100) / 100;
   const temPresente = !!(d.id && pix.pix_key && d.aceitaPresente !== false);
   const waVenda = (msg) => waLink(pix.whatsapp, msg || P.waMsg) || waLink("11977431011", msg || P.waMsg);
