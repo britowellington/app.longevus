@@ -1412,7 +1412,7 @@
     (checkins || []).forEach((c) => {
       if (c.source === "cardio_separado") {
         const mC = nutriNum(c.cardioMin);
-        add(c.date, { rotulo: "Cardio" + (mC ? " · " + Math.round(mC) + " min" : ""), kcal: cardioKcalDe(c), semDuracao: !mC, tipo: "treino" });
+        add(c.date, { rotulo: "Cardio" + (mC ? " · " + Math.round(mC) + " min" : "") + (c.cardioKcalFonte === "relogio" ? " · relógio" : ""), kcal: cardioKcalDe(c), semDuracao: !mC, tipo: "treino" });
         return;
       }
       const presencial0 = c.source === "professor_presencial";
@@ -1420,8 +1420,9 @@
       if (presencial0 && !nutriNum(c.duracao) && (checkins || []).some((o) => o.date === c.date && o.source !== "professor_presencial" && nutriNum(o.duracao))) return;
       const min = nutriNum(c.duracao), met = ENERGIA_MET_ESFORCO[c.esforco] || 4;
       const presencial = c.source === "professor_presencial";
-      add(c.date, { rotulo: (presencial ? "Treino presencial" : "Treino") + (min ? " · " + Math.round(min) + " min" : ""), kcal: energiaKcal(met, peso, min), semDuracao: !min, tipo: "treino" });
-      if (nutriNum(c.cardioMin) && cardioKcalDe(c)) add(c.date, { rotulo: "Cardio do treino · " + Math.round(nutriNum(c.cardioMin)) + " min", kcal: cardioKcalDe(c), tipo: "treino" });
+      const relM = !presencial && c.musculacaoKcalFonte === "relogio" && nutriNum(c.musculacaoKcal) > 0;
+      add(c.date, { rotulo: (presencial ? "Treino presencial" : "Treino") + (min ? " · " + Math.round(min) + " min" : "") + (relM ? " · relógio" : ""), kcal: relM ? Math.round(nutriNum(c.musculacaoKcal)) : energiaKcal(met, peso, min), semDuracao: !min && !relM, tipo: "treino" });
+      if (nutriNum(c.cardioMin) && cardioKcalDe(c)) add(c.date, { rotulo: "Cardio do treino · " + Math.round(nutriNum(c.cardioMin)) + " min" + (c.cardioKcalFonte === "relogio" ? " · relógio" : ""), kcal: cardioKcalDe(c), tipo: "treino" });
     });
     (atividades || []).forEach((a) => {
       const def = (a.modalidade ? null : ENERGIA_ATIVIDADES.find((x) => x[0] === a.tipo)) || [a.tipo, a.rotulo || "Atividade", nutriNum(a.met) || 4];
