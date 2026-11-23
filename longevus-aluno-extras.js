@@ -180,7 +180,7 @@
       const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
       const timer = setTimeout(() => {
         if (ctrl) ctrl.abort();
-      }, 45e3);
+      }, 58e3);
       try {
         r = await fetch(SUPA_URL + "/functions/v1/analisar-refeicao", { method: "POST", headers: h, body: JSON.stringify(payload), signal: ctrl ? ctrl.signal : void 0 });
       } catch (e) {
@@ -195,9 +195,9 @@
       } catch (e) {
       }
       if (!r.ok || !j || j.erro) {
-        const msg = j && j.erro || "Falha na análise (HTTP " + r.status + ")";
-        const det = j && j.detalhe ? String(j.detalhe).slice(0, 220) : "";
-        throw new Error(det ? msg + "\n\nDetalhe técnico: " + det : msg);
+        if (j && j.detalhe) console.warn("analisar-refeicao:", j.detalhe);
+        const msg = r.status === 503 || r.status === 504 ? "A análise está congestionada agora. Tente de novo em alguns minutos ou toque em Preencher manualmente." : j && j.erro || "Não consegui analisar agora. Tente de novo ou preencha manualmente.";
+        throw new Error(msg);
       }
       return j;
     }
