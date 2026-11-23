@@ -1619,5 +1619,45 @@
       return /* @__PURE__ */ React.createElement(NutriCard, { key: c.id, style: { padding: "12px 14px", marginBottom: 8 } }, /* @__PURE__ */ React.createElement("div", { onClick: () => setCardAberto(aberto ? null : c.id), style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, cursor: "pointer" } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, fontSize: 14 } }, (c.favorito ? "♥ " : "") + cardapioTitulo(c)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b" } }, "gerado em " + nutriDataCurta(c.criadoEm) + " · " + (c.alvos || []).length + " refeição(ões) · " + nutriFmt(c.meta && c.meta.kcal) + " kcal/dia")), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16, color: "#94a3b8" } }, aberto ? "▴" : "▾")), aberto && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 10, borderTop: "1px solid #f1f5f9", paddingTop: 10 } }, /* @__PURE__ */ React.createElement(CardapioVer, { c })));
     }));
   };
-  window.LongevusAlimentacao = { Painel: NutriPainel };
+  const pesoAluno = async (studentId) => {
+    const [m, al] = await Promise.all([nutriApi.metas(studentId), antroApi.listar(studentId)]);
+    const med = antroMedidas(al || [], [], m || {});
+    return med.peso && med.peso.v || nutriNum(m && m.peso) || null;
+  };
+  const resumoAlimentar = async (st, ini, fim, assessments) => {
+    const [lista, m, al, ck, at] = await Promise.all([nutriApi.listar(st.id, ini, fim), nutriApi.metas(st.id), antroApi.listar(st.id), energiaApi.checkins(st.id, ini, fim), energiaApi.atividades(st.id, ini, fim)]);
+    const metas = m || {};
+    const antro = al || [];
+    const med = antroMedidas(antro, (assessments || []).filter((a) => a.studentId === st.id), metas);
+    const eBase = energiaBase(st, antro, med);
+    const ex = energiaExercicio(ck || [], at || [], eBase.peso);
+    const plano = metas.energia && metas.energia.objetivo ? metas.energia : null;
+    const porDia = {};
+    (lista || []).forEach((r) => {
+      if (!r.date) return;
+      if (!porDia[r.date]) porDia[r.date] = { kcal: 0, prot: 0 };
+      porDia[r.date].kcal += nutriNum(r.totais && r.totais.kcal);
+      porDia[r.date].prot += nutriNum(r.totais && r.totais.prot);
+    });
+    const dias = [];
+    for (let d = ini; d <= fim; d = nutriDiaMais(d, 1)) dias.push(d);
+    const reg = dias.filter((d) => porDia[d] && porDia[d].kcal > 0);
+    const media = (l) => l.length ? Math.round(l.reduce((a, b) => a + b, 0) / l.length) : null;
+    const defs = reg.map((d) => {
+      const e = energiaDia(plano, eBase, ex[d] ? ex[d].kcal : 0);
+      return e && e.gasto ? e.gasto - porDia[d].kcal : null;
+    }).filter((v) => v != null);
+    const aguaMeta = nutriMetaAgua(metas, eBase.peso);
+    const pesos = antro.filter((r) => r.status !== "pendente" && antroNum(r.peso) && r.date && r.date <= fim);
+    const ult = pesos[pesos.length - 1], ant = pesos[pesos.length - 2];
+    const pesoVar = ult && ant && ult.date >= ini ? Math.round((antroNum(ult.peso) - antroNum(ant.peso)) * 10) / 10 : null;
+    return {
+      dias: dias.length, registrados: reg.length, deficitMedio: media(defs),
+      metaDeficit: plano && plano.objetivo === "emagrecer" ? nutriNum(plano.ajuste) || null : null,
+      protMedia: media(reg.map((d) => porDia[d].prot)), metaProt: nutriNum(metas.prot) || null,
+      aguaMeta, aguaDiasMeta: aguaMeta ? dias.filter((d) => nutriAguaDia(metas, d) >= aguaMeta).length : 0, aguaReg: dias.filter((d) => nutriAguaDia(metas, d) > 0).length,
+      peso: eBase.peso || null, pesoVar, pesoAntesData: ant ? ant.date : null
+    };
+  };
+  window.LongevusAlimentacao = { Painel: NutriPainel, peso: pesoAluno, resumoAlimentar };
 })();
