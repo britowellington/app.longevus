@@ -1420,7 +1420,7 @@
       if (presencial0 && !nutriNum(c.duracao) && (checkins || []).some((o) => o.date === c.date && o.source !== "professor_presencial" && nutriNum(o.duracao))) return;
       const min = nutriNum(c.duracao), met = ENERGIA_MET_ESFORCO[c.esforco] || 4;
       const presencial = c.source === "professor_presencial";
-      const relM = !presencial && c.musculacaoKcalFonte === "relogio" && nutriNum(c.musculacaoKcal) > 0;
+      const relM = c.musculacaoKcalFonte === "relogio" && nutriNum(c.musculacaoKcal) > 0;
       add(c.date, { rotulo: (presencial ? "Treino presencial" : "Treino") + (min ? " · " + Math.round(min) + " min" : "") + (relM ? " · relógio" : ""), kcal: relM ? Math.round(nutriNum(c.musculacaoKcal)) : energiaKcal(met, peso, min), semDuracao: !min && !relM, tipo: "treino" });
       if (nutriNum(c.cardioMin) && cardioKcalDe(c)) add(c.date, { rotulo: "Cardio do treino · " + Math.round(nutriNum(c.cardioMin)) + " min" + (c.cardioKcalFonte === "relogio" ? " · relógio" : ""), kcal: cardioKcalDe(c), tipo: "treino" });
     });
