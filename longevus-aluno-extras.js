@@ -174,13 +174,20 @@
       const ok = await this.salvarMetas(studentId, ownerId, novo);
       return ok ? novo : null;
     },
+    async salvarMarmitas(studentId, ownerId, fn) {
+      const atual = await this.metas(studentId);
+      if (atual === null) return null;
+      const lista = fn((atual.marmitas || []).slice());
+      const ok = await this.salvarMetas(studentId, ownerId, { ...atual, marmitas: lista });
+      return ok ? lista : null;
+    },
     async analisar(payload) {
       const h = await this.headers();
       let r;
       const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
       const timer = setTimeout(() => {
         if (ctrl) ctrl.abort();
-      }, 58e3);
+      }, 45e3);
       try {
         r = await fetch(SUPA_URL + "/functions/v1/analisar-refeicao", { method: "POST", headers: h, body: JSON.stringify(payload), signal: ctrl ? ctrl.signal : void 0 });
       } catch (e) {
@@ -195,9 +202,9 @@
       } catch (e) {
       }
       if (!r.ok || !j || j.erro) {
-        if (j && j.detalhe) console.warn("analisar-refeicao:", j.detalhe);
-        const msg = r.status === 503 || r.status === 504 ? "A análise está congestionada agora. Tente de novo em alguns minutos ou toque em Preencher manualmente." : j && j.erro || "Não consegui analisar agora. Tente de novo ou preencha manualmente.";
-        throw new Error(msg);
+        const msg = j && j.erro || "Falha na análise (HTTP " + r.status + ")";
+        const det = j && j.detalhe ? String(j.detalhe).slice(0, 220) : "";
+        throw new Error(det ? msg + "\n\nDetalhe técnico: " + det : msg);
       }
       return j;
     }
@@ -326,6 +333,7 @@
       if (fresco) {
         if (fresco.aguaDias) limpo.aguaDias = fresco.aguaDias;
         if (fresco.aguaDesde) limpo.aguaDesde = fresco.aguaDesde;
+        if (fresco.marmitas) limpo.marmitas = fresco.marmitas;
       }
       limpo.atualizadoPor = papel;
       limpo.atualizadoEm = (/* @__PURE__ */ new Date()).toISOString();
@@ -375,7 +383,25 @@
     return /* @__PURE__ */ React.createElement("button", { type: "button", onClick: disabled ? void 0 : onClick, disabled, style: { height: 50, borderRadius: 25, fontSize: 15, fontWeight: 700, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.55 : 1, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", ...s, ...style || {} } }, children);
   };
   const NutriCamera = ({ cor }) => /* @__PURE__ */ React.createElement("svg", { width: "20", height: "20", viewBox: "0 0 24 24", fill: "none", stroke: cor || "#fff", strokeWidth: "1.9", strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true" }, /* @__PURE__ */ React.createElement("path", { d: "M4 8h3l2-3h6l2 3h3v11H4z" }), /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "13", r: "3.5" }));
+  const nutriItensLinha = (itens) => (itens || []).map((i) => i.nome + (nutriNum(i.gramas) ? " " + nutriFmt(i.gramas) + " g" : "")).join(" · ");
   const NutriRegistro = ({ dia, tipoInicial, onCancelar, onSalvo, studentId, ownerId }) => {
+    const [aba, setAba] = useState("foto");
+    const [marmitas, setMarmitas] = useState(null);
+    const [recentes, setRecentes] = useState(null);
+    const [escolha, setEscolha] = useState(null);
+    useEffect(() => {
+      if (aba === "marmitas" && marmitas === null) nutriApi.metas(studentId).then((m) => setMarmitas(m && m.marmitas || [])).catch(() => setMarmitas([]));
+      if (aba === "recentes" && recentes === null) nutriApi.listar(studentId, nutriDiaMais(dia, -14), dia).then((l) => {
+        const vistos = {};
+        const out = (l || []).filter((r) => (r.itens || []).length).sort((a, b) => ((b.date || "") + (b.hora || "")).localeCompare((a.date || "") + (a.hora || ""))).filter((r) => {
+          const k = (r.itens || []).map((i) => (i.nome || "").toLowerCase() + ":" + Math.round(nutriNum(i.gramas))).join("|");
+          if (vistos[k]) return false;
+          vistos[k] = 1;
+          return true;
+        }).slice(0, 20);
+        setRecentes(out);
+      }).catch(() => setRecentes([]));
+    }, [aba]);
     const [etapa, setEtapa] = useState("inicio");
     const [tipo, setTipo] = useState(tipoInicial || "almoco");
     const [texto, setTexto] = useState("");
@@ -470,8 +496,10 @@
     const remover = (uid) => setItens((p) => p.filter((i) => i.uid !== uid));
     const valoresLista = itens.map((i) => ({ nome: (i.nome || "").trim() || "Alimento", vazio: !(i.nome || "").trim() && !nutriNum(i.base.kcal), ...nutriValores(i) })).filter((i) => !i.vazio).map(({ vazio, ...resto }) => resto);
     const totais = nutriSomar(valoresLista);
-    const salvar = async () => {
-      if (!valoresLista.length) {
+    const salvar = async (listaOpc, origemOpc, marmitaId) => {
+      const lista = Array.isArray(listaOpc) ? listaOpc : valoresLista;
+      const tot = Array.isArray(listaOpc) ? nutriSomar(lista) : totais;
+      if (!lista.length) {
         setErro("Adicione pelo menos um alimento.");
         return;
       }
@@ -479,8 +507,8 @@
       setErro("");
       const agora = /* @__PURE__ */ new Date();
       const t = {};
-      Object.keys(totais).forEach((k) => {
-        t[k] = Math.round(totais[k] * 10) / 10;
+      Object.keys(tot).forEach((k) => {
+        t[k] = Math.round(tot[k] * 10) / 10;
       });
       t.kcal = Math.round(t.kcal);
       const refeicao = {
@@ -488,8 +516,8 @@
         date: dia,
         hora: String(agora.getHours()).padStart(2, "0") + ":" + String(agora.getMinutes()).padStart(2, "0"),
         tipo,
-        origem,
-        itens: valoresLista,
+        origem: typeof origemOpc === "string" ? origemOpc : origem,
+        itens: lista,
         totais: t,
         createdAt: agora.toISOString()
       };
@@ -499,6 +527,7 @@
         setErro("Não consegui salvar. Confira a conexão e tente de novo.");
         return;
       }
+      if (typeof marmitaId === "string") nutriApi.salvarMarmitas(studentId, ownerId, (l) => l.map((m) => m.id === marmitaId ? { ...m, usos: (m.usos || 0) + 1 } : m));
       onSalvo(refeicao);
     };
     const chipTipo = /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, marginBottom: 14 } }, NUTRI_TIPOS.map((t) => {
@@ -510,7 +539,47 @@
       return /* @__PURE__ */ React.createElement("div", { style: { padding: "80px 24px", textAlign: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { width: 56, height: 56, borderRadius: 28, border: "4px solid #ffe8d5", borderTopColor: NUTRI_LARANJA, margin: "0 auto 18px", animation: "nutriGira 0.9s linear infinite" } }), /* @__PURE__ */ React.createElement("style", null, "@keyframes nutriGira{to{transform:rotate(360deg)}}"), /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, fontSize: 16, marginBottom: 6 } }, segundos < 12 ? "Analisando sua refeição" : "Quase lá..."), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13, color: "#64748b", lineHeight: 1.5 } }, segundos < 12 ? "Identificando os alimentos e as porções. A foto não fica salva." : segundos < 25 ? "Está levando um pouco mais que o normal. Calculando os macros." : "O serviço está mais lento agora. Se passar de 45 segundos, eu aviso e você pode descrever a refeição."));
     }
     if (etapa === "inicio") {
-      return /* @__PURE__ */ React.createElement("div", { style: { padding: "18px 16px 24px" } }, cabecalho("Registrar refeição", dia === nutriHoje() ? "Hoje" : nutriDiaSemana(dia) + ", " + nutriDataCurta(dia)), chipTipo, /* @__PURE__ */ React.createElement("input", { ref: camRef, type: "file", accept: "image/*", capture: "environment", onChange: onFoto, style: { display: "none" } }), /* @__PURE__ */ React.createElement("input", { ref: galRef, type: "file", accept: "image/*", onChange: onFoto, style: { display: "none" } }), /* @__PURE__ */ React.createElement(NutriBotao, { onClick: () => camRef.current && camRef.current.click() }, /* @__PURE__ */ React.createElement(NutriCamera, null), "Tirar foto do prato"), /* @__PURE__ */ React.createElement(NutriBotao, { tipo: "sec", onClick: () => galRef.current && galRef.current.click(), style: { marginTop: 8 } }, "Escolher foto da galeria"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, margin: "20px 0 12px", color: "#94a3b8", fontSize: 12 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 1, background: "#e2e8f0" } }), "ou descreva", /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 1, background: "#e2e8f0" } })), /* @__PURE__ */ React.createElement("textarea", { value: texto, onChange: (e) => setTexto(e.target.value), placeholder: "Ex.: 1 concha de feijão, 4 colheres de arroz, 1 filé de frango grelhado", rows: 3, style: { width: "100%", boxSizing: "border-box", borderRadius: 12, border: "1.5px solid #e2e8f0", padding: 12, fontSize: 14, fontFamily: "inherit", resize: "vertical", marginBottom: 8 } }), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginBottom: 10 } }, 'Se tirar foto, esse texto ajuda a análise (ex.: "frito no azeite").'), /* @__PURE__ */ React.createElement(NutriBotao, { tipo: "sec", onClick: porTexto }, "Analisar só pela descrição"), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: manual, style: { display: "block", margin: "14px auto 0", background: "transparent", border: "none", color: NUTRI_LARANJA_TXT, fontSize: 14, fontWeight: 700, cursor: "pointer", padding: 8, fontFamily: "inherit" } }, "Preencher manualmente"), erro && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 12, fontSize: 13, color: "#dc2626", textAlign: "center", lineHeight: 1.5, whiteSpace: "pre-line", wordBreak: "break-word" } }, erro), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 18, fontSize: 11, color: "#94a3b8", textAlign: "center", lineHeight: 1.5 } }, "Os valores são estimativas para acompanhamento e não substituem a orientação de um nutricionista."));
+      return /* @__PURE__ */ React.createElement("div", { style: { padding: "18px 16px 24px" } }, cabecalho("Registrar refeição", dia === nutriHoje() ? "Hoje" : nutriDiaSemana(dia) + ", " + nutriDataCurta(dia)), chipTipo, React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 14 } }, [["foto", "📷 Foto"], ["marmitas", "🍱 Marmitas"], ["recentes", "🕘 Recentes"]].map(([k, l]) => React.createElement("button", { key: k, type: "button", onClick: () => {
+        setAba(k);
+        setEscolha(null);
+        setErro("");
+      }, style: { flex: 1, height: 40, borderRadius: 12, border: "1.5px solid " + (aba === k ? NUTRI_LARANJA : "#e2e8f0"), background: aba === k ? "#FFF4EE" : "#fff", color: aba === k ? NUTRI_LARANJA_TXT : "#64748b", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" } }, l))), aba !== "foto" && (() => {
+        const lista = aba === "marmitas" ? marmitas : recentes;
+        if (lista === null) return React.createElement("div", { style: { textAlign: "center", color: "#94a3b8", fontSize: 13, padding: "24px 0" } }, "Carregando...");
+        if (!lista.length) return React.createElement("div", { style: { textAlign: "center", color: "#64748b", fontSize: 13, padding: "20px 8px", lineHeight: 1.5 } }, aba === "marmitas" ? "Você ainda não tem marmitas salvas. Abra uma refeição registrada e toque em Salvar como marmita." : "Nenhuma refeição registrada nos últimos 14 dias.");
+        const ontem = nutriDiaMais(nutriHoje(), -1);
+        return React.createElement("div", null, React.createElement("div", { style: { fontSize: 12, color: "#64748b", marginBottom: 6 } }, aba === "marmitas" ? "Suas refeições salvas, com o peso de cada item." : "Suas refeições dos últimos 14 dias."), lista.map((r) => {
+          const id = r.id;
+          const on = escolha === id;
+          const titulo = aba === "marmitas" ? r.nome : (r.date === nutriHoje() ? "Hoje" : r.date === ontem ? "Ontem" : nutriDiaSemana(r.date) + " " + nutriDataCurta(r.date)) + " · " + nutriTipoNome(r.tipo);
+          const tt = r.totais || nutriSomar(r.itens || []);
+          return React.createElement("div", { key: id, onClick: () => setEscolha(on ? null : id), style: { border: "1.5px solid " + (on ? "#16A34A" : "#e2e8f0"), background: on ? "#F0FDF4" : "#fff", borderRadius: 14, padding: "11px 13px", marginBottom: 8, cursor: "pointer" } },
+            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" } }, React.createElement("b", { style: { fontSize: 14, color: "#0f172a" } }, titulo), React.createElement("span", { style: { fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap" } }, aba === "marmitas" ? r.usos ? "usada " + r.usos + "x" : r.criadoPor === "professor" ? "do seu professor" : "" : r.hora || "")),
+            React.createElement("div", { style: { fontSize: 12, color: "#64748b", marginTop: 2, lineHeight: 1.4 } }, nutriItensLinha(r.itens)),
+            React.createElement("div", { style: { fontSize: 12, color: "#475569", fontWeight: 700, marginTop: 4 } }, nutriFmt(tt.kcal) + " kcal · " + nutriFmtG(tt.prot) + " g proteína"),
+            on && React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 10 } },
+              React.createElement("button", { type: "button", onClick: (ev) => {
+                ev.stopPropagation();
+                setItens((r.itens || []).map(nutriItemDaIA));
+                setOrigem(aba === "marmitas" ? "marmita" : "repetida");
+                setEtapa("revisao");
+              }, style: { flex: 1, height: 42, borderRadius: 21, border: "1.5px solid #e2e8f0", background: "#fff", fontSize: 13, fontWeight: 700, color: "#0f172a", cursor: "pointer", fontFamily: "inherit" } }, "Ajustar itens"),
+              React.createElement("button", { type: "button", disabled: salvando, onClick: (ev) => {
+                ev.stopPropagation();
+                const l = (r.itens || []).map((i) => nutriValores(nutriItemDaIA(i))).map((v, ix) => ({ nome: (r.itens[ix].nome || "Alimento"), ...v }));
+                salvar(l, aba === "marmitas" ? "marmita" : "repetida", aba === "marmitas" ? id : null);
+              }, style: { flex: 1.3, height: 42, borderRadius: 21, border: "none", background: NUTRI_LARANJA, color: "#fff", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" } }, salvando ? "Salvando..." : "Registrar igual")),
+            on && aba === "marmitas" && React.createElement("button", { type: "button", onClick: async (ev) => {
+              ev.stopPropagation();
+              if (!window.confirm("Excluir a marmita " + r.nome + "?")) return;
+              const nl = await nutriApi.salvarMarmitas(studentId, ownerId, (l) => l.filter((m) => m.id !== id));
+              if (nl) {
+                setMarmitas(nl);
+                setEscolha(null);
+              } else alert("Não consegui excluir. Tente de novo.");
+            }, style: { display: "block", margin: "8px auto 0", background: "transparent", border: "none", color: "#94a3b8", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "Excluir marmita"));
+        }));
+      })(), aba === "foto" && React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("input", { ref: camRef, type: "file", accept: "image/*", capture: "environment", onChange: onFoto, style: { display: "none" } }), /* @__PURE__ */ React.createElement("input", { ref: galRef, type: "file", accept: "image/*", onChange: onFoto, style: { display: "none" } }), /* @__PURE__ */ React.createElement(NutriBotao, { onClick: () => camRef.current && camRef.current.click() }, /* @__PURE__ */ React.createElement(NutriCamera, null), "Tirar foto do prato"), /* @__PURE__ */ React.createElement(NutriBotao, { tipo: "sec", onClick: () => galRef.current && galRef.current.click(), style: { marginTop: 8 } }, "Escolher foto da galeria"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, margin: "20px 0 12px", color: "#94a3b8", fontSize: 12 } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 1, background: "#e2e8f0" } }), "ou descreva", /* @__PURE__ */ React.createElement("div", { style: { flex: 1, height: 1, background: "#e2e8f0" } })), /* @__PURE__ */ React.createElement("textarea", { value: texto, onChange: (e) => setTexto(e.target.value), placeholder: "Ex.: 1 concha de feijão, 4 colheres de arroz, 1 filé de frango grelhado", rows: 3, style: { width: "100%", boxSizing: "border-box", borderRadius: 12, border: "1.5px solid #e2e8f0", padding: 12, fontSize: 14, fontFamily: "inherit", resize: "vertical", marginBottom: 8 } }), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginBottom: 10 } }, 'Se tirar foto, esse texto ajuda a análise (ex.: "frito no azeite").'), /* @__PURE__ */ React.createElement(NutriBotao, { tipo: "sec", onClick: porTexto }, "Analisar só pela descrição"), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: manual, style: { display: "block", margin: "14px auto 0", background: "transparent", border: "none", color: NUTRI_LARANJA_TXT, fontSize: 14, fontWeight: 700, cursor: "pointer", padding: 8, fontFamily: "inherit" } }, "Preencher manualmente")), erro && /* @__PURE__ */ React.createElement("div", { style: { marginTop: 12, fontSize: 13, color: "#dc2626", textAlign: "center", lineHeight: 1.5, whiteSpace: "pre-line", wordBreak: "break-word" } }, erro), /* @__PURE__ */ React.createElement("div", { style: { marginTop: 18, fontSize: 11, color: "#94a3b8", textAlign: "center", lineHeight: 1.5 } }, "Os valores são estimativas para acompanhamento e não substituem a orientação de um nutricionista."));
     }
     return /* @__PURE__ */ React.createElement("div", { style: { height: PR_ALT, display: "flex", flexDirection: "column", background: PR.fundo } }, /* @__PURE__ */ React.createElement("div", { style: { padding: "12px 16px 8px", flexShrink: 0 } }, cabecalho(nutriTipoNome(tipo), origem === "foto" ? "Foto analisada e descartada. Confira e ajuste." : origem === "texto" ? "Estimativa pela sua descrição. Confira e ajuste." : "Preencha e confira antes de salvar."), obs && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b", marginTop: -6, lineHeight: 1.4 } }, obs)), /* @__PURE__ */ React.createElement("div", { style: { flex: "1 1 auto", minHeight: 0, overflowY: "auto", padding: "0 16px 6px" } }, itens.map((it) => {
       const v = nutriValores(it);
@@ -588,22 +657,17 @@
     const fmtD = (iso) => iso ? iso.slice(8, 10) + "/" + iso.slice(5, 7) : "";
     const fmt1 = (v) => (Math.round(v * 10) / 10).toFixed(1).replace(".", ",");
     const diasRest = Math.max(1, Math.round((new Date(e.fimISO + "T12:00:00") - new Date(hoje + "T12:00:00")) / 864e5));
-    const fmtKg = (v) => { const r = Math.round(v * 10) / 10; return r % 1 === 0 ? String(r) : r.toFixed(1).replace(".", ","); };
-    const fmtDia = (iso) => iso ? parseInt(iso.slice(8, 10), 10) + " " + ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"][parseInt(iso.slice(5, 7), 10) - 1] : "";
-    const diaHoje = dias.find((d) => d.hoje);
-    const ritmo = status === "ok" ? ["Você está no ritmo da meta", "#065F46", "#CCFBF1", "✓"] : status === "leve" ? ["Você está um pouco abaixo do ritmo da meta", "#92400E", "#FEF3C7", "!"] : status === "fora" ? ["Você está fora do ritmo da meta. Vamos ajustar?", "#991B1B", "#FEE2E2", "!"] : diaHoje && diaHoje.cons > 0 && diaHoje.meta ? (diaHoje.cons <= diaHoje.meta ? ["Hoje você está no ritmo da meta", "#065F46", "#CCFBF1", "✓"] : ["Hoje você passou um pouco do ritmo da meta", "#92400E", "#FEF3C7", "!"]) : ["Registre suas refeições para acompanhar o ritmo", "#475569", "#E2E8F0", "i"];
     const faltaDia = media ? Math.max(10, Math.round(((e.kcalEtapa - acumulado) / diasRest - media) / 10) * 10) : 0;
     return /* @__PURE__ */ React.createElement("div", { style: { background: "#FFF4EE", border: "1.5px solid #FED7AA", borderRadius: 16, padding: 14, marginBottom: 12, color: PR.escuro } },
       /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 } },
-        /* @__PURE__ */ React.createElement("div", { style: { fontSize: 15, fontWeight: 800, color: "#9A3412" } }, (e.final ? "Rumo aos " : "Etapa " + e.i + " · rumo aos ") + fmtKg(e.W) + " kg"),
-        /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11.5, fontWeight: 800, color: "#9A3412", background: "#FDE7D6", borderRadius: 20, padding: "3px 10px", whiteSpace: "nowrap" } }, "Dia " + diaN + " de " + e.dias)),
-      /* @__PURE__ */ React.createElement("div", { style: { height: 10, background: "#FDE7D6", borderRadius: 6, marginTop: 14, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: { width: Math.max(pct, 2) + "%", height: 10, background: PR.laranja, borderRadius: 6 } })),
-      /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 12, color: "#9A3412", marginTop: 6 } },
-        /* @__PURE__ */ React.createElement("span", null, "Hoje"),
-        /* @__PURE__ */ React.createElement("span", null, fmtDia(e.fimISO))),
-      !dados ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: PR.cinza, marginTop: 10 } }, "Calculando o seu ritmo...") : !(plano && plano.objetivo) ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#475569", marginTop: 10, lineHeight: 1.5 } }, "Para acompanhar o seu ritmo, use a sugestão abaixo como sua meta.") : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginTop: 12, paddingTop: 10, borderTop: "1px solid #FED7AA", fontSize: 13, fontWeight: 700, lineHeight: 1.4, color: ritmo[1] } },
-        /* @__PURE__ */ React.createElement("span", { style: { width: 20, height: 20, flexShrink: 0, borderRadius: 10, background: ritmo[2], color: ritmo[1], display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800 } }, ritmo[3]),
-        /* @__PURE__ */ React.createElement("span", null, ritmo[0])),
+        /* @__PURE__ */ React.createElement("div", { style: { fontSize: 13.5, fontWeight: 800, color: "#9A3412" } }, (e.final ? "Meta final" : "Etapa " + e.i) + " · rumo aos " + fmt1(e.W) + " kg"),
+        /* @__PURE__ */ React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: selo[1], background: selo[2], borderRadius: 6, padding: "2px 8px", whiteSpace: "nowrap" } }, selo[0])),
+      /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#9A3412", margin: "3px 0 10px" } }, "Dia " + diaN + " de " + e.dias + " · termina em " + fmtD(e.fimISO) + " · meta de cerca de " + nutriFmt(sugAjuste) + " kcal de déficit por dia"),
+      /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 12, color: "#475569" } },
+        /* @__PURE__ */ React.createElement("span", null, "Déficit acumulado"),
+        /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("b", { style: { color: PR.escuro } }, nutriFmt(Math.max(0, Math.round(acumulado / 100) * 100))), " de " + nutriFmt(Math.round(e.kcalEtapa / 100) * 100) + " kcal")),
+      /* @__PURE__ */ React.createElement("div", { style: { height: 8, background: "#FDE7D6", borderRadius: 4, marginTop: 5, overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: { width: pct + "%", height: 8, background: PR.laranja } })),
+      !dados ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: PR.cinza, marginTop: 8 } }, "Calculando o seu ritmo...") : !(plano && plano.objetivo) ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#475569", marginTop: 8, lineHeight: 1.5 } }, "Para acompanhar o déficit da etapa, use a sugestão abaixo como sua meta.") : previsao ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12.5, lineHeight: 1.5, marginTop: 10, borderRadius: 9, padding: "8px 10px", background: status === "ok" ? "#ECFDF5" : "#FEF3C7", color: status === "ok" ? "#065F46" : "#92400E" } }, "Nesse ritmo, você chega aos " + fmt1(e.W) + " kg por volta de " + fmtD(previsao) + (status === "ok" ? ", dentro do prazo." : ". Para voltar ao prazo, faltam cerca de " + nutriFmt(faltaDia) + " kcal de déficit por dia.")) : /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#475569", marginTop: 8, lineHeight: 1.5 } }, media !== null && media <= 0 ? "Nos últimos dias, o consumo ficou acima do gasto. Vamos ajustar o ritmo?" : "Registre suas refeições por pelo menos 3 dias para ver a previsão de chegada."),
       precisaAplicar ? /* @__PURE__ */ React.createElement("div", { style: { marginTop: 10, background: "#fff", borderRadius: 10, padding: "10px 12px" } },
         /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12.5, color: "#475569", lineHeight: 1.45 } }, "Sugestão da sua avaliação para esta etapa: déficit de " + nutriFmt(sugAjuste) + " kcal por dia" + (prot ? " e " + prot + " g de proteína." : ".")),
         /* @__PURE__ */ React.createElement("button", { type: "button", onClick: aplicar, style: { marginTop: 8, width: "100%", height: 38, borderRadius: 10, border: "none", background: PR.laranja, color: "#fff", fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit" } }, msg === "salvando" ? "Salvando..." : "Usar como minha meta")) : fixa ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11.5, color: PR.cinza, marginTop: 8 } }, "Meta do nutricionista em uso. A previsão usa os seus registros.") : null,
@@ -711,6 +775,27 @@
         setMetas(antes);
         alert("Não consegui salvar a água. Confira a conexão e tente de novo.");
       }
+    };
+    const repetirHoje = async (r) => {
+      const agora = new Date();
+      const hojeD = nutriHoje();
+      const nova = { ...r, id: nutriId(), date: hojeD, hora: String(agora.getHours()).padStart(2, "0") + ":" + String(agora.getMinutes()).padStart(2, "0"), origem: "repetida", createdAt: agora.toISOString() };
+      const ok = await nutriApi.salvar(studentId, ownerId, nova);
+      if (!ok) {
+        alert("Não consegui repetir. Confira a conexão e tente de novo.");
+        return;
+      }
+      setDetalhe(null);
+      setGrupo(null);
+      if (dia === hojeD) setRefeicoes((p) => [...p, nova].sort((a, b) => (a.hora || "").localeCompare(b.hora || "")));
+      else alert("Refeição registrada em hoje.");
+    };
+    const salvarComoMarmita = async (r) => {
+      const sug = (r.itens || []).slice(0, 2).map((i) => i.nome).join(" e ");
+      const nome = window.prompt("Nome da marmita", sug ? "Marmita " + sug.toLowerCase() : "Minha marmita");
+      if (!nome || !nome.trim()) return;
+      const l = await nutriApi.salvarMarmitas(studentId, ownerId, (lista) => [...lista, { id: nutriId(), nome: nome.trim(), itens: r.itens || [], totais: r.totais || nutriSomar(r.itens || []), usos: 0, criadoPor: "aluno", criadoEm: new Date().toISOString() }]);
+      alert(l ? "Marmita salva. Na próxima vez, toque em Registrar refeição e depois em Marmitas." : "Não consegui salvar a marmita. Tente de novo.");
     };
     const apagarAtividade = async (id) => {
       if (!window.confirm("Remover esta atividade?")) return;
@@ -890,7 +975,7 @@
       React.createElement("button", { type: "button", disabled: !aguaMl, onClick: () => somarAgua(-200), style: { flex: 1, height: 42, borderRadius: 21, border: "1.5px solid #e2e8f0", background: "#fff", color: PR.escuro, fontSize: 13.5, fontWeight: 700, cursor: "pointer", opacity: aguaMl ? 1 : 0.4, fontFamily: "inherit" } }, "Tirar 200 ml"),
       React.createElement("button", { type: "button", disabled: !aguaMl, onClick: () => {
         if (window.confirm("Zerar a água deste dia?")) somarAgua(-aguaMl);
-      }, style: { flex: 1, height: 42, borderRadius: 21, border: "1.5px solid #fecaca", background: "#fff", color: "#dc2626", fontSize: 13.5, fontWeight: 700, cursor: "pointer", opacity: aguaMl ? 1 : 0.4, fontFamily: "inherit" } }, "Zerar o dia"))), grupo && !detalhe && /* @__PURE__ */ React.createElement(Modal, { title: grupo.nome, onClose: () => setGrupo(null) }, grupo.regs.map((r) => /* @__PURE__ */ React.createElement("button", { key: r.id, type: "button", onClick: () => setDetalhe(r), style: { width: "100%", display: "flex", justifyContent: "space-between", gap: 10, padding: "12px 0", border: "none", borderBottom: "1px solid #f1f5f9", background: "transparent", cursor: "pointer", fontFamily: "inherit", color: PR.escuro, textAlign: "left" } }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 14, fontWeight: 700 } }, (r.hora || "").slice(0, 5)), /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 12, color: "#64748b" } }, nutriLinhaMacros(r.totais || {}))), /* @__PURE__ */ React.createElement("b", { style: { fontSize: 14, whiteSpace: "nowrap" } }, nutriFmt((r.totais || {}).kcal), " kcal")))), detalhe && /* @__PURE__ */ React.createElement(Modal, { title: nutriTipoNome(detalhe.tipo) + " · " + (detalhe.hora || ""), onClose: () => setDetalhe(null) }, (detalhe.itens || []).map((i, idx) => /* @__PURE__ */ React.createElement("div", { key: idx, style: { display: "flex", justifyContent: "space-between", gap: 10, padding: "10px 0", borderBottom: "1px solid #f1f5f9" } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700 } }, i.nome), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b" } }, (nutriNum(i.gramas) ? nutriFmt(i.gramas) + " g · " : "") + nutriLinhaMacros(i))), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 14, fontWeight: 700, whiteSpace: "nowrap" } }, nutriFmt(i.kcal), " kcal"))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "12px 0", fontWeight: 800 } }, /* @__PURE__ */ React.createElement("span", null, "Total"), /* @__PURE__ */ React.createElement("span", null, nutriFmt((detalhe.totais || {}).kcal), " kcal")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b", marginBottom: 16 } }, nutriLinhaMacros(detalhe.totais || {})), /* @__PURE__ */ React.createElement(NutriBotao, { tipo: "sec", onClick: apagar, disabled: apagando, style: { color: "#dc2626" } }, apagando ? "Apagando..." : "Apagar registro")));
+      }, style: { flex: 1, height: 42, borderRadius: 21, border: "1.5px solid #fecaca", background: "#fff", color: "#dc2626", fontSize: 13.5, fontWeight: 700, cursor: "pointer", opacity: aguaMl ? 1 : 0.4, fontFamily: "inherit" } }, "Zerar o dia"))), grupo && !detalhe && /* @__PURE__ */ React.createElement(Modal, { title: grupo.nome, onClose: () => setGrupo(null) }, grupo.regs.map((r) => /* @__PURE__ */ React.createElement("button", { key: r.id, type: "button", onClick: () => setDetalhe(r), style: { width: "100%", display: "flex", justifyContent: "space-between", gap: 10, padding: "12px 0", border: "none", borderBottom: "1px solid #f1f5f9", background: "transparent", cursor: "pointer", fontFamily: "inherit", color: PR.escuro, textAlign: "left" } }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 14, fontWeight: 700 } }, (r.hora || "").slice(0, 5)), /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 12, color: "#64748b" } }, nutriLinhaMacros(r.totais || {}))), /* @__PURE__ */ React.createElement("b", { style: { fontSize: 14, whiteSpace: "nowrap" } }, nutriFmt((r.totais || {}).kcal), " kcal")))), detalhe && /* @__PURE__ */ React.createElement(Modal, { title: nutriTipoNome(detalhe.tipo) + " · " + (detalhe.hora || ""), onClose: () => setDetalhe(null) }, (detalhe.itens || []).map((i, idx) => /* @__PURE__ */ React.createElement("div", { key: idx, style: { display: "flex", justifyContent: "space-between", gap: 10, padding: "10px 0", borderBottom: "1px solid #f1f5f9" } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700 } }, i.nome), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b" } }, (nutriNum(i.gramas) ? nutriFmt(i.gramas) + " g · " : "") + nutriLinhaMacros(i))), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 14, fontWeight: 700, whiteSpace: "nowrap" } }, nutriFmt(i.kcal), " kcal"))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "12px 0", fontWeight: 800 } }, /* @__PURE__ */ React.createElement("span", null, "Total"), /* @__PURE__ */ React.createElement("span", null, nutriFmt((detalhe.totais || {}).kcal), " kcal")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b", marginBottom: 16 } }, nutriLinhaMacros(detalhe.totais || {})), React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 10 } }, React.createElement("button", { type: "button", onClick: () => repetirHoje(detalhe), style: { flex: 1, height: 44, borderRadius: 22, border: "1.5px solid #e2e8f0", background: "#fff", fontSize: 13, fontWeight: 700, color: "#0f172a", cursor: "pointer", fontFamily: "inherit" } }, "🔁 Repetir hoje"), React.createElement("button", { type: "button", onClick: () => salvarComoMarmita(detalhe), style: { flex: 1, height: 44, borderRadius: 22, border: "1.5px solid #FED7AA", background: "#FFF4EE", fontSize: 13, fontWeight: 800, color: "#C2410C", cursor: "pointer", fontFamily: "inherit" } }, "🍱 Salvar como marmita")), /* @__PURE__ */ React.createElement(NutriBotao, { tipo: "sec", onClick: apagar, disabled: apagando, style: { color: "#dc2626" } }, apagando ? "Apagando..." : "Apagar registro")));
   };
   const ANTRO_MEMBROS = [["bracoRelaxado", "Braço relaxado"], ["bracoContraido", "Braço contraído"], ["antebraco", "Antebraço"], ["coxa", "Coxa"], ["panturrilha", "Panturrilha"]];
   const ANTRO_TRONCO = [["torax", "Tórax"], ["cintura", "Cintura"], ["abdomen", "Abdômen"], ["quadril", "Quadril"]];
