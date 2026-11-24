@@ -45,12 +45,18 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 // ═══ Página de venda dos serviços da vitrine (venda.html?i=<id>) · Mente Ativa e Longevus 360 (próximos produtos entram em CONTEUDO) ═══
 // Pagamento igual ao comprar.html: Pix aqui mesmo + "Já paguei" (rpc_registrar_compra_publica).
 const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
 const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
 const PROF_ID = "64f27a4b-4cba-450c-9e52-e799c3c0b8d8";
+// Mente Ativa vendida sozinha: conta criada aqui, acesso na hora, Pix conferido depois no painel (modelo mente-jogos)
+const MENTE_MODELO = "mente-jogos";
+const LINK_MENTE = location.origin + location.pathname.replace(/[^/]*$/, "") + "mente-ativa-jogos.html?jornada=1&modelo=" + MENTE_MODELO;
+const supa = window.supabase ? window.supabase.createClient(SUPA_URL, SUPA_KEY, { auth: { storageKey: "lv-mente-auth", persistSession: true, autoRefreshToken: true } }) : null;
+const rpcConta = async (nome, corpo) => { const s = supa ? (await supa.auth.getSession()).data.session : null; const tk = s ? s.access_token : SUPA_KEY; const r = await fetch(SUPA_URL + "/rest/v1/rpc/" + nome, { method: "POST", headers: { apikey: SUPA_KEY, Authorization: "Bearer " + tk, "Content-Type": "application/json" }, body: JSON.stringify(corpo || {}) }); if (!r.ok) throw new Error(await r.text()); return true; };
 const { useState, useEffect, useRef } = React;
 const h = React.createElement;
 const C = { escuro: "#0F172A", escuro2: "#18233A", laranja: "#FF5603", laranjaTxt: "#C2410C", laranjaClaro: "#FFF4EE", pessego: "#FDBA74", cinza: "#64748B", cinzaClaro: "#94A3B8", borda: "#E2E8F0", verde: "#16A34A", verdeClaro: "#F0FDF4", fundo: "#F4F5F7", vermelho: "#B91C1C", vermelhoClaro: "#FEF2F2" };
@@ -257,11 +263,13 @@ const avisoAluno = async (d, presente) => {
 const BotaoVoltarApp = () => ALUNO ? h("button", { type: "button", onClick: () => { if (history.length > 1) history.back(); else location.href = base + "aluno.html"; }, style: { display: "inline-flex", alignItems: "center", gap: 6, height: 42, padding: "0 16px 0 10px", borderRadius: 21, border: "1.5px solid rgba(255,255,255,0.28)", background: "rgba(255,255,255,0.10)", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", marginBottom: 14 } }, h(Ico, { d: I.seta, cor: "#fff", tam: 20, larg: 2.6 }), "Voltar") : null;
 
 // ═══ CHECKOUT (Pix + "Já paguei", igual ao comprar.html) ═══
-function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoInicial, resumoSub, planos, planoIni }) {
+function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoInicial, resumoSub, planos, planoIni, contaMente }) {
   const [plSel, setPlSel] = useState(null);
   const [para, setPara] = useState(modoInicial || "mim");
   const [etapa, setEtapa] = useState("dados");
-  const [f, setF] = useState({ nome: "", whats: "" });
+  const [f, setF] = useState({ nome: "", whats: "", email: "", senha: "", termos: false });
+  const [verSenha, setVerSenha] = useState(false);
+  const [conta, setConta] = useState(false);
   const [pr, setPr] = useState({ nome: "", whats: "", msg: "" });
   const [erro, setErro] = useState("");
   const [env, setEnv] = useState(false);
@@ -295,6 +303,27 @@ function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoIn
           h("span", null, "Você cria a sua conta no app e paga " + (pl.mes ? "a primeira mensalidade " : "") + "no Pix, direto para o " + (primeiro(pix.nome || d.profissional) || "Wellington") + "."))));
   }
   const pers = primeiro(pix.nome || d.profissional) || "Wellington";
+  const usaConta = contaMente && !presente;
+  const traduz = (m) => { const t = String(m || ""); if (t.indexOf("already registered") >= 0) return "ja"; if (t.indexOf("Password should") >= 0) return "A senha precisa ter pelo menos 6 caracteres."; if (t.indexOf("valid email") >= 0 || t.indexOf("invalid") >= 0) return "Confira o e-mail digitado."; return "Não foi possível continuar. Verifique sua internet e tente de novo."; };
+  const criarConta = async () => {
+    if (!f.nome.trim()) return setErro("Digite o seu nome.");
+    if (soDig(f.whats).length < 10) return setErro("Digite o seu WhatsApp com DDD.");
+    if (!/\S+@\S+\.\S+/.test(f.email.trim())) return setErro("Digite um e-mail válido.");
+    if (f.senha.length < 6) return setErro("Crie uma senha com pelo menos 6 caracteres.");
+    if (!f.termos) return setErro("Para continuar, aceite os termos de uso.");
+    if (!supa) return setErro("Não foi possível continuar. Verifique sua internet e tente de novo.");
+    setEnv(true); setErro("");
+    try {
+      const { data, error } = await supa.auth.signUp({ email: f.email.trim(), password: f.senha, options: { data: { nome: f.nome.trim(), whatsapp: f.whats.trim(), origem: "venda-mente · " + ORIGEM }, emailRedirectTo: LINK_MENTE } });
+      if (error) throw error;
+      track("CompleteRegistration", { content_name: titulo, value: valor, currency: "BRL" });
+      if (data && data.session) {
+        await rpcConta("ma_entrar_jornada", { p_nome: f.nome.trim(), p_whatsapp: f.whats.trim(), p_modelo: MENTE_MODELO });
+        setConta(true); setEtapa("pix");
+      } else setEtapa("email");
+    } catch (e) { const t = traduz(e.message); setErro(t === "ja" ? "ja" : t); }
+    setEnv(false);
+  };
   const irPix = () => {
     if (!f.nome.trim()) return setErro("Digite o seu nome.");
     if (soDig(f.whats).length < 10) return setErro("Digite o seu WhatsApp com DDD.");
@@ -304,6 +333,12 @@ function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoIn
   const jaPaguei = async () => {
     if (env) return;
     setEnv(true); setErro("");
+    if (conta) {
+      try { await rpcConta("ma_aluno_marcar_pago", { p_modelo: MENTE_MODELO }); track("Purchase", { content_name: titulo, value: valor, currency: "BRL" }); setEtapa("feito"); }
+      catch (e) { setErro("Não conseguimos enviar o aviso. Tente de novo ou fale no WhatsApp."); }
+      setEnv(false);
+      return;
+    }
     try {
       const pres = presente ? { nome: pr.nome.trim(), whatsapp: soDig(pr.whats), mensagem: pr.msg.trim() } : null;
       if (!(await avisoAluno(d, pres))) await rpc("rpc_registrar_compra_publica", { p_item_id: d.id, p_nome: f.nome.trim(), p_whatsapp: soDig(f.whats), p_presente: presente ? { nome: pr.nome.trim(), whatsapp: soDig(pr.whats), mensagem: pr.msg.trim() } : null });
@@ -318,7 +353,7 @@ function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoIn
     h("img", { src: d.foto || "mente-ativa.jpg", alt: "", style: { width: 46, height: 46, borderRadius: 12, objectFit: "cover" } }),
     h("div", { style: { flex: 1, minWidth: 0 } }, h("div", { style: { fontSize: 15, fontWeight: 800 } }, titulo + (mensal ? " · 30 dias" : "")), h("div", { style: { fontSize: 12.5, color: C.cinza } }, presente ? "Presente para " + (pr.nome.trim() || "alguém especial") : resumoSub || "Acesso liberado")),
     h("div", { style: { fontSize: 18, fontWeight: 800 } }, brl(valor)));
-  const caixaErro = erro ? h("div", { role: "alert", style: { background: C.vermelhoClaro, color: C.vermelho, borderRadius: 12, padding: "10px 12px", fontSize: 14, lineHeight: 1.45, marginBottom: 12 } }, erro) : null;
+  const caixaErro = erro ? h("div", { role: "alert", style: { background: C.vermelhoClaro, color: C.vermelho, borderRadius: 12, padding: "10px 12px", fontSize: 14, lineHeight: 1.45, marginBottom: 12 } }, erro === "ja" ? h("span", null, "Este e-mail já tem conta. ", h("a", { href: LINK_MENTE, style: { color: C.vermelho, fontWeight: 800 } }, "Entrar na Mente Ativa")) : erro) : null;
   const waProf = waLink(pix.whatsapp, "Oi, " + pers + "! Sou " + f.nome.trim() + " e acabei de pagar: " + titulo + (presente ? " (presente para " + pr.nome.trim() + ")" : "") + ". Segue o comprovante.");
 
   let corpo;
@@ -333,7 +368,20 @@ function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoIn
       payload ? h("button", { type: "button", onClick: copiar, style: { width: "100%", height: 50, borderRadius: 14, border: "1.5px solid " + C.borda, background: copiado ? C.verdeClaro : "#F8FAFC", fontWeight: 800, fontSize: 15, color: copiado ? C.verde : C.escuro, cursor: "pointer" } }, copiado ? "Código copiado" : "Copiar código Pix") : null,
       caixaErro ? h("div", { style: { marginTop: 10 } }, caixaErro) : null,
       h("button", { type: "button", onClick: jaPaguei, disabled: env, style: { ...botaoPri, background: C.verde, boxShadow: "0 10px 22px rgba(22,163,74,0.25)", marginTop: 10 } }, env ? "Enviando..." : "Já paguei"),
+      conta ? h("div", null,
+        h("a", { href: LINK_MENTE, style: { display: "flex", alignItems: "center", justifyContent: "center", height: 50, borderRadius: 14, marginTop: 10, border: "1.5px solid " + C.borda, color: C.escuro, fontWeight: 800, fontSize: 15.5, textDecoration: "none" } }, "Pagar depois e começar a jogar"),
+        h("div", { style: { fontSize: 13, color: C.cinza, lineHeight: 1.5, marginTop: 10 } }, "Seu acesso já está liberado. O Pix pode ser feito em até 2 dias, e o código também fica dentro do app.")) :
       h("button", { type: "button", onClick: () => setEtapa("dados"), style: { marginTop: 10, border: "none", background: "none", color: C.cinza, fontSize: 14, textDecoration: "underline", cursor: "pointer" } }, "Voltar e corrigir os dados")));
+  else if (etapa === "email") corpo = h("div", { style: { textAlign: "center", padding: "18px 4px 6px" } },
+    h("div", { style: { fontSize: 20, fontWeight: 800 } }, "Falta só confirmar o e-mail"),
+    h("div", { style: { fontSize: 15, color: "#475569", marginTop: 8, lineHeight: 1.55 } }, "Enviamos um link para ", h("b", null, f.email.trim()), ". Toque nele e depois entre na Mente Ativa com o seu e-mail e senha."),
+    h("a", { href: LINK_MENTE, style: { ...botaoPri, display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", marginTop: 18 } }, "Já confirmei, entrar"));
+  else if (etapa === "feito" && conta) corpo = h("div", { style: { textAlign: "center", padding: "10px 2px 4px" } },
+    h("div", { style: { width: 64, height: 64, borderRadius: 20, background: C.verdeClaro, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" } }, h(Ico, { d: I.check, cor: C.verde, tam: 30, larg: 2.4 })),
+    h("div", { style: { fontSize: 21, fontWeight: 800 } }, "Tudo certo, " + primeiro(f.nome) + "!"),
+    h("div", { style: { fontSize: 15, color: "#475569", marginTop: 6, lineHeight: 1.55 } }, "Seu aviso de pagamento chegou para o " + pers + ". Os 8 jogos já estão liberados."),
+    h("a", { href: LINK_MENTE, style: { ...botaoPri, display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", marginTop: 18 } }, "Começar a jogar"),
+    waProf ? h("a", { href: waProf, target: "_blank", rel: "noopener noreferrer", style: { display: "flex", alignItems: "center", justifyContent: "center", height: 50, borderRadius: 16, marginTop: 10, border: "1.5px solid " + C.borda, color: C.escuro, fontWeight: 800, fontSize: 15, textDecoration: "none" } }, "Mandar o comprovante") : null);
   else if (etapa === "feito") corpo = h("div", { style: { textAlign: "center", padding: "10px 2px 4px" } },
     h("div", { style: { width: 64, height: 64, borderRadius: 20, background: C.verdeClaro, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" } }, h(Ico, { d: presente ? I.presente : I.check, cor: C.verde, tam: 30, larg: 2.4 })),
     h("div", { style: { fontSize: 21, fontWeight: 800 } }, "Obrigado, " + primeiro(f.nome) + "!"),
@@ -349,18 +397,25 @@ function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoIn
       h("div", { style: { fontSize: 13, fontWeight: 800, color: C.laranjaTxt, marginBottom: 10 } }, "Quem vai ganhar"),
       h(Campo, { rotulo: "Nome" }, h("input", { style: estInput, value: pr.nome, onChange: (e) => { setPr({ ...pr, nome: e.target.value }); setErro(""); }, placeholder: "Ex.: minha mãe, Dona Maria" })),
       h(Campo, { rotulo: "WhatsApp (opcional)" }, h("input", { style: estInput, type: "tel", inputMode: "tel", value: pr.whats, onChange: (e) => setPr({ ...pr, whats: fmtTel(e.target.value) }), placeholder: "(11) 90000-0000" }))) : null,
+    usaConta ? h("div", null,
+      h(Campo, { rotulo: "E-mail" }, h("input", { style: estInput, type: "email", value: f.email, onChange: (e) => { setF({ ...f, email: e.target.value }); setErro(""); }, placeholder: "seu@email.com", autoComplete: "email", autoCapitalize: "none" })),
+      h(Campo, { rotulo: "Crie uma senha" }, h("div", { style: { position: "relative" } },
+        h("input", { style: { ...estInput, paddingRight: 76 }, type: verSenha ? "text" : "password", value: f.senha, onChange: (e) => { setF({ ...f, senha: e.target.value }); setErro(""); }, placeholder: "Mínimo 6 caracteres", autoComplete: "new-password" }),
+        h("button", { type: "button", onClick: () => setVerSenha(!verSenha), style: { position: "absolute", right: 6, top: 6, height: 40, padding: "0 10px", border: "none", background: "none", color: C.laranjaTxt, fontWeight: 700, fontSize: 13.5, cursor: "pointer" } }, verSenha ? "Ocultar" : "Mostrar"))),
+      h("label", { style: { display: "flex", gap: 10, alignItems: "center", fontSize: 14.5, color: "#334155", marginBottom: 14 } }, h("input", { type: "checkbox", checked: f.termos, onChange: (e) => { setF({ ...f, termos: e.target.checked }); setErro(""); }, style: { width: 24, height: 24, accentColor: C.laranja, flexShrink: 0 } }), "Li e aceito os termos de uso")) : null,
     caixaErro,
-    h("button", { type: "button", onClick: irPix, style: botaoPri }, "Ir para o Pix"),
+    h("button", { type: "button", onClick: usaConta ? criarConta : irPix, disabled: env, style: { ...botaoPri, opacity: env ? 0.6 : 1 } }, env ? "Aguarde..." : usaConta ? "Criar conta e começar" : "Ir para o Pix"),
     h("div", { style: { display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12.5, color: C.cinza, lineHeight: 1.5, marginTop: 12 } },
       h(Ico, { d: I.escudo, cor: C.cinzaClaro, tam: 18 }),
-      h("span", null, "Pagamento por Pix direto para o " + pers + ". " + (mensal ? "São 30 dias de acesso. Renova só se quiser, sem fidelidade." : "Seus dados são usados só para combinar o atendimento."))));
+      h("span", null, usaConta ? "Seu acesso é liberado na hora. Em seguida aparece o Pix de " + brl(valor) + " direto para o " + pers + ", sem cartão e sem fidelidade." : "Pagamento por Pix direto para o " + pers + ". " + (mensal ? "São 30 dias de acesso. Renova só se quiser, sem fidelidade." : "Seus dados são usados só para combinar o atendimento."))),
+    usaConta ? h("a", { href: LINK_MENTE, style: { display: "block", textAlign: "center", marginTop: 10, color: C.laranjaTxt, fontWeight: 700, fontSize: 14.5, textDecoration: "none", padding: 6 } }, "Já tenho conta") : null);
 
   return h("div", { style: { position: "fixed", inset: 0, bottom: ALUNO ? "calc(62px + env(safe-area-inset-bottom))" : 0, zIndex: 400, display: "flex", alignItems: "flex-end", justifyContent: "center" } },
     h("div", { onClick: onFechar, style: { position: "absolute", inset: 0, background: "rgba(15,23,42,0.55)", animation: "some .25s ease both" } }),
     h("div", { role: "dialog", "aria-modal": "true", "aria-label": "Finalizar compra", className: "rolar", style: { position: "relative", width: "100%", maxWidth: 480, maxHeight: "92vh", overflowY: "auto", background: "#fff", borderRadius: "26px 26px 0 0", padding: "10px 18px calc(22px + env(safe-area-inset-bottom))", animation: "sobe .32s cubic-bezier(.2,.8,.2,1) both" } },
       h("div", { style: { width: 42, height: 5, borderRadius: 3, background: C.borda, margin: "0 auto 10px" } }),
       h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 } },
-        h("div", { style: { fontSize: 19, fontWeight: 800 } }, etapa === "feito" ? "Pedido enviado" : "Finalizar"),
+        h("div", { style: { fontSize: 19, fontWeight: 800 } }, etapa === "feito" ? (conta ? "Acesso liberado" : "Pedido enviado") : conta && etapa === "pix" ? "Conta criada" : "Finalizar"),
         h("button", { type: "button", onClick: onFechar, "aria-label": "Fechar", style: { display: "inline-flex", alignItems: "center", gap: 4, height: 40, padding: "0 14px 0 10px", borderRadius: 20, border: "1.5px solid " + C.borda, background: "#fff", color: C.escuro, fontWeight: 700, fontSize: 14.5, cursor: "pointer" } }, h(Ico, { d: I.fechar, cor: C.escuro, tam: 16, larg: 2.4 }), "Fechar")),
       corpo));
 }
@@ -500,11 +555,11 @@ const CONTEUDO = {
       h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 } }, JOGOS.map(([ic, n, area, desc, g]) => h("div", { key: n, style: { ...cartao, padding: 12, display: "flex", gap: 10, alignItems: "center" } },
         h("span", { style: { width: 42, height: 42, borderRadius: 12, background: "linear-gradient(135deg," + g[0] + "," + g[1] + ")", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 21, flexShrink: 0, boxShadow: "inset 0 -3px 0 rgba(0,0,0,0.15)" } }, ic),
         h("span", { style: { minWidth: 0 } }, h("b", { style: { display: "block", fontSize: 13.5, lineHeight: 1.2 } }, n), h("span", { style: { display: "block", fontSize: 11.5, color: C.cinza, marginTop: 2 } }, area + " · " + desc)))))),
-    passos: [["Pague pelo Pix", "Leva um minuto, direto aqui na página."], ["O " + pers + " libera o seu acesso", "Ele confirma o pagamento e te chama no WhatsApp."], ["Faça o desafio do dia", "O app escolhe o jogo pelo que você mais precisa treinar, com uma meta só sua."], ["Acompanhe sua evolução", "Cada resultado fica salvo, e o " + pers + " acompanha com você."]],
+    passos: [["Crie sua conta", "Leva um minuto. Os 8 jogos são liberados na hora."], ["Pague pelo Pix", "Direto para o " + pers + ", em até 2 dias. Sem cartão."], ["Faça o desafio do dia", "O app escolhe o jogo pelo que você mais precisa treinar, com uma meta só sua."], ["Acompanhe sua evolução", "Cada resultado fica salvo, e o " + pers + " acompanha com você."]],
     evolucao: "Cada jogo registra o seu resultado. Dá para ver, semana a semana, a memória e a atenção melhorando.",
     sobre: "Há mais de 15 anos atendo adultos e idosos. No meu trabalho, corpo e mente andam juntos. A Mente Ativa leva para o seu celular os mesmos estímulos de memória e atenção que uso nas minhas aulas.",
     cruz: { href: "elo60-venda.html", img: "elo-60.jpg", t: "Quer corpo e mente juntos?", s: "Conheça o Elo 60+: exercícios em casa e os jogos da Mente Ativa no mesmo programa." },
-    faq: [["Preciso saber jogar no celular?", "Não. Os jogos têm letras grandes, instruções simples e o botão de voltar sempre à vista."], ["Quanto tempo por dia?", "Cerca de 10 minutos já fazem diferença. Você joga quando quiser, no seu ritmo."], ["Como funciona o pagamento?", "Por Pix, direto para o " + pers + ". São 30 dias com os 8 jogos liberados. Renova só se quiser, sem fidelidade."], ["Já treino com o " + pers + ". Serve para mim?", "Serve, e combina muito. O corpo você treina com ele, a mente você treina em casa."]],
+    faq: [["Preciso saber jogar no celular?", "Não. Os jogos têm letras grandes, instruções simples e o botão de voltar sempre à vista."], ["Quanto tempo por dia?", "Cerca de 10 minutos já fazem diferença. Você joga quando quiser, no seu ritmo."], ["Como funciona o pagamento?", "Você cria a conta e já começa a jogar. O Pix vai direto para o " + pers + " e pode ser feito em até 2 dias. São 30 dias com os 8 jogos liberados. Renova só se quiser, sem fidelidade."], ["Já treino com o " + pers + ". Serve para mim?", "Serve, e combina muito. O corpo você treina com ele, a mente você treina em casa."]],
     final: ["Sua mente também merece treino", "30 dias com os 8 jogos por "], aviso: "A Mente Ativa não substitui acompanhamento médico.", padrao: 19.9
   }),
   avaliacao: (pers, d) => ({
@@ -747,7 +802,7 @@ function App() {
         valor > 0 && !P.semPreco ? h("div", { style: { flexShrink: 0 } }, h("div", { style: { fontSize: 11, color: C.cinza } }, P.barRot), h("div", { style: { fontSize: 19, fontWeight: 800 } }, brl(valor))) : null,
         h("button", { type: "button", onClick: () => comprar("mim"), style: { ...botaoPri, height: 50, fontSize: 16, boxShadow: "none" } }, P.semPreco ? "Falar no WhatsApp" : "Começar agora"))) : null,
 
-    h(Checkout, { aberto: !!checkout, modoInicial: checkout, onFechar: () => setCheckout(null), d: { ...d, titulo: nome, foto: d.foto || P.img, posPagamento: d.posPagamento || P.pos }, pix, valor, mensal: P.mensal, temPresente, resumoSub: P.resumoSub, planos, planoIni: d.planoSlug }));
+    h(Checkout, { aberto: !!checkout, modoInicial: checkout, onFechar: () => setCheckout(null), d: { ...d, titulo: nome, foto: d.foto || P.img, posPagamento: d.posPagamento || P.pos }, pix, valor, mensal: P.mensal, temPresente, resumoSub: P.resumoSub, planos, planoIni: d.planoSlug, contaMente: tipo === "mente" && !ALUNO }));
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(h(App));

@@ -25,7 +25,9 @@ const { useState, useEffect, useRef } = React;
 const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
 const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
 const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
-const MODELO = "mente-ativa-30";
+// Produto mostrado no painel: Elo 60+ (mente-ativa-30) ou Mente Ativa vendida sozinha (mente-jogos)
+const PRODUTOS = [["mente-ativa-30", "Elo 60+"], ["mente-jogos", "Mente Ativa"]];
+let MODELO = (function () { try { const v = localStorage.getItem("ma-painel-modelo"); return PRODUTOS.some((p) => p[0] === v) ? v : "mente-ativa-30"; } catch (e) { return "mente-ativa-30"; } })();
 const C = { escuro: "#0F172A", escuro2: "#18233A", laranja: "#FF5603", laranjaTxt: "#C2410C", laranjaClaro: "#FFF4EE", cinza: "#64748B", cinzaClaro: "#94A3B8", borda: "#E2E8F0", verde: "#16A34A", verdeTxt: "#15803D", verdeClaro: "#F0FDF4", vermelho: "#B91C1C", vermelhoClaro: "#FEF2F2" };
 async function hdrs(extra) {
   const { data } = await supa.auth.getSession();
@@ -438,7 +440,16 @@ function Painel({ modeloInicial }) {
   } });
   if (tela && tela.tipo === "aluno") return React.createElement(React.Fragment, null, React.createElement(FichaAluno, { m: tela.m, dados, modelo, onVoltar: () => setTela(null), onAcao: acao }), React.createElement(Aviso, { texto: aviso, limpar: () => setAviso("") }));
   const pend = pags.filter((x) => x.situacao === "vencido" || x.situacao === "aguardando").length;
-  return React.createElement("div", { className: "tela" }, aba === "aulas" && React.createElement(AulasTab, { aulas, dias, onAbrir: (linha, ds) => setTela({ tipo: "aula", linha, diasTxt: ds.length ? "Dias " + ds.join(", ") : "" }) }), aba === "pagamentos" && React.createElement(PagamentosTab, { modelo, lista: pags, onAcao: acao, onConfig: () => setTela({ tipo: "config" }) }), aba === "alunos" && React.createElement(AlunosTab, { dados, onAbrir: (m) => setTela({ tipo: "aluno", m }) }), React.createElement(Nav, { aba, setAba: (a) => {
+  const trocarProduto = (id) => {
+    if (id === MODELO) return;
+    MODELO = id;
+    try { localStorage.setItem("ma-painel-modelo", id); } catch (e) {}
+    setPags([]); setDados({ mats: [], prog: [], tes: [], jogos: [] });
+    if (id === "mente-jogos" && aba === "aulas") setAba("pagamentos");
+    carregar();
+  };
+  const seletor = React.createElement("div", { role: "tablist", "aria-label": "Produto", style: { display: "flex", gap: 6, padding: "8px 16px", background: C.escuro, flexShrink: 0 } }, PRODUTOS.map(([id, rot]) => React.createElement("button", { key: id, type: "button", role: "tab", "aria-selected": MODELO === id, onClick: () => trocarProduto(id), style: { flex: 1, height: 36, borderRadius: 18, border: "none", cursor: "pointer", fontSize: 14, fontWeight: 800, background: MODELO === id ? C.laranja : C.escuro2, color: MODELO === id ? "#fff" : "#CBD5E1" } }, rot)));
+  return React.createElement("div", { className: "tela" }, seletor, aba === "aulas" && React.createElement(AulasTab, { aulas, dias, onAbrir: (linha, ds) => setTela({ tipo: "aula", linha, diasTxt: ds.length ? "Dias " + ds.join(", ") : "" }) }), aba === "pagamentos" && React.createElement(PagamentosTab, { modelo, lista: pags, onAcao: acao, onConfig: () => setTela({ tipo: "config" }) }), aba === "alunos" && React.createElement(AlunosTab, { dados, onAbrir: (m) => setTela({ tipo: "aluno", m }) }), React.createElement(Nav, { aba, setAba: (a) => {
     setAba(a);
     carregar();
   }, pend }), React.createElement(Aviso, { texto: aviso, limpar: () => setAviso("") }));
