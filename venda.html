@@ -25,6 +25,20 @@
   .entra{animation:entra .5s ease both}
   .rolar::-webkit-scrollbar{display:none}
 </style>
+<!-- ── META PIXEL ── Cole o ID do Pixel no lugar de COLE_SEU_PIXEL_ID (o mesmo do site). Sem ID, nada é carregado. -->
+<script>
+  window.META_PIXEL_ID = 'COLE_SEU_PIXEL_ID';
+  if (/^\d+$/.test(window.META_PIXEL_ID) && new URLSearchParams(location.search).get("ctx") !== "aluno") {
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+    document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', window.META_PIXEL_ID);
+    fbq('track', 'PageView');
+  }
+  window.track = function(ev, data){ try { if (window.fbq) fbq('track', ev, data || {}); } catch(e){} };
+</script>
 </head>
 <body>
 <div id="root"></div>
@@ -215,6 +229,7 @@ function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoIn
     try {
       const pres = presente ? { nome: pr.nome.trim(), whatsapp: soDig(pr.whats), mensagem: pr.msg.trim() } : null;
       if (!(await avisoAluno(d, pres))) await rpc("rpc_registrar_compra_publica", { p_item_id: d.id, p_nome: f.nome.trim(), p_whatsapp: soDig(f.whats), p_presente: presente ? { nome: pr.nome.trim(), whatsapp: soDig(pr.whats), mensagem: pr.msg.trim() } : null });
+      track("Purchase", { content_name: titulo, value: valor, currency: "BRL" });
       setEtapa("feito");
     } catch (e) { setErro("Não conseguimos enviar o aviso. Tente de novo ou fale no WhatsApp."); }
     setEnv(false);
@@ -525,10 +540,14 @@ function App() {
   const id = Q.get("i") || "";
   const [d, setD] = useState({});
   const [pix, setPix] = useState({});
+  // ?direto=1 (vindo de anúncio ou do site): abre o formulário assim que a página carrega. Sem o parâmetro, tudo igual.
+  const DIRETO = !ALUNO && Q.get("direto") ? (Q.get("direto") === "presente" ? "presente" : "mim") : null;
   const [checkout, setCheckout] = useState(null);
   const [barra, setBarra] = useState(false);
   const [faq, setFaq] = useState(-1);
   const [pronto, setPronto] = useState(!id);
+  useEffect(() => { if (pronto && DIRETO) setCheckout(DIRETO); }, [pronto]);
+  useEffect(() => { if (checkout) track("InitiateCheckout", { content_name: d.titulo || "", currency: "BRL" }); }, [checkout]);
   const heroBtn = useRef(null);
   useEffect(() => {
     if (id) rpc("rpc_vitrine_publico", { p_item_id: id }).then((r) => { if (r && r.data) { setD({ ...r.data, id }); setPix(r.pix || {}); } setPronto(true); }).catch(() => setPronto(true));
@@ -544,6 +563,7 @@ function App() {
   const nome = d.titulo || P.nome;
   useEffect(() => { document.title = nome + " · Wellington Brito"; }, [nome]);
   const tipo = tipoProduto(d, id);
+  useEffect(() => { if (pronto) track("ViewContent", { content_name: nome, currency: "BRL" }); }, [pronto]);
   const [plPres, setPlPres] = useState(null);
   useEffect(() => {
     if (!pronto || tipo !== "presencial" || P.semPreco) return;
@@ -554,6 +574,9 @@ function App() {
 
   const valor = planos && planos.length ? Math.min.apply(null, planos.map((x) => x.valor)) : (valorNum(d.valor || d.preco) || Number(d.planoValor) || P.padrao);
   const porDia = Math.ceil((valor / 30) * 100) / 100;
+  // Oferta: quando o valor do item na vitrine fica abaixo do preço normal (ex.: Mente Ativa R$ 9,90 na Black Friday)
+  const oferta = !P.semPreco && !(planos && planos.length) && P.padrao > 0 && valor > 0 && valor < P.padrao;
+  const selo = oferta ? (Q.get("selo") || "OFERTA") : P.selo;
   const temPresente = !!(d.id && pix.pix_key && d.aceitaPresente !== false);
   const waVenda = (msg) => waLink(pix.whatsapp, msg || P.waMsg) || waLink("11977431011", msg || P.waMsg);
   const comprar = (modo) => { if (P.semPreco) { window.open(waVenda(), "_blank", "noopener"); return; } setCheckout(modo || "mim"); };
@@ -567,7 +590,7 @@ function App() {
       h(BotaoVoltarApp),
       h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between" } },
         h("img", { src: "logo-wb-claro.png", alt: "Wellington Brito Personal Trainer", style: { height: 54, width: "auto" } }),
-        h("span", { style: { fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", color: C.pessego, border: "1px solid rgba(253,186,116,0.45)", borderRadius: 99, padding: "5px 10px" } }, P.selo)),
+        h("span", { style: { fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", color: oferta ? "#fff" : C.pessego, background: oferta ? C.laranja : "transparent", border: oferta ? "1px solid " + C.laranja : "1px solid rgba(253,186,116,0.45)", borderRadius: 99, padding: "5px 10px" } }, selo)),
       h("div", { className: "entra", style: { position: "relative", marginTop: 16, height: 250, borderRadius: 18, overflow: "hidden", display: "grid", gridTemplateColumns: "1.3fr 1fr", gridTemplateRows: "122px 122px", gap: 6 } },
         h("img", { src: P.foto, alt: "O " + pers + " com aluno", style: { gridRow: "1 / 3", width: "100%", height: "100%", objectFit: "cover", objectPosition: P.fotoPos, display: "block" } }),
         h("img", { src: d.foto || P.img, alt: "", style: { width: "100%", height: "100%", objectFit: "cover", display: "block" } }),
@@ -582,6 +605,7 @@ function App() {
       h("div", { style: { display: "flex", gap: 8, marginTop: 16 } },
         h("div", { style: { flex: 1.25, background: C.escuro2, border: "1.5px solid " + C.laranja, borderRadius: 14, padding: "10px 12px" } },
           h("div", { style: { fontSize: 10.5, color: C.cinzaClaro, letterSpacing: "0.05em" } }, P.precoRot),
+          oferta ? h("div", { style: { fontSize: 13, color: C.cinzaClaro, textDecoration: "line-through", marginTop: 2 } }, "de " + brl(P.padrao)) : null,
           h("div", { style: { fontSize: 24, fontWeight: 800, color: C.pessego, lineHeight: 1.15 } }, valor > 0 ? brl(valor) : "Consulte"),
           valor > 0 && P.mensal ? h("div", { style: { fontSize: 12, color: C.cinzaClaro } }, "menos de " + brl(porDia) + " por dia") : valor > 0 && P.aPartir ? h("div", { style: { fontSize: 12, color: C.cinzaClaro } }, "por mês") : null),
         h("div", { style: { flex: 1, background: C.escuro2, borderRadius: 14, padding: "10px 12px" } },
@@ -636,7 +660,7 @@ function App() {
 
       h("div", { style: { marginTop: 18, background: "linear-gradient(135deg,#FF5603,#FF8A3D)", borderRadius: 22, padding: 20, color: "#fff", textAlign: "center", boxShadow: "0 12px 26px rgba(255,86,3,0.28)" } },
         h("div", { style: { fontSize: 21, fontWeight: 800, lineHeight: 1.25 } }, P.final[0]),
-        P.semPreco ? h("div", { style: { fontSize: 14, opacity: 0.92, marginTop: 4 } }, P.final[1]) : valor > 0 ? h("div", { style: { fontSize: 14, opacity: 0.92, marginTop: 4 } }, P.final[1] + brl(valor) + ".") : null,
+        P.semPreco ? h("div", { style: { fontSize: 14, opacity: 0.92, marginTop: 4 } }, P.final[1]) : valor > 0 ? h("div", { style: { fontSize: 14, opacity: 0.92, marginTop: 4 } }, oferta ? h("span", null, P.final[1], h("s", { style: { opacity: 0.75 } }, brl(P.padrao)), " " + brl(valor) + ".") : P.final[1] + brl(valor) + ".") : null,
         h("button", { type: "button", onClick: () => comprar("mim"), style: { width: "100%", height: 54, marginTop: 14, borderRadius: 16, border: "none", background: "#fff", color: C.laranjaTxt, fontWeight: 800, fontSize: 16.5, cursor: "pointer" } }, P.cta)),
       h("div", { style: { textAlign: "center", fontSize: 12, color: C.cinzaClaro, marginTop: 18, lineHeight: 1.6 } }, "Wellington Brito · Personal Trainer · CREF 089836-G/SP", h("br"), P.aviso)),
 
@@ -650,6 +674,9 @@ function App() {
 
 ReactDOM.createRoot(document.getElementById("root")).render(h(App));
 </script>
-<script src="longevus-nav.js?v=1"></script>
+<script>
+  // Barra de navegação do app só para quem vem de dentro do app (ctx=aluno). Visitante do anúncio não vê.
+  if (new URLSearchParams(location.search).get("ctx") === "aluno") { var s = document.createElement("script"); s.src = "longevus-nav.js?v=1"; document.body.appendChild(s); }
+</script>
 </body>
 </html>
