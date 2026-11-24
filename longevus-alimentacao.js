@@ -1654,6 +1654,7 @@
     return {
       dias: dias.length, registrados: reg.length, deficitMedio: media(defs),
       metaDeficit: plano && plano.objetivo === "emagrecer" ? nutriNum(plano.ajuste) || null : null,
+      objetivo: plano && !plano.metaFixa ? plano.objetivo : plano && plano.metaFixa ? "fixa" : null, metaAjuste: plano && (plano.objetivo === "emagrecer" || plano.objetivo === "massa") ? nutriNum(plano.ajuste) || null : null,
       protMedia: media(reg.map((d) => porDia[d].prot)), metaProt: nutriNum(metas.prot) || null,
       aguaMeta, aguaDiasMeta: aguaMeta ? dias.filter((d) => nutriAguaDia(metas, d) >= aguaMeta).length : 0, aguaReg: dias.filter((d) => nutriAguaDia(metas, d) > 0).length,
       aguaMedia: media(dias.map((d) => nutriAguaDia(metas, d)).filter((v) => v > 0)),

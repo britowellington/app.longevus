@@ -116,6 +116,20 @@
   const DISP = (v) => v >= 4.5 ? "animado" : v >= 3.5 ? "disposto" : v >= 2.5 ? "neutro" : "cansado";
   const SONO = (v) => v >= 3.5 ? "ótimo" : v >= 2.5 ? "bom" : v >= 1.5 ? "regular" : "ruim";
 
+  // Balanço energético conforme o objetivo: v > 0 é déficit, v < 0 é superávit
+  const balSt = (obj, meta, v) => {
+    if (obj === "emagrecer" && meta) return v >= meta * 0.8 ? "ok" : v > 0 ? "baixo" : "contra";
+    if (obj === "massa" && meta) return -v >= meta * 0.8 ? "ok" : v < 0 ? "baixo" : "contra";
+    if (obj === "manter") return Math.abs(v) <= 200 ? "ok" : "baixo";
+    return null;
+  };
+  const balanco = (a) => {
+    if (!a || a.deficitMedio == null) return null;
+    const v = a.deficitMedio, obj = a.objetivo, meta = a.metaAjuste;
+    const alvo = obj === "emagrecer" && meta ? "déficit de " + meta + " kcal" : obj === "massa" && meta ? "superávit de " + meta + " kcal" : obj === "manter" ? "manter o peso" : null;
+    return { tipo: v >= 0 ? "Déficit" : "Superávit", abs: Math.abs(v), alvo, st: balSt(obj, meta, v), obj, meta };
+  };
+  const BAL_COR = { ok: "#15803d", baixo: "#b45309", contra: "#b91c1c" };
   const destaques = (t, a) => {
     const out = [];
     const ok = (x) => out.push(["ok", x]), at = (x) => out.push(["at", x]);
@@ -131,7 +145,8 @@
     if (a) {
       if (a.registrados >= 5) ok("Registrou a alimentação em " + a.registrados + " de 7 dias");
       else at("Alimentação registrada em " + a.registrados + " de 7 dias");
-      if (a.deficitMedio != null && a.metaDeficit) a.deficitMedio >= a.metaDeficit * 0.8 ? ok("Déficit médio de " + a.deficitMedio + " kcal, perto da meta de " + a.metaDeficit) : at("Déficit médio de " + a.deficitMedio + " kcal, abaixo da meta de " + a.metaDeficit);
+      const b = balanco(a);
+      if (b && b.alvo) b.st === "ok" ? ok(b.tipo + " médio de " + b.abs + " kcal, dentro da meta (" + b.alvo + ")") : at(b.tipo + " médio de " + b.abs + " kcal, e a meta é " + b.alvo);
       if (a.protMedia != null && a.metaProt) a.protMedia >= a.metaProt ? ok("Proteína média de " + a.protMedia + " g, dentro da meta") : at("Proteína média de " + a.protMedia + " g, abaixo da meta de " + a.metaProt + " g");
       if (a.aguaMeta) a.aguaReg ? a.aguaDiasMeta >= 5 ? ok("Bateu a meta de água em " + a.aguaDiasMeta + " dias") : at("Meta de água em " + a.aguaDiasMeta + " de 7 dias") : at("Não registrou a água na semana");
       if (a.pesoVar != null && a.pesoVar < 0) ok("Peso " + fmtKg(Math.abs(a.pesoVar)) + " kg menor desde a última pesagem");
@@ -146,7 +161,7 @@
     if (faltaC > 0) f.push("encaixar " + (faltaC === 1 ? "mais 1 cardio" : "mais " + faltaC + " cardios"));
     if (t.freq && t.musc.length < t.freq) f.push("completar os " + t.freq + " treinos de musculação");
     if (a && a.registrados < 5) f.push("registrar a alimentação todos os dias");
-    else if (a && a.deficitMedio != null && a.metaDeficit && a.deficitMedio < a.metaDeficit * 0.8) f.push("chegar mais perto do déficit de " + a.metaDeficit + " kcal");
+    else if (balanco(a) && balanco(a).st && balanco(a).st !== "ok") f.push(a.objetivo === "massa" ? "comer um pouco mais para chegar ao superávit de " + a.metaAjuste + " kcal" : a.objetivo === "emagrecer" ? "chegar mais perto do déficit de " + a.metaAjuste + " kcal" : "equilibrar a alimentação para manter o peso");
     if (a && a.aguaMeta && a.aguaDiasMeta < 5) f.push("beber mais água ao longo do dia");
     return f.slice(0, 2);
   };
@@ -160,7 +175,7 @@
       if (cp || nc) l.push("• Cardio: " + nc + (cp ? " de " + cp : "") + (nc ? " · " + t.minCardio + " min" : ""));
       if (a) {
         l.push("• Alimentação registrada: " + a.registrados + " de 7 dias");
-        if (a.deficitMedio != null) l.push("• Déficit médio: " + a.deficitMedio + " kcal" + (a.metaDeficit ? " (meta " + a.metaDeficit + ")" : ""));
+        if (balanco(a)) l.push("• " + balanco(a).tipo + " médio: " + balanco(a).abs + " kcal" + (balanco(a).alvo ? " (meta: " + balanco(a).alvo + ")" : ""));
         if (a.protMedia != null) l.push("• Proteína média: " + a.protMedia + " g" + (a.metaProt ? " (meta " + a.metaProt + " g)" : ""));
         if (a.aguaMeta) l.push("• Água na meta: " + a.aguaDiasMeta + " de 7 dias");
         if (a.pesoVar != null) l.push("• Peso: " + (a.pesoVar > 0 ? "+" : a.pesoVar < 0 ? "−" : "") + fmtKg(Math.abs(a.pesoVar)) + " kg");
@@ -178,7 +193,7 @@
     if (a) {
       const t2 = [];
       if (a.registrados) t2.push("registrou as refeições em " + a.registrados + " de 7 dias");
-      if (a.deficitMedio != null) t2.push("seu déficit ficou em " + a.deficitMedio + " kcal por dia" + (a.metaDeficit ? a.deficitMedio >= a.metaDeficit * 0.8 ? ", bem perto da meta" : " (a meta é " + a.metaDeficit + ")" : ""));
+      if (balanco(a)) t2.push("seu " + balanco(a).tipo.toLowerCase() + " ficou em " + balanco(a).abs + " kcal por dia" + (balanco(a).alvo ? balanco(a).st === "ok" ? ", dentro da meta" : " (a meta é " + balanco(a).alvo + ")" : ""));
       if (t2.length) p.push("Você " + t2.join(" e ") + ".");
       if (a.pesoVar != null && a.pesoVar < 0) p.push("Na balança, foram " + fmtKg(Math.abs(a.pesoVar)) + " kg a menos. 👏");
     }
@@ -325,13 +340,17 @@
         !a ? h("div", { style: { fontSize: 12, color: "#94a3b8", marginTop: 6 } }, "Sem dados de alimentação para esta semana.") :
         h("div", { style: g2 },
           h(Met, { k: "Dias registrados", v: a.registrados + " de " + a.dias, s: a.registrados >= 5 ? "adesão boa" : a.registrados >= 3 ? "adesão média" : "adesão baixa", sc: a.registrados >= 5 ? "#15803d" : a.registrados >= 3 ? "#b45309" : "#c2410c" }),
-          h(Met, { k: "Déficit médio", v: a.deficitMedio != null ? a.deficitMedio + " kcal" : "—", s: a.metaDeficit ? "meta " + a.metaDeficit : "sem meta de déficit" }),
+          (() => {
+            const b = balanco(a);
+            const metaTxt = a.objetivo === "fixa" ? "meta do nutricionista" : a.objetivo === "massa" && a.metaAjuste ? "meta: superávit " + a.metaAjuste : a.objetivo === "emagrecer" && a.metaAjuste ? "meta: déficit " + a.metaAjuste : a.objetivo === "manter" ? "meta: manter o peso" : "sem meta definida";
+            return h(Met, { k: b ? b.tipo + " médio" : a.objetivo === "massa" ? "Superávit médio" : "Déficit médio", v: b ? b.abs + " kcal" : "—", s: metaTxt, sc: b && b.st ? BAL_COR[b.st] : null });
+          })(),
           h(Met, { k: "Proteína média", v: a.protMedia != null ? a.protMedia + " g" : "—", s: a.metaProt ? "meta " + a.metaProt + " g" : "sem meta" }),
           h(Met, { k: "Água média", v: a.aguaMedia ? fmtL(a.aguaMedia) : "—", s: a.aguaMeta ? "meta " + fmtL(a.aguaMeta) + " por dia" : "sem meta", sc: a.aguaMedia && a.aguaMeta ? a.aguaMedia >= a.aguaMeta ? "#15803d" : "#b45309" : null })),
         a && a.diasLista && a.diasLista.length > 0 && h(Abre, { titulo: "Dia a dia da semana", resumo: a.registrados + " " + plural(a.registrados, "dia registrado", "dias registrados"), aberto: !!abertos.alim, onClick: () => alterna("alim") }),
         a && a.diasLista && abertos.alim && a.diasLista.slice().reverse().map((d) => {
           const reg = d.kcal > 0;
-          const defOk = !a.metaDeficit || d.def == null || d.def >= a.metaDeficit * 0.8;
+          const defOk = d.def == null || balSt(a.objetivo, a.metaAjuste, d.def) !== "contra" && balSt(a.objetivo, a.metaAjuste, d.def) !== "baixo";
           const protOk = !a.metaProt || d.prot >= a.metaProt;
           const aguaOk = !a.aguaMeta || d.agua >= a.aguaMeta;
           const ok = reg && defOk && protOk && aguaOk;
