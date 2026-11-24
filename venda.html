@@ -52,11 +52,14 @@
 const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
 const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
 const PROF_ID = "64f27a4b-4cba-450c-9e52-e799c3c0b8d8";
-// Mente Ativa vendida sozinha: conta criada aqui, acesso na hora, Pix conferido depois no painel (modelo mente-jogos)
-const MENTE_MODELO = "mente-jogos";
-const LINK_MENTE = location.origin + location.pathname.replace(/[^/]*$/, "") + "mente-ativa-jogos.html?jornada=1&modelo=" + MENTE_MODELO;
-const supa = window.supabase ? window.supabase.createClient(SUPA_URL, SUPA_KEY, { auth: { storageKey: "lv-mente-auth", persistSession: true, autoRefreshToken: true } }) : null;
-const rpcConta = async (nome, corpo) => { const s = supa ? (await supa.auth.getSession()).data.session : null; const tk = s ? s.access_token : SUPA_KEY; const r = await fetch(SUPA_URL + "/rest/v1/rpc/" + nome, { method: "POST", headers: { apikey: SUPA_KEY, Authorization: "Bearer " + tk, "Content-Type": "application/json" }, body: JSON.stringify(corpo || {}) }); if (!r.ok) throw new Error(await r.text()); return true; };
+// Mente Ativa vendida sozinha: a compra cria o aluno (ligado ao login) com 2 dias de bônus.
+// Os jogos abrem na hora no app do aluno; o Pix é conferido depois, na ficha do aluno.
+const PASTA = location.origin + location.pathname.replace(/[^/]*$/, "");
+const LINK_ALUNO = PASTA + "aluno.html";
+const LINK_MENTE = PASTA + "mente-ativa-jogos.html?aluno=1";
+const supa = window.supabase ? window.supabase.createClient(SUPA_URL, SUPA_KEY, { auth: { storageKey: "lv-aluno-auth", persistSession: true, autoRefreshToken: true } }) : null;
+const hdrConta = async (extra) => { const s = supa ? (await supa.auth.getSession()).data.session : null; return Object.assign({ apikey: SUPA_KEY, Authorization: "Bearer " + (s ? s.access_token : SUPA_KEY), "Content-Type": "application/json" }, extra || {}); };
+const rpcConta = async (nome, corpo) => { const r = await fetch(SUPA_URL + "/rest/v1/rpc/" + nome, { method: "POST", headers: await hdrConta(), body: JSON.stringify(corpo || {}) }); if (!r.ok) throw new Error(await r.text()); const t = await r.text(); return t ? JSON.parse(t) : null; };
 const { useState, useEffect, useRef } = React;
 const h = React.createElement;
 const C = { escuro: "#0F172A", escuro2: "#18233A", laranja: "#FF5603", laranjaTxt: "#C2410C", laranjaClaro: "#FFF4EE", pessego: "#FDBA74", cinza: "#64748B", cinzaClaro: "#94A3B8", borda: "#E2E8F0", verde: "#16A34A", verdeClaro: "#F0FDF4", fundo: "#F4F5F7", vermelho: "#B91C1C", vermelhoClaro: "#FEF2F2" };
@@ -270,6 +273,7 @@ function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoIn
   const [f, setF] = useState({ nome: "", whats: "", email: "", senha: "", termos: false });
   const [verSenha, setVerSenha] = useState(false);
   const [conta, setConta] = useState(false);
+  const [sid, setSid] = useState("");
   const [pr, setPr] = useState({ nome: "", whats: "", msg: "" });
   const [erro, setErro] = useState("");
   const [env, setEnv] = useState(false);
@@ -318,8 +322,8 @@ function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoIn
       if (error) throw error;
       track("CompleteRegistration", { content_name: titulo, value: valor, currency: "BRL" });
       if (data && data.session) {
-        await rpcConta("ma_entrar_jornada", { p_nome: f.nome.trim(), p_whatsapp: f.whats.trim(), p_modelo: MENTE_MODELO });
-        setConta(true); setEtapa("pix");
+        const novo = await rpcConta("rpc_mente_compra_publica", { p_prof: PROF_ID, p_nome: f.nome.trim(), p_whatsapp: f.whats.trim() });
+        setSid(String(novo || "")); setConta(true); setEtapa("pix");
       } else setEtapa("email");
     } catch (e) { const t = traduz(e.message); setErro(t === "ja" ? "ja" : t); }
     setEnv(false);
@@ -334,7 +338,11 @@ function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoIn
     if (env) return;
     setEnv(true); setErro("");
     if (conta) {
-      try { await rpcConta("ma_aluno_marcar_pago", { p_modelo: MENTE_MODELO }); track("Purchase", { content_name: titulo, value: valor, currency: "BRL" }); setEtapa("feito"); }
+      try {
+        const r = await fetch(SUPA_URL + "/rest/v1/l360_avisos", { method: "POST", headers: await hdrConta({ Prefer: "return=minimal" }), body: JSON.stringify({ id: "av_" + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4), owner_id: PROF_ID, student_id: sid, servico: "Mente Ativa" }) });
+        if (!r.ok) throw new Error(await r.text());
+        track("Purchase", { content_name: titulo, value: valor, currency: "BRL" }); setEtapa("feito");
+      }
       catch (e) { setErro("Não conseguimos enviar o aviso. Tente de novo ou fale no WhatsApp."); }
       setEnv(false);
       return;
@@ -353,7 +361,7 @@ function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoIn
     h("img", { src: d.foto || "mente-ativa.jpg", alt: "", style: { width: 46, height: 46, borderRadius: 12, objectFit: "cover" } }),
     h("div", { style: { flex: 1, minWidth: 0 } }, h("div", { style: { fontSize: 15, fontWeight: 800 } }, titulo + (mensal ? " · 30 dias" : "")), h("div", { style: { fontSize: 12.5, color: C.cinza } }, presente ? "Presente para " + (pr.nome.trim() || "alguém especial") : resumoSub || "Acesso liberado")),
     h("div", { style: { fontSize: 18, fontWeight: 800 } }, brl(valor)));
-  const caixaErro = erro ? h("div", { role: "alert", style: { background: C.vermelhoClaro, color: C.vermelho, borderRadius: 12, padding: "10px 12px", fontSize: 14, lineHeight: 1.45, marginBottom: 12 } }, erro === "ja" ? h("span", null, "Este e-mail já tem conta. ", h("a", { href: LINK_MENTE, style: { color: C.vermelho, fontWeight: 800 } }, "Entrar na Mente Ativa")) : erro) : null;
+  const caixaErro = erro ? h("div", { role: "alert", style: { background: C.vermelhoClaro, color: C.vermelho, borderRadius: 12, padding: "10px 12px", fontSize: 14, lineHeight: 1.45, marginBottom: 12 } }, erro === "ja" ? h("span", null, "Este e-mail já tem conta. ", h("a", { href: LINK_ALUNO, style: { color: C.vermelho, fontWeight: 800 } }, "Entrar no app")) : erro) : null;
   const waProf = waLink(pix.whatsapp, "Oi, " + pers + "! Sou " + f.nome.trim() + " e acabei de pagar: " + titulo + (presente ? " (presente para " + pr.nome.trim() + ")" : "") + ". Segue o comprovante.");
 
   let corpo;
@@ -374,8 +382,8 @@ function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoIn
       h("button", { type: "button", onClick: () => setEtapa("dados"), style: { marginTop: 10, border: "none", background: "none", color: C.cinza, fontSize: 14, textDecoration: "underline", cursor: "pointer" } }, "Voltar e corrigir os dados")));
   else if (etapa === "email") corpo = h("div", { style: { textAlign: "center", padding: "18px 4px 6px" } },
     h("div", { style: { fontSize: 20, fontWeight: 800 } }, "Falta só confirmar o e-mail"),
-    h("div", { style: { fontSize: 15, color: "#475569", marginTop: 8, lineHeight: 1.55 } }, "Enviamos um link para ", h("b", null, f.email.trim()), ". Toque nele e depois entre na Mente Ativa com o seu e-mail e senha."),
-    h("a", { href: LINK_MENTE, style: { ...botaoPri, display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", marginTop: 18 } }, "Já confirmei, entrar"));
+    h("div", { style: { fontSize: 15, color: "#475569", marginTop: 8, lineHeight: 1.55 } }, "Enviamos um link para ", h("b", null, f.email.trim()), ". Toque nele e depois entre no app com o seu e-mail e senha."),
+    h("a", { href: LINK_ALUNO, style: { ...botaoPri, display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", marginTop: 18 } }, "Já confirmei, entrar"));
   else if (etapa === "feito" && conta) corpo = h("div", { style: { textAlign: "center", padding: "10px 2px 4px" } },
     h("div", { style: { width: 64, height: 64, borderRadius: 20, background: C.verdeClaro, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" } }, h(Ico, { d: I.check, cor: C.verde, tam: 30, larg: 2.4 })),
     h("div", { style: { fontSize: 21, fontWeight: 800 } }, "Tudo certo, " + primeiro(f.nome) + "!"),
@@ -408,7 +416,7 @@ function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoIn
     h("div", { style: { display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12.5, color: C.cinza, lineHeight: 1.5, marginTop: 12 } },
       h(Ico, { d: I.escudo, cor: C.cinzaClaro, tam: 18 }),
       h("span", null, usaConta ? "Seu acesso é liberado na hora. Em seguida aparece o Pix de " + brl(valor) + " direto para o " + pers + ", sem cartão e sem fidelidade." : "Pagamento por Pix direto para o " + pers + ". " + (mensal ? "São 30 dias de acesso. Renova só se quiser, sem fidelidade." : "Seus dados são usados só para combinar o atendimento."))),
-    usaConta ? h("a", { href: LINK_MENTE, style: { display: "block", textAlign: "center", marginTop: 10, color: C.laranjaTxt, fontWeight: 700, fontSize: 14.5, textDecoration: "none", padding: 6 } }, "Já tenho conta") : null);
+    usaConta ? h("a", { href: LINK_ALUNO, style: { display: "block", textAlign: "center", marginTop: 10, color: C.laranjaTxt, fontWeight: 700, fontSize: 14.5, textDecoration: "none", padding: 6 } }, "Já tenho conta") : null);
 
   return h("div", { style: { position: "fixed", inset: 0, bottom: ALUNO ? "calc(62px + env(safe-area-inset-bottom))" : 0, zIndex: 400, display: "flex", alignItems: "flex-end", justifyContent: "center" } },
     h("div", { onClick: onFechar, style: { position: "absolute", inset: 0, background: "rgba(15,23,42,0.55)", animation: "some .25s ease both" } }),

@@ -32,11 +32,7 @@ const SUPA_URL = "https://jpduxfbigcdxmtcozqpp.supabase.co";
 const SUPA_KEY = "sb_publishable_VZSgcxu5ps3eR9UAjuRr4Q_B65WTx_h";
 const LV_MODO_ALUNO = new URLSearchParams(window.location.search).get("aluno") === "1";
 const LV_JORNADA = new URLSearchParams(window.location.search).get("jornada") === "1";
-const LV_MODELO = new URLSearchParams(window.location.search).get("modelo") || "";
-// Mente Ativa vendida sozinha (modelo mente-jogos): acesso na hora, Pix conferido depois no painel
-const LV_MENTE = LV_JORNADA && LV_MODELO === "mente-jogos";
-const LV_MENTE_VENDA = "venda.html?i=vi_ffvgjbydd90";
-const LV_VOLTAR = LV_MENTE ? null : LV_JORNADA ? "mente-ativa-teste.html" : "aluno.html";
+const LV_VOLTAR = LV_JORNADA ? "mente-ativa-teste.html" : "aluno.html";
 let LV_MATRICULA = null;
 if (LV_MODO_ALUNO) {
   try {
@@ -2803,10 +2799,6 @@ const maApi = {
     }
   },
   async avisar(ownerId, studentId) {
-    if (LV_MENTE) {
-      try { await fetch(SUPA_URL + "/rest/v1/rpc/ma_aluno_marcar_pago", { method: "POST", headers: await authHeadersFn(), body: JSON.stringify({ p_modelo: LV_MODELO }) }); } catch (e) {}
-      return;
-    }
     if (LV_JORNADA) return;
     try {
       await fetch(SUPA_URL + "/rest/v1/l360_avisos", { method: "POST", headers: { ...await authHeadersFn(), Prefer: "return=minimal" }, body: JSON.stringify({ id: "av_" + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4), owner_id: String(ownerId), student_id: String(studentId), servico: "Mente Ativa" }) });
@@ -2882,7 +2874,6 @@ const MaIcone = ({ j, tam }) => {
 const MaVoltar = ({ onClick, href, rotulo }) => {
   const st = { display: "inline-flex", alignItems: "center", gap: 6, height: 40, padding: "0 16px 0 10px", borderRadius: 20, border: "1.5px solid rgba(255,255,255,0.28)", background: "rgba(255,255,255,0.10)", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", textDecoration: "none", fontFamily: "inherit" };
   const seta = React.createElement("svg", { width: "20", height: "20", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2.6", strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true" }, React.createElement("path", { d: "M15 18l-6-6 6-6" }));
-  if (!href && !onClick) return null;
   return href ? React.createElement("a", { href, style: st }, seta, rotulo || "Voltar") : React.createElement("button", { type: "button", onClick, style: st }, seta, rotulo || "Voltar");
 };
 const MaTopo = ({ voltar, onVoltar, titulo, sub, children, href }) => React.createElement("div", { style: { background: MA.escuro, color: "#F8FAFC", padding: "14px 16px 16px", borderRadius: "0 0 24px 24px" } }, React.createElement(MaVoltar, { href, onClick: onVoltar, rotulo: voltar }), titulo && React.createElement("div", { style: { fontSize: 22, fontWeight: 800, marginTop: 12 } }, titulo), sub && React.createElement("div", { style: { fontSize: 12.5, color: MA.cinzaClaro, marginTop: 2, lineHeight: 1.45 } }, sub), children);
@@ -2946,13 +2937,11 @@ function MenteAluno({ aluno }) {
   const [rodada, setRodada] = useState(0);
   const [aviso, setAviso] = useState(false);
   const [verPix, setVerPix] = useState(false);
-  const jm = aluno.jm || null;
   const sd = aluno.data || {};
   useEffect(() => {
     (async () => {
       const [c, p, r] = await Promise.all([maApi.rpc("get_mente_config", { prof_id: aluno.owner_id }), maApi.rpc("get_professional_pix_config", { prof_id: aluno.owner_id }), maApi.resultados(aluno.id)]);
-      const cc = c && typeof c === "object" && !Array.isArray(c) ? c : {};
-      setCfg(jm ? Object.assign({}, cc, { nome: cc.nome || "Mente Ativa", valor: jm.preco }) : cc);
+      setCfg(c && typeof c === "object" && !Array.isArray(c) ? c : {});
       setProf(Array.isArray(p) ? p[0] || null : p);
       setRes(Array.isArray(r) ? r : []);
     })();
@@ -2962,7 +2951,7 @@ function MenteAluno({ aluno }) {
   const tol = parseInt(prof && prof.tolerancia_vencimento_dias) || 0;
   const s = sd.mente || {};
   const dias = s.vencimento ? Math.round((new Date(s.vencimento + "T12:00:00") - new Date(hoje + "T12:00:00")) / 864e5) : null;
-  const liberado = jm ? jm.status === "ativo" : !cfg.ativo || s.status === "bonus" && (!s.bonusAte || s.bonusAte >= hoje) || s.status === "pago" && dias !== null && dias >= -tol;
+  const liberado = !cfg.ativo || s.status === "bonus" && (!s.bonusAte || s.bonusAte >= hoje) || s.status === "pago" && dias !== null && dias >= -tol;
   const nomeProduto = cfg.nome || "Mente Ativa";
   const stats = maStats(res);
   const salvar = (r) => {
@@ -2992,12 +2981,12 @@ function MenteAluno({ aluno }) {
     return React.createElement("div", null, React.createElement("div", { style: { background: MA.escuro, height: 56, boxSizing: "border-box", padding: "0 16px", display: "flex", alignItems: "center", position: "sticky", top: 0, zIndex: 30 } }, React.createElement(MaVoltar, { onClick: () => setTela("home") })), React.createElement(M, { key: tela + rodada, onBack: () => setTela("home"), onResult: salvar }));
   }
   if (!liberado) {
-    const venceu = jm ? true : s.status === "pago";
+    const venceu = s.status === "pago";
     const beneficios = Array.isArray(cfg.beneficios) && cfg.beneficios.length ? cfg.beneficios : MA_BENEFICIOS;
     return React.createElement("div", { style: { background: MA.fundo, minHeight: "100vh", color: MA.escuro, paddingBottom: 30 } }, React.createElement(MaTopo, { voltar: "Voltar ao app", href: LV_VOLTAR }, React.createElement("div", { style: { marginTop: 14 } }, React.createElement("span", { style: { display: "inline-block", fontSize: 10.5, fontWeight: 800, color: "#FDBA74", background: "rgba(255,86,3,0.18)", borderRadius: 20, padding: "4px 10px" } }, venceu ? "SEU ACESSO VENCEU" : "PLANO MENSAL")), React.createElement("div", { style: { fontSize: 22, fontWeight: 800, marginTop: 8 } }, nomeProduto), React.createElement("div", { style: { fontSize: 13.5, color: MA.cinzaClaro, lineHeight: 1.5, marginTop: 6 } }, "O corpo você treina comigo. A mente, você treina em casa, 10 minutos por dia.")), React.createElement(MaSecao, null, "O que você ganha"), React.createElement("div", { style: { margin: "0 16px", background: "#fff", borderRadius: 16, padding: "4px 14px", boxShadow: "0 1px 2px rgba(15,23,42,0.06)" } }, beneficios.map((b, i) => React.createElement("div", { key: i, style: { padding: "9px 0", fontSize: 13.5, borderTop: i ? "1px solid #F1F5F9" : "none", display: "flex", gap: 8 } }, React.createElement("span", { style: { color: MA.laranja, fontWeight: 800 } }, "✓"), b))), React.createElement(MaSecao, null, "Os jogos"), React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, margin: "0 16px" } }, React.createElement("div", { style: { position: "relative", display: "grid" } }, React.createElement(MaCartaoJogo, { j: maJogo(MA_GRATIS), feito: stats.hojeJogos[MA_GRATIS], onClick: () => abrir(MA_GRATIS) }), !stats.hojeJogos[MA_GRATIS] && React.createElement("span", { style: { position: "absolute", top: 10, right: 10, fontSize: 10.5, fontWeight: 800, color: "#fff", background: MA.verde, borderRadius: 10, padding: "3px 8px", pointerEvents: "none" } }, "GRÁTIS")), MA_JOGOS.filter((j) => j.id !== MA_GRATIS).map((j) => React.createElement(MaCartaoJogo, { key: j.id, j, bloqueado: true, onClick: irPagamento }))), React.createElement("div", { style: { margin: "10px 16px 0", fontSize: 12, color: MA.cinza, textAlign: "center", lineHeight: 1.5 } }, "O ", maJogo(MA_GRATIS).nome, " é grátis para você conhecer. Os outros 7 são liberados na assinatura.", res.length > 0 ? " Seus resultados ficam guardados." : ""), React.createElement(MaSecao, null, "Assinatura"), React.createElement("div", { id: "ma-pagamento", style: { marginTop: -16 } }, React.createElement(MaPix, { cfg, prof, ownerId: aluno.owner_id, studentId: aluno.id, nomeAluno: sd.name })), aviso && React.createElement("div", { style: { position: "fixed", left: 16, right: 16, bottom: 24, zIndex: 50, background: MA.escuro, color: "#fff", borderRadius: 14, padding: "12px 14px", fontSize: 13.5, textAlign: "center", boxShadow: "0 10px 24px rgba(15,23,42,0.35)" } }, "Esse jogo faz parte da assinatura. O pagamento está aqui embaixo."));
   }
   const desafio = maDesafio(res);
-  return React.createElement("div", { style: { background: MA.fundo, minHeight: "100vh", color: MA.escuro, paddingBottom: 30 } }, React.createElement(MaTopo, { voltar: "Voltar à jornada", href: LV_VOLTAR, titulo: nomeProduto, sub: "Memória, atenção e raciocínio, 10 minutos por dia" }, React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 14 } }, [[stats.streak + (stats.streak === 1 ? " dia" : " dias"), "seguidos"], [stats.minSemana + " min", "esta semana"], [String(stats.total), stats.total === 1 ? "jogo feito" : "jogos feitos"]].map(([v, l]) => React.createElement("div", { key: l, style: { flex: 1, background: MA.escuro2, borderRadius: 12, padding: "9px 10px", fontSize: 11, color: MA.cinzaClaro } }, React.createElement("b", { style: { display: "block", fontSize: 17, color: "#fff" } }, v), l)))), jm && (jm.pagamento_status === "aguardando" || jm.pagamento_status === "vencido") ? React.createElement("div", { style: { margin: "14px 16px 0", background: jm.aluno_marcou_pago ? "#F0FDF4" : "#FFF4EE", border: "1.5px solid " + (jm.aluno_marcou_pago ? "#BBF7D0" : "#FED7AA"), borderRadius: 16, padding: "12px 14px" } }, React.createElement("div", { style: { fontSize: 14.5, fontWeight: 800, color: jm.aluno_marcou_pago ? "#15803D" : "#C2410C" } }, jm.aluno_marcou_pago ? "Você avisou que pagou" : "Seu acesso já está liberado"), React.createElement("div", { style: { fontSize: 13.5, color: "#334155", lineHeight: 1.45, marginTop: 3 } }, jm.aluno_marcou_pago ? "Assim que o pagamento for confirmado, este aviso some." : "Falta o Pix de " + maReal(jm.preco) + (jm.pagamento_prazo ? ". Pague até " + String(jm.pagamento_prazo).slice(8, 10) + "/" + String(jm.pagamento_prazo).slice(5, 7) + " para manter o acesso." : ".")), !jm.aluno_marcou_pago && React.createElement("button", { type: "button", onClick: () => setVerPix(!verPix), style: { marginTop: 10, height: 44, width: "100%", borderRadius: 14, border: "none", background: "#FF5603", color: "#fff", fontWeight: 800, fontSize: 15, cursor: "pointer", fontFamily: "inherit" } }, verPix ? "Fechar o Pix" : "Pagar agora com Pix")) : null, jm && verPix ? React.createElement(MaPix, { cfg, prof, ownerId: aluno.owner_id, studentId: aluno.id, nomeAluno: sd.name }) : null, React.createElement("button", { type: "button", onClick: () => abrir(desafio.id), style: { display: "flex", width: "calc(100% - 32px)", margin: "14px 16px 0", textAlign: "left", fontFamily: "inherit", cursor: "pointer", border: "none", background: "linear-gradient(90deg,#FF5603,#FF7A2E)", borderRadius: 16, padding: "12px 12px 12px 12px", color: "#fff", alignItems: "center", gap: 12, boxShadow: "0 8px 18px rgba(255,86,3,0.3)" } }, React.createElement("span", { style: { display: "flex", width: 50, height: 50, borderRadius: 15, background: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", fontSize: 27, flexShrink: 0, boxShadow: "inset 0 2px 0 rgba(255,255,255,0.35)" } }, desafio.ic), React.createElement("span", { style: { flex: 1 } }, React.createElement("span", { style: { display: "block", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", opacity: 0.9 } }, desafio.cumprido ? "DESAFIO DE HOJE · CUMPRIDO ✓" : "DESAFIO DE HOJE"), React.createElement("span", { style: { display: "block", fontSize: 17, fontWeight: 800 } }, desafio.nome), React.createElement("span", { style: { display: "block", fontSize: 12, fontWeight: 700, marginTop: 1 } }, "Meta: " + maMetaTxt(desafio)), React.createElement("span", { style: { display: "block", fontSize: 11, opacity: 0.9, marginTop: 1 } }, (desafio.pouco ? "Você treinou pouco " + maGrupo(desafio.grupo)[1].toLowerCase() + " esta semana" : maGrupo(desafio.grupo)[1]) + " · cerca de " + desafio.tempo)), React.createElement("span", { style: { width: 40, height: 40, borderRadius: "50%", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, React.createElement(IcoPlay, { size: 14, color: "#E8581A" }))), MA_GRUPOS.map((g) => React.createElement("div", { key: g[0] }, React.createElement(MaSecao, null, g[1]), React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, margin: "0 16px" } }, MA_JOGOS.filter((j) => j.grupo === g[0]).map((j) => React.createElement(MaCartaoJogo, { key: j.id, j, feito: stats.hojeJogos[j.id], onClick: () => abrir(j.id) }))))), s.status === "pago" && dias !== null && dias <= 5 && React.createElement("div", { style: { margin: "16px 16px 0", fontSize: 12, color: MA.laranjaTxt, background: "#FFF4EE", borderRadius: 12, padding: "9px 12px", textAlign: "center" } }, dias > 0 ? "Seu acesso vence em " + dias + (dias === 1 ? " dia." : " dias.") : dias === 0 ? "Seu acesso vence hoje." : "Seu acesso venceu. Renove para continuar."));
+  return React.createElement("div", { style: { background: MA.fundo, minHeight: "100vh", color: MA.escuro, paddingBottom: 30 } }, React.createElement(MaTopo, { voltar: "Voltar à jornada", href: LV_VOLTAR, titulo: nomeProduto, sub: "Memória, atenção e raciocínio, 10 minutos por dia" }, React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 14 } }, [[stats.streak + (stats.streak === 1 ? " dia" : " dias"), "seguidos"], [stats.minSemana + " min", "esta semana"], [String(stats.total), stats.total === 1 ? "jogo feito" : "jogos feitos"]].map(([v, l]) => React.createElement("div", { key: l, style: { flex: 1, background: MA.escuro2, borderRadius: 12, padding: "9px 10px", fontSize: 11, color: MA.cinzaClaro } }, React.createElement("b", { style: { display: "block", fontSize: 17, color: "#fff" } }, v), l)))), s.status === "bonus" && s.origem === "venda" ? React.createElement("div", { style: { margin: "14px 16px 0", background: "#FFF4EE", border: "1.5px solid #FED7AA", borderRadius: 16, padding: "12px 14px" } }, React.createElement("div", { style: { fontSize: 14.5, fontWeight: 800, color: "#C2410C" } }, "Seu acesso já está liberado"), React.createElement("div", { style: { fontSize: 13.5, color: "#334155", lineHeight: 1.45, marginTop: 3 } }, "Falta o Pix" + (Number(cfg.valor) ? " de " + maReal(Number(cfg.valor)) : "") + (s.bonusAte ? ". Pague até " + String(s.bonusAte).slice(8, 10) + "/" + String(s.bonusAte).slice(5, 7) + " para manter o acesso." : ".")), React.createElement("button", { type: "button", onClick: () => setVerPix(!verPix), style: { marginTop: 10, height: 44, width: "100%", borderRadius: 14, border: "none", background: "#FF5603", color: "#fff", fontWeight: 800, fontSize: 15, cursor: "pointer", fontFamily: "inherit" } }, verPix ? "Fechar o Pix" : "Pagar agora com Pix")) : null, s.status === "bonus" && s.origem === "venda" && verPix ? React.createElement(MaPix, { cfg, prof, ownerId: aluno.owner_id, studentId: aluno.id, nomeAluno: sd.name }) : null, React.createElement("button", { type: "button", onClick: () => abrir(desafio.id), style: { display: "flex", width: "calc(100% - 32px)", margin: "14px 16px 0", textAlign: "left", fontFamily: "inherit", cursor: "pointer", border: "none", background: "linear-gradient(90deg,#FF5603,#FF7A2E)", borderRadius: 16, padding: "12px 12px 12px 12px", color: "#fff", alignItems: "center", gap: 12, boxShadow: "0 8px 18px rgba(255,86,3,0.3)" } }, React.createElement("span", { style: { display: "flex", width: 50, height: 50, borderRadius: 15, background: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", fontSize: 27, flexShrink: 0, boxShadow: "inset 0 2px 0 rgba(255,255,255,0.35)" } }, desafio.ic), React.createElement("span", { style: { flex: 1 } }, React.createElement("span", { style: { display: "block", fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", opacity: 0.9 } }, desafio.cumprido ? "DESAFIO DE HOJE · CUMPRIDO ✓" : "DESAFIO DE HOJE"), React.createElement("span", { style: { display: "block", fontSize: 17, fontWeight: 800 } }, desafio.nome), React.createElement("span", { style: { display: "block", fontSize: 12, fontWeight: 700, marginTop: 1 } }, "Meta: " + maMetaTxt(desafio)), React.createElement("span", { style: { display: "block", fontSize: 11, opacity: 0.9, marginTop: 1 } }, (desafio.pouco ? "Você treinou pouco " + maGrupo(desafio.grupo)[1].toLowerCase() + " esta semana" : maGrupo(desafio.grupo)[1]) + " · cerca de " + desafio.tempo)), React.createElement("span", { style: { width: 40, height: 40, borderRadius: "50%", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, React.createElement(IcoPlay, { size: 14, color: "#E8581A" }))), MA_GRUPOS.map((g) => React.createElement("div", { key: g[0] }, React.createElement(MaSecao, null, g[1]), React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, margin: "0 16px" } }, MA_JOGOS.filter((j) => j.grupo === g[0]).map((j) => React.createElement(MaCartaoJogo, { key: j.id, j, feito: stats.hojeJogos[j.id], onClick: () => abrir(j.id) }))))), s.status === "pago" && dias !== null && dias <= 5 && React.createElement("div", { style: { margin: "16px 16px 0", fontSize: 12, color: MA.laranjaTxt, background: "#FFF4EE", borderRadius: 12, padding: "9px 12px", textAlign: "center" } }, dias > 0 ? "Seu acesso vence em " + dias + (dias === 1 ? " dia." : " dias.") : dias === 0 ? "Seu acesso vence hoje." : "Seu acesso venceu. Renove para continuar."));
 }
 function SemCadastro() {
   return React.createElement("div", { style: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: MA.fundo, padding: 20 } }, React.createElement("div", { style: { background: "#fff", borderRadius: 16, padding: 26, maxWidth: 360, textAlign: "center" } }, React.createElement("div", { style: { fontWeight: 800, fontSize: 18, marginBottom: 8 } }, "Não encontramos seu cadastro"), React.createElement("div", { style: { fontSize: 13, color: MA.cinza, lineHeight: 1.5, marginBottom: 18 } }, "Entre primeiro pelo app do aluno, com o mesmo e-mail que o seu personal cadastrou."), React.createElement("a", { href: "aluno.html", style: { display: "block", padding: 12, borderRadius: 10, background: MA.laranja, color: "#fff", fontWeight: 700, textDecoration: "none", marginBottom: 10 } }, "Abrir o app do aluno"), React.createElement("button", { onClick: () => supa.auth.signOut(), style: { border: "none", background: "transparent", color: MA.cinzaClaro, fontSize: 13, cursor: "pointer", textDecoration: "underline" } }, "Sair")));
@@ -3030,22 +3019,6 @@ function App() {
     (async () => {
       try {
         const headers = await authHeadersFn();
-        if (LV_MENTE) {
-          let j = await maApi.rpc("ma_minha_jornada", { p_modelo: LV_MODELO });
-          if (!j || !j.matricula_id) {
-            const meta = session.user && session.user.user_metadata || {};
-            await maApi.rpc("ma_entrar_jornada", { p_nome: meta.nome || "", p_whatsapp: meta.whatsapp || "", p_modelo: LV_MODELO });
-            j = await maApi.rpc("ma_minha_jornada", { p_modelo: LV_MODELO });
-          }
-          if (!j || !j.matricula_id) {
-            window.location.href = LV_MENTE_VENDA;
-            return;
-          }
-          LV_MATRICULA = j.matricula_id;
-          setAluno({ id: j.matricula_id, owner_id: j.owner_id, jm: j, data: { name: j.nome || "", mente: { status: "bonus" } } });
-          setBilling({ aluno: true });
-          return;
-        }
         if (LV_JORNADA) {
           const j = await maApi.rpc("ma_minha_jornada", {});
           if (!j || !j.matricula_id || j.status !== "ativo") {
@@ -3093,7 +3066,7 @@ function App() {
     } });
   }
   if (!session) {
-    if (LV_JORNADA && !LV_MENTE) {
+    if (LV_JORNADA) {
       window.location.href = "mente-ativa-teste.html";
       return null;
     }
