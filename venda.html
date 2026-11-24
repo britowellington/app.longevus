@@ -132,10 +132,10 @@ function DemoGenio({ onComprar }) {
   const mostrar = (s) => {
     setFase("mostrando"); setPos(0);
     s.forEach((c, i) => {
-      timers.current.push(setTimeout(() => setAceso(c), 700 + i * 750));
-      timers.current.push(setTimeout(() => setAceso(-1), 700 + i * 750 + 480));
+      timers.current.push(setTimeout(() => setAceso(c), 800 + i * 950));
+      timers.current.push(setTimeout(() => setAceso(-1), 800 + i * 950 + 650));
     });
-    timers.current.push(setTimeout(() => setFase("vez"), 700 + s.length * 750));
+    timers.current.push(setTimeout(() => setFase("vez"), 800 + s.length * 950));
   };
   const comecar = () => { limpar(); const s = [Math.floor(Math.random() * 4), Math.floor(Math.random() * 4)]; setSeq(s); mostrar(s); };
   const tocar = (i) => {
@@ -153,10 +153,88 @@ function DemoGenio({ onComprar }) {
     h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 } },
       h("div", null, h("div", { style: { fontSize: 16, fontWeight: 800 } }, "Gênio das Cores"), h("div", { style: { fontSize: 12.5, color: C.cinza } }, "Um dos 8 jogos, versão de teste")),
       seq.length ? h("span", { style: { fontSize: 12, fontWeight: 800, color: C.laranjaTxt, background: C.laranjaClaro, borderRadius: 99, padding: "4px 10px" } }, seq.length + " cores") : null),
-    h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } }, CORES.map(([forte, claro], i) => h("button", { key: i, type: "button", onClick: () => tocar(i), "aria-label": "Cor " + (i + 1), style: { height: 84, borderRadius: 18, border: "none", cursor: fase === "vez" ? "pointer" : "default", background: aceso === i ? claro : forte, opacity: aceso === i || fase === "inicio" || fase === "vez" ? 1 : 0.55, transform: aceso === i ? "scale(0.96)" : "none", boxShadow: aceso === i ? "0 0 0 4px " + claro + ", 0 10px 22px " + forte + "66" : "inset 0 -6px 0 rgba(0,0,0,0.15)", transition: "all .15s" } }))),
+    h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } }, CORES.map(([forte, claro], i) => h("button", { key: i, type: "button", onClick: () => tocar(i), "aria-label": "Cor " + (i + 1), style: { height: 84, borderRadius: 18, border: "none", cursor: fase === "vez" ? "pointer" : "default", background: forte, opacity: aceso === i ? 1 : (fase === "mostrando" || fase === "acertou") ? 0.22 : 1, filter: aceso === i ? "brightness(1.08) saturate(1.15)" : (fase === "mostrando" || fase === "acertou") ? "grayscale(0.6)" : "none", transform: aceso === i ? "scale(1.06)" : "none", boxShadow: aceso === i ? "0 0 0 5px #fff, 0 0 0 9px " + forte + ", 0 0 34px 8px " + claro : "inset 0 -6px 0 rgba(0,0,0,0.15)", zIndex: aceso === i ? 1 : 0, position: "relative", transition: "all .12s" } }))),
     h("div", { style: { fontSize: 14.5, fontWeight: 700, textAlign: "center", color: fase === "errou" ? C.laranjaTxt : fase === "fim" ? C.verde : C.escuro, margin: "14px 0 12px", minHeight: 22 } }, msg),
     fase === "inicio" || fase === "errou" ? h("button", { type: "button", onClick: comecar, style: { ...botaoPri, height: 50, fontSize: 16, background: C.escuro, boxShadow: "none" } }, fase === "inicio" ? "Jogar" : "Tentar de novo") : null,
     fase === "fim" ? h("button", { type: "button", onClick: onComprar, style: { ...botaoPri, height: 50, fontSize: 16 } }, "Quero os 8 jogos") : null);
+}
+
+
+// ── Mini jogo de demonstração: Memória de Pares (mesmo visual do jogo no app) ──
+// PARES_DEMO = 4 → 8 cartas (4 x 2). Troque para 3 → 6 cartas, ou 6 → 12 cartas (igual ao app).
+const PARES_DEMO = 4;
+const FIGURAS = ["🐢", "🐧", "🐬", "🐱", "🐶", "🦊"];
+const embaralhar = (a) => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+const novoBaralho = () => embaralhar(FIGURAS.slice(0, PARES_DEMO).concat(FIGURAS.slice(0, PARES_DEMO)));
+const BRILHO = "M12 1.5c.7 5.6 4.9 9.8 10.5 10.5-5.6.7-9.8 4.9-10.5 10.5C11.3 16.9 7.1 12.7 1.5 12 7.1 11.3 11.3 7.1 12 1.5z";
+function DemoPares({ onComprar }) {
+  const [fase, setFase] = useState("inicio"); // inicio | memorize | jogando | fim
+  const [cartas, setCartas] = useState(novoBaralho);
+  const [abertas, setAbertas] = useState([]);
+  const [achadas, setAchadas] = useState([]);
+  const [mov, setMov] = useState(0);
+  const [errou, setErrou] = useState(false);
+  const [conta, setConta] = useState(3);
+  const [seg, setSeg] = useState(0);
+  const timers = useRef([]);
+  const relogio = useRef(null);
+  const limpar = () => { timers.current.forEach(clearTimeout); timers.current = []; clearInterval(relogio.current); };
+  useEffect(() => () => limpar(), []);
+  const comecar = () => {
+    limpar();
+    setCartas(novoBaralho()); setAbertas([]); setAchadas([]); setMov(0); setErrou(false); setSeg(0); setConta(3);
+    setFase("memorize");
+    [1, 2].forEach((k) => timers.current.push(setTimeout(() => setConta(3 - k), k * 1000)));
+    timers.current.push(setTimeout(() => { setFase("jogando"); relogio.current = setInterval(() => setSeg((x) => x + 1), 1000); }, 3000));
+  };
+  const tocar = (i) => {
+    if (fase !== "jogando" || abertas.length === 2 || abertas.indexOf(i) >= 0 || achadas.indexOf(i) >= 0) return;
+    const ab = abertas.concat([i]);
+    setAbertas(ab); setErrou(false);
+    if (ab.length < 2) return;
+    setMov(mov + 1);
+    if (cartas[ab[0]] === cartas[ab[1]]) {
+      const ach = achadas.concat(ab);
+      timers.current.push(setTimeout(() => { setAchadas(ach); setAbertas([]); if (ach.length === cartas.length) { clearInterval(relogio.current); setFase("fim"); } }, 450));
+    } else {
+      setErrou(true);
+      timers.current.push(setTimeout(() => { setAbertas([]); setErrou(false); }, 1100));
+    }
+  };
+  const nPares = achadas.length / 2;
+  const placar = (valor, rot, cor) => h("div", { style: { flex: 1, background: "#fff", borderRadius: 14, border: "1.5px solid " + C.borda, borderTop: "4px solid " + cor, padding: "8px 4px 7px", textAlign: "center" } },
+    h("div", { style: { fontSize: 22, fontWeight: 800, color: cor === C.laranja ? C.escuro : cor, lineHeight: 1.1 } }, valor),
+    h("div", { style: { fontSize: 10.5, letterSpacing: "0.08em", color: C.cinza, marginTop: 3 } }, rot));
+  const aviso = fase === "memorize" ? ["👀  Memorize as cartas... " + conta + "s", "#DBEAFE", "#3B82F6", "#1D4ED8"]
+    : fase === "fim" ? ["🎉  Você achou os " + PARES_DEMO + " pares em " + mov + " movimentos!", C.verdeClaro, "#4ADE80", "#15803D"]
+    : errou ? ["Não é par. Guarde onde elas estão!", C.vermelhoClaro, "#FCA5A5", C.vermelho]
+    : fase === "jogando" ? [abertas.length === 1 ? "Agora toque no par dessa figura" : "Toque em duas cartas para achar os pares", "#F8FAFC", C.borda, "#334155"]
+    : null;
+  const colunas = PARES_DEMO === 3 ? 3 : 4;
+  return h("div", { style: { ...cartao, padding: 14, background: "#F4F5F7" } },
+    h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, padding: "0 2px" } },
+      h("div", null, h("div", { style: { fontSize: 16, fontWeight: 800 } }, "Memória de Pares"), h("div", { style: { fontSize: 12.5, color: C.cinza } }, "Um dos 8 jogos, versão de teste"))),
+    h("div", { style: { display: "flex", gap: 8, marginBottom: 10 } },
+      placar(nPares + "/" + PARES_DEMO, "PARES", C.verde),
+      placar(String(mov), "MOVIMENTOS", C.laranja),
+      placar(seg + "s", "TEMPO", "#D97706")),
+    aviso ? h("div", { style: { background: aviso[1], border: "1.5px solid " + aviso[2], color: aviso[3], borderRadius: 14, padding: "10px 12px", fontSize: 15, fontWeight: 800, textAlign: "center", marginBottom: 12, lineHeight: 1.35 } }, aviso[0]) : null,
+    h("div", { style: { display: "grid", gridTemplateColumns: "repeat(" + colunas + ",1fr)", gap: 9 } }, cartas.map((fig, i) => {
+      const achada = achadas.indexOf(i) >= 0;
+      const aberta = fase === "memorize" || fase === "fim" || achada || abertas.indexOf(i) >= 0;
+      const errada = errou && abertas.indexOf(i) >= 0;
+      return h("button", { key: i, type: "button", onClick: () => tocar(i), "aria-label": aberta ? fig : "Carta virada", style: { aspectRatio: "1 / 1.06", width: "100%", padding: 0, border: "none", background: "transparent", cursor: fase === "jogando" && !aberta ? "pointer" : "default", perspective: 700 } },
+        h("span", { style: { position: "relative", display: "block", width: "100%", height: "100%", transformStyle: "preserve-3d", transition: "transform .4s ease", transform: aberta ? "rotateY(180deg)" : "none" } },
+          h("span", { style: { position: "absolute", inset: 0, borderRadius: 18, backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", background: "linear-gradient(180deg,#FFB98A 0%,#FF7A2E 38%,#FF5603 100%)", boxShadow: "inset 0 -7px 0 #C2410C, inset 0 2px 0 rgba(255,255,255,0.35), 0 6px 14px rgba(255,86,3,0.22)", display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: 6 } },
+            h("svg", { width: "34%", viewBox: "0 0 24 24", "aria-hidden": "true", style: { filter: "drop-shadow(0 2px 2px rgba(124,45,18,0.35))" } }, h("path", { d: BRILHO, fill: "#fff" }))),
+          h("span", { style: { position: "absolute", inset: 0, borderRadius: 18, backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", transform: "rotateY(180deg)", background: achada ? "linear-gradient(180deg,#F0FDF4,#DCFCE7)" : errada ? "linear-gradient(180deg,#FFF5F5,#FEE2E2)" : "linear-gradient(180deg,#FFFFFF,#EEF1F6)", boxShadow: (achada ? "inset 0 -7px 0 #86EFAC, 0 0 0 2.5px #22C55E" : errada ? "inset 0 -7px 0 #FCA5A5, 0 0 0 2.5px #F87171" : "inset 0 -7px 0 #CBD5E1, inset 0 0 0 1.5px #E2E8F0") + ", 0 6px 14px rgba(15,23,42,0.08)", display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: 6, fontSize: colunas === 3 ? 50 : 42 } }, fig)));
+    })),
+    fase === "inicio" ? h("div", null,
+      h("div", { style: { fontSize: 14.5, fontWeight: 700, textAlign: "center", color: C.escuro, margin: "14px 0 12px", lineHeight: 1.45 } }, "Toque em Jogar. As cartas aparecem por 3 segundos: guarde onde está cada bichinho."),
+      h("button", { type: "button", onClick: comecar, style: { ...botaoPri, height: 52, fontSize: 17 } }, "Jogar")) : null,
+    fase === "fim" ? h("div", { style: { marginTop: 14 } },
+      h("button", { type: "button", onClick: onComprar, style: { ...botaoPri, height: 52, fontSize: 17 } }, "Quero os 8 jogos"),
+      h("button", { type: "button", onClick: comecar, style: { width: "100%", marginTop: 8, height: 44, border: "none", background: "none", color: C.cinza, fontWeight: 700, fontSize: 14.5, cursor: "pointer", textDecoration: "underline" } }, "Jogar de novo")) : null);
 }
 
 
@@ -412,12 +490,12 @@ const PLANOS_PRES = [["presencial2x", "2x por semana", "Para começar e criar a 
 const CONTEUDO = {
   mente: (pers) => ({
     nome: "Mente Ativa", img: "mente-ativa.jpg", foto: "foto-moradores-3.jpg", fotoPos: "center 20%", selo: "10 MIN POR DIA", rotulo: "MENTE ATIVA",
-    tiles: JOGOS.slice(0, 4).map((j) => [j[0], j[4]]),
+    tiles: [JOGOS[1], JOGOS[0], JOGOS[2], JOGOS[3]].map((j) => [j[0], j[4]]),
     titulo: "Memória e atenção afiadas, com jogos de 10 minutos por dia",
     sub: "O corpo você treina comigo. A mente, você treina em casa. São 8 jogos pensados para quem tem 50 anos ou mais.",
-    precoRot: "30 DIAS DE ACESSO", cta: "Quero treinar a mente", ctaSec: "🎨  Testar um jogo grátis", resumoSub: "8 jogos liberados",
+    precoRot: "30 DIAS DE ACESSO", cta: "Quero treinar a mente", ctaSec: "🃏  Testar um jogo grátis", resumoSub: "8 jogos liberados",
     para: [[I.ideia, "Esquece onde deixou as coisas", "Memória treinada todo dia"], [I.grafico, "Quer manter a cabeça afiada", "Atenção e raciocínio rápido"], [I.estrela, "Gosta de um bom desafio", "Jogos leves e divertidos"], [I.casa, "Quer algo para fazer em casa", "No celular, quando quiser"]],
-    demoTit: ["Teste agora", "Jogue um pouco antes de decidir"], Demo: DemoGenio,
+    demoTit: ["Teste agora", "Jogue um pouco antes de decidir"], Demo: DemoPares,
     extra: () => h("div", null, Secao("Os 8 jogos", "Memória, atenção e linguagem"),
       h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 } }, JOGOS.map(([ic, n, area, desc, g]) => h("div", { key: n, style: { ...cartao, padding: 12, display: "flex", gap: 10, alignItems: "center" } },
         h("span", { style: { width: 42, height: 42, borderRadius: 12, background: "linear-gradient(135deg," + g[0] + "," + g[1] + ")", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 21, flexShrink: 0, boxShadow: "inset 0 -3px 0 rgba(0,0,0,0.15)" } }, ic),
