@@ -1656,6 +1656,12 @@
       metaDeficit: plano && plano.objetivo === "emagrecer" ? nutriNum(plano.ajuste) || null : null,
       protMedia: media(reg.map((d) => porDia[d].prot)), metaProt: nutriNum(metas.prot) || null,
       aguaMeta, aguaDiasMeta: aguaMeta ? dias.filter((d) => nutriAguaDia(metas, d) >= aguaMeta).length : 0, aguaReg: dias.filter((d) => nutriAguaDia(metas, d) > 0).length,
+      aguaMedia: media(dias.map((d) => nutriAguaDia(metas, d)).filter((v) => v > 0)),
+      diasLista: dias.map((d) => {
+        const r = porDia[d] && porDia[d].kcal > 0 ? porDia[d] : null;
+        const e = r ? energiaDia(plano, eBase, ex[d] ? ex[d].kcal : 0) : null;
+        return { date: d, kcal: r ? Math.round(r.kcal) : 0, prot: r ? Math.round(r.prot) : 0, def: e && e.gasto ? Math.round(e.gasto - r.kcal) : null, agua: nutriAguaDia(metas, d) };
+      }),
       peso: eBase.peso || null, pesoVar, pesoAntesData: ant ? ant.date : null
     };
   };

@@ -198,17 +198,23 @@
     s && h("div", { style: { fontSize: 11, color: sc || "#64748b", marginTop: pct != null ? 4 : 0 } }, s));
   const g2 = { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8, marginTop: 8 };
   const ST = { completo: ["✓", "#DCFCE7", "#15803D", "completo"], parcial: ["!", "#FEF3C7", "#B45309", "parcial"], nao: ["✕", "#FEE2E2", "#B91C1C", "não feito"] };
-  const Item = ({ st, titulo, det, obs }) => {
+  const Item = ({ st, titulo, det, obs, rot }) => {
     const c = ST[st];
     return h("div", { style: { display: "flex", gap: 10, padding: "9px 0", borderTop: "1px solid #f1f5f9" } },
       h("div", { style: { width: 26, height: 26, borderRadius: 8, background: c[1], color: c[2], display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, flexShrink: 0 } }, c[0]),
       h("div", { style: { flex: 1, minWidth: 0 } },
         h("div", { style: { display: "flex", justifyContent: "space-between", gap: 6, alignItems: "baseline" } },
           h("span", { style: { fontWeight: 800, fontSize: 13, color: "#0f172a" } }, titulo),
-          h("span", { style: { fontSize: 10.5, fontWeight: 800, borderRadius: 99, padding: "2px 8px", background: c[1], color: c[2], whiteSpace: "nowrap" } }, c[3])),
+          h("span", { style: { fontSize: 10.5, fontWeight: 800, borderRadius: 99, padding: "2px 8px", background: c[1], color: c[2], whiteSpace: "nowrap" } }, rot || c[3])),
         det && h("div", { style: { fontSize: 11.5, color: "#64748b", marginTop: 1 } }, det),
         obs && h("div", { style: { fontSize: 11.5, color: "#475569", background: "#f8fafc", borderRadius: 8, padding: "5px 8px", marginTop: 4, lineHeight: 1.4 } }, obs)));
   };
+  const Abre = ({ titulo, resumo, aberto, onClick }) => h("button", { type: "button", onClick, "aria-expanded": aberto, style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, width: "100%", background: "none", border: "none", borderTop: "1px solid #f1f5f9", marginTop: 10, padding: "11px 0 9px", cursor: "pointer", fontFamily: "inherit", textAlign: "left" } },
+    h("span", { style: { fontSize: 12.5, fontWeight: 800, color: "#0f172a" } }, titulo),
+    h("span", { style: { display: "flex", alignItems: "center", gap: 8, fontSize: 11.5, color: "#64748b", whiteSpace: "nowrap" } }, resumo,
+      h("span", { style: { width: 26, height: 26, borderRadius: 13, background: "#f1f5f9", color: "#475569", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, transform: aberto ? "rotate(180deg)" : "none", transition: "transform .2s" } }, "▾")));
+  const fmtL = (ml) => (Math.round(ml / 100) / 10).toFixed(1).replace(".", ",") + " L";
+  const fmtN = (v) => Math.round(v).toLocaleString("pt-BR");
   const Sub = ({ children }) => h("div", { style: { fontSize: 11, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.3, margin: "12px 0 0" } }, children);
   const btn = (prim, extra) => ({ flex: 1, height: 44, borderRadius: 12, border: prim ? "none" : "1.5px solid #e2e8f0", background: prim || "#fff", color: prim ? "#fff" : "#475569", fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit", ...extra || {} });
 
@@ -217,6 +223,8 @@
     const [erro, setErro] = useState(false);
     const [ini, setIni] = useState(semanaPassada());
     const [alim, setAlim] = useState(undefined);
+    const [abertos, setAbertos] = useState({});
+    const alterna = (k) => setAbertos((o) => ({ ...o, [k]: !o[k] }));
     const [tom, setTom] = useState("a");
     const [msg, setMsg] = useState("");
     const [editada, setEditada] = useState(false);
@@ -302,15 +310,15 @@
         h("div", { style: g2 },
           h(Met, { k: "Musculação", v: t.freq ? nm + " de " + t.freq : String(nm), pct: t.freq ? nm / t.freq * 100 : null, s: nm ? (nm - parc) + " " + plural(nm - parc, "completo", "completos") + (parc ? " · " + parc + " " + plural(parc, "parcial", "parciais") : "") : "nenhum na semana" }),
           h(Met, { k: "Cardio", v: cardPrevTxt, pct: t.cardioPrev ? nc / t.cardioPrev * 100 : null, cor: "#e11d48", s: t.minCardio + " de 150 min na semana" })),
-        t.musc.length > 0 && h(Sub, null, "Musculação"),
-        t.musc.map((m, i) => h(Item, { key: "m" + i, st: m.status, titulo: diaSem(m.date) + " " + m.date.slice(8, 10) + " · " + m.nome,
+        t.musc.length > 0 && h(Abre, { titulo: "Musculação da semana", resumo: nm + " " + plural(nm, "feito", "feitos") + (t.freq > nm ? " · " + (t.freq - nm) + " " + plural(t.freq - nm, "previsto", "previstos") : ""), aberto: !!abertos.musc, onClick: () => alterna("musc") }),
+        abertos.musc && t.musc.map((m, i) => h(Item, { key: "m" + i, st: m.status, titulo: diaSem(m.date) + " " + m.date.slice(8, 10) + " · " + m.nome,
           det: [m.duracao ? Math.round(m.duracao) + " min" : null, m.esforco || null, m.tot ? m.feitos + " de " + m.tot + " exercícios" : null, m.kcal ? m.kcal + " kcal" + (m.relogio ? " (relógio)" : "") : null, m.presencial ? "presencial" : "app"].filter(Boolean).join(" · "),
           obs: m.obs || m.dor ? (m.obs ? "“" + m.obs + "”" : "") + (m.obs && m.dor ? " · " : "") + (m.dor ? "dor " + m.dor : "") : null })),
-        (t.cardios.length > 0 || t.naoFeitos.length > 0 || t.resto > 0) && h(Sub, null, "Cardio"),
-        t.cardios.map((c, i) => h(Item, { key: "c" + i, st: c.status, titulo: diaSem(c.date) + " " + c.date.slice(8, 10) + " · " + c.ergo + " · " + (c.status === "parcial" && c.total ? Math.round(c.min) + " de " + Math.round(c.total) : Math.round(c.min)) + " min",
+        (t.cardios.length > 0 || t.naoFeitos.length > 0 || t.resto > 0) && h(Abre, { titulo: "Cardio da semana", resumo: nc + " " + plural(nc, "feito", "feitos") + (t.naoFeitos.length + t.resto ? " · " + (t.naoFeitos.length + t.resto) + " " + plural(t.naoFeitos.length + t.resto, "pendente", "pendentes") : ""), aberto: !!abertos.cardio, onClick: () => alterna("cardio") }),
+        abertos.cardio && t.cardios.map((c, i) => h(Item, { key: "c" + i, st: c.status, titulo: diaSem(c.date) + " " + c.date.slice(8, 10) + " · " + c.ergo + " · " + (c.status === "parcial" && c.total ? Math.round(c.min) + " de " + Math.round(c.total) : Math.round(c.min)) + " min",
           det: [c.texto || null, c.kcal ? c.kcal + " kcal" + (c.relogio ? " (relógio)" : "") : null, c.fc ? "FC média " + c.fc : null].filter(Boolean).join(" · ") })),
-        t.naoFeitos.map((c, i) => h(Item, { key: "n" + i, st: "nao", titulo: diaSem(c.date) + " " + c.date.slice(8, 10) + " · " + c.ergo, det: c.obs })),
-        t.resto > 0 && h(Item, { key: "r", st: "nao", titulo: t.resto + " " + plural(t.resto, "cardio previsto", "cardios previstos"), det: atual ? "ainda dá tempo nesta semana" : "não registrados na semana" }),
+        abertos.cardio && t.naoFeitos.map((c, i) => h(Item, { key: "n" + i, st: "nao", titulo: diaSem(c.date) + " " + c.date.slice(8, 10) + " · " + c.ergo, det: c.obs })),
+        abertos.cardio && t.resto > 0 && h(Item, { key: "r", st: "nao", titulo: t.resto + " " + plural(t.resto, "cardio previsto", "cardios previstos"), det: atual ? "ainda dá tempo nesta semana" : "não registrados na semana" }),
         !t.musc.length && !t.cardios.length && h("div", { style: { fontSize: 12, color: "#94a3b8", marginTop: 8 } }, "Nenhum treino registrado nesta semana.")),
       h(Caixa, null,
         h(Rot, null, "Alimentação"),
@@ -319,7 +327,17 @@
           h(Met, { k: "Dias registrados", v: a.registrados + " de " + a.dias, s: a.registrados >= 5 ? "adesão boa" : a.registrados >= 3 ? "adesão média" : "adesão baixa", sc: a.registrados >= 5 ? "#15803d" : a.registrados >= 3 ? "#b45309" : "#c2410c" }),
           h(Met, { k: "Déficit médio", v: a.deficitMedio != null ? a.deficitMedio + " kcal" : "—", s: a.metaDeficit ? "meta " + a.metaDeficit : "sem meta de déficit" }),
           h(Met, { k: "Proteína média", v: a.protMedia != null ? a.protMedia + " g" : "—", s: a.metaProt ? "meta " + a.metaProt + " g" : "sem meta" }),
-          h(Met, { k: "Água", v: a.aguaMeta ? a.aguaDiasMeta + " de " + a.dias : "—", s: a.aguaMeta ? "dias na meta" : "sem meta" }))),
+          h(Met, { k: "Água média", v: a.aguaMedia ? fmtL(a.aguaMedia) : "—", s: a.aguaMeta ? "meta " + fmtL(a.aguaMeta) + " por dia" : "sem meta", sc: a.aguaMedia && a.aguaMeta ? a.aguaMedia >= a.aguaMeta ? "#15803d" : "#b45309" : null })),
+        a && a.diasLista && a.diasLista.length > 0 && h(Abre, { titulo: "Dia a dia da semana", resumo: a.registrados + " " + plural(a.registrados, "dia registrado", "dias registrados"), aberto: !!abertos.alim, onClick: () => alterna("alim") }),
+        a && a.diasLista && abertos.alim && a.diasLista.slice().reverse().map((d) => {
+          const reg = d.kcal > 0;
+          const defOk = !a.metaDeficit || d.def == null || d.def >= a.metaDeficit * 0.8;
+          const protOk = !a.metaProt || d.prot >= a.metaProt;
+          const aguaOk = !a.aguaMeta || d.agua >= a.aguaMeta;
+          const ok = reg && defOk && protOk && aguaOk;
+          return h(Item, { key: "d" + d.date, st: !reg ? "nao" : ok ? "completo" : "parcial", rot: !reg ? "sem registro" : ok ? "na meta" : "atenção", titulo: diaSem(d.date) + " " + d.date.slice(8, 10),
+            det: reg ? [fmtN(d.kcal) + " kcal", d.def != null ? (d.def >= 0 ? "déficit " : "superávit ") + fmtN(Math.abs(d.def)) : null, "proteína " + d.prot + " g", d.agua ? "água " + fmtL(d.agua) : "água não registrada"].filter(Boolean).join(" · ") : d.agua ? "nenhuma refeição lançada · água " + fmtL(d.agua) : "nenhuma refeição lançada" });
+        })),
       h(Caixa, null,
         h(Rot, null, "Corpo e bem-estar"),
         h("div", { style: g2 },
