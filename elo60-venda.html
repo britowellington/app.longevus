@@ -25,6 +25,21 @@
   .entra{animation:entra .5s ease both}
   .rolar::-webkit-scrollbar{display:none}
 </style>
+<!-- ── META PIXEL ── Cole o ID do Pixel no lugar de COLE_SEU_PIXEL_ID (o mesmo do site). Sem ID, nada é carregado. -->
+<script>
+  window.META_PIXEL_ID = 'COLE_SEU_PIXEL_ID';
+  if (/^\d+$/.test(window.META_PIXEL_ID) && new URLSearchParams(location.search).get("ctx") !== "aluno") {
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+    document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', window.META_PIXEL_ID);
+    fbq('track', 'PageView');
+    fbq('track', 'ViewContent', { content_name: 'Elo 60+', value: 49.90, currency: 'BRL' });
+  }
+  window.track = function(ev, data){ try { if (window.fbq) fbq('track', ev, data || {}); } catch(e){} };
+</script>
 </head>
 <body>
 <div id="root"></div>
@@ -154,6 +169,7 @@ function Checkout({ aberto, onFechar, d, pix, valor, temPresente, modoInicial })
       lsSet("ma-cadastro", JSON.stringify({ nome: f.nome.trim(), whatsapp: f.whats.trim() }));
       const { data, error } = await supa.auth.signUp({ email: f.email.trim(), password: f.senha, options: { data: { nome: f.nome.trim(), whatsapp: f.whats.trim(), origem: "venda-elo60 · " + ORIGEM }, emailRedirectTo: LINK_ELO } });
       if (error) throw error;
+      track("CompleteRegistration", { content_name: "Elo 60+", value: 49.90, currency: "BRL" });
       if (data && data.session) { setEtapa("abrindo"); setTimeout(() => { location.href = LINK_ELO; }, 1100); }
       else setEtapa("email");
     } catch (e) { const t = traduz(e.message); setErro(t === "ja" ? "ja" : t); }
@@ -171,6 +187,7 @@ function Checkout({ aberto, onFechar, d, pix, valor, temPresente, modoInicial })
     try {
       const pres = { nome: pr.nome.trim(), whatsapp: soDig(pr.whats), mensagem: pr.msg.trim() };
       if (!(await avisoAluno(d, pres))) await rpc("rpc_registrar_compra_publica", { p_item_id: d.id, p_nome: f.nome.trim(), p_whatsapp: soDig(f.whats), p_presente: { nome: pr.nome.trim(), whatsapp: soDig(pr.whats), mensagem: pr.msg.trim() } });
+      track("Purchase", { content_name: "Elo 60+ (presente)", value: valor, currency: "BRL" });
       setEtapa("feito");
     } catch (e) { setErro("Não conseguimos enviar o aviso. Tente de novo ou fale no WhatsApp."); }
     setEnv(false);
@@ -251,7 +268,11 @@ function App() {
   const id = Q.get("i") || "";
   const [d, setD] = useState({});
   const [pix, setPix] = useState({});
-  const [checkout, setCheckout] = useState(null);
+  // ?direto=1 (vindo do anúncio ou da página de vendas do site): abre o formulário na hora.
+  // ?direto=presente abre já na aba "Dar de presente". Sem o parâmetro, tudo igual a antes.
+  const DIRETO = !ALUNO && Q.get("direto") ? (Q.get("direto") === "presente" ? "presente" : "mim") : null;
+  const [checkout, setCheckout] = useState(DIRETO);
+  useEffect(() => { if (checkout) track("InitiateCheckout", { content_name: "Elo 60+", value: 49.90, currency: "BRL" }); }, [checkout]);
   const [barra, setBarra] = useState(false);
   const [verMeses, setVerMeses] = useState(false);
   const [faq, setFaq] = useState(-1);
@@ -402,6 +423,9 @@ function App() {
 
 ReactDOM.createRoot(document.getElementById("root")).render(h(App));
 </script>
-<script src="longevus-nav.js?v=1"></script>
+<script>
+  // Barra de navegação do app só para quem vem de dentro do app (ctx=aluno). Visitante do anúncio não vê.
+  if (new URLSearchParams(location.search).get("ctx") === "aluno") { var s = document.createElement("script"); s.src = "longevus-nav.js?v=1"; document.body.appendChild(s); }
+</script>
 </body>
 </html>
