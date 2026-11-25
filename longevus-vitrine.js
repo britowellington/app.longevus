@@ -929,24 +929,25 @@
   };
   const Toggle = ({ on, onClick, rotulo }) => h("button", { type: "button", onClick, "aria-label": rotulo, "aria-pressed": !!on, style: { width: 44, height: 24, borderRadius: 12, border: "none", background: on ? COR.laranja : "#CBD5E1", position: "relative", cursor: "pointer", flexShrink: 0 } }, h("span", { style: { position: "absolute", top: 3, left: on ? 23 : 3, width: 18, height: 18, borderRadius: 9, background: "#fff", transition: "left 0.2s" } }));
   const fmtValor360 = (v) => { const n = valorNum(v); return n ? fmtReal(n) : ""; };
-  const Cartao360 = ({ prod, cfg, cont, m, pagaram, onAbrir, onAnunciar }) => {
+  const Cartao360 = ({ prod, cfg, cont, m, pagaram, onAbrir, onAnunciar, students }) => {
     const ligado = !!cfg.ativo;
     const anuncia = ligado && cfg.anunciar !== false;
     const caixa = (n, t) => h("div", { style: { flex: 1, background: "#F8FAFC", borderRadius: 10, padding: "7px 10px", fontSize: 11.5, color: COR.cinza } }, h("b", { style: { display: "block", fontSize: 16, color: COR.escuro } }, n), t);
     return h("div", { style: { background: ligado ? "linear-gradient(180deg,#FFF7ED,#fff 60%)" : "#fff", border: "1.5px solid " + (ligado ? "#FDBA74" : COR.borda), borderRadius: 14, padding: "12px 14px", marginBottom: 8 } },
       h("div", { style: { display: "flex", alignItems: "center", gap: 11 } },
         h("span", { "aria-hidden": "true", style: { width: 36, height: 36, borderRadius: 12, background: COR.escuro, color: "#FDBA74", fontWeight: 800, fontSize: 11.5, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, prod.sigla),
-        h("div", { style: { flex: 1, minWidth: 0, cursor: "pointer" }, onClick: onAbrir },
+        h("div", { style: { flex: 1, minWidth: 0, cursor: "pointer" }, onClick: () => onAbrir("painel") },
           h("span", { style: { display: "inline-block", fontSize: 10, fontWeight: 800, background: COR.escuro, color: "#FDBA74", borderRadius: 8, padding: "2px 7px", marginBottom: 3 } }, "PLANO MENSAL"),
           h("div", { style: { fontSize: 14, fontWeight: 800 } }, cfg.nome || prod.nome),
           h("div", { style: { fontSize: 12, color: COR.cinza } }, ligado ? [fmtValor360(cfg.valor) ? fmtValor360(cfg.valor) + "/mês" : "Defina o valor", prod.quem].join(" · ") : "Desligado. Toque para configurar")),
         ligado ? h(Toggle, { on: anuncia, onClick: onAnunciar, rotulo: anuncia ? "Parar de anunciar" : "Anunciar no app" }) : null),
       ligado ? h("div", { style: { display: "flex", gap: 8, marginTop: 10 } }, caixa(cont.total, "com acesso"), caixa(cont.bonus, "bônus"), caixa(cont.pago, "pago")) : null,
+      ligado ? (() => { const sx = (students || []).map((st) => situacaoMente(st, prod.col)).filter(Boolean); const ag = sx.filter((x) => x.k === "aguardando").length, vc = sx.filter((x) => x.k === "vencendo" || x.k === "vencido").length; return h("button", { type: "button", onClick: () => onAbrir(ag ? "alunos" : "painel"), style: { width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10, padding: "9px 11px", borderRadius: 10, border: "none", background: ag ? "#FFFBEB" : "#F8FAFC", color: ag ? "#B45309" : COR.escuro, fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, h("span", null, ag ? ag + " aguardando Pix" : vc ? vc + (vc === 1 ? " vencendo" : " vencendo ou vencidos") : "Alunos e números"), h("span", { style: { color: COR.laranjaTxt } }, "Ver alunos e painel ›")); })() : null,
       ligado ? h("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 12, color: COR.cinza, marginTop: 8, paddingTop: 8, borderTop: "1px solid #F1F5F9" } },
         h("span", null, anuncia ? "No app" : "Anúncio pausado"),
         h("span", null, h("b", { style: { color: COR.escuro } }, m.viram), " viram · ", h("b", { style: { color: COR.escuro } }, m.abriram || 0), " abriram · ", h("b", { style: { color: COR.escuro } }, pagaram), pagaram === 1 ? " pagou" : " pagaram")) : null);
   };
-  const Config360 = ({ prod, cfg, onSalvar, onVoltar }) => {
+  const Config360 = ({ prod, cfg, onSalvar, onVoltar, embutido }) => {
     const [f, setF] = useState({ nome: cfg.nome || prod.nome, valor: cfg.valor ? String(cfg.valor).replace(".", ",") : "", beneficios: Array.isArray(cfg.beneficios) ? cfg.beneficios.join("\n") : "", anunciar: cfg.anunciar !== false, foto: cfg.foto || "" });
     const [msg, setMsg] = useState("");
     const [salvando, setSalvando] = useState(false);
@@ -964,8 +965,8 @@
     const ligar = () => { if (window.confirm("Ligar " + nome + "?\n\n" + prod.ligarTxt)) salvar({ ativo: true }, nome + " ligado."); };
     const card = { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 14, padding: "14px 16px", marginBottom: 12 };
     return h("div", { style: { paddingBottom: 90 } },
-      h("button", { type: "button", onClick: onVoltar, style: { background: "transparent", border: "none", padding: "4px 0", color: COR.cinza, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "‹ Vitrine"),
-      h("div", { style: { fontWeight: 800, fontSize: 20, margin: "4px 0 14px" } }, nome),
+      embutido ? null : h("button", { type: "button", onClick: onVoltar, style: { background: "transparent", border: "none", padding: "4px 0", color: COR.cinza, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "‹ Vitrine"),
+      embutido ? null : h("div", { style: { fontWeight: 800, fontSize: 20, margin: "4px 0 14px" } }, nome),
       ligado ? h("div", { style: { ...card, display: "flex", alignItems: "center", gap: 12 } },
         h("div", { style: { flex: 1 } }, h("div", { style: { fontWeight: 800, fontSize: 14 } }, "Anunciar no app"), h("div", { style: { fontSize: 12, color: COR.cinza, lineHeight: 1.45, marginTop: 2 } }, "Aparece no carrossel e no Clube Longevus para quem ainda não tem. Desligado, quem já tem continua usando.")),
         h(Toggle, { on: f.anunciar, onClick: () => setF({ ...f, anunciar: !f.anunciar }), rotulo: "Anunciar no app" }))
@@ -1047,11 +1048,11 @@
       h("button", { type: "button", onClick: salvar, disabled: salvando, style: { width: "100%", height: 46, borderRadius: 12, border: "none", background: COR.laranja, color: "#fff", fontWeight: 700, fontSize: 14.5, cursor: "pointer", fontFamily: "inherit", opacity: salvando ? 0.7 : 1 } }, salvando ? "Salvando..." : "Salvar"),
       inicial && inicial.id && onApagar ? h("button", { type: "button", onClick: () => onApagar(d), style: { width: "100%", marginTop: 10, height: 40, borderRadius: 10, border: "1.5px solid #FCA5A5", background: "#fff", color: "#B91C1C", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" } }, "Remover da vitrine") : null);
   };
-  // Página do produto Mente Ativa no painel: Painel, Alunos e Oferta
+  // Página de cada produto no painel (Mente Ativa, Longevus 360): Painel, Alunos e Oferta
   const ddmm = (iso) => (iso ? String(iso).slice(0, 10).split("-").reverse().slice(0, 2).join("/") : "");
   const maisDias = (iso, n) => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + n); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
-  const situacaoMente = (st) => {
-    const l = st.mente || {}, hoje = hojeISO();
+  const situacaoMente = (st, col) => {
+    const l = st[col || "mente"] || {}, hoje = hojeISO();
     if (l.status === "pago" && l.vencimento) {
       if (l.vencimento < hoje) return { k: "vencido", txt: "Venceu " + ddmm(l.vencimento), cor: ["#FEF2F2", "#B91C1C"] };
       if (l.vencimento <= maisDias(hoje, 7)) return { k: "vencendo", txt: "Vence " + ddmm(l.vencimento), cor: ["#FFF7ED", "#C2410C"] };
@@ -1062,21 +1063,24 @@
     return null;
   };
   const FILTROS_MENTE = [["todos", "Todos"], ["aguardando", "Aguardando Pix"], ["pago", "Pagos"], ["vencendo", "Vencendo"], ["bonus", "Bônus"]];
-  const ProdutoMente = ({ item, met, students, setStudents, nav, aba, setAba, profNome, onSalvar, onApagar, onVoltar }) => {
+  const ProdutoPainel = ({ cfg, met, students, setStudents, nav, aba, setAba, profNome }) => {
+    const col = cfg.col, item = cfg.item || { titulo: cfg.titulo, foto: cfg.foto };
+    const ehMente = col === "mente";
+    const sua = cfg.art === "a" ? "Sua " : "Seu ", pela = cfg.art === "a" ? "pela " : "pelo ";
     const [res, setRes] = useState(null);
     const [avs, setAvs] = useState([]);
     const [filtro, setFiltro] = useState("todos");
     const [feito, setFeito] = useState("");
-    const titulo = item.titulo || "Mente Ativa";
-    const valor = valorPix(item);
+    const titulo = cfg.titulo;
+    const valor = cfg.valor || 0;
     const hoje = hojeISO();
     useEffect(() => {
       let vivo = true;
       (async () => {
         const hd = await api.headers();
         const desde = new Date(Date.now() - 30 * 86400000).toISOString();
-        try { const r = await fetch(SUPA_URL + "/rest/v1/mente_resultados?select=student_id,created_at&created_at=gte." + desde + "&order=created_at.desc&limit=5000", { headers: hd }); if (vivo) setRes(r.ok ? await r.json() : []); } catch (e) { if (vivo) setRes([]); }
-        try { const r = await fetch(SUPA_URL + "/rest/v1/l360_avisos?select=id,student_id,created_at&servico=eq." + encodeURIComponent("Mente Ativa") + "&visto=eq.false&limit=500", { headers: hd }); if (vivo) setAvs(r.ok ? await r.json() : []); } catch (e) {}
+        if (!ehMente) { if (vivo) setRes([]); } else try { const r = await fetch(SUPA_URL + "/rest/v1/mente_resultados?select=student_id,created_at&created_at=gte." + desde + "&order=created_at.desc&limit=5000", { headers: hd }); if (vivo) setRes(r.ok ? await r.json() : []); } catch (e) { if (vivo) setRes([]); }
+        try { const r = await fetch(SUPA_URL + "/rest/v1/l360_avisos?select=id,student_id,created_at&" + cfg.avisosFiltro + "&visto=eq.false&limit=500", { headers: hd }); if (vivo) setAvs(r.ok ? await r.json() : []); } catch (e) {}
       })();
       return () => { vivo = false; };
     }, []);
@@ -1084,41 +1088,44 @@
     (res || []).forEach((r) => { const k = String(r.student_id); if (!ultimoJogo[k] || r.created_at > ultimoJogo[k]) ultimoJogo[k] = r.created_at; });
     const avisou = {};
     avs.forEach((a) => { const k = String(a.student_id); if (!avisou[k] || a.created_at > avisou[k]) avisou[k] = a.created_at; });
-    const alunos = (students || []).map((st) => ({ st, s: situacaoMente(st) })).filter((x) => x.s || x.st.menteCompra);
+    const compraDe = (st) => (ehMente ? st.menteCompra : null);
+    const alunos = (students || []).map((st) => ({ st, s: situacaoMente(st, col) || (avisou[String(st.id)] ? { k: "aguardando", txt: "Aguardando Pix", cor: ["#FFFBEB", "#B45309"] } : null) })).filter((x) => x.s || compraDe(x.st));
     const conta = (k) => alunos.filter((x) => x.s && x.s.k === k).length;
     const mes = hoje.slice(0, 7);
     let recebido = 0, vendasMes = 0;
-    (students || []).forEach((st) => (st.vitrineHist || []).forEach((v) => { if (v.tipo === "venda" && v.produto === "mente" && String(v.data || "").slice(0, 7) === mes) { recebido += Number(v.valor) || 0; vendasMes++; } }));
+    (students || []).forEach((st) => (st.vitrineHist || []).forEach((v) => { if (v.tipo === "venda" && v.produto === col && String(v.data || "").slice(0, 7) === mes) { recebido += Number(v.valor) || 0; vendasMes++; } }));
     const desde30 = new Date(Date.now() - 30 * 86400000).toISOString();
-    const comprasSite = alunos.filter((x) => x.st.menteCompra && x.st.menteCompra.em >= desde30).length;
-    const comAcesso = alunos.filter((x) => x.s && (x.s.k === "pago" || x.s.k === "vencendo" || ((x.s.k === "bonus" || x.s.k === "aguardando") && (!x.st.mente.bonusAte || x.st.mente.bonusAte >= hoje)))).length;
+    const comprasSite = alunos.filter((x) => compraDe(x.st) && compraDe(x.st).em >= desde30).length;
+    let pagos30 = 0;
+    (students || []).forEach((st) => (st.vitrineHist || []).forEach((v) => { if (v.tipo === "venda" && v.produto === col && String(v.data || "") >= desde30.slice(0, 10)) pagos30++; }));
+    const comAcesso = alunos.filter((x) => x.s && (x.s.k === "pago" || x.s.k === "vencendo" || ((x.s.k === "bonus" || x.s.k === "aguardando") && x.st[col] && x.st[col].status && (!x.st[col].bonusAte || x.st[col].bonusAte >= hoje)))).length;
     const jogaram7 = new Set((res || []).filter((r) => r.created_at >= new Date(Date.now() - 7 * 86400000).toISOString()).map((r) => String(r.student_id))).size;
 
     const marcarAvisos = async (sid) => {
       setAvs((p) => p.filter((a) => String(a.student_id) !== String(sid)));
-      try { await fetch(SUPA_URL + "/rest/v1/l360_avisos?student_id=eq." + encodeURIComponent(sid) + "&servico=eq." + encodeURIComponent("Mente Ativa") + "&visto=eq.false", { method: "PATCH", headers: { ...(await api.headers()), Prefer: "return=minimal" }, body: JSON.stringify({ visto: true }) }); } catch (e) {}
+      try { await fetch(SUPA_URL + "/rest/v1/l360_avisos?student_id=eq." + encodeURIComponent(sid) + "&" + cfg.avisosFiltro + "&visto=eq.false", { method: "PATCH", headers: { ...(await api.headers()), Prefer: "return=minimal" }, body: JSON.stringify({ visto: true }) }); } catch (e) {}
     };
     const confirmar = (st) => {
       if (!setStudents) return alert("Atualize a página e tente de novo.");
-      const r = window.prompt("Quanto " + primeiroNome(st.name) + " pagou pela " + titulo + "? (R$)\n\nEsse valor entra no Financeiro e libera mais 30 dias.", valor ? valor.toFixed(2).replace(".", ",") : "");
+      const r = window.prompt("Quanto " + primeiroNome(st.name) + " pagou " + pela + titulo + "? (R$)\n\nEsse valor entra no Financeiro e libera mais 30 dias.", valor ? valor.toFixed(2).replace(".", ",") : "");
       if (r === null) return;
       const v = valorNum(r);
-      if (typeof registrarVitrine === "function") registrarVitrine(setStudents, st, "venda", "mente", titulo, v);
+      if (typeof registrarVitrine === "function") registrarVitrine(setStudents, st, "venda", col, titulo, v);
       setStudents((p) => p.map((x) => {
         if (String(x.id) !== String(st.id)) return x;
-        const l = x.mente || {};
+        const l = x[col] || {};
         const base = l.status === "pago" && l.vencimento && l.vencimento > hoje ? l.vencimento : hoje;
-        return { ...x, mente: { ...l, status: "pago", vencimento: maisDias(base, 30), bonusAte: null, atualizadoEm: new Date().toISOString() } };
+        return { ...x, [col]: { ...l, status: "pago", vencimento: maisDias(base, 30), bonusAte: null, atualizadoEm: new Date().toISOString() } };
       }));
       marcarAvisos(st.id);
-      setFeito(primeiroNome(st.name) + " liberado até " + ddmm(maisDias(st.mente && st.mente.status === "pago" && st.mente.vencimento > hoje ? st.mente.vencimento : hoje, 30)) + ".");
+      setFeito(primeiroNome(st.name) + " liberado até " + ddmm(maisDias(st[col] && st[col].status === "pago" && st[col].vencimento > hoje ? st[col].vencimento : hoje, 30)) + ".");
       setTimeout(() => setFeito(""), 4000);
     };
     const msgWhats = (st, s) => {
       const n = primeiroNome(st.name), p = primeiroNome(profNome) || "Wellington";
-      if (s && s.k === "aguardando") return "Oi, " + n + "! Aqui é o " + p + ". Que bom que você começou a " + titulo + "! Para deixar os jogos liberados, falta só o Pix" + (valor ? " de " + fmtReal(valor) : "") + ". Qualquer dúvida, me chama.";
-      if (s && (s.k === "vencendo" || s.k === "vencido")) return "Oi, " + n + "! Aqui é o " + p + ". Sua " + titulo + (s.k === "vencido" ? " venceu" : " vence em " + ddmm(st.mente.vencimento)) + ". Quer continuar por mais 30 dias?" + (valor ? " O Pix é de " + fmtReal(valor) + "." : "");
-      return "Oi, " + n + "! Aqui é o " + p + ". Como estão os jogos da " + titulo + "?";
+      if (s && s.k === "aguardando") return "Oi, " + n + "! Aqui é o " + p + ". Que bom que você começou " + cfg.art + " " + titulo + "! Para deixar tudo liberado, falta só o Pix" + (valor ? " de " + fmtReal(valor) : "") + ". Qualquer dúvida, me chama.";
+      if (s && (s.k === "vencendo" || s.k === "vencido")) return "Oi, " + n + "! Aqui é o " + p + ". " + sua + titulo + (s.k === "vencido" ? " venceu" : " vence em " + ddmm(st[col].vencimento)) + ". Quer continuar por mais 30 dias?" + (valor ? " O Pix é de " + fmtReal(valor) + "." : "");
+      return "Oi, " + n + "! Aqui é o " + p + ". Como está indo " + cfg.art + " " + titulo + "?";
     };
 
     const card = { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 14, padding: "12px 14px", marginBottom: 10 };
@@ -1129,7 +1136,7 @@
     const irAlunos = (f) => { setFiltro(f); setAba("alunos"); };
 
     const abaPainel = () => {
-      const funil = [met.viram || 0, met.abriram || 0, comprasSite];
+      const funil = [met.viram || 0, met.abriram || 0, ehMente ? comprasSite : pagos30];
       return h("div", null,
         h("div", { style: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8, marginBottom: 10 } },
           caixa(comAcesso, "Com acesso"),
@@ -1140,16 +1147,17 @@
           h("div", { style: { fontSize: 13, fontWeight: 800, marginBottom: 10 } }, "Caminho da venda · 30 dias"),
           barra("Viram no app", funil[0], Math.max.apply(null, funil)),
           barra("Abriram a oferta no app", funil[1], Math.max.apply(null, funil)),
-          barra("Compraram pela página de venda", funil[2], Math.max.apply(null, funil)),
-          h("div", { style: { fontSize: 11.5, color: "#94A3B8", lineHeight: 1.45, marginTop: 4 } }, "Visitas da página de venda (anúncios) aparecem no Gerenciador de Anúncios, pelo Pixel.")),
+          barra(ehMente ? "Compraram pela página de venda" : "Pix confirmados", funil[2], Math.max.apply(null, funil)),
+          ehMente ? h("div", { style: { fontSize: 11.5, color: "#94A3B8", lineHeight: 1.45, marginTop: 4 } }, "Visitas da página de venda (anúncios) aparecem no Gerenciador de Anúncios, pelo Pixel.") : null),
         h("div", { style: card },
-          h("div", { style: { fontSize: 13, fontWeight: 800, marginBottom: 6 } }, "Uso dos jogos"),
+          h("div", { style: { fontSize: 13, fontWeight: 800, marginBottom: 6 } }, ehMente ? "Uso dos jogos" : "Pagamentos"),
+          !ehMente ? h("div", { style: { fontSize: 13, color: "#334155", lineHeight: 1.7 } }, h("div", null, h("b", null, vendasMes), vendasMes === 1 ? " pagamento confirmado no mês" : " pagamentos confirmados no mês"), h("div", null, h("b", null, conta("bonus")), conta("bonus") === 1 ? " aluno com bônus" : " alunos com bônus")) :
           res === null ? h("div", { style: { fontSize: 12.5, color: "#94A3B8" } }, "Carregando...") :
           h("div", { style: { fontSize: 13, color: "#334155", lineHeight: 1.7 } },
             h("div", null, h("b", null, res.length), " partidas nos últimos 30 dias"),
             h("div", null, h("b", null, jogaram7), jogaram7 === 1 ? " aluno jogou nesta semana" : " alunos jogaram nesta semana"),
             h("div", null, h("b", null, vendasMes), vendasMes === 1 ? " pagamento confirmado no mês" : " pagamentos confirmados no mês"))),
-        h(LinkVenda, { url: baseLink() + "venda.html?i=" + encodeURIComponent(item.id), rotulo: "Página de venda" }));
+        cfg.linkVenda ? h(LinkVenda, { url: cfg.linkVenda, rotulo: "Página de venda" }) : null);
     };
 
     const abaAlunos = () => {
@@ -1166,15 +1174,15 @@
           return h("button", { key: k, type: "button", onClick: () => setFiltro(k), style: { padding: "6px 10px", borderRadius: 16, border: "1.5px solid " + (on ? COR.escuro : COR.borda), background: on ? COR.escuro : "#fff", color: on ? "#fff" : COR.escuro, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, t + " " + n);
         })),
         feito ? h("div", { style: { fontSize: 12.5, color: "#15803D", background: "#F0FDF4", borderRadius: 10, padding: "8px 11px", marginBottom: 10 } }, feito) : null,
-        !lista.length ? h("div", { style: { ...card, textAlign: "center", color: "#94A3B8", fontSize: 13, padding: 22 } }, filtro === "todos" ? "Ninguém com a " + titulo + " ainda." : "Ninguém nesse grupo agora.") : null,
+        !lista.length ? h("div", { style: { ...card, textAlign: "center", color: "#94A3B8", fontSize: 13, padding: 22 } }, filtro === "todos" ? "Ninguém com " + cfg.art + " " + titulo + " ainda." : "Ninguém nesse grupo agora.") : null,
         lista.map(({ st, s }) => {
-          const c = st.menteCompra;
+          const c = compraDe(st);
           const dt = c && c.em ? new Date(c.em) : null;
           const quando = dt && !isNaN(dt) ? dt.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + " às " + dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
           const uj = ultimoJogo[String(st.id)];
           const dias = uj ? Math.floor((Date.now() - new Date(uj).getTime()) / 86400000) : null;
           const linha2 = [c ? "Comprou " + quando : null, c && Number(c.valor) > 0 ? fmtReal(Number(c.valor)) : null, c && c.origem && c.origem !== "site" && c.origem !== "direto" ? c.origem : null].filter(Boolean).join(" · ");
-          const linha3 = res === null ? "" : dias === null ? "Não jogou nos últimos 30 dias" : dias === 0 ? "Jogou hoje" : dias === 1 ? "Jogou ontem" : "Jogou há " + dias + " dias";
+          const linha3 = !ehMente || res === null ? "" : dias === null ? "Não jogou nos últimos 30 dias" : dias === 0 ? "Jogou hoje" : dias === 1 ? "Jogou ontem" : "Jogou há " + dias + " dias";
           const wa = waLink(st.whatsapp || st.phone, msgWhats(st, s));
           const podeConfirmar = s && s.k !== "pago" && s.k !== "bonus";
           return h("div", { key: st.id, style: card },
@@ -1193,14 +1201,14 @@
 
     const abas = [["painel", "Painel"], ["alunos", "Alunos"], ["oferta", "Oferta"]];
     return h("div", { style: { paddingBottom: 90 } },
-      h("button", { type: "button", onClick: onVoltar, style: { background: "transparent", border: "none", padding: "4px 0", color: COR.cinza, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "‹ Vitrine"),
+      h("button", { type: "button", onClick: cfg.onVoltar, style: { background: "transparent", border: "none", padding: "4px 0", color: COR.cinza, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "‹ Vitrine"),
       h("div", { style: { display: "flex", alignItems: "center", gap: 12, margin: "6px 0 12px" } },
         h(Icone, { item, tam: 44 }),
         h("div", { style: { minWidth: 0 } },
           h("div", { style: { fontWeight: 800, fontSize: 20 } }, titulo),
-          h("div", { style: { fontSize: 12.5, color: COR.cinza } }, [valor ? fmtReal(valor) + "/mês" : null, item.ativo !== false ? "No app" : "Pausada no app"].filter(Boolean).join(" · ")))),
+          h("div", { style: { fontSize: 12.5, color: COR.cinza } }, [valor ? fmtReal(valor) + "/mês" : null, cfg.status].filter(Boolean).join(" · ")))),
       h("div", { style: { display: "flex", background: COR.borda, borderRadius: 12, padding: 4, marginBottom: 14 } }, abas.map(([k, t]) => h("button", { key: k, type: "button", onClick: () => setAba(k), style: { flex: 1, padding: "9px 0", borderRadius: 9, border: "none", background: aba === k ? "#fff" : "transparent", color: aba === k ? COR.laranjaTxt : "#475569", boxShadow: aba === k ? "0 1px 3px rgba(0,0,0,0.1)" : "none", fontWeight: 800, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit" } }, t + (k === "alunos" && conta("aguardando") ? " · " + conta("aguardando") : "")))),
-      aba === "painel" ? abaPainel() : aba === "alunos" ? abaAlunos() : h(FormItem, { key: item.id + (item.atualizadoEm || ""), inicial: item, profNome, onSalvar, onCancelar: onVoltar, onApagar }));
+      aba === "painel" ? abaPainel() : aba === "alunos" ? abaAlunos() : cfg.oferta());
   };
   const Painel = ({ profNome, students, setStudents, nav }) => {
     const [prodItem, setProdItem] = useState(null);
@@ -1263,10 +1271,22 @@
       if (!ok) { setCfgs((p) => ({ ...p, [col]: antes })); alert("Não consegui alterar. Tente de novo."); }
     };
     const prodAberto = verProd && PRODUTOS.find((x) => x.col === verProd);
-    if (prodAberto && cfgs[verProd]) return h(Config360, { prod: prodAberto, cfg: cfgs[verProd], onSalvar: (novo) => salvarProd(verProd, novo), onVoltar: () => setVerProd(null) });
+    if (prodAberto && cfgs[verProd]) {
+      const c = cfgs[verProd];
+      const item360 = (itens || []).find((x) => x.produto === verProd);
+      return h(ProdutoPainel, { key: verProd, met: met[prodAberto.met] || {}, students, setStudents, nav, aba: c.ativo ? prodAba : "oferta", setAba: setProdAba, profNome, cfg: {
+        col: verProd, art: "o", titulo: c.nome || prodAberto.nome, foto: c.foto || "", valor: valorNum(c.valor), status: !c.ativo ? "Desligado" : c.anunciar === false ? "Anúncio pausado" : "No app",
+        avisosFiltro: "or=(servico.is.null,servico.ilike.*360*)", linkVenda: item360 ? baseLink() + "venda.html?i=" + encodeURIComponent(item360.id) : null,
+        onVoltar: () => setVerProd(null),
+        oferta: () => h(Config360, { prod: prodAberto, cfg: c, embutido: true, onSalvar: (novo) => salvarProd(verProd, novo), onVoltar: () => setVerProd(null) }) } });
+    }
     const opcoesPremio = [{ tipo: "mente", id: "mente", nome: "1 mês de Mente Ativa" }, { tipo: "l360", id: "l360", nome: "1 mês de Longevus 360" }].concat((itens || []).filter((x) => x.tipo !== "parceiro" && !x.produto && x.cobranca === "pix").map((x) => ({ tipo: "servico", id: x.id, nome: x.titulo })));
     if (editando && (editando.produto === "indique" || editando === "indique")) return h(FormIndique, { inicial: editando === "indique" ? null : editando, opcoes: opcoesPremio, onSalvar: salvar, onCancelar: () => setEditando(null), onApagar: apagar });
-    if (prodItem && !editando) return h(ProdutoMente, { item: prodItem, met: met[prodItem.id] || {}, students, setStudents, nav, aba: prodAba, setAba: setProdAba, profNome, onSalvar: salvar, onApagar: apagar, onVoltar: () => setProdItem(null) });
+    if (prodItem && !editando) return h(ProdutoPainel, { key: "mente", met: met[prodItem.id] || {}, students, setStudents, nav, aba: prodAba, setAba: setProdAba, profNome, cfg: {
+      col: "mente", art: "a", item: prodItem, titulo: prodItem.titulo || "Mente Ativa", valor: valorPix(prodItem), status: prodItem.ativo !== false ? "No app" : "Pausada no app",
+      avisosFiltro: "servico=eq." + encodeURIComponent("Mente Ativa"), linkVenda: baseLink() + "venda.html?i=" + encodeURIComponent(prodItem.id),
+      onVoltar: () => setProdItem(null),
+      oferta: () => h(FormItem, { key: prodItem.id + (prodItem.atualizadoEm || ""), inicial: prodItem, profNome, onSalvar: salvar, onCancelar: () => setProdItem(null), onApagar: apagar }) } });
     if (editando) return h(FormItem, { inicial: editando === "novo" ? null : editando, profNome, onSalvar: salvar, onCancelar: () => setEditando(null), onApagar: apagar });
     if (itens === null) return h("div", { style: { textAlign: "center", padding: 30, color: "#94A3B8" } }, "Carregando a vitrine...");
     const totalCliques = Object.keys(met).reduce((s, k) => s + met[k].cliques, 0);
@@ -1287,7 +1307,7 @@
         h("span", { style: { width: 36, height: 36, borderRadius: 12, background: COR.escuro, color: "#FDBA74", fontWeight: 800, fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, "60+"),
         h("span", { style: { flex: 1 } }, h("span", { style: { display: "block", fontSize: 14, fontWeight: 800, color: COR.escuro } }, "Adicionar o Elo 60+ à vitrine"), h("span", { style: { display: "block", fontSize: 12, color: COR.cinza } }, "Já vem preenchido. Você só confere e salva.")),
         h("span", { style: { color: "#C2410C", fontWeight: 800, fontSize: 13 } }, "+")) : null,
-      PRODUTOS.filter((pr) => pr.col === "l360").map((pr) => cfgs[pr.col] ? h(Cartao360, { key: pr.col, prod: pr, cfg: cfgs[pr.col], cont: contarAcesso(students, pr.col), m: met[pr.met] || { viram: 0, abriram: 0 }, pagaram: contarPagaram(avisos, pr), onAbrir: () => setVerProd(pr.col), onAnunciar: () => anunciarProd(pr.col) }) : null),
+      PRODUTOS.filter((pr) => pr.col === "l360").map((pr) => cfgs[pr.col] ? h(Cartao360, { key: pr.col, prod: pr, cfg: cfgs[pr.col], cont: contarAcesso(students, pr.col), m: met[pr.met] || { viram: 0, abriram: 0 }, pagaram: contarPagaram(avisos, pr), onAbrir: (aba) => { setProdAba(aba || "painel"); setVerProd(pr.col); }, onAnunciar: () => anunciarProd(pr.col), students }) : null),
       h("div", { style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 14, padding: "12px 14px", marginBottom: 8 } },
         h("div", { style: { fontSize: 14, fontWeight: 800 } }, "Personal presencial"),
         h("div", { style: { fontSize: 12, color: COR.cinza } }, "Página de venda com os seus planos 2x e 3x por semana"),
@@ -1307,7 +1327,7 @@
           h("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 12, color: COR.cinza, marginTop: 8, paddingTop: 8, borderTop: "1px solid #F1F5F9" } },
             h("span", null, vencida ? "Vencida em " + d.validade.split("-").reverse().join("/") : on ? "No app" : "Pausada"),
             h("span", null, h("b", { style: { color: COR.escuro } }, m.viram), " viram · ", h("b", { style: { color: COR.escuro } }, m.abriram || 0), " abriram · ", h("b", { style: { color: COR.escuro } }, m.cliques), m.cliques === 1 ? " chamou" : " chamaram")),
-          d.produto === "mente" ? (() => { const sx = (students || []).map(situacaoMente).filter(Boolean); const ag = sx.filter((x) => x.k === "aguardando").length, pg = sx.filter((x) => x.k === "pago" || x.k === "vencendo").length; return h("button", { type: "button", onClick: () => { setProdItem(d); setProdAba(ag ? "alunos" : "painel"); }, style: { width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, padding: "9px 11px", borderRadius: 10, border: "none", background: ag ? "#FFFBEB" : "#F8FAFC", color: ag ? "#B45309" : COR.escuro, fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, h("span", null, pg + (pg === 1 ? " pago" : " pagos") + (ag ? " · " + ag + " aguardando Pix" : "")), h("span", { style: { color: COR.laranjaTxt } }, "Ver alunos e painel ›")); })() : null,
+          d.produto === "mente" ? (() => { const sx = (students || []).map((st) => situacaoMente(st, "mente")).filter(Boolean); const ag = sx.filter((x) => x.k === "aguardando").length, pg = sx.filter((x) => x.k === "pago" || x.k === "vencendo").length; return h("button", { type: "button", onClick: () => { setProdItem(d); setProdAba(ag ? "alunos" : "painel"); }, style: { width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, padding: "9px 11px", borderRadius: 10, border: "none", background: ag ? "#FFFBEB" : "#F8FAFC", color: ag ? "#B45309" : COR.escuro, fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, h("span", null, pg + (pg === 1 ? " pago" : " pagos") + (ag ? " · " + ag + " aguardando Pix" : "")), h("span", { style: { color: COR.laranjaTxt } }, "Ver alunos e painel ›")); })() : null,
           d.tipo !== "parceiro" && d.produto !== "indique" ? h(LinkVenda, { url: d.produto === "elo" ? baseLink() + "elo60-venda.html?i=" + encodeURIComponent(d.id) : baseLink() + "comprar.html?i=" + encodeURIComponent(d.id) }) : null);
       }));
   };
