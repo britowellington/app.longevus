@@ -94,6 +94,46 @@
   const nutriMetaAgua = (metas, peso) => nutriNum(metas && metas.agua) || nutriAguaSug(peso || metas && metas.peso);
   const nutriAguaDia = (metas, dia) => nutriNum(metas && metas.aguaDias && metas.aguaDias[dia]);
   const nutriFmtL = (ml) => (Math.round(nutriNum(ml) / 100) / 10).toFixed(1).replace(".", ",") + " L";
+  const nutriSemAcento = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const NUTRI_ALCOOL = /cerveja|chope|chopp|vinho|cachaca|caipirinha|caipiroska|whisk|vodka|\bgin\b|licor|espumante|drink|\brum\b|tequila|\bsake\b/;
+  const NUTRI_BEBIDA = /^(suco|cha\b|cafe|cappuccino|capuccino|leite(?! condensado| em po)|agua|refrigerante|refri\b|isotonico|bebida|vitamina|achocolatado|kefir|kombucha|limonada|mate\b|chimarrao|terere|shake|smoothie|iogurte (liquido|para beber)|energetico|coca|guarana|soda|tonica)/;
+  const nutriEhAlcool = (n) => NUTRI_ALCOOL.test(nutriSemAcento(n));
+  const nutriEhBebida = (n) => {
+    const t = nutriSemAcento(n).trim();
+    return !NUTRI_ALCOOL.test(t) && NUTRI_BEBIDA.test(t);
+  };
+  const nutriItemLiquido = (i) => !!i && !nutriEhAlcool(i.nome) && (i.liquido != null ? !!i.liquido : nutriEhBebida(i.nome));
+  const nutriLiqItens = (r) => (r && r.itens || []).filter(nutriItemLiquido).map((i) => ({ nome: i.nome, ml: Math.round(nutriNum(i.gramas)) })).filter((x) => x.ml > 0);
+  const nutriLiqRef = (r) => nutriLiqItens(r).reduce((s, x) => s + x.ml, 0);
+  const nutriLiqDia = (refs, dia) => (refs || []).filter((r) => r.date === dia).reduce((s, r) => s + nutriLiqRef(r), 0);
+  const nutriAguaTotal = (metas, dia, refs) => nutriAguaDia(metas, dia) + nutriLiqDia(refs, dia);
+  const nutriAguaLista = (metas, dia) => {
+    const l = (metas && metas.aguaLog && metas.aguaLog[dia] || []).slice();
+    const antigo = nutriAguaDia(metas, dia) - l.reduce((s, x) => s + nutriNum(x.ml), 0);
+    if (antigo > 0) l.unshift({ id: "antes", h: "", ml: Math.round(antigo), antigo: true });
+    return l;
+  };
+  const nutriAguaAplicar = (metas, dia, op) => {
+    const m = metas || {};
+    const dias = { ...m.aguaDias || {} }, logs = { ...m.aguaLog || {} };
+    const limite = nutriDiaMais(nutriHoje(), -400);
+    Object.keys(dias).forEach((d) => {
+      if (d < limite) delete dias[d];
+    });
+    Object.keys(logs).forEach((d) => {
+      if (d < limite) delete logs[d];
+    });
+    let l = nutriAguaLista(m, dia);
+    if (op.add) l.push({ id: op.id || nutriId(), h: op.h || "", ml: Math.round(op.add) });
+    if (op.remove) l = l.filter((x) => x.id !== op.remove);
+    const tot = l.reduce((s, x) => s + nutriNum(x.ml), 0);
+    if (l.length) logs[dia] = l;
+    else delete logs[dia];
+    if (tot > 0) dias[dia] = tot;
+    else delete dias[dia];
+    const desde = tot > 0 && (!m.aguaDesde || dia < m.aguaDesde) ? dia : m.aguaDesde || null;
+    return { ...m, aguaDias: dias, aguaLog: logs, aguaDesde: desde };
+  };
   const nutriApi = {
     async headers() {
       var _a;
@@ -159,18 +199,10 @@
         return false;
       }
     },
-    async salvarAgua(studentId, ownerId, dia, ml) {
+    async salvarAgua(studentId, ownerId, dia, op) {
       const atual = await this.metas(studentId);
       if (atual === null) return null;
-      const dias = { ...atual.aguaDias || {} };
-      const limite = nutriDiaMais(nutriHoje(), -400);
-      Object.keys(dias).forEach((d) => {
-        if (d < limite) delete dias[d];
-      });
-      if (ml > 0) dias[dia] = Math.round(ml);
-      else delete dias[dia];
-      const desde = ml > 0 && (!atual.aguaDesde || dia < atual.aguaDesde) ? dia : atual.aguaDesde || null;
-      const novo = { ...atual, aguaDias: dias, aguaDesde: desde };
+      const novo = nutriAguaAplicar(atual, dia, op);
       const ok = await this.salvarMetas(studentId, ownerId, novo);
       return ok ? novo : null;
     },
@@ -333,6 +365,7 @@
       if (fresco) {
         if (fresco.aguaDias) limpo.aguaDias = fresco.aguaDias;
         if (fresco.aguaDesde) limpo.aguaDesde = fresco.aguaDesde;
+        if (fresco.aguaLog) limpo.aguaLog = fresco.aguaLog;
         if (fresco.marmitas) limpo.marmitas = fresco.marmitas;
       }
       limpo.atualizadoPor = papel;
@@ -364,6 +397,7 @@
     nome: i.nome || "Alimento",
     manual: false,
     fator: 1,
+    liquido: i.liquido != null ? !!i.liquido : void 0,
     base: { gramas: nutriNum(i.gramas), kcal: nutriNum(i.kcal), prot: nutriNum(i.prot), carb: nutriNum(i.carb), gord: nutriNum(i.gord), fibra: nutriNum(i.fibra) }
   });
   const nutriItemManual = () => ({ uid: nutriId(), nome: "", manual: true, fator: 1, base: { gramas: "", kcal: "", prot: "", carb: "", gord: "", fibra: "" } });
@@ -494,7 +528,7 @@
     const atualizar = (uid, patch) => setItens((p) => p.map((i) => i.uid === uid ? { ...i, ...patch } : i));
     const atualizarBase = (uid, k, v) => setItens((p) => p.map((i) => i.uid === uid ? { ...i, base: { ...i.base, [k]: v } } : i));
     const remover = (uid) => setItens((p) => p.filter((i) => i.uid !== uid));
-    const valoresLista = itens.map((i) => ({ nome: (i.nome || "").trim() || "Alimento", vazio: !(i.nome || "").trim() && !nutriNum(i.base.kcal), ...nutriValores(i) })).filter((i) => !i.vazio).map(({ vazio, ...resto }) => resto);
+    const valoresLista = itens.map((i) => ({ nome: (i.nome || "").trim() || "Alimento", vazio: !(i.nome || "").trim() && !nutriNum(i.base.kcal), ...nutriValores(i), liquido: nutriItemLiquido(i) })).filter((i) => !i.vazio).map(({ vazio, ...resto }) => resto);
     const totais = nutriSomar(valoresLista);
     const salvar = async (listaOpc, origemOpc, marmitaId) => {
       const lista = Array.isArray(listaOpc) ? listaOpc : valoresLista;
@@ -566,7 +600,7 @@
               }, style: { flex: 1, height: 42, borderRadius: 21, border: "1.5px solid #e2e8f0", background: "#fff", fontSize: 13, fontWeight: 700, color: "#0f172a", cursor: "pointer", fontFamily: "inherit" } }, "Ajustar itens"),
               React.createElement("button", { type: "button", disabled: salvando, onClick: (ev) => {
                 ev.stopPropagation();
-                const l = (r.itens || []).map((i) => nutriValores(nutriItemDaIA(i))).map((v, ix) => ({ nome: (r.itens[ix].nome || "Alimento"), ...v }));
+                const l = (r.itens || []).map((i) => nutriValores(nutriItemDaIA(i))).map((v, ix) => ({ nome: (r.itens[ix].nome || "Alimento"), ...v, liquido: nutriItemLiquido(r.itens[ix]) }));
                 salvar(l, aba === "marmitas" ? "marmita" : "repetida", aba === "marmitas" ? id : null);
               }, style: { flex: 1.3, height: 42, borderRadius: 21, border: "none", background: NUTRI_LARANJA, color: "#fff", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" } }, salvando ? "Salvando..." : "Registrar igual")),
             on && aba === "marmitas" && React.createElement("button", { type: "button", onClick: async (ev) => {
@@ -598,7 +632,7 @@
         const txt = e.target.value.replace(/[^0-9]/g, "").slice(0, 4);
         const g = nutriNum(txt);
         atualizar(it.uid, g > 0 ? { gTxt: txt, fator: g / nutriNum(it.base.gramas) } : { gTxt: txt });
-      }, onBlur: () => atualizar(it.uid, { gTxt: null }), "aria-label": "Gramas", style: { width: 46, height: 28, borderRadius: 8, border: "1.5px solid #e2e8f0", textAlign: "center", fontSize: 13, fontFamily: "inherit", padding: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#64748b" } }, "g"))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b" } }, nutriLinhaMacros(v))) : /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6, marginTop: 6 } }, [["gramas", "Gramas"], ["kcal", "kcal"], ["prot", "Proteína g"], ["carb", "Carbo g"], ["gord", "Gordura g"], ["fibra", "Fibra g"]].map((c) => /* @__PURE__ */ React.createElement("label", { key: c[0], style: { display: "flex", flexDirection: "column", gap: 2, fontSize: 11, color: "#64748b" } }, c[1], /* @__PURE__ */ React.createElement("input", { inputMode: "decimal", value: String(it.base[c[0]]), onChange: (e) => atualizarBase(it.uid, c[0], e.target.value.replace(/[^0-9.,]/g, "")), style: { height: 34, borderRadius: 8, border: "1.5px solid #e2e8f0", padding: "0 8px", fontSize: 14, fontFamily: "inherit" } })))));
+      }, onBlur: () => atualizar(it.uid, { gTxt: null }), "aria-label": "Gramas", style: { width: 46, height: 28, borderRadius: 8, border: "1.5px solid #e2e8f0", textAlign: "center", fontSize: 13, fontFamily: "inherit", padding: 0 } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 12, color: "#64748b" } }, nutriItemLiquido(it) ? "ml" : "g"))), nutriEhAlcool(it.nome) ? React.createElement("div", { style: { fontSize: 11.5, color: "#94a3b8", margin: "0 0 6px" } }, "Bebida alcoólica não conta como líquido.") : nutriEhBebida(it.nome) || it.liquido != null ? React.createElement("button", { type: "button", onClick: () => atualizar(it.uid, { liquido: !nutriItemLiquido(it) }), style: { display: "inline-flex", alignItems: "center", gap: 6, height: 30, padding: "0 12px", borderRadius: 15, margin: "0 0 6px", border: "1.5px solid " + (nutriItemLiquido(it) ? "#7DD3FC" : "#e2e8f0"), background: nutriItemLiquido(it) ? "#F0F9FF" : "#fff", color: nutriItemLiquido(it) ? "#075985" : "#94a3b8", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" } }, nutriItemLiquido(it) ? "💧 Conta como líquido · " + v.gramas + " ml" : "Não conta como líquido") : null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, color: "#64748b" } }, nutriLinhaMacros(v))) : /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6, marginTop: 6 } }, [["gramas", "Gramas"], ["kcal", "kcal"], ["prot", "Proteína g"], ["carb", "Carbo g"], ["gord", "Gordura g"], ["fibra", "Fibra g"]].map((c) => /* @__PURE__ */ React.createElement("label", { key: c[0], style: { display: "flex", flexDirection: "column", gap: 2, fontSize: 11, color: "#64748b" } }, c[1], /* @__PURE__ */ React.createElement("input", { inputMode: "decimal", value: String(it.base[c[0]]), onChange: (e) => atualizarBase(it.uid, c[0], e.target.value.replace(/[^0-9.,]/g, "")), style: { height: 34, borderRadius: 8, border: "1.5px solid #e2e8f0", padding: "0 8px", fontSize: 14, fontFamily: "inherit" } })))));
     }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 6, margin: "2px 0 2px" } }, /* @__PURE__ */ React.createElement("input", { value: addTexto, onChange: (e) => setAddTexto(e.target.value), placeholder: "Faltou algo? Ex.: 1 colher de azeite", style: { flex: 1, minWidth: 0, height: 38, borderRadius: 12, border: "1.5px solid #e2e8f0", padding: "0 12px", fontSize: 13.5, fontFamily: "inherit", background: "#fff" } }), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: adicionarTexto, disabled: adicionando, style: { height: 38, padding: "0 12px", borderRadius: 12, border: "none", background: NUTRI_ESCURO, color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", opacity: adicionando ? 0.6 : 1 } }, adicionando ? "..." : "Adicionar")), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setItens((p) => [...p, nutriItemManual()]), style: { background: "transparent", border: "none", color: NUTRI_LARANJA_TXT, fontSize: 12.5, fontWeight: 700, cursor: "pointer", padding: "6px 2px", fontFamily: "inherit" } }, "+ Adicionar item manualmente")), /* @__PURE__ */ React.createElement("div", { style: { padding: "6px 16px 10px", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { background: NUTRI_ESCURO, color: "#f8fafc", borderRadius: 14, padding: "8px 12px", display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 4, marginBottom: 8 } }, [["kcal", "kcal"], ["prot", "Proteína"], ["carb", "Carbo"], ["gord", "Gordura"], ["fibra", "Fibra"]].map((c) => /* @__PURE__ */ React.createElement("div", { key: c[0], style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10, color: "#cbd5e1" } }, c[1]), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14.5, fontWeight: 800, color: c[0] === "kcal" ? "#FF7A3D" : "#f8fafc" } }, nutriFmt(totais[c[0]]), c[0] === "kcal" ? "" : "g")))), erro && /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12.5, color: "#dc2626", textAlign: "center", marginBottom: 6, lineHeight: 1.4 } }, erro), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 8 } }, /* @__PURE__ */ React.createElement(NutriBotao, { tipo: "sec", onClick: () => {
       setItens([]);
       setErro("");
@@ -770,14 +804,15 @@
       });
       return n;
     })();
-    const aguaMl = nutriAguaDia(metas, dia);
+    const aguaManual = nutriAguaDia(metas, dia);
+    const aguaRefs = (refeicoes || []).filter((r) => r.date === dia || !r.date);
+    const aguaMl = aguaManual + aguaRefs.reduce((t, r) => t + nutriLiqRef(r), 0);
     const aguaMeta = nutriMetaAgua(metas, eBase.peso);
-    const somarAgua = async (n) => {
+    const mudarAgua = async (op) => {
       const antes = metas;
-      const novoMl = Math.max(0, Math.min(1e4, aguaMl + n));
       const seq = ++aguaSeq.current;
-      setMetas((p) => ({ ...p || {}, aguaDias: { ...p && p.aguaDias || {}, [dia]: novoMl } }));
-      const r = await nutriApi.salvarAgua(studentId, ownerId, dia, novoMl);
+      setMetas((p) => nutriAguaAplicar(p, dia, op));
+      const r = await nutriApi.salvarAgua(studentId, ownerId, dia, op);
       if (seq !== aguaSeq.current) return;
       if (r) setMetas(r);
       else {
@@ -785,6 +820,11 @@
         alert("Não consegui salvar a água. Confira a conexão e tente de novo.");
       }
     };
+    const somarAgua = (n) => {
+      const ag = new Date();
+      if (n > 0) mudarAgua({ add: Math.min(5e3, n), id: nutriId(), h: String(ag.getHours()).padStart(2, "0") + ":" + String(ag.getMinutes()).padStart(2, "0") });
+    };
+    const removerAgua = (id) => mudarAgua({ remove: id });
     const repetirHoje = async (r) => {
       const agora = new Date();
       const hojeD = nutriHoje();
@@ -967,24 +1007,33 @@
     }, style: { height: 48, flex: 1 } }, /* @__PURE__ */ React.createElement(NutriCamera, null), "Registrar refeição"), eOk && /* @__PURE__ */ React.createElement(NutriBotao, { tipo: "sec", onClick: () => setModo("atividade"), style: { height: 48, width: "auto", flex: "0 0 auto", padding: "0 14px", fontSize: 13 } }, "+ Atividade")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 10.5, color: PR.cinzaClaro, textAlign: "center", marginTop: 4, flexShrink: 0 } }, "Valores estimados. A foto é lida e descartada.")), aguaAberta && React.createElement(Modal, { title: "Água · " + tituloDia, onClose: () => {
       setAguaAberta(false);
       setAguaTxt("");
-    } }, React.createElement("div", { style: { textAlign: "center", margin: "4px 0 12px" } },
+    } }, React.createElement("div", { style: { textAlign: "center", margin: "4px 0 8px" } },
       React.createElement("div", { style: { fontSize: 30, fontWeight: 800, color: aguaMeta && aguaMl >= aguaMeta ? "#15803D" : AGUA_COR } }, nutriFmtL(aguaMl)),
-      React.createElement("div", { style: { fontSize: 13, color: "#64748b" } }, aguaMeta ? (aguaMl >= aguaMeta ? "Meta de " + nutriFmtL(aguaMeta) + " atingida" : "Faltam " + nutriFmtL(aguaMeta - aguaMl) + " para a meta de " + nutriFmtL(aguaMeta)) : "Defina a meta de água em Metas"),
-      React.createElement("div", { style: { fontSize: 11.5, color: "#94a3b8", marginTop: 4 } }, "Vale água, chá, suco e outros líquidos.")),
-    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 6, marginBottom: 10 } }, [150, 200, 300, 500].map((v) => React.createElement("button", { key: v, type: "button", onClick: () => somarAgua(v), style: { height: 44, borderRadius: 12, border: "1.5px solid #BAE6FD", background: "#F0F9FF", color: "#075985", fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" } }, "+" + v))),
-    React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 10 } },
-      React.createElement("input", { inputMode: "numeric", value: aguaTxt, onChange: (e) => setAguaTxt(e.target.value.replace(/[^0-9]/g, "")), placeholder: "Outro valor em ml", style: { flex: 1, minWidth: 0, height: 44, borderRadius: 12, border: "1.5px solid #e2e8f0", padding: "0 12px", fontSize: 15, fontFamily: "inherit" } }),
+      React.createElement("div", { style: { fontSize: 13, color: "#64748b" } }, aguaMeta ? aguaMl >= aguaMeta ? "Meta de " + nutriFmtL(aguaMeta) + " atingida" : "Faltam " + nutriFmtL(aguaMeta - aguaMl) + " para a meta de " + nutriFmtL(aguaMeta) : "Defina a meta de água em Metas")),
+    React.createElement("div", { style: { height: 6, background: "#E2E8F0", borderRadius: 3, margin: "6px 0 14px" } }, React.createElement("div", { style: { height: 6, borderRadius: 3, width: (aguaMeta ? Math.min(100, aguaMl / aguaMeta * 100) : 0) + "%", background: aguaMeta && aguaMl >= aguaMeta ? "#16A34A" : AGUA_COR } })),
+    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 6, marginBottom: 8 } }, [150, 200, 300, 500].map((v) => React.createElement("button", { key: v, type: "button", onClick: () => somarAgua(v), style: { height: 44, borderRadius: 12, border: "1.5px solid #BAE6FD", background: "#F0F9FF", color: "#075985", fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" } }, "+" + v))),
+    React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 14 } },
+      React.createElement("input", { inputMode: "numeric", value: aguaTxt, onChange: (e) => setAguaTxt(e.target.value.replace(/[^0-9]/g, "").slice(0, 4)), placeholder: "Outro valor em ml", style: { flex: 1, minWidth: 0, height: 42, borderRadius: 12, border: "1.5px solid #e2e8f0", padding: "0 12px", fontSize: 15, fontFamily: "inherit" } }),
       React.createElement("button", { type: "button", onClick: () => {
         const v = nutriNum(aguaTxt);
         if (!v) return;
         somarAgua(v);
         setAguaTxt("");
-      }, style: { height: 44, padding: "0 16px", borderRadius: 12, border: "none", background: AGUA_COR, color: "#fff", fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" } }, "Somar")),
-    React.createElement("div", { style: { display: "flex", gap: 6 } },
-      React.createElement("button", { type: "button", disabled: !aguaMl, onClick: () => somarAgua(-200), style: { flex: 1, height: 42, borderRadius: 21, border: "1.5px solid #e2e8f0", background: "#fff", color: PR.escuro, fontSize: 13.5, fontWeight: 700, cursor: "pointer", opacity: aguaMl ? 1 : 0.4, fontFamily: "inherit" } }, "Tirar 200 ml"),
-      React.createElement("button", { type: "button", disabled: !aguaMl, onClick: () => {
-        if (window.confirm("Zerar a água deste dia?")) somarAgua(-aguaMl);
-      }, style: { flex: 1, height: 42, borderRadius: 21, border: "1.5px solid #fecaca", background: "#fff", color: "#dc2626", fontSize: 13.5, fontWeight: 700, cursor: "pointer", opacity: aguaMl ? 1 : 0.4, fontFamily: "inherit" } }, "Zerar o dia"))), grupo && !detalhe && /* @__PURE__ */ React.createElement(Modal, { title: grupo.nome, onClose: () => setGrupo(null) }, grupo.regs.map((r) => /* @__PURE__ */ React.createElement("button", { key: r.id, type: "button", onClick: () => setDetalhe(r), style: { width: "100%", display: "flex", justifyContent: "space-between", gap: 10, padding: "12px 0", border: "none", borderBottom: "1px solid #f1f5f9", background: "transparent", cursor: "pointer", fontFamily: "inherit", color: PR.escuro, textAlign: "left" } }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 14, fontWeight: 700 } }, (r.hora || "").slice(0, 5)), /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 12, color: "#64748b" } }, nutriLinhaMacros(r.totais || {}))), /* @__PURE__ */ React.createElement("b", { style: { fontSize: 14, whiteSpace: "nowrap" } }, nutriFmt((r.totais || {}).kcal), " kcal")))), detalhe && /* @__PURE__ */ React.createElement(Modal, { title: nutriTipoNome(detalhe.tipo) + " · " + (detalhe.hora || ""), onClose: () => setDetalhe(null) }, (detalhe.itens || []).map((i, idx) => /* @__PURE__ */ React.createElement("div", { key: idx, style: { display: "flex", justifyContent: "space-between", gap: 10, padding: "10px 0", borderBottom: "1px solid #f1f5f9" } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700 } }, i.nome), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b" } }, (nutriNum(i.gramas) ? nutriFmt(i.gramas) + " g · " : "") + nutriLinhaMacros(i))), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 14, fontWeight: 700, whiteSpace: "nowrap" } }, nutriFmt(i.kcal), " kcal"))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "12px 0", fontWeight: 800 } }, /* @__PURE__ */ React.createElement("span", null, "Total"), /* @__PURE__ */ React.createElement("span", null, nutriFmt((detalhe.totais || {}).kcal), " kcal")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b", marginBottom: 16 } }, nutriLinhaMacros(detalhe.totais || {})), React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 10 } }, React.createElement("button", { type: "button", onClick: () => repetirHoje(detalhe), style: { flex: 1, height: 44, borderRadius: 22, border: "1.5px solid #e2e8f0", background: "#fff", fontSize: 13, fontWeight: 700, color: "#0f172a", cursor: "pointer", fontFamily: "inherit" } }, "🔁 Repetir hoje"), React.createElement("button", { type: "button", onClick: () => salvarComoMarmita(detalhe), style: { flex: 1, height: 44, borderRadius: 22, border: "1.5px solid #FED7AA", background: "#FFF4EE", fontSize: 13, fontWeight: 800, color: "#C2410C", cursor: "pointer", fontFamily: "inherit" } }, "🍱 Salvar como marmita")), /* @__PURE__ */ React.createElement(NutriBotao, { tipo: "sec", onClick: apagar, disabled: apagando, style: { color: "#dc2626" } }, apagando ? "Apagando..." : "Apagar registro")));
+      }, style: { height: 42, padding: "0 16px", borderRadius: 12, border: "none", background: AGUA_COR, color: "#fff", fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" } }, "Somar")),
+    (() => {
+      const lst = nutriAguaLista(metas, dia).map((x) => ({ ...x, tipo: "a" }));
+      aguaRefs.forEach((r) => nutriLiqItens(r).forEach((x, ix) => lst.push({ id: r.id + "-" + ix, h: r.hora || "", ml: x.ml, tipo: "r", nome: x.nome + " · " + nutriTipoNome(r.tipo).toLowerCase() })));
+      lst.sort((a, b) => (b.h || "").localeCompare(a.h || ""));
+      return React.createElement("div", null,
+        React.createElement("div", { style: { fontSize: 11, fontWeight: 800, color: "#94a3b8", letterSpacing: 0.3 } }, ehHoje ? "O QUE VOCÊ TOMOU HOJE" : "O QUE VOCÊ TOMOU NESSE DIA"),
+        !lst.length && React.createElement("div", { style: { fontSize: 13, color: "#94a3b8", padding: "12px 0" } }, "Nada registrado ainda."),
+        lst.map((x) => React.createElement("div", { key: x.id, style: { display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderBottom: "1px solid #f1f5f9" } },
+          React.createElement("span", { style: { fontSize: 12.5, fontWeight: 800, color: "#64748b", width: 42, flexShrink: 0 } }, x.h || "—"),
+          React.createElement("span", { style: { width: 28, height: 28, borderRadius: 9, background: x.tipo === "a" ? "#F0F9FF" : "#FFF7ED", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 } }, x.tipo === "a" ? "💧" : "🍽️"),
+          React.createElement("div", { style: { flex: 1, minWidth: 0 } }, React.createElement("div", { style: { fontSize: 14, fontWeight: 800, color: PR.escuro } }, x.ml + " ml"), React.createElement("div", { style: { fontSize: 11.5, color: "#64748b" } }, x.tipo === "a" ? x.antigo ? "registrado antes" : "água" : x.nome)),
+          x.tipo === "a" && React.createElement("button", { type: "button", "aria-label": "Remover", onClick: () => removerAgua(x.id), style: { background: "transparent", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer", padding: "2px 6px", fontFamily: "inherit" } }, "×"))),
+        React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 8, lineHeight: 1.45 } }, "💧 água que você somou · 🍽️ bebida registrada numa refeição. Para tirar uma bebida da refeição, abra a refeição."));
+    })()), grupo && !detalhe && /* @__PURE__ */ React.createElement(Modal, { title: grupo.nome, onClose: () => setGrupo(null) }, grupo.regs.map((r) => /* @__PURE__ */ React.createElement("button", { key: r.id, type: "button", onClick: () => setDetalhe(r), style: { width: "100%", display: "flex", justifyContent: "space-between", gap: 10, padding: "12px 0", border: "none", borderBottom: "1px solid #f1f5f9", background: "transparent", cursor: "pointer", fontFamily: "inherit", color: PR.escuro, textAlign: "left" } }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 14, fontWeight: 700 } }, (r.hora || "").slice(0, 5)), /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 12, color: "#64748b" } }, nutriLinhaMacros(r.totais || {}))), /* @__PURE__ */ React.createElement("b", { style: { fontSize: 14, whiteSpace: "nowrap" } }, nutriFmt((r.totais || {}).kcal), " kcal")))), detalhe && /* @__PURE__ */ React.createElement(Modal, { title: nutriTipoNome(detalhe.tipo) + " · " + (detalhe.hora || ""), onClose: () => setDetalhe(null) }, (detalhe.itens || []).map((i, idx) => /* @__PURE__ */ React.createElement("div", { key: idx, style: { display: "flex", justifyContent: "space-between", gap: 10, padding: "10px 0", borderBottom: "1px solid #f1f5f9" } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 14, fontWeight: 700 } }, i.nome), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b" } }, (nutriNum(i.gramas) ? nutriFmt(i.gramas) + " g · " : "") + nutriLinhaMacros(i))), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 14, fontWeight: 700, whiteSpace: "nowrap" } }, nutriFmt(i.kcal), " kcal"))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", padding: "12px 0", fontWeight: 800 } }, /* @__PURE__ */ React.createElement("span", null, "Total"), /* @__PURE__ */ React.createElement("span", null, nutriFmt((detalhe.totais || {}).kcal), " kcal")), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: "#64748b", marginBottom: 16 } }, nutriLinhaMacros(detalhe.totais || {})), React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 10 } }, React.createElement("button", { type: "button", onClick: () => repetirHoje(detalhe), style: { flex: 1, height: 44, borderRadius: 22, border: "1.5px solid #e2e8f0", background: "#fff", fontSize: 13, fontWeight: 700, color: "#0f172a", cursor: "pointer", fontFamily: "inherit" } }, "🔁 Repetir hoje"), React.createElement("button", { type: "button", onClick: () => salvarComoMarmita(detalhe), style: { flex: 1, height: 44, borderRadius: 22, border: "1.5px solid #FED7AA", background: "#FFF4EE", fontSize: 13, fontWeight: 800, color: "#C2410C", cursor: "pointer", fontFamily: "inherit" } }, "🍱 Salvar como marmita")), /* @__PURE__ */ React.createElement(NutriBotao, { tipo: "sec", onClick: apagar, disabled: apagando, style: { color: "#dc2626" } }, apagando ? "Apagando..." : "Apagar registro")));
   };
   const ANTRO_MEMBROS = [["bracoRelaxado", "Braço relaxado"], ["bracoContraido", "Braço contraído"], ["antebraco", "Antebraço"], ["coxa", "Coxa"], ["panturrilha", "Panturrilha"]];
   const ANTRO_TRONCO = [["torax", "Tórax"], ["cintura", "Cintura"], ["abdomen", "Abdômen"], ["quadril", "Quadril"]];
@@ -1741,6 +1790,11 @@
     const hoje = nutriHoje();
     const aguaMeta = nutriMetaAgua(metas, eBase.peso);
     const aguaDesde = metas && metas.aguaDesde;
+    const liqDia = {};
+    (refeicoes || []).forEach((r) => {
+      const l = nutriLiqRef(r);
+      if (l && r.date) liqDia[r.date] = (liqDia[r.date] || 0) + l;
+    });
     return dias.map((d) => {
       const x = ex[d] || { kcal: 0, itens: [] };
       const e = plano ? energiaDia(plano, eBase, x.kcal) : null;
@@ -1750,7 +1804,7 @@
       const status = prStatusDia(obj, cons, meta);
       const protMin = nutriNum(metas && metas.prot);
       const protOk = !protMin || porDia[d].prot >= protMin;
-      const agua = nutriAguaDia(metas, d);
+      const agua = nutriAguaDia(metas, d) + (liqDia[d] || 0);
       const aguaConta = !!(aguaMeta && aguaDesde && d >= aguaDesde);
       const aguaOk = !aguaConta || agua >= aguaMeta;
       return { date: d, hoje: d === hoje, futuro: d > hoje, cons, prot: porDia[d].prot, n: porDia[d].n, meta, gasto: eOk ? e.gasto : null, exercicio: x.kcal, treinos: x.itens.length, status, protOk, agua, aguaMeta, aguaConta, aguaOk, metaOk: (status === "ok" || status === "registro") && protOk && aguaOk };

@@ -91,6 +91,46 @@
   const nutriMetaAgua = (metas, peso) => nutriNum(metas && metas.agua) || nutriAguaSug(peso || metas && metas.peso);
   const nutriAguaDia = (metas, dia) => nutriNum(metas && metas.aguaDias && metas.aguaDias[dia]);
   const nutriFmtL = (ml) => (Math.round(nutriNum(ml) / 100) / 10).toFixed(1).replace(".", ",") + " L";
+  const nutriSemAcento = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const NUTRI_ALCOOL = /cerveja|chope|chopp|vinho|cachaca|caipirinha|caipiroska|whisk|vodka|\bgin\b|licor|espumante|drink|\brum\b|tequila|\bsake\b/;
+  const NUTRI_BEBIDA = /^(suco|cha\b|cafe|cappuccino|capuccino|leite(?! condensado| em po)|agua|refrigerante|refri\b|isotonico|bebida|vitamina|achocolatado|kefir|kombucha|limonada|mate\b|chimarrao|terere|shake|smoothie|iogurte (liquido|para beber)|energetico|coca|guarana|soda|tonica)/;
+  const nutriEhAlcool = (n) => NUTRI_ALCOOL.test(nutriSemAcento(n));
+  const nutriEhBebida = (n) => {
+    const t = nutriSemAcento(n).trim();
+    return !NUTRI_ALCOOL.test(t) && NUTRI_BEBIDA.test(t);
+  };
+  const nutriItemLiquido = (i) => !!i && !nutriEhAlcool(i.nome) && (i.liquido != null ? !!i.liquido : nutriEhBebida(i.nome));
+  const nutriLiqItens = (r) => (r && r.itens || []).filter(nutriItemLiquido).map((i) => ({ nome: i.nome, ml: Math.round(nutriNum(i.gramas)) })).filter((x) => x.ml > 0);
+  const nutriLiqRef = (r) => nutriLiqItens(r).reduce((s, x) => s + x.ml, 0);
+  const nutriLiqDia = (refs, dia) => (refs || []).filter((r) => r.date === dia).reduce((s, r) => s + nutriLiqRef(r), 0);
+  const nutriAguaTotal = (metas, dia, refs) => nutriAguaDia(metas, dia) + nutriLiqDia(refs, dia);
+  const nutriAguaLista = (metas, dia) => {
+    const l = (metas && metas.aguaLog && metas.aguaLog[dia] || []).slice();
+    const antigo = nutriAguaDia(metas, dia) - l.reduce((s, x) => s + nutriNum(x.ml), 0);
+    if (antigo > 0) l.unshift({ id: "antes", h: "", ml: Math.round(antigo), antigo: true });
+    return l;
+  };
+  const nutriAguaAplicar = (metas, dia, op) => {
+    const m = metas || {};
+    const dias = { ...m.aguaDias || {} }, logs = { ...m.aguaLog || {} };
+    const limite = nutriDiaMais(nutriHoje(), -400);
+    Object.keys(dias).forEach((d) => {
+      if (d < limite) delete dias[d];
+    });
+    Object.keys(logs).forEach((d) => {
+      if (d < limite) delete logs[d];
+    });
+    let l = nutriAguaLista(m, dia);
+    if (op.add) l.push({ id: op.id || nutriId(), h: op.h || "", ml: Math.round(op.add) });
+    if (op.remove) l = l.filter((x) => x.id !== op.remove);
+    const tot = l.reduce((s, x) => s + nutriNum(x.ml), 0);
+    if (l.length) logs[dia] = l;
+    else delete logs[dia];
+    if (tot > 0) dias[dia] = tot;
+    else delete dias[dia];
+    const desde = tot > 0 && (!m.aguaDesde || dia < m.aguaDesde) ? dia : m.aguaDesde || null;
+    return { ...m, aguaDias: dias, aguaLog: logs, aguaDesde: desde };
+  };
   const nutriApi = {
     async headers() {
       var _a;
@@ -156,18 +196,10 @@
         return false;
       }
     },
-    async salvarAgua(studentId, ownerId, dia, ml) {
+    async salvarAgua(studentId, ownerId, dia, op) {
       const atual = await this.metas(studentId);
       if (atual === null) return null;
-      const dias = { ...atual.aguaDias || {} };
-      const limite = nutriDiaMais(nutriHoje(), -400);
-      Object.keys(dias).forEach((d) => {
-        if (d < limite) delete dias[d];
-      });
-      if (ml > 0) dias[dia] = Math.round(ml);
-      else delete dias[dia];
-      const desde = ml > 0 && (!atual.aguaDesde || dia < atual.aguaDesde) ? dia : atual.aguaDesde || null;
-      const novo = { ...atual, aguaDias: dias, aguaDesde: desde };
+      const novo = nutriAguaAplicar(atual, dia, op);
       const ok = await this.salvarMetas(studentId, ownerId, novo);
       return ok ? novo : null;
     },
@@ -330,6 +362,7 @@
       if (fresco) {
         if (fresco.aguaDias) limpo.aguaDias = fresco.aguaDias;
         if (fresco.aguaDesde) limpo.aguaDesde = fresco.aguaDesde;
+        if (fresco.aguaLog) limpo.aguaLog = fresco.aguaLog;
         if (fresco.marmitas) limpo.marmitas = fresco.marmitas;
       }
       limpo.atualizadoPor = papel;
@@ -1305,7 +1338,7 @@
           h("div", { style: { fontSize: 11, marginTop: 5, color: es ? es.txt : "#64748b", fontWeight: es ? 800 : 400 } }, es ? es.rot + " · meta " + nutriFmt(mt) + " g" : mt ? "meta " + nutriFmt(mt) + " g" : "sem meta definida"));
       })),
       (function() {
-        const ml = nutriAguaDia(m, dia), mt = nutriMetaAgua(m, peso), ok = mt && ml >= mt;
+        const ml = nutriAguaTotal(m, dia, refeicoes), mt = nutriMetaAgua(m, peso), ok = mt && ml >= mt;
         return h("div", { style: { borderRadius: 14, padding: 12, marginTop: 8, background: ok ? "#F0FDF4" : "#fff", border: "1.5px solid " + (ok ? "#BBF7D0" : "#e2e8f0") } },
           h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 } },
             h("span", { style: { fontSize: 12, color: "#64748b" } }, "Água e líquidos"),
@@ -1461,7 +1494,7 @@
       setNova((n) => ({ ...n, calculando: true }));
       try {
         const j = await nutriApi.analisar({ texto: nova.texto.trim(), tipo: "Almoço" });
-        const itens = (j.itens || []).map((i) => ({ nome: i.nome || "Alimento", gramas: Math.round(nutriNum(i.gramas)), kcal: Math.round(nutriNum(i.kcal)), prot: Math.round(nutriNum(i.prot) * 10) / 10, carb: Math.round(nutriNum(i.carb) * 10) / 10, gord: Math.round(nutriNum(i.gord) * 10) / 10, fibra: Math.round(nutriNum(i.fibra) * 10) / 10 }));
+        const itens = (j.itens || []).map((i) => ({ nome: i.nome || "Alimento", liquido: nutriEhBebida(i.nome), gramas: Math.round(nutriNum(i.gramas)), kcal: Math.round(nutriNum(i.kcal)), prot: Math.round(nutriNum(i.prot) * 10) / 10, carb: Math.round(nutriNum(i.carb) * 10) / 10, gord: Math.round(nutriNum(i.gord) * 10) / 10, fibra: Math.round(nutriNum(i.fibra) * 10) / 10 }));
         setNova((n) => ({ ...n, itens, calculando: false }));
         if (!itens.length) setMsg(j.observacao || "Não identifiquei os alimentos. Tente descrever de outro jeito.");
       } catch (e) {
@@ -1645,12 +1678,12 @@
       return /* @__PURE__ */ React.createElement("button", { key: mc.k, type: "button", onClick: () => setSel(mc.k), style: { textAlign: "left", borderRadius: 14, padding: 12, cursor: "pointer", fontFamily: "inherit", border: "1.5px solid " + (ativo ? NUTRI_ESCURO : "#e2e8f0"), background: ativo ? NUTRI_ESCURO : "#fff", color: ativo ? "#f8fafc" : "#0f172a" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: 12, color: ativo ? "#cbd5e1" : "#64748b" } }, mc.nome), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 20, fontWeight: 800, margin: "2px 0 6px" } }, md, " g"), /* @__PURE__ */ React.createElement(NutriBarra, { valor: md, meta: mt || 0, cor: NUTRI_LARANJA, fundo: ativo ? "#334155" : "#f1f5f9", altura: 4 }), /* @__PURE__ */ React.createElement("div", { style: { fontSize: 11, marginTop: 5, color: ativo ? "#cbd5e1" : "#64748b" } }, mt ? "meta " + nutriFmt(mt) + " g" : "sem meta definida"));
     })), (function() {
       const mt = nutriMetaAgua(m, eBase.peso);
-      const comAgua = dias.filter((d) => nutriAguaDia(m, d) > 0);
+      const comAgua = dias.filter((d) => nutriAguaTotal(m, d, refeicoes) > 0);
       const base = comAgua.filter((d) => d !== hoje).length ? comAgua.filter((d) => d !== hoje) : comAgua;
-      const med = base.length ? Math.round(base.reduce((s, d) => s + nutriAguaDia(m, d), 0) / base.length) : 0;
+      const med = base.length ? Math.round(base.reduce((s, d) => s + nutriAguaTotal(m, d, refeicoes), 0) / base.length) : 0;
       const contam = dias.filter((d) => d !== hoje && m.aguaDesde && d >= m.aguaDesde);
-      const bateu = mt ? contam.filter((d) => nutriAguaDia(m, d) >= mt).length : 0;
-      const maxA = Math.max(mt, ...dias.map((d) => nutriAguaDia(m, d)), 1);
+      const bateu = mt ? contam.filter((d) => nutriAguaTotal(m, d, refeicoes) >= mt).length : 0;
+      const maxA = Math.max(mt, ...dias.map((d) => nutriAguaTotal(m, d, refeicoes)), 1);
       return React.createElement(NutriCard, { style: { padding: "12px 14px", marginBottom: 12 } },
         React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 } },
           React.createElement("div", null,
@@ -1658,7 +1691,7 @@
             React.createElement("div", { style: { fontSize: 20, fontWeight: 800 } }, comAgua.length ? nutriFmtL(med) : "—", React.createElement("span", { style: { fontSize: 12, fontWeight: 600, color: "#64748b" } }, mt ? " de " + nutriFmtL(mt) + " por dia" : " por dia"))),
           React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", textAlign: "right" } }, !mt ? "sem meta definida" : contam.length ? "bateu em " + bateu + " de " + contam.length : comAgua.length ? "dia em andamento" : "ainda sem registro")),
         React.createElement("div", { style: { display: "flex", alignItems: "flex-end", gap: 6, height: 34, marginTop: 8 } }, dias.map((d) => {
-          const v = nutriAguaDia(m, d);
+          const v = nutriAguaTotal(m, d, refeicoes);
           const ok = mt && v >= mt;
           return React.createElement("div", { key: d, onClick: () => setDiaAberto(d), style: { flex: 1, height: v ? Math.max(4, Math.round(v / maxA * 34)) : 4, background: !v ? "#e2e8f0" : d === hoje ? "#7DD3FC" : ok ? "#16A34A" : "#0284C7", borderRadius: "4px 4px 0 0", cursor: "pointer" } });
         })),
@@ -1724,7 +1757,7 @@
       dias: dias.length, registrados: reg.length, deficitMedio: media(defs),
       metaDeficit: plano && plano.objetivo === "emagrecer" ? nutriNum(plano.ajuste) || null : null,
       protMedia: media(reg.map((d) => porDia[d].prot)), metaProt: nutriNum(metas.prot) || null,
-      aguaMeta, aguaDiasMeta: aguaMeta ? dias.filter((d) => nutriAguaDia(metas, d) >= aguaMeta).length : 0, aguaReg: dias.filter((d) => nutriAguaDia(metas, d) > 0).length,
+      aguaMeta, aguaDiasMeta: aguaMeta ? dias.filter((d) => nutriAguaTotal(metas, d, lista) >= aguaMeta).length : 0, aguaReg: dias.filter((d) => nutriAguaTotal(metas, d, lista) > 0).length,
       peso: eBase.peso || null, pesoVar, pesoAntesData: ant ? ant.date : null
     };
   };
