@@ -322,7 +322,7 @@ function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoIn
       if (error) throw error;
       track("CompleteRegistration", { content_name: titulo, value: valor, currency: "BRL" });
       if (data && data.session) {
-        const novo = await rpcConta("rpc_mente_compra_publica", { p_prof: PROF_ID, p_nome: f.nome.trim(), p_whatsapp: f.whats.trim() });
+        const novo = await rpcConta("rpc_mente_compra_publica", { p_prof: PROF_ID, p_nome: f.nome.trim(), p_whatsapp: f.whats.trim(), p_valor: valor || null, p_origem: ORIGEM });
         setSid(String(novo || "")); setConta(true); setEtapa("pix");
       } else setEtapa("email");
     } catch (e) { const t = traduz(e.message); setErro(t === "ja" ? "ja" : t); }
