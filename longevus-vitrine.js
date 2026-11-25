@@ -1047,7 +1047,164 @@
       h("button", { type: "button", onClick: salvar, disabled: salvando, style: { width: "100%", height: 46, borderRadius: 12, border: "none", background: COR.laranja, color: "#fff", fontWeight: 700, fontSize: 14.5, cursor: "pointer", fontFamily: "inherit", opacity: salvando ? 0.7 : 1 } }, salvando ? "Salvando..." : "Salvar"),
       inicial && inicial.id && onApagar ? h("button", { type: "button", onClick: () => onApagar(d), style: { width: "100%", marginTop: 10, height: 40, borderRadius: 10, border: "1.5px solid #FCA5A5", background: "#fff", color: "#B91C1C", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" } }, "Remover da vitrine") : null);
   };
-  const Painel = ({ profNome, students }) => {
+  // Página do produto Mente Ativa no painel: Painel, Alunos e Oferta
+  const ddmm = (iso) => (iso ? String(iso).slice(0, 10).split("-").reverse().slice(0, 2).join("/") : "");
+  const maisDias = (iso, n) => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + n); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+  const situacaoMente = (st) => {
+    const l = st.mente || {}, hoje = hojeISO();
+    if (l.status === "pago" && l.vencimento) {
+      if (l.vencimento < hoje) return { k: "vencido", txt: "Venceu " + ddmm(l.vencimento), cor: ["#FEF2F2", "#B91C1C"] };
+      if (l.vencimento <= maisDias(hoje, 7)) return { k: "vencendo", txt: "Vence " + ddmm(l.vencimento), cor: ["#FFF7ED", "#C2410C"] };
+      return { k: "pago", txt: "Pago até " + ddmm(l.vencimento), cor: ["#F0FDF4", "#15803D"] };
+    }
+    if (l.status === "bonus" && l.origem === "venda") return { k: "aguardando", txt: "Aguardando Pix", cor: ["#FFFBEB", "#B45309"] };
+    if (l.status === "bonus") return { k: "bonus", txt: l.bonusAte ? "Bônus até " + ddmm(l.bonusAte) : "Bônus", cor: ["#EEF2FF", "#4338CA"] };
+    return null;
+  };
+  const FILTROS_MENTE = [["todos", "Todos"], ["aguardando", "Aguardando Pix"], ["pago", "Pagos"], ["vencendo", "Vencendo"], ["bonus", "Bônus"]];
+  const ProdutoMente = ({ item, met, students, setStudents, nav, aba, setAba, profNome, onSalvar, onApagar, onVoltar }) => {
+    const [res, setRes] = useState(null);
+    const [avs, setAvs] = useState([]);
+    const [filtro, setFiltro] = useState("todos");
+    const [feito, setFeito] = useState("");
+    const titulo = item.titulo || "Mente Ativa";
+    const valor = valorPix(item);
+    const hoje = hojeISO();
+    useEffect(() => {
+      let vivo = true;
+      (async () => {
+        const hd = await api.headers();
+        const desde = new Date(Date.now() - 30 * 86400000).toISOString();
+        try { const r = await fetch(SUPA_URL + "/rest/v1/mente_resultados?select=student_id,created_at&created_at=gte." + desde + "&order=created_at.desc&limit=5000", { headers: hd }); if (vivo) setRes(r.ok ? await r.json() : []); } catch (e) { if (vivo) setRes([]); }
+        try { const r = await fetch(SUPA_URL + "/rest/v1/l360_avisos?select=id,student_id,created_at&servico=eq." + encodeURIComponent("Mente Ativa") + "&visto=eq.false&limit=500", { headers: hd }); if (vivo) setAvs(r.ok ? await r.json() : []); } catch (e) {}
+      })();
+      return () => { vivo = false; };
+    }, []);
+    const ultimoJogo = {};
+    (res || []).forEach((r) => { const k = String(r.student_id); if (!ultimoJogo[k] || r.created_at > ultimoJogo[k]) ultimoJogo[k] = r.created_at; });
+    const avisou = {};
+    avs.forEach((a) => { const k = String(a.student_id); if (!avisou[k] || a.created_at > avisou[k]) avisou[k] = a.created_at; });
+    const alunos = (students || []).map((st) => ({ st, s: situacaoMente(st) })).filter((x) => x.s || x.st.menteCompra);
+    const conta = (k) => alunos.filter((x) => x.s && x.s.k === k).length;
+    const mes = hoje.slice(0, 7);
+    let recebido = 0, vendasMes = 0;
+    (students || []).forEach((st) => (st.vitrineHist || []).forEach((v) => { if (v.tipo === "venda" && v.produto === "mente" && String(v.data || "").slice(0, 7) === mes) { recebido += Number(v.valor) || 0; vendasMes++; } }));
+    const desde30 = new Date(Date.now() - 30 * 86400000).toISOString();
+    const comprasSite = alunos.filter((x) => x.st.menteCompra && x.st.menteCompra.em >= desde30).length;
+    const comAcesso = alunos.filter((x) => x.s && (x.s.k === "pago" || x.s.k === "vencendo" || ((x.s.k === "bonus" || x.s.k === "aguardando") && (!x.st.mente.bonusAte || x.st.mente.bonusAte >= hoje)))).length;
+    const jogaram7 = new Set((res || []).filter((r) => r.created_at >= new Date(Date.now() - 7 * 86400000).toISOString()).map((r) => String(r.student_id))).size;
+
+    const marcarAvisos = async (sid) => {
+      setAvs((p) => p.filter((a) => String(a.student_id) !== String(sid)));
+      try { await fetch(SUPA_URL + "/rest/v1/l360_avisos?student_id=eq." + encodeURIComponent(sid) + "&servico=eq." + encodeURIComponent("Mente Ativa") + "&visto=eq.false", { method: "PATCH", headers: { ...(await api.headers()), Prefer: "return=minimal" }, body: JSON.stringify({ visto: true }) }); } catch (e) {}
+    };
+    const confirmar = (st) => {
+      if (!setStudents) return alert("Atualize a página e tente de novo.");
+      const r = window.prompt("Quanto " + primeiroNome(st.name) + " pagou pela " + titulo + "? (R$)\n\nEsse valor entra no Financeiro e libera mais 30 dias.", valor ? valor.toFixed(2).replace(".", ",") : "");
+      if (r === null) return;
+      const v = valorNum(r);
+      if (typeof registrarVitrine === "function") registrarVitrine(setStudents, st, "venda", "mente", titulo, v);
+      setStudents((p) => p.map((x) => {
+        if (String(x.id) !== String(st.id)) return x;
+        const l = x.mente || {};
+        const base = l.status === "pago" && l.vencimento && l.vencimento > hoje ? l.vencimento : hoje;
+        return { ...x, mente: { ...l, status: "pago", vencimento: maisDias(base, 30), bonusAte: null, atualizadoEm: new Date().toISOString() } };
+      }));
+      marcarAvisos(st.id);
+      setFeito(primeiroNome(st.name) + " liberado até " + ddmm(maisDias(st.mente && st.mente.status === "pago" && st.mente.vencimento > hoje ? st.mente.vencimento : hoje, 30)) + ".");
+      setTimeout(() => setFeito(""), 4000);
+    };
+    const msgWhats = (st, s) => {
+      const n = primeiroNome(st.name), p = primeiroNome(profNome) || "Wellington";
+      if (s && s.k === "aguardando") return "Oi, " + n + "! Aqui é o " + p + ". Que bom que você começou a " + titulo + "! Para deixar os jogos liberados, falta só o Pix" + (valor ? " de " + fmtReal(valor) : "") + ". Qualquer dúvida, me chama.";
+      if (s && (s.k === "vencendo" || s.k === "vencido")) return "Oi, " + n + "! Aqui é o " + p + ". Sua " + titulo + (s.k === "vencido" ? " venceu" : " vence em " + ddmm(st.mente.vencimento)) + ". Quer continuar por mais 30 dias?" + (valor ? " O Pix é de " + fmtReal(valor) + "." : "");
+      return "Oi, " + n + "! Aqui é o " + p + ". Como estão os jogos da " + titulo + "?";
+    };
+
+    const card = { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 14, padding: "12px 14px", marginBottom: 10 };
+    const caixa = (n, t, cor, onClick) => h("div", { onClick, style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 12, padding: "10px 12px", cursor: onClick ? "pointer" : "default" } }, h("div", { style: { fontSize: 11.5, color: COR.cinza } }, t), h("div", { style: { fontSize: 20, fontWeight: 800, color: cor || COR.escuro, marginTop: 2 } }, n));
+    const barra = (t, n, max) => h("div", { style: { marginBottom: 8 } },
+      h("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "#334155" } }, h("span", null, t), h("b", null, n)),
+      h("div", { style: { height: 6, borderRadius: 3, background: "#F1F5F9", marginTop: 4 } }, h("div", { style: { height: 6, borderRadius: 3, background: COR.laranja, width: (max ? Math.max(n ? 4 : 0, Math.round((n / max) * 100)) : 0) + "%" } })));
+    const irAlunos = (f) => { setFiltro(f); setAba("alunos"); };
+
+    const abaPainel = () => {
+      const funil = [met.viram || 0, met.abriram || 0, comprasSite];
+      return h("div", null,
+        h("div", { style: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8, marginBottom: 10 } },
+          caixa(comAcesso, "Com acesso"),
+          caixa(conta("aguardando"), "Aguardando Pix", conta("aguardando") ? "#B45309" : null, () => irAlunos("aguardando")),
+          caixa(fmtReal(recebido), "Recebido em " + ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"][Number(mes.slice(5)) - 1]),
+          caixa(conta("vencendo") + conta("vencido"), "Vencendo ou vencidos", conta("vencendo") + conta("vencido") ? "#B91C1C" : null, () => irAlunos("vencendo"))),
+        h("div", { style: card },
+          h("div", { style: { fontSize: 13, fontWeight: 800, marginBottom: 10 } }, "Caminho da venda · 30 dias"),
+          barra("Viram no app", funil[0], Math.max.apply(null, funil)),
+          barra("Abriram a oferta no app", funil[1], Math.max.apply(null, funil)),
+          barra("Compraram pela página de venda", funil[2], Math.max.apply(null, funil)),
+          h("div", { style: { fontSize: 11.5, color: "#94A3B8", lineHeight: 1.45, marginTop: 4 } }, "Visitas da página de venda (anúncios) aparecem no Gerenciador de Anúncios, pelo Pixel.")),
+        h("div", { style: card },
+          h("div", { style: { fontSize: 13, fontWeight: 800, marginBottom: 6 } }, "Uso dos jogos"),
+          res === null ? h("div", { style: { fontSize: 12.5, color: "#94A3B8" } }, "Carregando...") :
+          h("div", { style: { fontSize: 13, color: "#334155", lineHeight: 1.7 } },
+            h("div", null, h("b", null, res.length), " partidas nos últimos 30 dias"),
+            h("div", null, h("b", null, jogaram7), jogaram7 === 1 ? " aluno jogou nesta semana" : " alunos jogaram nesta semana"),
+            h("div", null, h("b", null, vendasMes), vendasMes === 1 ? " pagamento confirmado no mês" : " pagamentos confirmados no mês"))),
+        h(LinkVenda, { url: baseLink() + "venda.html?i=" + encodeURIComponent(item.id), rotulo: "Página de venda" }));
+    };
+
+    const abaAlunos = () => {
+      const lista = alunos.filter((x) => filtro === "todos" || (x.s && (x.s.k === filtro || (filtro === "vencendo" && x.s.k === "vencido")))).sort((a, b) => {
+        const ord = { aguardando: 0, vencido: 1, vencendo: 2, bonus: 3, pago: 4 };
+        const oa = a.s ? ord[a.s.k] : 5, ob = b.s ? ord[b.s.k] : 5;
+        if (oa !== ob) return oa - ob;
+        return String((b.st.menteCompra && b.st.menteCompra.em) || "").localeCompare(String((a.st.menteCompra && a.st.menteCompra.em) || ""));
+      });
+      return h("div", null,
+        h("div", { style: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 } }, FILTROS_MENTE.map(([k, t]) => {
+          const n = k === "todos" ? alunos.length : k === "vencendo" ? conta("vencendo") + conta("vencido") : conta(k);
+          const on = filtro === k;
+          return h("button", { key: k, type: "button", onClick: () => setFiltro(k), style: { padding: "6px 10px", borderRadius: 16, border: "1.5px solid " + (on ? COR.escuro : COR.borda), background: on ? COR.escuro : "#fff", color: on ? "#fff" : COR.escuro, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, t + " " + n);
+        })),
+        feito ? h("div", { style: { fontSize: 12.5, color: "#15803D", background: "#F0FDF4", borderRadius: 10, padding: "8px 11px", marginBottom: 10 } }, feito) : null,
+        !lista.length ? h("div", { style: { ...card, textAlign: "center", color: "#94A3B8", fontSize: 13, padding: 22 } }, filtro === "todos" ? "Ninguém com a " + titulo + " ainda." : "Ninguém nesse grupo agora.") : null,
+        lista.map(({ st, s }) => {
+          const c = st.menteCompra;
+          const dt = c && c.em ? new Date(c.em) : null;
+          const quando = dt && !isNaN(dt) ? dt.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + " às " + dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
+          const uj = ultimoJogo[String(st.id)];
+          const dias = uj ? Math.floor((Date.now() - new Date(uj).getTime()) / 86400000) : null;
+          const linha2 = [c ? "Comprou " + quando : null, c && Number(c.valor) > 0 ? fmtReal(Number(c.valor)) : null, c && c.origem && c.origem !== "site" && c.origem !== "direto" ? c.origem : null].filter(Boolean).join(" · ");
+          const linha3 = res === null ? "" : dias === null ? "Não jogou nos últimos 30 dias" : dias === 0 ? "Jogou hoje" : dias === 1 ? "Jogou ontem" : "Jogou há " + dias + " dias";
+          const wa = waLink(st.whatsapp || st.phone, msgWhats(st, s));
+          const podeConfirmar = s && s.k !== "pago" && s.k !== "bonus";
+          return h("div", { key: st.id, style: card },
+            h("div", { style: { display: "flex", alignItems: "flex-start", gap: 10 } },
+              h("div", { style: { flex: 1, minWidth: 0, cursor: nav ? "pointer" : "default" }, onClick: () => nav && nav("studentDetail", { studentId: st.id }) },
+                h("div", { style: { fontSize: 14.5, fontWeight: 800 } }, st.name || "Sem nome"),
+                linha2 ? h("div", { style: { fontSize: 12, color: COR.cinza, marginTop: 1 } }, linha2) : null,
+                linha3 ? h("div", { style: { fontSize: 12, color: dias === null || dias > 7 ? "#B45309" : COR.cinza, marginTop: 1 } }, linha3) : null,
+                avisou[String(st.id)] ? h("div", { style: { fontSize: 12, color: "#15803D", fontWeight: 700, marginTop: 2 } }, "Avisou que pagou em " + new Date(avisou[String(st.id)]).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })) : null),
+              s ? h("span", { style: { fontSize: 11, fontWeight: 800, borderRadius: 9, padding: "4px 8px", whiteSpace: "nowrap", background: s.cor[0], color: s.cor[1] } }, s.txt) : null),
+            podeConfirmar || wa ? h("div", { style: { display: "flex", gap: 8, marginTop: 10 } },
+              podeConfirmar ? h("button", { type: "button", onClick: () => confirmar(st), style: { flex: 1, height: 36, borderRadius: 10, border: "none", background: "#16A34A", color: "#fff", fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" } }, s.k === "aguardando" ? "Confirmar Pix" : "Renovar +30 dias") : null,
+              wa ? h("a", { href: wa, target: "_blank", rel: "noopener noreferrer", style: { flex: 1, height: 36, lineHeight: "36px", textAlign: "center", borderRadius: 10, border: "1.5px solid " + COR.borda, background: "#fff", color: COR.escuro, fontWeight: 700, fontSize: 12.5, textDecoration: "none" } }, s && s.k === "aguardando" ? "Cobrar no WhatsApp" : s && (s.k === "vencendo" || s.k === "vencido") ? "Lembrar no WhatsApp" : "WhatsApp") : null) : null);
+        }));
+    };
+
+    const abas = [["painel", "Painel"], ["alunos", "Alunos"], ["oferta", "Oferta"]];
+    return h("div", { style: { paddingBottom: 90 } },
+      h("button", { type: "button", onClick: onVoltar, style: { background: "transparent", border: "none", padding: "4px 0", color: COR.cinza, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, "‹ Vitrine"),
+      h("div", { style: { display: "flex", alignItems: "center", gap: 12, margin: "6px 0 12px" } },
+        h(Icone, { item, tam: 44 }),
+        h("div", { style: { minWidth: 0 } },
+          h("div", { style: { fontWeight: 800, fontSize: 20 } }, titulo),
+          h("div", { style: { fontSize: 12.5, color: COR.cinza } }, [valor ? fmtReal(valor) + "/mês" : null, item.ativo !== false ? "No app" : "Pausada no app"].filter(Boolean).join(" · ")))),
+      h("div", { style: { display: "flex", background: COR.borda, borderRadius: 12, padding: 4, marginBottom: 14 } }, abas.map(([k, t]) => h("button", { key: k, type: "button", onClick: () => setAba(k), style: { flex: 1, padding: "9px 0", borderRadius: 9, border: "none", background: aba === k ? "#fff" : "transparent", color: aba === k ? COR.laranjaTxt : "#475569", boxShadow: aba === k ? "0 1px 3px rgba(0,0,0,0.1)" : "none", fontWeight: 800, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit" } }, t + (k === "alunos" && conta("aguardando") ? " · " + conta("aguardando") : "")))),
+      aba === "painel" ? abaPainel() : aba === "alunos" ? abaAlunos() : h(FormItem, { key: item.id + (item.atualizadoEm || ""), inicial: item, profNome, onSalvar, onCancelar: onVoltar, onApagar }));
+  };
+  const Painel = ({ profNome, students, setStudents, nav }) => {
+    const [prodItem, setProdItem] = useState(null);
+    const [prodAba, setProdAba] = useState("painel");
     const [cfgs, setCfgs] = useState({});
     const [avisos, setAvisos] = useState([]);
     const [verProd, setVerProd] = useState(null);
@@ -1077,13 +1234,14 @@
       if (ok) {
         setItens((p) => { const sem = (p || []).filter((x) => x.id !== item.id); return [item].concat(sem); });
         setEditando(null);
+        if (prodItem && prodItem.id === item.id) { setProdItem(item); setProdAba("painel"); }
       }
       return ok;
     };
     const apagar = async (item) => {
       if (!window.confirm("Excluir a oferta \"" + item.titulo + "\"? Ela some do app dos alunos.")) return;
       const ok = await api.remover(item.id);
-      if (ok) { setItens((p) => (p || []).filter((x) => x.id !== item.id)); setEditando(null); }
+      if (ok) { setItens((p) => (p || []).filter((x) => x.id !== item.id)); setEditando(null); setProdItem(null); }
       else alert("Não consegui excluir. Tente de novo.");
     };
     const alternar = async (item) => {
@@ -1108,6 +1266,7 @@
     if (prodAberto && cfgs[verProd]) return h(Config360, { prod: prodAberto, cfg: cfgs[verProd], onSalvar: (novo) => salvarProd(verProd, novo), onVoltar: () => setVerProd(null) });
     const opcoesPremio = [{ tipo: "mente", id: "mente", nome: "1 mês de Mente Ativa" }, { tipo: "l360", id: "l360", nome: "1 mês de Longevus 360" }].concat((itens || []).filter((x) => x.tipo !== "parceiro" && !x.produto && x.cobranca === "pix").map((x) => ({ tipo: "servico", id: x.id, nome: x.titulo })));
     if (editando && (editando.produto === "indique" || editando === "indique")) return h(FormIndique, { inicial: editando === "indique" ? null : editando, opcoes: opcoesPremio, onSalvar: salvar, onCancelar: () => setEditando(null), onApagar: apagar });
+    if (prodItem && !editando) return h(ProdutoMente, { item: prodItem, met: met[prodItem.id] || {}, students, setStudents, nav, aba: prodAba, setAba: setProdAba, profNome, onSalvar: salvar, onApagar: apagar, onVoltar: () => setProdItem(null) });
     if (editando) return h(FormItem, { inicial: editando === "novo" ? null : editando, profNome, onSalvar: salvar, onCancelar: () => setEditando(null), onApagar: apagar });
     if (itens === null) return h("div", { style: { textAlign: "center", padding: 30, color: "#94A3B8" } }, "Carregando a vitrine...");
     const totalCliques = Object.keys(met).reduce((s, k) => s + met[k].cliques, 0);
@@ -1141,13 +1300,14 @@
         return h("div", { key: d.id, style: { background: "#fff", border: "1.5px solid " + COR.borda, borderRadius: 14, padding: "12px 14px", marginBottom: 8, opacity: on && !vencida ? 1 : 0.6 } },
           h("div", { style: { display: "flex", alignItems: "center", gap: 11 } },
             h(Icone, { item: d }),
-            h("div", { style: { flex: 1, minWidth: 0, cursor: "pointer" }, onClick: () => setEditando(d) },
+            h("div", { style: { flex: 1, minWidth: 0, cursor: "pointer" }, onClick: () => { if (d.produto === "mente") { setProdItem(d); setProdAba("painel"); } else setEditando(d); } },
               h("div", { style: { fontSize: 14, fontWeight: 800 } }, d.titulo),
               h("div", { style: { fontSize: 12, color: COR.cinza } }, (d.tipo === "parceiro" ? "Parceiro" : "Seu serviço") + (d.beneficio ? " · " + txtBenef(d.beneficio) : "") + (d.cupom ? " · " + d.cupom : "") + " · " + (PUBLICOS.find((x) => x[0] === (d.publico || "todos")) || PUBLICOS[0])[1])),
             h("button", { type: "button", onClick: () => alternar(d), "aria-label": on ? "Tirar do app" : "Mostrar no app", style: { width: 44, height: 24, borderRadius: 12, border: "none", background: on ? COR.laranja : "#CBD5E1", position: "relative", cursor: "pointer", flexShrink: 0 } }, h("span", { style: { position: "absolute", top: 3, left: on ? 23 : 3, width: 18, height: 18, borderRadius: 9, background: "#fff", transition: "left 0.2s" } }))),
           h("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 12, color: COR.cinza, marginTop: 8, paddingTop: 8, borderTop: "1px solid #F1F5F9" } },
             h("span", null, vencida ? "Vencida em " + d.validade.split("-").reverse().join("/") : on ? "No app" : "Pausada"),
             h("span", null, h("b", { style: { color: COR.escuro } }, m.viram), " viram · ", h("b", { style: { color: COR.escuro } }, m.abriram || 0), " abriram · ", h("b", { style: { color: COR.escuro } }, m.cliques), m.cliques === 1 ? " chamou" : " chamaram")),
+          d.produto === "mente" ? (() => { const sx = (students || []).map(situacaoMente).filter(Boolean); const ag = sx.filter((x) => x.k === "aguardando").length, pg = sx.filter((x) => x.k === "pago" || x.k === "vencendo").length; return h("button", { type: "button", onClick: () => { setProdItem(d); setProdAba(ag ? "alunos" : "painel"); }, style: { width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, padding: "9px 11px", borderRadius: 10, border: "none", background: ag ? "#FFFBEB" : "#F8FAFC", color: ag ? "#B45309" : COR.escuro, fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" } }, h("span", null, pg + (pg === 1 ? " pago" : " pagos") + (ag ? " · " + ag + " aguardando Pix" : "")), h("span", { style: { color: COR.laranjaTxt } }, "Ver alunos e painel ›")); })() : null,
           d.tipo !== "parceiro" && d.produto !== "indique" ? h(LinkVenda, { url: d.produto === "elo" ? baseLink() + "elo60-venda.html?i=" + encodeURIComponent(d.id) : baseLink() + "comprar.html?i=" + encodeURIComponent(d.id) }) : null);
       }));
   };
