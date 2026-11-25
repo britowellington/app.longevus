@@ -11,6 +11,10 @@
 <meta property="og:type" content="website"/>
 <link rel="icon" type="image/png" href="favicon-32.png"/>
 <meta name="theme-color" content="#0F172A"/>
+<link rel="manifest" href="manifest-aluno.json"/>
+<link rel="apple-touch-icon" href="apple-touch-icon.png"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="Meu Treino"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <style>
@@ -57,6 +61,13 @@ const PROF_ID = "64f27a4b-4cba-450c-9e52-e799c3c0b8d8";
 const PASTA = location.origin + location.pathname.replace(/[^/]*$/, "");
 const LINK_ALUNO = PASTA + "aluno.html";
 const LINK_MENTE = PASTA + "mente-ativa-jogos.html?aluno=1";
+// Instalar o app do aluno (PWA) na tela de parabéns
+let PROMPT_INSTALAR = null;
+window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); PROMPT_INSTALAR = e; window.dispatchEvent(new Event("lv-instalavel")); });
+const UA = navigator.userAgent || "";
+const EH_IOS = /iphone|ipad|ipod/i.test(UA) || (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1);
+const EM_APP_SOCIAL = /Instagram|FBAN|FBAV|FB_IAB|Line\/|WhatsApp/i.test(UA);
+const JA_INSTALADO = () => (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
 const supa = window.supabase ? window.supabase.createClient(SUPA_URL, SUPA_KEY, { auth: { storageKey: "lv-aluno-auth", persistSession: true, autoRefreshToken: true } }) : null;
 const hdrConta = async (extra) => { const s = supa ? (await supa.auth.getSession()).data.session : null; return Object.assign({ apikey: SUPA_KEY, Authorization: "Bearer " + (s ? s.access_token : SUPA_KEY), "Content-Type": "application/json" }, extra || {}); };
 const rpcConta = async (nome, corpo) => { const r = await fetch(SUPA_URL + "/rest/v1/rpc/" + nome, { method: "POST", headers: await hdrConta(), body: JSON.stringify(corpo || {}) }); if (!r.ok) throw new Error(await r.text()); const t = await r.text(); return t ? JSON.parse(t) : null; };
@@ -265,6 +276,55 @@ const avisoAluno = async (d, presente) => {
 };
 const BotaoVoltarApp = () => ALUNO ? h("button", { type: "button", onClick: () => { if (history.length > 1) history.back(); else location.href = base + "aluno.html"; }, style: { display: "inline-flex", alignItems: "center", gap: 6, height: 42, padding: "0 16px 0 10px", borderRadius: 21, border: "1.5px solid rgba(255,255,255,0.28)", background: "rgba(255,255,255,0.10)", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", marginBottom: 14 } }, h(Ico, { d: I.seta, cor: "#fff", tam: 20, larg: 2.6 }), "Voltar") : null;
 
+// ═══ PARABÉNS + INSTALAR O APP (Mente Ativa) ═══
+function Parabens({ nome, titulo, waProf, pers }) {
+  const [pode, setPode] = useState(!!PROMPT_INSTALAR);
+  const [inst, setInst] = useState(JA_INSTALADO() ? "ja" : "");
+  useEffect(() => { const f = () => setPode(true); window.addEventListener("lv-instalavel", f); const g = () => setInst("ok"); window.addEventListener("appinstalled", g); return () => { window.removeEventListener("lv-instalavel", f); window.removeEventListener("appinstalled", g); }; }, []);
+  const instalar = async () => {
+    if (!PROMPT_INSTALAR) return;
+    try { PROMPT_INSTALAR.prompt(); const r = await PROMPT_INSTALAR.userChoice; if (r && r.outcome === "accepted") setInst("ok"); } catch (e) {}
+    PROMPT_INSTALAR = null; setPode(false);
+  };
+  const passo = (n, t) => h("div", { style: { display: "flex", gap: 12, alignItems: "center", textAlign: "left", padding: "11px 0", borderTop: "1px solid #EEF2F6", fontSize: 14.5, lineHeight: 1.4, color: C.escuro } },
+    h("div", { style: { width: 28, height: 28, borderRadius: 14, background: C.laranjaClaro, color: C.laranjaTxt, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 14 } }, n), h("div", null, t));
+  const jogar = (pri) => h("a", { href: LINK_MENTE, style: pri ? { ...botaoPri, display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", marginTop: 12 } : { display: "flex", alignItems: "center", justifyContent: "center", height: 50, borderRadius: 14, marginTop: 10, border: "1.5px solid " + C.borda, background: "#fff", color: C.escuro, fontWeight: 800, fontSize: 15.5, textDecoration: "none" } }, "Começar a jogar agora");
+  const cartaoApp = h("div", { style: { background: C.fundo, borderRadius: 16, padding: 14, marginTop: 18, display: "flex", gap: 12, alignItems: "center", textAlign: "left" } },
+    h("img", { src: "apple-touch-icon.png", alt: "", style: { width: 52, height: 52, borderRadius: 14, flexShrink: 0, background: C.escuro } }),
+    h("div", null, h("div", { style: { fontWeight: 800, fontSize: 15 } }, "Meu Treino · Longevus"), h("div", { style: { fontSize: 13, color: C.cinza, lineHeight: 1.4 } }, "Seus jogos ficam na tela do celular, sem precisar de loja.")));
+  let instalarBloco;
+  if (inst === "ja") instalarBloco = jogar(true);
+  else if (inst === "ok") instalarBloco = h("div", null,
+    h("div", { style: { background: C.verdeClaro, color: C.verde, borderRadius: 14, padding: "12px 14px", fontSize: 14.5, fontWeight: 700, lineHeight: 1.45, marginTop: 14 } }, "App instalado. Procure o ícone Meu Treino na tela do seu celular."),
+    jogar(false));
+  else if (EM_APP_SOCIAL) instalarBloco = h("div", null, cartaoApp,
+    h("div", { style: { fontSize: 14, color: "#475569", lineHeight: 1.5, marginTop: 12, textAlign: "left" } }, "Para instalar, abra esta página no navegador do celular: toque nos três pontinhos no canto da tela e escolha ", h("b", null, "Abrir no navegador"), ". Lá, entre com o seu e-mail e senha."),
+    jogar(true));
+  else if (pode) instalarBloco = h("div", null, cartaoApp,
+    h("button", { type: "button", onClick: instalar, style: { ...botaoPri, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 14 } }, h(Ico, { d: "M12 4v11M7 10l5 5 5-5M5 20h14", cor: "#fff", tam: 20, larg: 2.4 }), "Instalar o app no celular"),
+    jogar(false));
+  else if (EH_IOS) instalarBloco = h("div", null,
+    h("div", { style: { fontSize: 15, color: "#475569", marginTop: 12, lineHeight: 1.5 } }, "Coloque o app na tela do seu iPhone em 3 passos:"),
+    h("div", { style: { marginTop: 8 } },
+      passo(1, h("span", null, "Toque em ", h("b", null, "Compartilhar"), " na barra do Safari")),
+      passo(2, h("span", null, "Escolha ", h("b", null, "Adicionar à Tela de Início"))),
+      passo(3, h("span", null, "Toque em ", h("b", null, "Adicionar"), " e abra o app pelo ícone"))),
+    jogar(true),
+    h("div", { style: { fontSize: 12.5, color: C.cinzaClaro, marginTop: 10 } }, "No primeiro acesso pelo ícone, entre com o seu e-mail e senha."));
+  else instalarBloco = h("div", null,
+    h("div", { style: { fontSize: 15, color: "#475569", marginTop: 12, lineHeight: 1.5 } }, "Coloque o app na tela do seu celular:"),
+    h("div", { style: { marginTop: 8 } },
+      passo(1, h("span", null, "Toque no menu ", h("b", null, "⋮"), " do navegador")),
+      passo(2, h("span", null, "Escolha ", h("b", null, "Instalar app"), " ou ", h("b", null, "Adicionar à tela inicial")))),
+    jogar(true));
+  return h("div", { style: { textAlign: "center", padding: "8px 2px 4px" } },
+    h("div", { style: { width: 72, height: 72, borderRadius: 22, background: C.verdeClaro, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" } }, h(Ico, { d: I.check, cor: C.verde, tam: 34, larg: 2.6 })),
+    h("div", { style: { fontSize: 23, fontWeight: 800 } }, "Parabéns" + (nome ? ", " + nome : "") + "!"),
+    h("div", { style: { fontSize: 15, color: "#475569", marginTop: 6, lineHeight: 1.55 } }, "Você agora faz parte da " + titulo + ". Seus 8 jogos estão prontos para treinar a memória e a atenção."),
+    instalarBloco,
+    waProf ? h("a", { href: waProf, target: "_blank", rel: "noopener noreferrer", style: { display: "block", fontSize: 13, color: C.cinza, marginTop: 14, textDecoration: "underline" } }, "Mandar o comprovante para o " + pers) : null);
+}
+
 // ═══ CHECKOUT (Pix + "Já paguei", igual ao comprar.html) ═══
 function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoInicial, resumoSub, planos, planoIni, contaMente }) {
   const [plSel, setPlSel] = useState(null);
@@ -341,9 +401,8 @@ function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoIn
       try {
         const r = await fetch(SUPA_URL + "/rest/v1/l360_avisos", { method: "POST", headers: await hdrConta({ Prefer: "return=minimal" }), body: JSON.stringify({ id: "av_" + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4), owner_id: PROF_ID, student_id: sid, servico: "Mente Ativa" }) });
         if (!r.ok) throw new Error(await r.text());
-        track("Purchase", { content_name: titulo, value: valor, currency: "BRL" }); setEtapa("feito");
-      }
-      catch (e) { setErro("Não conseguimos enviar o aviso. Tente de novo ou fale no WhatsApp."); }
+      } catch (e) {}
+      track("Purchase", { content_name: titulo, value: valor, currency: "BRL" }); setEtapa("feito");
       setEnv(false);
       return;
     }
@@ -370,26 +429,19 @@ function Checkout({ aberto, onFechar, d, pix, valor, mensal, temPresente, modoIn
     waLink(pix.whatsapp, "Oi, " + pers + "! Quero contratar o " + titulo + ".") ? h("a", { href: waLink(pix.whatsapp, "Oi, " + pers + "! Quero contratar o " + titulo + "."), target: "_blank", rel: "noopener noreferrer", style: { ...botaoPri, display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", marginTop: 16, background: "#25D366", boxShadow: "none" } }, "Falar no WhatsApp") : null);
   else if (etapa === "pix") corpo = h("div", null, resumo,
     h("div", { style: { textAlign: "center" } },
-      h("div", { style: { fontSize: 17, fontWeight: 800 } }, "Pague com Pix"),
+      h("div", { style: { fontSize: 17, fontWeight: 800 } }, conta ? "Pague com Pix para concluir" : "Pague com Pix"),
       h("div", { style: { fontSize: 13.5, color: C.cinza, marginTop: 3 } }, "Escaneie no app do seu banco ou copie o código."),
       payload ? h("div", { ref: qr, style: { display: "flex", justifyContent: "center", margin: "14px 0 12px" } }) : h("div", { style: { fontSize: 14, color: "#b45309", margin: "14px 0" } }, "Pix indisponível no momento. Fale no WhatsApp para pagar."),
       payload ? h("button", { type: "button", onClick: copiar, style: { width: "100%", height: 50, borderRadius: 14, border: "1.5px solid " + C.borda, background: copiado ? C.verdeClaro : "#F8FAFC", fontWeight: 800, fontSize: 15, color: copiado ? C.verde : C.escuro, cursor: "pointer" } }, copiado ? "Código copiado" : "Copiar código Pix") : null,
       caixaErro ? h("div", { style: { marginTop: 10 } }, caixaErro) : null,
-      h("button", { type: "button", onClick: jaPaguei, disabled: env, style: { ...botaoPri, background: C.verde, boxShadow: "0 10px 22px rgba(22,163,74,0.25)", marginTop: 10 } }, env ? "Enviando..." : "Já paguei"),
-      conta ? h("div", null,
-        h("a", { href: LINK_MENTE, style: { display: "flex", alignItems: "center", justifyContent: "center", height: 50, borderRadius: 14, marginTop: 10, border: "1.5px solid " + C.borda, color: C.escuro, fontWeight: 800, fontSize: 15.5, textDecoration: "none" } }, "Pagar depois e começar a jogar"),
-        h("div", { style: { fontSize: 13, color: C.cinza, lineHeight: 1.5, marginTop: 10 } }, "Seu acesso já está liberado. O Pix pode ser feito em até 2 dias, e o código também fica dentro do app.")) :
+      h("button", { type: "button", onClick: jaPaguei, disabled: env, style: { ...botaoPri, background: C.verde, boxShadow: "0 10px 22px rgba(22,163,74,0.25)", marginTop: 10 } }, env ? "Concluindo..." : conta ? "Fiz o Pix, concluir" : "Já paguei"),
+      conta ? h("div", { style: { fontSize: 13, color: C.cinza, lineHeight: 1.5, marginTop: 12 } }, "Depois do Pix, você instala o app no celular e já começa a jogar.") :
       h("button", { type: "button", onClick: () => setEtapa("dados"), style: { marginTop: 10, border: "none", background: "none", color: C.cinza, fontSize: 14, textDecoration: "underline", cursor: "pointer" } }, "Voltar e corrigir os dados")));
   else if (etapa === "email") corpo = h("div", { style: { textAlign: "center", padding: "18px 4px 6px" } },
     h("div", { style: { fontSize: 20, fontWeight: 800 } }, "Falta só confirmar o e-mail"),
     h("div", { style: { fontSize: 15, color: "#475569", marginTop: 8, lineHeight: 1.55 } }, "Enviamos um link para ", h("b", null, f.email.trim()), ". Toque nele e depois entre no app com o seu e-mail e senha."),
     h("a", { href: LINK_ALUNO, style: { ...botaoPri, display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", marginTop: 18 } }, "Já confirmei, entrar"));
-  else if (etapa === "feito" && conta) corpo = h("div", { style: { textAlign: "center", padding: "10px 2px 4px" } },
-    h("div", { style: { width: 64, height: 64, borderRadius: 20, background: C.verdeClaro, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" } }, h(Ico, { d: I.check, cor: C.verde, tam: 30, larg: 2.4 })),
-    h("div", { style: { fontSize: 21, fontWeight: 800 } }, "Tudo certo, " + primeiro(f.nome) + "!"),
-    h("div", { style: { fontSize: 15, color: "#475569", marginTop: 6, lineHeight: 1.55 } }, "Seu aviso de pagamento chegou para o " + pers + ". Os 8 jogos já estão liberados."),
-    h("a", { href: LINK_MENTE, style: { ...botaoPri, display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", marginTop: 18 } }, "Começar a jogar"),
-    waProf ? h("a", { href: waProf, target: "_blank", rel: "noopener noreferrer", style: { display: "flex", alignItems: "center", justifyContent: "center", height: 50, borderRadius: 16, marginTop: 10, border: "1.5px solid " + C.borda, color: C.escuro, fontWeight: 800, fontSize: 15, textDecoration: "none" } }, "Mandar o comprovante") : null);
+  else if (etapa === "feito" && conta) corpo = h(Parabens, { nome: primeiro(f.nome), titulo, waProf, pers });
   else if (etapa === "feito") corpo = h("div", { style: { textAlign: "center", padding: "10px 2px 4px" } },
     h("div", { style: { width: 64, height: 64, borderRadius: 20, background: C.verdeClaro, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" } }, h(Ico, { d: presente ? I.presente : I.check, cor: C.verde, tam: 30, larg: 2.4 })),
     h("div", { style: { fontSize: 21, fontWeight: 800 } }, "Obrigado, " + primeiro(f.nome) + "!"),
