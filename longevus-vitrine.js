@@ -338,7 +338,7 @@
           else if (x.tipo === "abriu") m.abriram[x.student_id] = true;
           else m.cliques++;
         });
-        Object.keys(out).forEach((k) => { out[k].viram = Object.keys(out[k].viram).length; out[k].abriram = Object.keys(out[k].abriram).length; });
+        Object.keys(out).forEach((k) => { out[k].viramIds = Object.keys(out[k].viram); out[k].abriramIds = Object.keys(out[k].abriram); out[k].viram = out[k].viramIds.length; out[k].abriram = out[k].abriramIds.length; });
         return out;
       } catch (e) {
         return null;
@@ -1071,6 +1071,7 @@
     const [avs, setAvs] = useState([]);
     const [filtro, setFiltro] = useState("todos");
     const [feito, setFeito] = useState("");
+    const [aberto, setAberto] = useState(null);
     const titulo = cfg.titulo;
     const valor = cfg.valor || 0;
     const hoje = hojeISO();
@@ -1135,8 +1136,44 @@
       h("div", { style: { height: 6, borderRadius: 3, background: "#F1F5F9", marginTop: 4 } }, h("div", { style: { height: 6, borderRadius: 3, background: COR.laranja, width: (max ? Math.max(n ? 4 : 0, Math.round((n / max) * 100)) : 0) + "%" } })));
     const irAlunos = (f) => { setFiltro(f); setAba("alunos"); };
 
+    const porId = {};
+    (students || []).forEach((st) => { porId[String(st.id)] = st; });
+    const msgOferta = (st) => "Oi, " + primeiroNome(st.name) + "! Aqui é o " + (primeiroNome(profNome) || "Wellington") + ". Vi que você deu uma olhada n" + cfg.art + " " + titulo + " no app. Quer que eu te explique como funciona?" + (valor ? " Fica " + fmtReal(valor) + " por mês." : "");
+    const pessoa = (st, extra, k) => {
+      const s = situacaoMente(st, col);
+      const tem = s && s.k !== "vencido";
+      const wa = !tem ? waLink(st.whatsapp || st.phone, s ? msgWhats(st, s) : msgOferta(st)) : null;
+      return h("div", { key: k || st.id, style: { display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderTop: "1px solid #EEF2F6" } },
+        h("div", { style: { flex: 1, minWidth: 0, cursor: nav ? "pointer" : "default" }, onClick: () => nav && nav("studentDetail", { studentId: st.id }) },
+          h("div", { style: { fontSize: 13.5, fontWeight: 700, color: COR.escuro } }, st.name || "Sem nome"),
+          h("div", { style: { fontSize: 11.5, color: tem ? COR.cinza : "#B45309" } }, [extra, s ? s.txt : "Ainda não tem"].filter(Boolean).join(" · "))),
+        wa ? h("a", { href: wa, target: "_blank", rel: "noopener noreferrer", style: { flexShrink: 0, height: 30, lineHeight: "30px", padding: "0 11px", borderRadius: 9, background: "#16A34A", color: "#fff", fontWeight: 700, fontSize: 12, textDecoration: "none" } }, s ? "Lembrar" : "Oferecer") : null);
+    };
+    const semAcesso = (st) => { const x = situacaoMente(st, col); return !x || x.k === "vencido" ? 0 : 1; };
+    const deIds = (ids) => (ids || []).map((id) => porId[String(id)]).filter(Boolean).sort((a, b) => semAcesso(a) - semAcesso(b) || String(a.name || "").localeCompare(String(b.name || ""))).map((st) => pessoa(st));
+    const linha = (id, rotulo, n, max, itensFn, vazio) => {
+      const on = aberto === id;
+      return h("div", { style: { marginBottom: 8 } },
+        h("button", { type: "button", onClick: () => setAberto(on ? null : id), "aria-expanded": on, style: { display: "block", width: "100%", background: "none", border: "none", padding: "2px 0", textAlign: "left", cursor: "pointer", fontFamily: "inherit" } },
+          h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, fontSize: 12.5, color: "#334155" } },
+            h("span", null, rotulo),
+            h("span", { style: { whiteSpace: "nowrap" } }, h("b", null, n), h("span", { style: { marginLeft: 8, fontSize: 11.5, fontWeight: 700, color: COR.laranjaTxt } }, on ? "ocultar" : "ver"))),
+          max !== null ? h("div", { style: { height: 6, borderRadius: 3, background: "#F1F5F9", marginTop: 4 } }, h("div", { style: { height: 6, borderRadius: 3, background: COR.laranja, width: (max ? Math.max(n ? 4 : 0, Math.round((n / max) * 100)) : 0) + "%" } })) : null),
+        on ? (() => { const lista = itensFn(); return h("div", { style: { marginTop: 6, background: "#F8FAFC", borderRadius: 10, padding: "0 10px" } }, lista.length ? lista : h("div", { style: { padding: "9px 0", fontSize: 12, color: "#94A3B8" } }, vazio || "Ninguém por aqui.")); })() : null);
+    };
+    const pagamentosLista = (filtroData) => {
+      const out = [];
+      (students || []).forEach((st) => (st.vitrineHist || []).forEach((v, i) => { if (v.tipo === "venda" && v.produto === col && filtroData(String(v.data || ""))) out.push({ st, v, i }); }));
+      return out.sort((a, b) => String(b.v.data).localeCompare(String(a.v.data))).map(({ st, v, i }) => pessoa(st, "Pagou " + fmtReal(Number(v.valor) || 0) + " em " + ddmm(v.data), st.id + "_" + i));
+    };
     const abaPainel = () => {
       const funil = [met.viram || 0, met.abriram || 0, ehMente ? comprasSite : pagos30];
+      const mx = Math.max.apply(null, funil);
+      const d30 = desde30.slice(0, 10);
+      const sete = new Date(Date.now() - 7 * 86400000).toISOString();
+      const porAluno = {};
+      (res || []).forEach((r) => { const k = String(r.student_id); const a = porAluno[k] || (porAluno[k] = { n: 0, ult: r.created_at, n7: 0 }); a.n++; if (r.created_at > a.ult) a.ult = r.created_at; if (r.created_at >= sete) a.n7++; });
+      const jogadores = (so7) => Object.keys(porAluno).filter((k) => porId[k] && (!so7 || porAluno[k].n7)).sort((a, b) => porAluno[b].n - porAluno[a].n).map((k) => pessoa(porId[k], (so7 ? porAluno[k].n7 : porAluno[k].n) + (((so7 ? porAluno[k].n7 : porAluno[k].n) === 1) ? " partida" : " partidas") + " · última " + ddmm(porAluno[k].ult)));
       return h("div", null,
         h("div", { style: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8, marginBottom: 10 } },
           caixa(comAcesso, "Com acesso"),
@@ -1144,19 +1181,20 @@
           caixa(fmtReal(recebido), "Recebido em " + ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"][Number(mes.slice(5)) - 1]),
           caixa(conta("vencendo") + conta("vencido"), "Vencendo ou vencidos", conta("vencendo") + conta("vencido") ? "#B91C1C" : null, () => irAlunos("vencendo"))),
         h("div", { style: card },
-          h("div", { style: { fontSize: 13, fontWeight: 800, marginBottom: 10 } }, "Caminho da venda · 30 dias"),
-          barra("Viram no app", funil[0], Math.max.apply(null, funil)),
-          barra("Abriram a oferta no app", funil[1], Math.max.apply(null, funil)),
-          barra(ehMente ? "Compraram pela página de venda" : "Pix confirmados", funil[2], Math.max.apply(null, funil)),
+          h("div", { style: { fontSize: 13, fontWeight: 800, marginBottom: 4 } }, "Caminho da venda · 30 dias"),
+          h("div", { style: { fontSize: 11.5, color: "#94A3B8", marginBottom: 10 } }, "Toque para ver quem é. Quem ainda não tem aparece com o botão Oferecer."),
+          linha("viram", "Viram no app", funil[0], mx, () => deIds(met.viramIds)),
+          linha("abriram", "Abriram a oferta no app", funil[1], mx, () => deIds(met.abriramIds)),
+          ehMente ? linha("compraram", "Compraram pela página de venda", funil[2], mx, () => alunos.filter((x) => compraDe(x.st) && compraDe(x.st).em >= desde30).sort((a, b) => String(compraDe(b.st).em).localeCompare(String(compraDe(a.st).em))).map((x) => pessoa(x.st, "Comprou " + ddmm(String(compraDe(x.st).em).slice(0, 10)))))
+            : linha("pix30", "Pix confirmados", funil[2], mx, () => pagamentosLista((d) => d >= d30)),
           ehMente ? h("div", { style: { fontSize: 11.5, color: "#94A3B8", lineHeight: 1.45, marginTop: 4 } }, "Visitas da página de venda (anúncios) aparecem no Gerenciador de Anúncios, pelo Pixel.") : null),
         h("div", { style: card },
-          h("div", { style: { fontSize: 13, fontWeight: 800, marginBottom: 6 } }, ehMente ? "Uso dos jogos" : "Pagamentos"),
-          !ehMente ? h("div", { style: { fontSize: 13, color: "#334155", lineHeight: 1.7 } }, h("div", null, h("b", null, vendasMes), vendasMes === 1 ? " pagamento confirmado no mês" : " pagamentos confirmados no mês"), h("div", null, h("b", null, conta("bonus")), conta("bonus") === 1 ? " aluno com bônus" : " alunos com bônus")) :
-          res === null ? h("div", { style: { fontSize: 12.5, color: "#94A3B8" } }, "Carregando...") :
-          h("div", { style: { fontSize: 13, color: "#334155", lineHeight: 1.7 } },
-            h("div", null, h("b", null, res.length), " partidas nos últimos 30 dias"),
-            h("div", null, h("b", null, jogaram7), jogaram7 === 1 ? " aluno jogou nesta semana" : " alunos jogaram nesta semana"),
-            h("div", null, h("b", null, vendasMes), vendasMes === 1 ? " pagamento confirmado no mês" : " pagamentos confirmados no mês"))),
+          h("div", { style: { fontSize: 13, fontWeight: 800, marginBottom: 8 } }, ehMente ? "Uso dos jogos" : "Pagamentos"),
+          ehMente && res === null ? h("div", { style: { fontSize: 12.5, color: "#94A3B8" } }, "Carregando...") : h("div", null,
+            ehMente ? linha("jogaram30", "Jogaram nos últimos 30 dias (" + res.length + (res.length === 1 ? " partida)" : " partidas)"), Object.keys(porAluno).filter((k) => porId[k]).length, null, () => jogadores(false)) : null,
+            ehMente ? linha("jogaram7", "Jogaram nesta semana", jogaram7, null, () => jogadores(true)) : null,
+            linha("pagosmes", vendasMes === 1 ? "Pagamento confirmado no mês" : "Pagamentos confirmados no mês", vendasMes, null, () => pagamentosLista((d) => d.slice(0, 7) === mes)),
+            !ehMente ? linha("bonus", "Alunos com bônus", conta("bonus"), null, () => alunos.filter((x) => x.s && x.s.k === "bonus").map((x) => pessoa(x.st))) : null)),
         cfg.linkVenda ? h(LinkVenda, { url: cfg.linkVenda, rotulo: "Página de venda" }) : null);
     };
 
