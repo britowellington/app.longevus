@@ -1180,9 +1180,66 @@ const HistItemCardio = ({c}) => {
     </div>
   );
 };
+const EXTRA_ICONES = {caminhada:"🚶",corrida:"🏃",bicicleta:"🚴",natacao:"🏊",hidro:"💧",danca:"💃",pilates:"🧘",yoga:"🧘",musculacao:"🏋️",outra:"⭐"};
+const HistItemExtra = ({x}) => {
+  const det = [x.minutos?(x.minutos+" min"):null, x.kcal?("cerca de "+x.kcal+" kcal"):null, x.fonte==="relogio"?"dado do relógio":null].filter(Boolean).join(" · ");
+  return (
+    <div style={{background:"#fff",border:"1.5px solid #fed7aa",borderRadius:14,padding:"12px 14px",marginBottom:10}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+        <div style={{fontWeight:800,fontSize:14,color:"#0f172a"}}>{(EXTRA_ICONES[x.modalidade]||"⭐")+" "+(x.rotulo||"Atividade extra")}</div>
+        <span style={{flexShrink:0,fontSize:10.5,fontWeight:800,color:"#c2410c",background:"#fff7ed",borderRadius:99,padding:"3px 8px"}}>Extra</span>
+      </div>
+      {det && <div style={{fontSize:12,color:"#64748b",marginTop:2}}>{det}</div>}
+    </div>
+  );
+};
+const REF_TIPOS = {cafe:"Café da manhã",lanche_manha:"Lanche da manhã",almoco:"Almoço",lanche_tarde:"Lanche da tarde",jantar:"Jantar",ceia:"Ceia",extra:"Extras"};
+const HistItemRefeicao = ({r}) => {
+  const kc = r.totais && r.totais.kcal;
+  const nomes = (r.itens||[]).map(x=>x&&x.nome).filter(Boolean);
+  const det = [kc?("cerca de "+kc+" kcal"):null, nomes.length?(nomes.slice(0,3).join(", ")+(nomes.length>3?(" e mais "+(nomes.length-3)):"")):null].filter(Boolean).join(" · ");
+  return (
+    <div style={{background:"#fff",border:"1.5px solid #bbf7d0",borderRadius:14,padding:"12px 14px",marginBottom:10}}>
+      <div style={{fontWeight:800,fontSize:14,color:"#0f172a"}}>🍽️ {(REF_TIPOS[r.tipo]||"Refeição")+(r.hora?(" · "+r.hora):"")}</div>
+      {det && <div style={{fontSize:12,color:"#64748b",marginTop:2}}>{det}</div>}
+    </div>
+  );
+};
+const HistItemAtivProg = ({s}) => (
+  <div style={{background:"#fff",border:"1.5px solid #fed7aa",borderRadius:14,padding:"12px 14px",marginBottom:10}}>
+    <div style={{fontWeight:800,fontSize:14,color:"#0f172a"}}>🏃 Atividade</div>
+    <div style={{fontSize:12,color:"#64748b",marginTop:2}}>{(s.completedEx||0)+" de "+(s.totalEx||0)+" exercícios"}</div>
+  </div>
+);
 const TelaHistorico = ({studentId, sessoes, cardios, nomeT, onVoltar, getHeaders, prog, nomeEx}) => {
   const [filtro,setFiltro] = useState("tudo");
   const [checks,setChecks] = useState(null);
+  const [extras,setExtras] = useState([]);
+  const [refs,setRefs] = useState([]);
+  useEffect(()=>{
+    let vivo = true;
+    (async()=>{
+      try{
+        const headers = await getHeaders();
+        const r = await fetch(SUPA_URL+"/rest/v1/refeicoes_registro?select=data&student_id=eq."+encodeURIComponent(studentId)+"&order=created_at.desc&limit=300", { headers });
+        const rows = r.ok ? await r.json() : [];
+        if(vivo) setRefs((rows||[]).map(x=>x&&x.data).filter(x=>x&&x.date));
+      }catch(e){ if(vivo) setRefs([]); }
+    })();
+    return ()=>{ vivo=false; };
+  },[studentId]);
+  useEffect(()=>{
+    let vivo = true;
+    (async()=>{
+      try{
+        const headers = await getHeaders();
+        const r = await fetch(SUPA_URL+"/rest/v1/gasto_atividades?select=data&student_id=eq."+encodeURIComponent(studentId)+"&limit=500", { headers });
+        const rows = r.ok ? await r.json() : [];
+        if(vivo) setExtras((rows||[]).map(x=>x&&x.data).filter(x=>x&&x.date));
+      }catch(e){ if(vivo) setExtras([]); }
+    })();
+    return ()=>{ vivo=false; };
+  },[studentId]);
   useEffect(()=>{
     let vivo = true;
     (async()=>{
@@ -1198,8 +1255,11 @@ const TelaHistorico = ({studentId, sessoes, cardios, nomeT, onVoltar, getHeaders
   const hj = hojeLocal();
   const musc = (sessoes||[]).filter(s=>s && s.treinoKey && s.source!=="atividade_extra" && s.source!=="cardio_separado");
   const itens = [
-    ...(filtro!=="cardio" ? musc.map(s=>({tipo:"m",date:s.date,ord:s.createdAt||s.date,s})) : []),
-    ...(filtro!=="musc" ? (cardios||[]).map(c=>({tipo:"c",date:c.date,ord:c.createdAt||c.date,c})) : [])
+    ...(filtro==="tudo"||filtro==="musc" ? musc.map(s=>({tipo:"m",date:s.date,ord:s.createdAt||s.date,s})) : []),
+    ...(filtro==="tudo"||filtro==="cardio" ? (cardios||[]).map(c=>({tipo:"c",date:c.date,ord:c.createdAt||c.date,c})) : []),
+    ...(filtro==="tudo"||filtro==="ativ" ? (sessoes||[]).filter(s=>s&&s.source==="atividade_extra").map(s=>({tipo:"a",date:s.date,ord:s.createdAt||s.date,s})) : []),
+    ...(filtro==="tudo"||filtro==="ativ" ? extras.map(x=>({tipo:"x",date:x.date,ord:x.createdAt||x.date,x})) : []),
+    ...(filtro==="tudo"||filtro==="alim" ? refs.map(r=>({tipo:"r",date:r.date,ord:r.createdAt||r.hora||r.date,r})) : [])
   ].sort((a,b)=>(b.date||"").localeCompare(a.date||"") || (a.ord||"").localeCompare(b.ord||""));
   const ckDe = (s) => (checks||[]).find(k=>k.date===s.date && k.treinoKey===s.treinoKey && k.source!=="professor_presencial") || (checks||[]).find(k=>k.date===s.date && k.source==="professor_presencial");
   const dias = []; itens.forEach(it=>{ const last=dias[dias.length-1]; if(last&&last.date===it.date) last.itens.push(it); else dias.push({date:it.date,itens:[it]}); });
@@ -1210,13 +1270,16 @@ const TelaHistorico = ({studentId, sessoes, cardios, nomeT, onVoltar, getHeaders
         <button type="button" onClick={onVoltar} style={{width:36,height:36,borderRadius:10,border:"1.5px solid #e2e8f0",background:"#fff",fontSize:18,color:"#475569",cursor:"pointer"}}>‹</button>
         <div><div style={{fontWeight:800,fontSize:18,color:"#0f172a"}}>Meu histórico</div><div style={{fontSize:12,color:"#94a3b8"}}>Tudo o que você já fez</div></div>
       </div>
-      <div style={{display:"flex",gap:6,marginBottom:12}}>{chip("tudo","Tudo")}{chip("musc","Musculação")}{chip("cardio","Cardio")}</div>
-      {dias.length===0 && <div style={{fontSize:13,color:"#94a3b8",textAlign:"center",padding:"30px 10px"}}>Nenhum registro ainda. Conclua um treino para ele aparecer aqui.</div>}
+      <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>{chip("tudo","Tudo")}{chip("musc","Musculação")}{chip("cardio","Cardio")}{chip("ativ","Atividades")}{chip("alim","Alimentação")}</div>
+      {dias.length===0 && <div style={{fontSize:13,color:"#94a3b8",textAlign:"center",padding:"30px 10px"}}>{filtro==="ativ"?"Nenhuma atividade extra ainda. Registre no Início, em Atividade extra.":filtro==="alim"?"Nenhuma refeição registrada ainda. Registre na aba Calorias.":"Nenhum registro ainda. Conclua um treino para ele aparecer aqui."}</div>}
       {dias.map(d=>(
         <div key={d.date}>
           <div style={{fontSize:12,fontWeight:800,color:"#64748b",margin:"6px 2px 6px",textTransform:"uppercase"}}>{histDataFmt(d.date,hj)}</div>
           {d.itens.map((it,i)=> it.tipo==="m"
             ? <HistItemMusc key={"m"+i} s={it.s} ck={ckDe(it.s)} nome={nomeT(it.s.treinoKey)} prog={prog} nomeEx={nomeEx}/>
+            : it.tipo==="x" ? <HistItemExtra key={"x"+i} x={it.x}/>
+            : it.tipo==="a" ? <HistItemAtivProg key={"a"+i} s={it.s}/>
+            : it.tipo==="r" ? <HistItemRefeicao key={"r"+i} r={it.r}/>
             : <HistItemCardio key={"c"+i} c={it.c}/>)}
         </div>
       ))}
