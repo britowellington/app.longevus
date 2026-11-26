@@ -1853,16 +1853,20 @@
           antroApi.fontesMedidas(studentId),
           nutriApi.listar(studentId, hoje, hoje),
           energiaApi.checkins(studentId, seg, semana[6]),
-          energiaApi.atividades(studentId, hoje, hoje)
+          energiaApi.atividades(studentId, seg, semana[6])
         ]);
         if (!vivo) return;
         const m = metas || {};
         const med = antroMedidas(antro || [], fontes.aval, m);
         const eBase = energiaBase(studentData, antro || [], med);
-        const dia = prCalcularDias({ dias: [hoje], refeicoes: refs || [], checkins: (ck || []).filter((c) => c.date === hoje), atividades: at || [], metas: m, eBase })[0];
+        const dia = prCalcularDias({ dias: [hoje], refeicoes: refs || [], checkins: (ck || []).filter((c) => c.date === hoje), atividades: (at || []).filter((a) => a.date === hoje), metas: m, eBase })[0];
         const feitos = {};
         (ck || []).forEach((c) => {
           if (c.date) feitos[c.date] = true;
+        });
+        const extras = {};
+        (at || []).forEach((a) => {
+          if (a && a.date) extras[a.date] = true;
         });
         const comBio = (antro || []).filter((r) => r.bio && antroNum(r.bio.gordura)).sort((a, b) => (a.date || "").localeCompare(b.date || ""));
         let comp = null;
@@ -1876,7 +1880,7 @@
         const ultBio = comBio.length ? comBio[comBio.length - 1] : null;
         const ultFunc = (fontes.aval || []).filter((a) => a && a.date).sort((a, b) => String(a.date).localeCompare(String(b.date))).pop() || null;
         const aval = ultBio && (!ultFunc || String(ultBio.date) >= String(ultFunc.date)) ? { tipo: "bio", date: ultBio.date, base: (ultBio.relatorio && ultBio.relatorio.inicioJornada) || ultBio.date, gordura: antroNum(ultBio.bio.gordura), musculo: antroNum(ultBio.bio.mmePct) } : ultFunc ? { tipo: "funcional", date: ultFunc.date } : null;
-        setInfo({ dia, feitos, comp, temMeta: !!dia.meta, obj: prObjetivo(m), aval });
+        setInfo({ dia, feitos, extras, comp, temMeta: !!dia.meta, obj: prObjetivo(m), aval });
       })();
       return () => {
         vivo = false;
@@ -1903,6 +1907,8 @@
     const avDias = av ? Math.round((dHoje - prData(String(av.base || av.date).slice(0, 10))) / 86400000) : 0;
     const avFalta = 90 - avDias;
     const nTreinos = info ? semana.filter((d2) => info.feitos[d2]).length : 0;
+    const nSoExtra = info ? semana.filter((d2) => !info.feitos[d2] && info.extras && info.extras[d2]).length : 0;
+    const nAtivos = nTreinos + nSoExtra;
     const useItensV = (window.LongevusVitrine && window.LongevusVitrine.useItens) || (() => null);
     const itensV = useItensV(ownerId);
     const persP = String(profNome || "Wellington").split(" ")[0];
@@ -1938,8 +1944,8 @@
         HERO.sub ? React.createElement("span", { style: { display: "block", fontSize: 11.5, color: "#FFF1EA", marginTop: 1 } }, HERO.sub) : null,
         HERO.barra !== null && HERO.barra !== undefined ? React.createElement("span", { style: { display: "block", height: 5, borderRadius: 3, background: "rgba(255,255,255,0.3)", marginTop: 7, overflow: "hidden" } }, React.createElement("span", { style: { display: "block", width: HERO.barra + "%", height: 5, borderRadius: 3, background: "#fff" } })) : null),
       React.createElement("span", { "aria-hidden": "true", style: { width: 40, height: 40, borderRadius: 20, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } },
-        HERO.ic ? React.createElement("svg", { width: 20, height: 20, viewBox: "0 0 24 24", fill: "none", stroke: PR.laranjaTxt, strokeWidth: 2.2, strokeLinecap: "round", strokeLinejoin: "round" }, HERO.ic.map((dd, k) => React.createElement("path", { key: k, d: dd }))) : React.createElement("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: PR.laranjaTxt }, React.createElement("path", { d: "M8 5v14l11-7z" })))) : /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onIrTreino, style: { width: "100%", textAlign: "left", border: "none", cursor: "pointer", fontFamily: "inherit", background: "linear-gradient(135deg, #FF5603 0%, #FF7A3D 100%)", borderRadius: 16, padding: "10px 11px 10px 14px", display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("span", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 10.5, fontWeight: 700, letterSpacing: "0.12em", color: "#FFE4D6" } }, semTreino ? "SEU PROGRAMA" : "TREINO DE HOJE"), /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 19, fontWeight: 800, color: "#fff", lineHeight: 1.15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, semTreino ? "Em preparação" : treinoHojeLabel || "Seu treino"), /* @__PURE__ */ (semTreino ? React.createElement("span", { style: { display: "block", fontSize: 11.5, color: "#FFF1EA", marginTop: 1 } }, "Seu personal está montando seu treino") : null)), /* @__PURE__ */ React.createElement("span", { "aria-hidden": "true", style: { width: 40, height: 40, borderRadius: 20, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: PR.laranjaTxt }, /* @__PURE__ */ React.createElement("path", { d: "M8 5v14l11-7z" })))), principal !== "treino" ? null : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { order: 2, textAlign: "right", fontSize: 11, color: PR.cinzaClaro, lineHeight: 1.25 } }, React.createElement("b", { style: { display: "block", fontSize: 15, color: "#F8FAFC" } }, nTreinos), nTreinos === 1 ? "treino na semana" : "treinos na semana"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 7 } }, semana.map((dd) => {
-      const feito = info && info.feitos[dd], ehHoje = dd === hoje;
+        HERO.ic ? React.createElement("svg", { width: 20, height: 20, viewBox: "0 0 24 24", fill: "none", stroke: PR.laranjaTxt, strokeWidth: 2.2, strokeLinecap: "round", strokeLinejoin: "round" }, HERO.ic.map((dd, k) => React.createElement("path", { key: k, d: dd }))) : React.createElement("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: PR.laranjaTxt }, React.createElement("path", { d: "M8 5v14l11-7z" })))) : /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onIrTreino, style: { width: "100%", textAlign: "left", border: "none", cursor: "pointer", fontFamily: "inherit", background: "linear-gradient(135deg, #FF5603 0%, #FF7A3D 100%)", borderRadius: 16, padding: "10px 11px 10px 14px", display: "flex", alignItems: "center", gap: 12 } }, /* @__PURE__ */ React.createElement("span", { style: { flex: 1, minWidth: 0 } }, /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 10.5, fontWeight: 700, letterSpacing: "0.12em", color: "#FFE4D6" } }, semTreino ? "SEU PROGRAMA" : "TREINO DE HOJE"), /* @__PURE__ */ React.createElement("span", { style: { display: "block", fontSize: 19, fontWeight: 800, color: "#fff", lineHeight: 1.15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, semTreino ? "Em preparação" : treinoHojeLabel || "Seu treino"), /* @__PURE__ */ (semTreino ? React.createElement("span", { style: { display: "block", fontSize: 11.5, color: "#FFF1EA", marginTop: 1 } }, "Seu personal está montando seu treino") : null)), /* @__PURE__ */ React.createElement("span", { "aria-hidden": "true", style: { width: 40, height: 40, borderRadius: 20, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("svg", { width: "16", height: "16", viewBox: "0 0 24 24", fill: PR.laranjaTxt }, /* @__PURE__ */ React.createElement("path", { d: "M8 5v14l11-7z" })))), principal !== "treino" ? null : /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 } }, /* @__PURE__ */ React.createElement("div", { style: { order: 2, textAlign: "right", fontSize: 11, color: PR.cinzaClaro, lineHeight: 1.25 } }, React.createElement("b", { style: { display: "block", fontSize: 15, color: "#F8FAFC" } }, nSoExtra ? nAtivos : nTreinos), nSoExtra ? (nAtivos === 1 ? "dia ativo na semana" : "dias ativos na semana") : (nTreinos === 1 ? "treino na semana" : "treinos na semana"), nSoExtra ? React.createElement("span", { style: { display: "block", fontSize: 10, color: "#94A3B8", marginTop: 1 } }, nTreinos + (nTreinos === 1 ? " treino + " : " treinos + ") + nSoExtra + (nSoExtra === 1 ? " extra" : " extras")) : null), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 7 } }, semana.map((dd) => {
+      const feito = info && info.feitos[dd], extra = !!(info && info.extras && info.extras[dd]), soExtra = !feito && extra, ehHoje = dd === hoje;
       return /* @__PURE__ */ React.createElement("div", { key: dd, style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3 } }, /* @__PURE__ */ React.createElement("div", { style: {
         width: 24,
         height: 24,
@@ -1950,10 +1956,11 @@
         justifyContent: "center",
         fontSize: 11,
         fontWeight: 800,
-        background: feito ? PR.laranja : ehHoje ? "transparent" : PR.escuro2,
-        border: !feito && ehHoje ? "2px solid " + PR.laranja2 : "none",
+        position: "relative",
+        background: feito ? PR.laranja : soExtra || ehHoje ? "transparent" : PR.escuro2,
+        border: soExtra ? "2px solid " + PR.laranja : !feito && ehHoje ? "2px solid " + PR.laranja2 : "none",
         color: feito ? "#fff" : ehHoje ? PR.laranja2 : "#475569"
-      } }, feito ? "✓" : ehHoje ? "•" : ""), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9.5, color: PR.cinzaClaro } }, "DSTQQSS"[prData(dd).getDay()]));
+      } }, feito ? "✓" : soExtra ? React.createElement("svg", { width: 13, height: 13, viewBox: "0 0 24 24", fill: "none", stroke: PR.laranja2, strokeWidth: 3, strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M3 12h4l3-8 4 16 3-8h4" })) : ehHoje ? "•" : "", feito && extra ? React.createElement("span", { style: { position: "absolute", right: -2, bottom: -2, width: 9, height: 9, borderRadius: 5, background: "#FDBA74", border: "2px solid #0F172A", boxSizing: "border-box" } }) : null), /* @__PURE__ */ React.createElement("span", { style: { fontSize: 9.5, color: PR.cinzaClaro } }, "DSTQQSS"[prData(dd).getDay()]));
     }))), onAtividadeExtra ? React.createElement("button", { type: "button", onClick: onAtividadeExtra, style: { width: "100%", textAlign: "left", fontFamily: "inherit", cursor: "pointer", border: "none", borderTop: "1px solid #1E293B", background: "transparent", color: "#F8FAFC", borderRadius: 0, padding: "11px 0 0", display: "flex", alignItems: "center", gap: 10 } },
       React.createElement("span", { style: { width: 22, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } },
         React.createElement("svg", { width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", stroke: "#FF8A3D", strokeWidth: 2.4, strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M3 12h4l3-8 4 16 3-8h4" }))),
