@@ -812,6 +812,82 @@ const getWeekDates = (date) => {
   return Array.from({ length: 7 }, (_, i) => new Date(dom.getFullYear(), dom.getMonth(), dom.getDate() + i));
 };
 const cap1 = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+const ROTINA_DIAS = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"];
+const ROTINA_TIPOS = [
+  { k: "musculacao", l: "Musculação", c: "#C2410C", bg: "#FFF1E8", bd: "#FFC9A8" },
+  { k: "cardio", l: "Cardio", c: "#0F766E", bg: "#E8F7F4", bd: "#A7E3D8" },
+  { k: "alongamento", l: "Alongamento", c: "#0F766E", bg: "#E8F7F4", bd: "#A7E3D8" },
+  { k: "outra", l: "Outra atividade", c: "#5B47C7", bg: "#F1EEFF", bd: "#CFC6FB" },
+  { k: "descanso", l: "Descanso", c: "#94A3B8", bg: "#F8FAFC", bd: "#CBD5E1" },
+  { k: "livre", l: "Livre", c: "#94A3B8", bg: "#F8FAFC", bd: "#CBD5E1" }
+];
+const rotinaTipo = (k) => ROTINA_TIPOS.find((t) => t.k === k) || ROTINA_TIPOS[5];
+const rotinaVazia = () => ({ colunas: "ambas", nomes: ["Manhã", "Tarde / Noite"], dias: ROTINA_DIAS.map(() => [{ tipo: "livre", nome: "", det: "" }, { tipo: "livre", nome: "", det: "" }]) });
+const rotinaDoAluno = (st) => {
+  const r = st && st.rotinaSemanal;
+  if (!r || !Array.isArray(r.dias)) return rotinaVazia();
+  const base = rotinaVazia();
+  return { colunas: r.colunas || "ambas", nomes: [(r.nomes && r.nomes[0]) || base.nomes[0], (r.nomes && r.nomes[1]) || base.nomes[1]], dias: base.dias.map((d, i) => [0, 1].map((p) => ({ ...d[p], ...(r.dias[i] && r.dias[i][p] || {}) }))) };
+};
+const RotinaSemanalEditor = ({ student, setStudents }) => {
+  const [r, setR] = useState(() => rotinaDoAluno(student));
+  const [sel, setSel] = useState(null);
+  const [salvando, setSalvando] = useState(false);
+  const [msg, setMsg] = useState("");
+  useEffect(() => {
+    setR(rotinaDoAluno(student));
+    setSel(null);
+    setMsg("");
+  }, [student && student.id]);
+  if (!student) return React.createElement(Card, { style: { textAlign: "center", padding: 30 } }, React.createElement(I, { n: "calendar", c: "#cbd5e1", s: 36 }), React.createElement("div", { style: { color: "#94a3b8", marginTop: 10, fontSize: 13, lineHeight: 1.5 } }, "Escolha um aluno na lista acima para montar a estrutura da semana dele."));
+  const mostra = (p) => r.colunas === "ambas" || r.colunas === String(p + 1);
+  const colsVisiveis = [0, 1].filter(mostra);
+  const setCell = (d, p, patch) => {
+    setMsg("");
+    setR((old) => ({ ...old, dias: old.dias.map((dia, i) => i !== d ? dia : dia.map((c, j) => j !== p ? c : { ...c, ...patch })) }));
+  };
+  const setNome = (p, v) => {
+    setMsg("");
+    setR((old) => ({ ...old, nomes: old.nomes.map((n, j) => j === p ? v : n) }));
+  };
+  const setColunas = (v) => {
+    setMsg("");
+    setSel(null);
+    setR((old) => ({ ...old, colunas: v }));
+  };
+  const gravar = async (nova) => {
+    setSalvando(true);
+    const atualizado = { ...student, rotinaSemanal: nova };
+    const ok = await DB.save("students", student.id, atualizado);
+    setSalvando(false);
+    if (!ok) {
+      alert("Não foi possível salvar agora. Verifique sua conexão e tente de novo.");
+      return;
+    }
+    setStudents((p) => p.map((s) => s.id === student.id ? atualizado : s));
+    setMsg(nova ? "Salvo. O aluno já vê na aba Rotina." : "Estrutura removida. A aba Rotina some do app do aluno.");
+  };
+  const salvar = () => gravar({ ...r, nomes: r.nomes.map((n, j) => (n || "").trim() || (j ? "Tarde / Noite" : "Manhã")), atualizadoEm: (/* @__PURE__ */ new Date()).toISOString() });
+  const remover = () => {
+    if (window.confirm("Remover a estrutura da semana de " + student.name + "? A aba Rotina deixa de aparecer para ele.")) {
+      gravar(null);
+      setR(rotinaVazia());
+      setSel(null);
+    }
+  };
+  const segBtn = (v, l) => React.createElement("button", { key: v, onClick: () => setColunas(v), style: { flex: 1, height: 32, border: "none", borderRadius: 8, fontSize: 12, fontWeight: r.colunas === v ? 700 : 500, cursor: "pointer", background: r.colunas === v ? "#fff" : "transparent", color: r.colunas === v ? O : "#475569", boxShadow: r.colunas === v ? "0 1px 3px rgba(15,23,42,0.08)" : "none" } }, l);
+  const gridCols = "40px " + colsVisiveis.map(() => "minmax(0,1fr)").join(" ");
+  const celula = (d, p) => {
+    const c = r.dias[d][p];
+    const t = rotinaTipo(c.tipo);
+    const ativo = sel && sel.d === d && sel.p === p;
+    const vazio = c.tipo === "livre" || c.tipo === "descanso";
+    return React.createElement("button", { key: p, onClick: () => setSel(ativo ? null : { d, p }), style: { minHeight: 42, borderRadius: 10, padding: "4px 10px", display: "flex", flexDirection: "column", justifyContent: "center", textAlign: "left", cursor: "pointer", background: t.bg, border: (vazio ? "1px dashed " : "1px solid ") + t.bd, outline: ativo ? "2px solid " + O : "none", outlineOffset: 1, minWidth: 0 } }, React.createElement("span", { style: { fontSize: 12, fontWeight: vazio ? 500 : 700, color: t.c, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, c.nome || t.l), c.det && React.createElement("span", { style: { fontSize: 11, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, c.det));
+  };
+  const selCell = sel && r.dias[sel.d] && r.dias[sel.d][sel.p];
+  const inpSt = { width: "100%", boxSizing: "border-box", height: 38, borderRadius: 10, border: "1.5px solid #e2e8f0", padding: "0 10px", fontSize: 13, background: "#fff" };
+  return React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 } }, React.createElement(Card, { style: { padding: 14 } }, React.createElement("div", { style: { fontWeight: 800, fontSize: 15 } }, "Estrutura da semana"), React.createElement("div", { style: { fontSize: 12, color: "#64748b", lineHeight: 1.45, marginTop: 2, marginBottom: 12 } }, "Sugestão fixa que ", student.name, " vê no app, na aba Rotina. Toque num período para escolher a atividade."), React.createElement("div", { style: { padding: 10, borderRadius: 12, background: "#f8fafc", border: "1px solid #eef1f5", marginBottom: 10 } }, React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 6 } }, "Colunas que o aluno vê"), React.createElement("div", { style: { display: "flex", gap: 3, padding: 3, borderRadius: 10, background: "#eef1f5" } }, segBtn("1", "Só a 1ª"), segBtn("2", "Só a 2ª"), segBtn("ambas", "As duas"))), React.createElement("div", { style: { display: "grid", gridTemplateColumns: gridCols, gap: 6, marginBottom: 6 } }, React.createElement("span", null), colsVisiveis.map((p) => React.createElement("input", { key: p, value: r.nomes[p], onChange: (e) => setNome(p, e.target.value), "aria-label": "Nome da " + (p + 1) + "ª coluna", maxLength: 24, style: { ...inpSt, height: 32, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: "#334155", padding: "0 8px", minWidth: 0 } }))), React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } }, ROTINA_DIAS.map((dn, d) => React.createElement("div", { key: dn, style: { display: "grid", gridTemplateColumns: gridCols, gap: 6 } }, React.createElement("div", { style: { display: "flex", alignItems: "center", fontSize: 12, fontWeight: 700, color: "#334155" } }, dn), colsVisiveis.map((p) => celula(d, p)))))), selCell && React.createElement(Card, { style: { padding: 12 } }, React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 8 } }, ROTINA_DIAS[sel.d], " · ", r.nomes[sel.p] || (sel.p ? "Tarde / Noite" : "Manhã")), React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 } }, ROTINA_TIPOS.map((t) => React.createElement("button", { key: t.k, onClick: () => setCell(sel.d, sel.p, { tipo: t.k, nome: t.k === selCell.tipo ? selCell.nome : "" }), style: { height: 32, padding: "0 11px", borderRadius: 16, fontSize: 12, cursor: "pointer", border: selCell.tipo === t.k ? "none" : "1px solid #e2e8f0", background: selCell.tipo === t.k ? O : "#fff", color: selCell.tipo === t.k ? "#fff" : "#334155", fontWeight: selCell.tipo === t.k ? 700 : 500 } }, t.l))), React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 } }, React.createElement("input", { value: selCell.nome, onChange: (e) => setCell(sel.d, sel.p, { nome: e.target.value }), placeholder: rotinaTipo(selCell.tipo).l, "aria-label": "Nome da atividade", maxLength: 30, style: inpSt }), React.createElement("input", { value: selCell.det, onChange: (e) => setCell(sel.d, sel.p, { det: e.target.value }), placeholder: "Detalhe (ex.: 30 min)", "aria-label": "Detalhe", maxLength: 30, style: inpSt })), React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 6 } }, "Nome e detalhe são opcionais. Ex.: Musculação A · Com você 7h")), msg && React.createElement("div", { style: { fontSize: 13, color: "#0f766e", background: "#e8f7f4", borderRadius: 10, padding: "10px 12px" } }, msg), React.createElement(Btn, { full: true, onClick: salvar, disabled: salvando }, salvando ? "Salvando..." : "Salvar e mostrar ao aluno"), student.rotinaSemanal && React.createElement("button", { onClick: remover, disabled: salvando, style: { border: "none", background: "none", color: "#94a3b8", fontSize: 12, cursor: "pointer", padding: 4 } }, "Remover estrutura deste aluno"));
+};
 const Agenda = ({ students, setStudents, agendaEntries, setAgendaEntries, pagamentos, setPagamentos, leads, nav }) => {
   const nomeDoCompromisso = (e) => {
     const st = students.find((s) => s.id === e.studentId);
@@ -928,7 +1004,7 @@ const Agenda = ({ students, setStudents, agendaEntries, setAgendaEntries, pagame
     return React.createElement("div", { onClick: () => openEntry(e.date, e), style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "10px 12px", border: "1.5px solid #f1f5f9", borderRadius: 10, cursor: "pointer" } }, React.createElement("div", { style: { flex: 1, minWidth: 0 } }, React.createElement("div", { style: { fontWeight: 700, fontSize: 13 } }, e.time ? e.time + " · " : "", nomeDoCompromisso(e)), e.obs && React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2 } }, e.obs), e.dataOriginal && React.createElement("div", { style: { fontSize: 10, color: "#c2410c", marginTop: 2 } }, "↻ Remarcada, era dia ", fmt(e.dataOriginal))), React.createElement(Badge, { color: cfg.color, bg: cfg.bg }, cfg.label));
   };
   const headerLabel = viewMode === "dia" ? cap1(refDate.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })) : viewMode === "semana" ? `${weekDates[0].getDate()} ${MESES_NOME[weekDates[0].getMonth()].slice(0, 3)} – ${weekDates[6].getDate()} ${MESES_NOME[weekDates[6].getMonth()].slice(0, 3)} de ${weekDates[6].getFullYear()}` : `${MESES_NOME[refDate.getMonth()]} de ${refDate.getFullYear()}`;
-  return React.createElement("div", null, React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 } }, React.createElement("div", { style: { fontWeight: 800, fontSize: 20 } }, "📅 Agenda"), React.createElement(Btn, { sm: true, icon: "plus", onClick: openSchedule }, "Agendar Aulas")), React.createElement("div", { style: { fontSize: 13, color: "#64748b", marginBottom: 14, lineHeight: 1.5 } }, "Primeiro agende os dias e o horário das aulas com o aluno. Quando o dia chegar, toque no compromisso pra marcar se foi confirmada, realizada, se o aluno faltou, e deixar uma observação."), React.createElement("select", { value: filterSt, onChange: (e) => setFilterSt(e.target.value), style: { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1.5px solid #e2e8f0", background: "#f8fafc", fontSize: 14, marginBottom: 12 } }, React.createElement("option", { value: "" }, "Todos os alunos"), students.map((s) => React.createElement("option", { key: s.id, value: s.id }, s.name))), React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 14 } }, [["dia", "Dia"], ["semana", "Semana"], ["mes", "Mês"], ["lista", "Lista"]].map(([k, l]) => React.createElement("button", { key: k, onClick: () => setViewMode(k), style: { flex: 1, border: "none", borderRadius: 9, padding: "9px 0", fontSize: 12, fontWeight: 700, cursor: "pointer", background: viewMode === k ? O : "#f1f5f9", color: viewMode === k ? "#fff" : "#64748b" } }, l))), viewMode !== "lista" && React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, gap: 8 } }, React.createElement("button", { onClick: goPrev, style: { border: "1.5px solid #e2e8f0", background: "#fff", borderRadius: 8, width: 30, height: 30, cursor: "pointer", color: "#475569", flexShrink: 0 } }, "‹"), React.createElement("div", { style: { flex: 1, textAlign: "center" } }, React.createElement("div", { style: { fontSize: 14, fontWeight: 800 } }, headerLabel), refIso !== todayStr() && React.createElement("button", { onClick: goHoje, style: { border: "none", background: "none", color: O, fontSize: 11, fontWeight: 700, cursor: "pointer", padding: 0, marginTop: 2 } }, "Ir para hoje")), React.createElement("button", { onClick: goNext, style: { border: "1.5px solid #e2e8f0", background: "#fff", borderRadius: 8, width: 30, height: 30, cursor: "pointer", color: "#475569", flexShrink: 0 } }, "›")), viewMode === "dia" && (entriesPorDia(refIso).length === 0 ? React.createElement(Card, { style: { textAlign: "center", padding: 40 } }, React.createElement(I, { n: "calendar", c: "#cbd5e1", s: 36 }), React.createElement("div", { style: { color: "#94a3b8", marginTop: 10 } }, "Nenhuma aula agendada neste dia.")) : React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 } }, entriesPorDia(refIso).map((e) => React.createElement(EntryRow, { key: e.id, e })))), viewMode === "dia" && React.createElement(Btn, { full: true, icon: "plus", onClick: () => openEntry(refIso, null) }, "Adicionar aula avulsa neste dia"), viewMode === "semana" && React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, weekDates.map((d) => {
+  return React.createElement("div", null, React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 } }, React.createElement("div", { style: { fontWeight: 800, fontSize: 20 } }, "📅 Agenda"), React.createElement(Btn, { sm: true, icon: "plus", onClick: openSchedule }, "Agendar Aulas")), React.createElement("div", { style: { fontSize: 13, color: "#64748b", marginBottom: 14, lineHeight: 1.5 } }, "Primeiro agende os dias e o horário das aulas com o aluno. Quando o dia chegar, toque no compromisso pra marcar se foi confirmada, realizada, se o aluno faltou, e deixar uma observação."), React.createElement("select", { value: filterSt, onChange: (e) => setFilterSt(e.target.value), style: { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1.5px solid #e2e8f0", background: "#f8fafc", fontSize: 14, marginBottom: 12 } }, React.createElement("option", { value: "" }, "Todos os alunos"), students.map((s) => React.createElement("option", { key: s.id, value: s.id }, s.name))), React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 14 } }, [["dia", "Dia"], ["semana", "Semana"], ["mes", "Mês"], ["lista", "Lista"], ["estrutura", "Estrutura"]].map(([k, l]) => React.createElement("button", { key: k, onClick: () => setViewMode(k), style: { flex: k === "estrutura" ? 1.4 : 1, border: "none", borderRadius: 9, padding: "9px 0", fontSize: 12, fontWeight: 700, cursor: "pointer", background: viewMode === k ? O : "#f1f5f9", color: viewMode === k ? "#fff" : "#64748b" } }, l))), viewMode !== "lista" && viewMode !== "estrutura" && React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, gap: 8 } }, React.createElement("button", { onClick: goPrev, style: { border: "1.5px solid #e2e8f0", background: "#fff", borderRadius: 8, width: 30, height: 30, cursor: "pointer", color: "#475569", flexShrink: 0 } }, "‹"), React.createElement("div", { style: { flex: 1, textAlign: "center" } }, React.createElement("div", { style: { fontSize: 14, fontWeight: 800 } }, headerLabel), refIso !== todayStr() && React.createElement("button", { onClick: goHoje, style: { border: "none", background: "none", color: O, fontSize: 11, fontWeight: 700, cursor: "pointer", padding: 0, marginTop: 2 } }, "Ir para hoje")), React.createElement("button", { onClick: goNext, style: { border: "1.5px solid #e2e8f0", background: "#fff", borderRadius: 8, width: 30, height: 30, cursor: "pointer", color: "#475569", flexShrink: 0 } }, "›")), viewMode === "estrutura" && React.createElement(RotinaSemanalEditor, { student: students.find((s) => s.id === filterSt) || null, setStudents }), viewMode === "dia" && (entriesPorDia(refIso).length === 0 ? React.createElement(Card, { style: { textAlign: "center", padding: 40 } }, React.createElement(I, { n: "calendar", c: "#cbd5e1", s: 36 }), React.createElement("div", { style: { color: "#94a3b8", marginTop: 10 } }, "Nenhuma aula agendada neste dia.")) : React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 } }, entriesPorDia(refIso).map((e) => React.createElement(EntryRow, { key: e.id, e })))), viewMode === "dia" && React.createElement(Btn, { full: true, icon: "plus", onClick: () => openEntry(refIso, null) }, "Adicionar aula avulsa neste dia"), viewMode === "semana" && React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } }, weekDates.map((d) => {
     const iso = toISODateLocal(d);
     const doDia = entriesPorDia(iso);
     const isHoje = iso === todayStr();
