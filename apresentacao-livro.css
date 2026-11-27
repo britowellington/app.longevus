@@ -567,3 +567,10 @@ button{ font:inherit; color:inherit; }
 .p4s .fronts{ grid-template-columns:1fr; margin:0; }
 @container pg (orientation: landscape){ .p4s .fronts{ grid-template-columns:1fr 1fr; gap:0 calc(var(--k)*18px); } }
 .p8s .contacts{ margin-top:calc(var(--gap)*.8); justify-content:flex-start; }
+
+/* Modalidades: na vertical a foto aparece inteira (os três), com fundo desfocado da mesma foto nas laterais */
+@container pg (orientation: portrait){
+  .p5 .ph.has-img{ background:var(--deep); }
+  .p5 .ph.has-img::before{ content:""; position:absolute; inset:-30px; background:var(--img) center / cover no-repeat; filter:blur(18px) brightness(.55); }
+  .p5 .ph.has-img::after{ background:linear-gradient(180deg,rgba(31,46,42,0) 55%,rgba(31,46,42,.35) 100%), var(--img) var(--pos-p,center top) / auto 118% no-repeat; }
+}
